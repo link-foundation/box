@@ -189,36 +189,37 @@ The container runs as the `sandbox` user with home directory at `/home/sandbox`.
 
 _Last updated: 2026-02-22T02:06:37Z_
 
-**Total installation size: 7198 MB**
+**Total installation size: 7198.0 MB**
 
 | Component | Category | Size (MB) |
 |-----------|----------|-----------|
-| Swift 6.x | Runtime | 2655 |
-| Opam + Rocq/Coq | Runtime | 1307 |
-| SDKMAN + Java 21 | Runtime | 579 |
-| .NET SDK 8.0 | Runtime | 505 |
-| Pyenv + Python (latest) | Runtime | 388 |
-| Perlbrew + Perl (latest) | Runtime | 363 |
-| Go (latest) | Runtime | 282 |
-| NVM + Node.js 20 | Runtime | 230 |
-| Kotlin (via SDKMAN) | Runtime | 169 |
-| rbenv + Ruby (latest) | Runtime | 165 |
-| R Language | Runtime | 121 |
-| Deno | Runtime | 119 |
-| Bun | Runtime | 102 |
-| PHP 8.3 (via Homebrew) | Runtime | 55 |
-| Lean (via elan) | Runtime | 13 |
-| Rust (via rustup) | Runtime | 0 |
-| C/C++ Tools (CMake, Clang, LLVM, LLD) | Build Tools | 59 |
-| Assembly Tools (NASM, FASM) | Build Tools | 4 |
-| GitLab CLI | Development Tools | 29 |
-| gh-setup-git-identity | Development Tools | 4 |
-| glab-setup-git-identity | Development Tools | 4 |
-| GitHub CLI | Development Tools | 1 |
-| Homebrew | Package Manager | 0 |
-| Python Build Dependencies | Dependencies | 43 |
-| Ruby Build Dependencies | Dependencies | 0 |
-| Essential Tools | System | 1 |
+| Swift 6.x | Runtime | 2655.26 |
+| Opam + Rocq/Coq | Runtime | 1307.27 |
+| SDKMAN + Java 21 | Runtime | 579.1 |
+| .NET SDK 8.0 | Runtime | 504.91 |
+| Pyenv + Python (latest) | Runtime | 387.92 |
+| Perlbrew + Perl (latest) | Runtime | 362.91 |
+| Go (latest) | Runtime | 281.62 |
+| NVM + Node.js 20 | Runtime | 230.43 |
+| Kotlin (via SDKMAN) | Runtime | 169.11 |
+| rbenv + Ruby (latest) | Runtime | 164.96 |
+| R Language | Runtime | 121.15 |
+| Deno | Runtime | 119.12 |
+| Bun | Runtime | 102.38 |
+| PHP 8.3 (via Homebrew) | Runtime | 55.08 |
+| Lean (via elan) | Runtime | 13.29 |
+| Rust (via rustup) | Runtime | 0.1 |
+| C/C++ Tools (CMake, Clang, LLVM, LLD) | Build Tools | 58.83 |
+| Assembly Tools (NASM, FASM) | Build Tools | 3.92 |
+| GitLab CLI | Development Tools | 29.19 |
+| glab-setup-git-identity | Development Tools | 4.37 |
+| gh-setup-git-identity | Development Tools | 4.35 |
+| GitHub CLI | Development Tools | 0.55 |
+| Homebrew | Package Manager | 0.02 |
+| Python Build Dependencies | Dependencies | 42.52 |
+| Bubblewrap | Dependencies | 0.0 |
+| Ruby Build Dependencies | Dependencies | 0.0 |
+| Essential Tools | System | 0.74 |
 
 _Note: Sizes are measured after cleanup and may vary based on system state and package versions._
 

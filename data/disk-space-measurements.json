@@ -1,162 +1,168 @@
 {
   "generated_at": "2026-02-22T02:06:37Z",
-  "total_size_mb": 7198,
+  "total_size_mb": 7198.0,
   "components": [
     {
       "name": "Essential Tools",
       "category": "System",
       "size_bytes": 741376,
-      "size_mb": 1
+      "size_mb": 0.74
     },
     {
       "name": ".NET SDK 8.0",
       "category": "Runtime",
       "size_bytes": 504905728,
-      "size_mb": 505
+      "size_mb": 504.91
     },
     {
       "name": "C/C++ Tools (CMake, Clang, LLVM, LLD)",
       "category": "Build Tools",
       "size_bytes": 58834944,
-      "size_mb": 59
+      "size_mb": 58.83
     },
     {
       "name": "Assembly Tools (NASM, FASM)",
       "category": "Build Tools",
       "size_bytes": 3915776,
-      "size_mb": 4
+      "size_mb": 3.92
     },
     {
       "name": "R Language",
       "category": "Runtime",
       "size_bytes": 121147392,
-      "size_mb": 121
+      "size_mb": 121.15
+    },
+    {
+      "name": "Bubblewrap",
+      "category": "Dependencies",
+      "size_bytes": 0,
+      "size_mb": 0.0
     },
     {
       "name": "Ruby Build Dependencies",
       "category": "Dependencies",
       "size_bytes": 0,
-      "size_mb": 0
+      "size_mb": 0.0
     },
     {
       "name": "Python Build Dependencies",
       "category": "Dependencies",
       "size_bytes": 42520576,
-      "size_mb": 43
+      "size_mb": 42.52
     },
     {
       "name": "GitHub CLI",
       "category": "Development Tools",
       "size_bytes": 548864,
-      "size_mb": 1
+      "size_mb": 0.55
     },
     {
       "name": "GitLab CLI",
       "category": "Development Tools",
       "size_bytes": 29188096,
-      "size_mb": 29
+      "size_mb": 29.19
     },
     {
       "name": "Bun",
       "category": "Runtime",
       "size_bytes": 102383616,
-      "size_mb": 102
+      "size_mb": 102.38
     },
     {
       "name": "gh-setup-git-identity",
       "category": "Development Tools",
       "size_bytes": 4354048,
-      "size_mb": 4
+      "size_mb": 4.35
     },
     {
       "name": "glab-setup-git-identity",
       "category": "Development Tools",
       "size_bytes": 4374528,
-      "size_mb": 4
+      "size_mb": 4.37
     },
     {
       "name": "Deno",
       "category": "Runtime",
       "size_bytes": 119123968,
-      "size_mb": 119
+      "size_mb": 119.12
     },
     {
       "name": "NVM + Node.js 20",
       "category": "Runtime",
       "size_bytes": 230428672,
-      "size_mb": 230
+      "size_mb": 230.43
     },
     {
       "name": "Pyenv + Python (latest)",
       "category": "Runtime",
       "size_bytes": 387915776,
-      "size_mb": 388
+      "size_mb": 387.92
     },
     {
       "name": "Go (latest)",
       "category": "Runtime",
       "size_bytes": 281624576,
-      "size_mb": 282
+      "size_mb": 281.62
     },
     {
       "name": "Rust (via rustup)",
       "category": "Runtime",
       "size_bytes": 98304,
-      "size_mb": 0
+      "size_mb": 0.1
     },
     {
       "name": "SDKMAN + Java 21",
       "category": "Runtime",
       "size_bytes": 579096576,
-      "size_mb": 579
+      "size_mb": 579.1
     },
     {
       "name": "Kotlin (via SDKMAN)",
       "category": "Runtime",
       "size_bytes": 169107456,
-      "size_mb": 169
+      "size_mb": 169.11
     },
     {
       "name": "Lean (via elan)",
       "category": "Runtime",
       "size_bytes": 13291520,
-      "size_mb": 13
+      "size_mb": 13.29
     },
     {
       "name": "Opam + Rocq/Coq",
       "category": "Runtime",
       "size_bytes": 1307271168,
-      "size_mb": 1307
+      "size_mb": 1307.27
     },
     {
       "name": "Homebrew",
       "category": "Package Manager",
       "size_bytes": 16384,
-      "size_mb": 0
+      "size_mb": 0.02
     },
     {
       "name": "PHP 8.3 (via Homebrew)",
       "category": "Runtime",
       "size_bytes": 55078912,
-      "size_mb": 55
+      "size_mb": 55.08
     },
     {
       "name": "Perlbrew + Perl (latest)",
       "category": "Runtime",
       "size_bytes": 362905600,
-      "size_mb": 363
+      "size_mb": 362.91
     },
     {
       "name": "rbenv + Ruby (latest)",
       "category": "Runtime",
       "size_bytes": 164962304,
-      "size_mb": 165
+      "size_mb": 164.96
     },
     {
       "name": "Swift 6.x",
       "category": "Runtime",
       "size_bytes": 2655264768,
-      "size_mb": 2655
+      "size_mb": 2655.26
     }
   ]
 }

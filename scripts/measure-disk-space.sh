@@ -111,7 +111,7 @@ data['components'].append({
     'name': sys.argv[1],
     'category': sys.argv[2],
     'size_bytes': int(sys.argv[3]),
-    'size_mb': int(sys.argv[4])
+    'size_mb': float(sys.argv[4])
 })
 with open('$JSON_OUTPUT_FILE', 'w') as f:
     json.dump(data, f)
@@ -131,7 +131,7 @@ from datetime import datetime, timezone
 with open('$JSON_OUTPUT_FILE', 'r') as f:
     data = json.load(f)
 data['generated_at'] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-data['total_size_mb'] = int('$total_mb')
+data['total_size_mb'] = float('$total_mb')
 with open('$JSON_OUTPUT_FILE', 'w') as f:
     json.dump(data, f)
 "
@@ -172,12 +172,13 @@ measure_install() {
       diff_bytes=0
     fi
 
-    # Convert to MB using rounded division (1 MB = 1,000,000 bytes).
+    # Convert to MB with decimal precision (1 MB = 1,000,000 bytes).
     # Integer floor division via / 1024 / 1024 truncates any component under
     # 1 MiB to 0 MB, which is misleading (e.g. 741 KB shows as 0 MB).
-    # Rounding to nearest MB gives a more accurate single-integer representation.
+    # Use awk for floating-point division to get precise values (e.g. 0.74 MB).
     # See docs/case-studies/issue-55 for full root cause analysis.
-    local diff_mb=$(( (diff_bytes + 500000) / 1000000 ))
+    local diff_mb
+    diff_mb=$(awk "BEGIN {printf \"%.2f\", $diff_bytes / 1000000}")
 
     add_measurement "$name" "$category" "$diff_bytes" "$diff_mb"
     return 0
@@ -357,7 +358,7 @@ data['components'].append({
     'name': sys.argv[1],
     'category': sys.argv[2],
     'size_bytes': int(sys.argv[3]),
-    'size_mb': int(sys.argv[4])
+    'size_mb': float(sys.argv[4])
 })
 with open('$JSON_OUTPUT_FILE', 'w') as f:
     json.dump(data, f)
@@ -382,9 +383,11 @@ measure_install() {
     end_bytes=$(get_disk_usage_bytes)
     local diff_bytes=$((end_bytes - start_bytes))
     [ "$diff_bytes" -lt 0 ] && diff_bytes=0
-    # Round to nearest MB (1 MB = 1,000,000 bytes) to avoid showing 0 for
-    # components under 1 MiB. See docs/case-studies/issue-55.
-    local diff_mb=$(( (diff_bytes + 500000) / 1000000 ))
+    # Convert to MB with decimal precision. Use awk for floating-point division
+    # to get precise values (e.g. 0.74 MB instead of 0 or 1).
+    # See docs/case-studies/issue-55.
+    local diff_mb
+    diff_mb=$(awk "BEGIN {printf \"%.2f\", $diff_bytes / 1000000}")
     add_measurement "$name" "$category" "$diff_bytes" "$diff_mb"
   else
     log_warning "Installation of $name failed"
@@ -506,7 +509,7 @@ cleanup_for_measurement
 if install_rust; then
   cleanup_for_measurement
   rust_bytes=$(du -sb "$HOME/.rustup" "$HOME/.cargo" 2>/dev/null | awk '{sum+=$1} END{print sum+0}')
-  rust_mb=$(( (rust_bytes + 500000) / 1000000 ))
+  rust_mb=$(awk "BEGIN {printf \"%.2f\", $rust_bytes / 1000000}")
   add_measurement "Rust (via rustup)" "Runtime" "$rust_bytes" "$rust_mb"
 else
   log_warning "Installation of Rust (via rustup) failed"
@@ -583,7 +586,7 @@ cleanup_for_measurement
 if install_homebrew; then
   cleanup_for_measurement
   brew_bytes=$(du -sb /home/linuxbrew/.linuxbrew "$HOME/.linuxbrew" 2>/dev/null | awk '{sum+=$1} END{print sum+0}')
-  brew_mb=$(( (brew_bytes + 500000) / 1000000 ))
+  brew_mb=$(awk "BEGIN {printf \"%.2f\", $brew_bytes / 1000000}")
   add_measurement "Homebrew" "Package Manager" "$brew_bytes" "$brew_mb"
 else
   log_warning "Installation of Homebrew failed"
@@ -718,7 +721,7 @@ log_step "Finalizing Measurements"
 
 cleanup_for_measurement
 FINAL_MB=$(get_disk_usage_mb)
-TOTAL_MB=$((FINAL_MB - BASELINE_MB))
+TOTAL_MB=$(awk "BEGIN {printf \"%.2f\", $FINAL_MB - $BASELINE_MB}")
 
 finalize_json_output "$TOTAL_MB"
 
