@@ -8,7 +8,7 @@ The CI/CD "Measure Disk Space and Update README" workflow failed with **exit cod
 
 - **Issue**: [#57 — We have CI/CD failed](https://github.com/link-foundation/sandbox/issues/57)
 - **Failed CI run**: https://github.com/link-foundation/sandbox/actions/runs/22347524656/job/64665886012
-- **Log file**: `docs/case-studies/issue-57/ci-job-64665886012.log`
+- **Log file**: `docs/case-studies/issue-57/ci-job-64665886012.txt`
 - **Triggered by**: Merge of PR #56 (commit `f274bfab` — "1.3.10: Fix language runtime size measurements")
 
 ## Timeline of Events
@@ -208,9 +208,76 @@ The same pattern in the outer script (lines 509–517 for Rust) should also be r
 - **Issue #46**: Relative path resolution for sandbox user JSON file
 - **Issue #49**: sed-based JSON manipulation failures
 
+---
+
+## Online Research Findings
+
+### 1. `ldd` "Broken Pipe" on GitHub Actions
+
+The CI log includes this message:
+```
+/usr/bin/ldd: line 41: printf: write error: Broken pipe
+/usr/bin/ldd: line 43: printf: write error: Broken pipe
+```
+
+**What causes it**: Homebrew's install.sh calls `ldd --version | head -n1` to detect the glibc version (for `outdated_glibc()` check). The `head -n1` command reads one line then closes its read-end of the pipe. This causes `ldd --version` to receive `SIGPIPE` when trying to write subsequent lines. The `/usr/bin/ldd` wrapper script in Ubuntu explicitly catches SIGPIPE via `trap`, but the `printf` calls on lines 41/43 still get "write error: Broken pipe" because the pipe to `head` is already closed.
+
+**Impact**: Cosmetic only. Homebrew's install.sh uses `set -u` (not `set -e`), so this error does **not** abort the installer. The `head -n1` still gets its output. The broken pipe messages are a known side-effect of this common unix pipeline pattern.
+
+**Related issues**:
+- [CodSpeedHQ/action#89](https://github.com/CodSpeedHQ/action/issues/89): Same `/usr/bin/ldd: line 41: printf: write error: Broken pipe` in GitHub Actions; confirmed harmless by maintainers.
+- [actions/runner-images#3414](https://github.com/actions/runner-images/issues/3414): "Broken Pipe error with Linux builds" — general discussion of pipe error messages in GitHub Actions.
+- [Homebrew/install#670](https://github.com/Homebrew/install/issues/670): Resolved — glibc detection fallback added when `ldd` is missing.
+
+**Workaround for the noise**: Homebrew could use `{ ldd --version 2>&1 || true; } | head -n1` to suppress the SIGPIPE messages, but this is a cosmetic issue and Homebrew maintainers have not prioritized it.
+
+### 2. Homebrew Permission Check Behavior
+
+The Homebrew installer's permission check (as of Feb 2026) aborts if ALL of these conditions are met:
+```bash
+! [[ -w "${HOMEBREW_PREFIX}" ]] &&    # /home/linuxbrew/.linuxbrew not writable
+! [[ -w "/home/linuxbrew" ]]       && # /home/linuxbrew not writable
+! [[ -w "/home" ]]                 && # /home not writable
+! have_sudo_access                    # no passwordless sudo
+```
+
+In the failing CI run, even though the outer script pre-creates `/home/linuxbrew/.linuxbrew` and chowns it to sandbox, the Homebrew installer still aborts. This suggests that at the time Homebrew runs (inside the sandbox user sub-script), the writability check fails. Possible reasons:
+- The `chown` completed but the directory permissions prevent sandbox from writing (mode 755 with root:root group ownership)
+- OR the `chown -R sandbox:sandbox /home/linuxbrew` ran as expected, but `have_sudo_access` timing with `NONINTERACTIVE` causes ambiguous behavior
+
+Regardless, this is considered a secondary root cause. The primary crash was the `du` exit code issue.
+
+**Related Homebrew discussions**:
+- [Discussion #5929](https://github.com/orgs/Homebrew/discussions/5929): "Insufficient permissions to install Homebrew to /home/linuxbrew/.linuxbrew" — common in containers/CI with non-root users.
+- [Discussion #4212](https://github.com/orgs/Homebrew/discussions/4212): Sudo-less alternative installation methods.
+- [Issue #714](https://github.com/Homebrew/install/issues/714): NONINTERACTIVE with `sudo -n -l mkdir` check.
+
+### 3. `du` Exit Code with Non-Existent Paths (bash strict mode pitfall)
+
+The core root cause — `du` returning exit code 1 for non-existent paths, killing a `set -euo pipefail` script even through `2>/dev/null` — is a **documented pitfall** of bash strict mode.
+
+From [bash manual](https://www.gnu.org/software/bash/manual/bash.html#The-Set-Builtin): under `set -e`, the shell exits if any simple command returns a non-zero status, with exceptions for commands used as conditions. However, **command substitution `$(...)` is NOT exempted** — if the command inside `$()` fails, the assignment statement returns the non-zero exit code.
+
+Minimal reproducer:
+```bash
+bash -c 'set -euo pipefail
+result=$(du -sb /tmp/nonexistent_dir 2>/dev/null | awk "{sum+=\$1} END{print sum+0}")
+echo "Size: $result"'
+# → exits with code 1 (echo never runs)
+echo "Exit: $?"   # → 1
+```
+
+The `2>/dev/null` only redirects stderr (the error message), not the exit code. With `pipefail` and a pipeline `du ... | awk ...`, the overall exit code is the exit code of the last command to fail — but `awk` succeeds even on empty input, returning `0`. However, under `set -e`, when the command inside `$()` produces an error exit (from `du`), the substitution itself fails.
+
+**Note**: In the specific bash version on Ubuntu 24.04 (bash 5.2), the `du -sb nonexistent 2>/dev/null | awk ...` pipeline: `awk` exits 0 on empty input, but `du` exits 1. With `pipefail`, the pipeline exit code is 1 (from `du`). The `$(...)` propagates this to the assignment, which triggers `set -e`.
+
+---
+
 ## External Resources
 
-- [Homebrew install.sh permission check](https://github.com/Homebrew/install/blob/main/install.sh) — the `elif ! [[ -w "${HOMEBREW_PREFIX}" ]] && ... && ! have_sudo_access` condition
+- [Homebrew install.sh source](https://github.com/Homebrew/install/blob/main/install.sh) — permission check at line ~536
 - [Homebrew Discussion #5929](https://github.com/orgs/Homebrew/discussions/5929) — "Insufficient permissions to install Homebrew to /home/linuxbrew/.linuxbrew"
 - [Homebrew Discussion #4212](https://github.com/orgs/Homebrew/discussions/4212) — sudo-less installation discussion
 - [Homebrew Issue #714](https://github.com/Homebrew/install/issues/714) — NONINTERACTIVE mode suppresses sudo password prompt
+- [CodSpeedHQ/action#89](https://github.com/CodSpeedHQ/action/issues/89) — ldd broken pipe in GitHub Actions (cosmetic issue)
+- [GNU bash manual: The Set Builtin](https://www.gnu.org/software/bash/manual/bash.html#The-Set-Builtin) — `set -e` and command substitution behavior
