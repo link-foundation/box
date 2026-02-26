@@ -508,7 +508,17 @@ install_rust() {
 cleanup_for_measurement
 if install_rust; then
   cleanup_for_measurement
-  rust_bytes=$(du -sb "$HOME/.rustup" "$HOME/.cargo" 2>/dev/null | awk '{sum+=$1} END{print sum+0}')
+  # Only pass paths that exist to du; passing a non-existent path causes du to
+  # exit with code 1, which kills the script under set -euo pipefail even though
+  # stderr is redirected. See docs/case-studies/issue-57 for root cause analysis.
+  rust_paths=()
+  [[ -d "$HOME/.rustup" ]] && rust_paths+=("$HOME/.rustup")
+  [[ -d "$HOME/.cargo" ]] && rust_paths+=("$HOME/.cargo")
+  if [[ ${#rust_paths[@]} -gt 0 ]]; then
+    rust_bytes=$(du -sb "${rust_paths[@]}" 2>/dev/null | awk '{sum+=$1} END{print sum+0}')
+  else
+    rust_bytes=0
+  fi
   rust_mb=$(awk "BEGIN {printf \"%.2f\", $rust_bytes / 1000000}")
   add_measurement "Rust (via rustup)" "Runtime" "$rust_bytes" "$rust_mb"
 else
@@ -585,7 +595,17 @@ install_homebrew() {
 cleanup_for_measurement
 if install_homebrew; then
   cleanup_for_measurement
-  brew_bytes=$(du -sb /home/linuxbrew/.linuxbrew "$HOME/.linuxbrew" 2>/dev/null | awk '{sum+=$1} END{print sum+0}')
+  # Only pass paths that exist to du; passing a non-existent path causes du to
+  # exit with code 1, which kills the script under set -euo pipefail even though
+  # stderr is redirected. See docs/case-studies/issue-57 for root cause analysis.
+  brew_paths=()
+  [[ -d /home/linuxbrew/.linuxbrew ]] && brew_paths+=(/home/linuxbrew/.linuxbrew)
+  [[ -d "$HOME/.linuxbrew" ]] && brew_paths+=("$HOME/.linuxbrew")
+  if [[ ${#brew_paths[@]} -gt 0 ]]; then
+    brew_bytes=$(du -sb "${brew_paths[@]}" 2>/dev/null | awk '{sum+=$1} END{print sum+0}')
+  else
+    brew_bytes=0
+  fi
   brew_mb=$(awk "BEGIN {printf \"%.2f\", $brew_bytes / 1000000}")
   add_measurement "Homebrew" "Package Manager" "$brew_bytes" "$brew_mb"
 else
