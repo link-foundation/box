@@ -414,6 +414,124 @@ if ! command_exists swift; then
   fi
 fi
 
+# --- AI Coding Agent CLI Tools and Hive Mind Workflow Utilities ---
+log_step "Installing AI coding agent CLI tools and Hive Mind workflow utilities"
+
+# Ensure NVM/Node and Bun are loaded
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+nvm use 20 2>/dev/null || true
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+# Install AI coding agent CLIs via bun (local/user-specific, FR-6)
+# These are required for Hive Mind compatibility (issue #64)
+# Some packages may not always be published; failures are non-fatal (C-6)
+AI_PACKAGES="@anthropic-ai/claude-code @openai/codex @qwen-code/qwen-code @google/gemini-cli @github/copilot opencode-ai"
+OPTIONAL_PACKAGES="@link-assistant/hive-mind @link-assistant/claude-profiles @link-assistant/agent"
+
+log_info "Installing AI coding agent CLIs (required)..."
+for pkg in $AI_PACKAGES; do
+  log_info "Installing $pkg..."
+  bun install -g "$pkg" 2>&1 | grep -v "^$" | head -5 || {
+    log_warning "Failed to install $pkg (may not be published yet) - continuing"
+  }
+done
+
+log_info "Installing optional Hive Mind packages (graceful failure)..."
+for pkg in $OPTIONAL_PACKAGES; do
+  log_info "Installing $pkg..."
+  bun install -g "$pkg" 2>&1 | grep -v "^$" | head -5 || {
+    log_note "$pkg not available (may not be published yet) - skipping"
+  }
+done
+
+# Install Hive Mind workflow utilities via bun (FR-7)
+log_info "Installing Hive Mind workflow utilities..."
+WORKFLOW_PACKAGES="start-command gh-pull-all gh-load-issue gh-load-pull-request gh-upload-log"
+for pkg in $WORKFLOW_PACKAGES; do
+  log_info "Installing $pkg..."
+  bun install -g "$pkg" 2>&1 | grep -v "^$" | head -5 || {
+    log_warning "Failed to install $pkg - continuing"
+  }
+done
+
+log_success "AI coding agent CLIs and workflow utilities installation complete"
+
+# --- Playwright Browser Automation (FR-8) ---
+log_step "Installing Playwright browser automation"
+
+# Update npm to latest before installing Playwright
+npm install -g npm@latest --no-fund --silent 2>&1 | tail -1 || true
+
+# Install Playwright MCP server (for Claude Code integration)
+log_info "Installing Playwright MCP server..."
+npm install -g @playwright/mcp@latest --no-fund --silent 2>&1 | tail -3 || {
+  log_warning "npm install -g @playwright/mcp@latest failed"
+}
+
+# Install Playwright CLI (needed for install-deps and browser install)
+log_info "Installing Playwright CLI..."
+npm install -g @playwright/test@latest --no-fund --silent 2>&1 | tail -3 || {
+  log_warning "npm install -g @playwright/test@latest failed"
+}
+
+# Install Playwright OS dependencies (system libraries for browsers)
+# Run install-deps as root via sudo, using the node binary from the user's NVM
+log_info "Installing Playwright OS dependencies (requires sudo)..."
+NPX_PATH="$(command -v npx 2>/dev/null || true)"
+if [ -n "$NPX_PATH" ]; then
+  NODE_BIN_DIR="$(dirname "$(command -v node 2>/dev/null || echo /usr/bin/node)")"
+  sudo env "PATH=$NODE_BIN_DIR:$PATH" "$NPX_PATH" -y playwright@latest install-deps 2>&1 | grep -v "^$" || {
+    log_warning "Playwright install-deps had issues (some system libraries may be missing)"
+  }
+  log_success "Playwright OS dependencies installed"
+else
+  log_warning "npx not found - skipping Playwright OS system deps"
+fi
+
+# Install Playwright browsers (architecture-aware)
+log_info "Installing Playwright browsers..."
+ARCH=$(uname -m)
+if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+  BROWSERS_TO_INSTALL="chromium firefox webkit"
+  log_note "Running on arm64: Chrome and Edge not available, using Chromium instead"
+else
+  BROWSERS_TO_INSTALL="chromium chrome firefox webkit msedge"
+fi
+
+log_note "Installing: $BROWSERS_TO_INSTALL"
+for browser in $BROWSERS_TO_INSTALL; do
+  log_info "Installing Playwright browser: $browser..."
+  npx -y playwright@latest install "$browser" --with-deps 2>&1 | grep -E "(Downloading|downloaded|complete|error|Error)" | head -5 || {
+    log_warning "Playwright browser $browser installation failed or skipped"
+  }
+done
+
+# Install chromium headless shell (CI-optimized)
+log_info "Installing chromium headless shell..."
+npx -y playwright@latest install chromium-headless-shell --with-deps 2>&1 | grep -E "(Downloading|downloaded|complete|error|Error)" | head -5 || {
+  log_note "chromium-headless-shell installation skipped"
+}
+
+# Verify Playwright installation
+if command_exists playwright; then
+  log_success "Playwright: $(playwright --version)"
+else
+  log_warning "Playwright CLI not found in PATH"
+fi
+
+# Configure Playwright MCP for Claude CLI (if claude is available)
+if command_exists claude; then
+  log_info "Configuring Playwright MCP for Claude CLI..."
+  claude mcp remove playwright 2>/dev/null || true
+  claude mcp add playwright -s user -- npx -y @playwright/mcp@latest --isolated --headless --no-sandbox --timeout-action=600000 --viewport-size 1920x1080 2>/dev/null || {
+    log_note "Claude MCP config will be available after: claude mcp add playwright -s user -- npx -y @playwright/mcp@latest --isolated --headless --no-sandbox"
+  }
+fi
+
+log_success "Playwright browser automation installation complete"
+
 # --- Installation Summary ---
 log_step "Installation Summary"
 
@@ -440,6 +558,26 @@ command_exists brew && log_success "Homebrew: $(brew --version 2>/dev/null | hea
 command_exists php && log_success "PHP: $(php --version 2>/dev/null | head -n1)" || true
 command_exists perl && log_success "Perl: $(perl --version | head -n 2 | tail -n 1 | sed 's/^[[:space:]]*//')" || true
 command_exists opam && log_success "Opam: $(opam --version)" || true
+
+echo ""
+echo "AI Coding Agent CLI Tools:"
+command_exists claude && log_success "Claude Code: $(claude --version 2>/dev/null | head -n1)" || log_warning "Claude Code: not found"
+command_exists codex && log_success "OpenAI Codex: installed" || log_warning "OpenAI Codex: not found"
+command_exists gemini && log_success "Gemini CLI: installed" || log_warning "Gemini CLI: not found"
+command_exists opencode && log_success "OpenCode: installed" || log_warning "OpenCode: not found"
+
+echo ""
+echo "Playwright:"
+command_exists playwright && log_success "Playwright CLI: $(playwright --version)" || log_warning "Playwright CLI: not found"
+PLAYWRIGHT_CACHE="$HOME/.cache/ms-playwright"
+for browser in chromium firefox webkit chromium_headless_shell; do
+  BROWSER_DIR=$(ls -d "$PLAYWRIGHT_CACHE/${browser}"* 2>/dev/null | head -1 || true)
+  if [ -n "$BROWSER_DIR" ] && [ -d "$BROWSER_DIR" ]; then
+    log_success "Playwright browser: $browser"
+  else
+    log_warning "Playwright browser not in cache: $browser"
+  fi
+done
 
 echo ""
 EOF_FULL_SETUP

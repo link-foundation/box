@@ -188,6 +188,62 @@ ENV RBENV_ROOT="/home/sandbox/.rbenv"
 # Includes Homebrew PHP paths (only effective if local install was used, harmless otherwise)
 ENV PATH="/home/linuxbrew/.linuxbrew/opt/php@8.3/bin:/home/linuxbrew/.linuxbrew/opt/php@8.3/sbin:/home/linuxbrew/.linuxbrew/bin:/home/sandbox/.pyenv/bin:/home/sandbox/.pyenv/shims:/home/sandbox/.rbenv/bin:/home/sandbox/.rbenv/shims:/home/sandbox/.swift/usr/bin:/home/sandbox/.elan/bin:/home/sandbox/.opam/default/bin:/home/sandbox/.cargo/bin:/home/sandbox/.deno/bin:/home/sandbox/.bun/bin:/home/sandbox/.go/bin:/home/sandbox/.go/path/bin:${PATH}"
 
+SHELL ["/bin/bash", "-c"]
+
+# --- Install AI coding agent CLIs, Hive Mind workflow utilities, and Playwright (issue #64) ---
+# These are installed as sandbox user (local/user-specific, FR-6, FR-7, FR-8)
+# following the local-first installation policy (C-5).
+RUN set -e && \
+    # Load NVM to get node/npm/npx
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && \
+    nvm use 20 2>/dev/null || true && \
+    \
+    # Install AI coding agent CLIs via bun (FR-6)
+    # Some packages may not be published; use || true for graceful failures (C-6)
+    for pkg in "@anthropic-ai/claude-code" "@openai/codex" "@qwen-code/qwen-code" "@google/gemini-cli" "@github/copilot" "opencode-ai"; do \
+      echo "[*] Installing $pkg..." && \
+      bun install -g "$pkg" 2>&1 | head -5 || echo "[!] $pkg install failed (may not be published) - continuing"; \
+    done && \
+    \
+    # Install optional Hive Mind packages (graceful failure, C-6)
+    for pkg in "@link-assistant/hive-mind" "@link-assistant/claude-profiles" "@link-assistant/agent"; do \
+      echo "[*] Installing $pkg (optional)..." && \
+      bun install -g "$pkg" 2>&1 | head -3 || echo "[i] $pkg not available - skipping"; \
+    done && \
+    \
+    # Install Hive Mind workflow utilities (FR-7)
+    for pkg in "start-command" "gh-pull-all" "gh-load-issue" "gh-load-pull-request" "gh-upload-log"; do \
+      echo "[*] Installing $pkg..." && \
+      bun install -g "$pkg" 2>&1 | head -5 || echo "[!] $pkg install failed - continuing"; \
+    done && \
+    \
+    # Install Playwright OS dependencies as root (browser system libraries)
+    NPX_PATH="$(command -v npx 2>/dev/null || true)" && \
+    if [ -n "$NPX_PATH" ]; then \
+      NODE_BIN_DIR="$(dirname "$(command -v node 2>/dev/null || echo /usr/bin/node)")" && \
+      sudo env "PATH=$NODE_BIN_DIR:$PATH" "$NPX_PATH" -y playwright@latest install-deps 2>&1 | grep -v "^$" || \
+      echo "[!] Playwright install-deps had issues"; \
+    fi && \
+    \
+    # Install Playwright npm packages (FR-8)
+    npm install -g @playwright/mcp@latest --no-fund --silent 2>&1 | tail -3 || echo "[!] @playwright/mcp install failed" && \
+    npm install -g @playwright/test@latest --no-fund --silent 2>&1 | tail -3 || echo "[!] @playwright/test install failed" && \
+    \
+    # Install Playwright browsers (architecture-aware, FR-8)
+    ARCH="$(uname -m)" && \
+    if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then \
+      BROWSERS="chromium firefox webkit"; \
+    else \
+      BROWSERS="chromium chrome firefox webkit msedge"; \
+    fi && \
+    for browser in $BROWSERS; do \
+      echo "[*] Installing Playwright browser: $browser..." && \
+      npx -y playwright@latest install "$browser" --with-deps 2>&1 | grep -E "(Downloading|complete|Error)" | head -5 || \
+      echo "[!] Playwright browser $browser installation skipped or failed"; \
+    done && \
+    npx -y playwright@latest install chromium-headless-shell --with-deps 2>&1 | head -3 || echo "[i] chromium-headless-shell skipped" && \
+    echo "[✓] AI tools and Playwright installation complete"
+
 # Opam environment variables for Rocq/Coq theorem prover
 ENV OPAM_SWITCH_PREFIX="/home/sandbox/.opam/default"
 ENV CAML_LD_LIBRARY_PATH="/home/sandbox/.opam/default/lib/stublibs:/home/sandbox/.opam/default/lib/ocaml/stublibs:/home/sandbox/.opam/default/lib/ocaml"
