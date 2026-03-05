@@ -71,6 +71,7 @@ RUN apt-get update -y && \
       r-base \
       cmake clang llvm lld \
       nasm \
+      expect \
       bubblewrap && \
     # FASM only available on x86_64
     if [ "$(uname -m)" = "x86_64" ]; then apt-get install -y fasm; fi && \
@@ -187,6 +188,8 @@ ENV RBENV_ROOT="/home/sandbox/.rbenv"
 # PATH for tools that don't need special initialization
 # Includes Homebrew PHP paths (only effective if local install was used, harmless otherwise)
 ENV PATH="/home/linuxbrew/.linuxbrew/opt/php@8.3/bin:/home/linuxbrew/.linuxbrew/opt/php@8.3/sbin:/home/linuxbrew/.linuxbrew/bin:/home/sandbox/.pyenv/bin:/home/sandbox/.pyenv/shims:/home/sandbox/.rbenv/bin:/home/sandbox/.rbenv/shims:/home/sandbox/.swift/usr/bin:/home/sandbox/.elan/bin:/home/sandbox/.opam/default/bin:/home/sandbox/.cargo/bin:/home/sandbox/.deno/bin:/home/sandbox/.bun/bin:/home/sandbox/.go/bin:/home/sandbox/.go/path/bin:${PATH}"
+
+SHELL ["/bin/bash", "-c"]
 
 # Opam environment variables for Rocq/Coq theorem prover
 ENV OPAM_SWITCH_PREFIX="/home/sandbox/.opam/default"

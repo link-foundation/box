@@ -58,6 +58,11 @@ log_info "Installing R statistical language..."
 maybe_sudo apt install -y r-base
 log_success "R language installed"
 
+# expect (interactive automation tool, used by hive-mind workflows)
+log_info "Installing expect..."
+maybe_sudo apt install -y expect
+log_success "expect installed"
+
 # Note: Common build dependencies (build-essential, libssl-dev, zlib1g-dev,
 # libyaml-dev, etc.) are already installed in the essentials-sandbox layer.
 

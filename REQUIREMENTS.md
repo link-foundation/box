@@ -47,6 +47,7 @@ The Docker image MUST include:
 - LLVM
 - LLD linker
 - Assembly tools (GNU Assembler, NASM, LLVM-MC, FASM)
+- `expect` (interactive automation tool for scripting TTY interactions)
 
 ### FR-4: Multi-Architecture Support
 
@@ -161,6 +162,16 @@ Homebrew does not provide pre-built bottles for ARM64 Linux. Packages requiring 
 - Have sufficient timeout allocated
 - NOT use emulation
 
+### C-5: Local-First Installation Policy (Issue #64)
+
+All tools MUST prefer **local (user-specific) installation** over global (system-wide) installation:
+
+- Bun global packages: `bun install -g` → `~/.bun/bin/`
+- npm global packages: `npm install -g` → NVM-managed node prefix
+- System (apt) packages only when no local alternative exists
+
+**Rationale**: Local installation allows Docker image layers to be assembled via `COPY --from`, enabling parallel builds and easy portability between images. Tools that require AI-specific packages (such as AI coding agents or workflow utilities) should be installed in images that inherit from the sandbox, rather than in the sandbox itself.
+
 ## Future Considerations
 
 ### Potential Improvements
@@ -190,3 +201,4 @@ Before merging any CI/CD changes, verify:
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-01-16 | Initial requirements document |
+| 1.1 | 2026-03-05 | Add `expect` to FR-3, add C-5 (local-first installation policy) per issue #64 |

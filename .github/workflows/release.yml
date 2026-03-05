@@ -522,6 +522,9 @@ jobs:
           docker run --rm sandbox-test gh-setup-git-identity --version
           docker run --rm sandbox-test glab-setup-git-identity --version
 
+          # expect (interactive automation tool, issue #64)
+          docker run --rm sandbox-test expect -v
+
           echo ""
           echo "=== PHP install method check ==="
           docker run --rm sandbox-php cat /home/sandbox/.php-install-method
@@ -1541,6 +1544,9 @@ jobs:
           # CLI tools
           docker run --rm "${IMAGE}" gh --version
           docker run --rm "${IMAGE}" glab --version
+
+          # expect (interactive automation tool, issue #64)
+          docker run --rm "${IMAGE}" expect -v
 
           echo "=== All smoke tests passed for ${IMAGE} ==="
 
