@@ -522,17 +522,8 @@ jobs:
           docker run --rm sandbox-test gh-setup-git-identity --version
           docker run --rm sandbox-test glab-setup-git-identity --version
 
-          # AI coding agent CLI tools (FR-6, issue #64)
-          docker run --rm sandbox-test claude --version
-          docker run --rm sandbox-test playwright --version
-
-          # Hive Mind workflow utilities (FR-7, issue #64)
-          docker run --rm sandbox-test gh-pull-all --help 2>/dev/null | head -1 || \
-            docker run --rm sandbox-test bash -c 'command -v gh-pull-all'
-          docker run --rm sandbox-test bash -c 'command -v gh-load-issue'
-          docker run --rm sandbox-test bash -c 'command -v gh-load-pull-request'
-          docker run --rm sandbox-test bash -c 'command -v gh-upload-log'
-          docker run --rm sandbox-test bash -c 'command -v start-command'
+          # expect (interactive automation tool, issue #64)
+          docker run --rm sandbox-test expect -v
 
           echo ""
           echo "=== PHP install method check ==="
@@ -1554,16 +1545,8 @@ jobs:
           docker run --rm "${IMAGE}" gh --version
           docker run --rm "${IMAGE}" glab --version
 
-          # AI coding agent CLI tools (FR-6, issue #64)
-          docker run --rm "${IMAGE}" claude --version
-          docker run --rm "${IMAGE}" playwright --version
-
-          # Hive Mind workflow utilities (FR-7, issue #64)
-          docker run --rm "${IMAGE}" bash -c 'command -v gh-pull-all'
-          docker run --rm "${IMAGE}" bash -c 'command -v gh-load-issue'
-          docker run --rm "${IMAGE}" bash -c 'command -v gh-load-pull-request'
-          docker run --rm "${IMAGE}" bash -c 'command -v gh-upload-log'
-          docker run --rm "${IMAGE}" bash -c 'command -v start-command'
+          # expect (interactive automation tool, issue #64)
+          docker run --rm "${IMAGE}" expect -v
 
           echo "=== All smoke tests passed for ${IMAGE} ==="
 

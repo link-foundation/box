@@ -2,7 +2,9 @@
 
 ## Executive Summary
 
-This case study documents a systematic comparison between the sandbox's `full-sandbox` Docker image and the requirements of the [hive-mind system](https://github.com/link-assistant/hive-mind/blob/main/scripts/ubuntu-24-server-install.sh). The analysis identifies missing tools and proposes concrete fixes.
+This case study documents a systematic comparison between the sandbox's `full-sandbox` Docker image and the general-purpose development tools required by the [hive-mind system](https://github.com/link-assistant/hive-mind/blob/main/scripts/ubuntu-24-server-install.sh). The analysis identifies what general-purpose (non-AI-specific) tools are missing from the sandbox.
+
+**Key finding**: The full-sandbox is already a superset of the general-purpose development stack that hive-mind requires. The only missing general-purpose tool is `expect`, used for interactive TTY scripting automation. AI-specific tools (Claude Code, Codex, Gemini CLI, Playwright, Hive Mind workflow utilities) belong in the hive-mind image, not in the universal sandbox.
 
 ---
 
@@ -12,10 +14,21 @@ This case study documents a systematic comparison between the sandbox's `full-sa
 
 Source: `https://github.com/link-assistant/hive-mind/blob/main/scripts/ubuntu-24-server-install.sh`
 
-The hive-mind install script installs the following tools as **`hive` user** (local/user-specific priority):
+The hive-mind install script installs two categories of tools:
+
+**A. General-purpose development tools** (also belong in the sandbox):
 
 | Category | Tool | Install Method | Location |
 |----------|------|----------------|----------|
+| System | `wget curl unzip zip git sudo ca-certificates gnupg` | apt | system |
+| System | `dotnet-sdk-8.0` | apt | system |
+| System | `build-essential` | apt | system |
+| System | `expect` | apt | system |
+| System | `screen` | apt | system |
+| System | `cmake clang llvm lld` | apt | system |
+| System | Python build deps (libssl-dev, zlib1g-dev, etc.) | apt | system |
+| System | GitHub CLI (`gh`) | apt (keyring) | system |
+| System | `bubblewrap` | apt | system |
 | Runtime | Node.js 20 | NVM | `~/.nvm` |
 | Runtime | Bun | Official installer | `~/.bun` |
 | Runtime | Deno | Official installer | `~/.deno` |
@@ -28,39 +41,28 @@ The hive-mind install script installs the following tools as **`hive` user** (lo
 | Prover | Lean 4 | elan | `~/.elan` |
 | Prover | Rocq/Coq | opam | `~/.opam` |
 | Package mgr | Homebrew | Official installer | `/home/linuxbrew` |
-| System | dotnet-sdk-8.0 | apt | system |
-| System | cmake, clang, llvm, lld | apt | system |
-| System | build-essential, git, gh, etc. | apt | system |
 
-**Global bun packages installed by hive-mind** (critical finding):
-```
-@link-assistant/hive-mind
-@link-assistant/claude-profiles
-@anthropic-ai/claude-code
-@openai/codex
-@qwen-code/qwen-code
-@google/gemini-cli
-@github/copilot
-opencode-ai
-@link-assistant/agent
-start-command
-gh-setup-git-identity
-gh-pull-all
-gh-load-issue
-gh-load-pull-request
-gh-upload-log
-```
+**B. AI/Hive-Mind-specific tools** (belong in the hive-mind image, NOT in the sandbox):
 
-**Playwright** (full browser automation stack):
-- Playwright OS system dependencies (via `npx playwright@latest install-deps`)
-- `@playwright/mcp@latest` (global npm)
-- `@playwright/test@latest` (global npm)
-- Browsers: chromium, chrome, firefox, webkit, msedge (arch-dependent), chromium-headless-shell
-- Claude MCP configuration
+| Category | Tool | Install Method |
+|----------|------|----------------|
+| AI agent | `@anthropic-ai/claude-code` | `bun install -g` |
+| AI agent | `@openai/codex` | `bun install -g` |
+| AI agent | `@qwen-code/qwen-code` | `bun install -g` |
+| AI agent | `@google/gemini-cli` | `bun install -g` |
+| AI agent | `@github/copilot` | `bun install -g` |
+| AI agent | `opencode-ai` | `bun install -g` |
+| Hive Mind | `@link-assistant/hive-mind` | `bun install -g` |
+| Hive Mind | `@link-assistant/claude-profiles` | `bun install -g` |
+| Hive Mind | `@link-assistant/agent` | `bun install -g` |
+| Workflow | `start-command` | `bun install -g` |
+| Workflow | `gh-pull-all` | `bun install -g` |
+| Workflow | `gh-load-issue` | `bun install -g` |
+| Workflow | `gh-load-pull-request` | `bun install -g` |
+| Workflow | `gh-upload-log` | `bun install -g` |
+| Browser automation | Playwright (OS deps + browsers + MCP) | npm + npx |
 
-### 1.2 Full-Sandbox Current State
-
-The full-sandbox assembles from individual language images and adds:
+### 1.2 Full-Sandbox Current State (Before This Fix)
 
 | Category | Tool | Status |
 |----------|------|--------|
@@ -84,116 +86,104 @@ The full-sandbox assembles from individual language images and adds:
 | System | Assembly (nasm, fasm) | ✅ Present (bonus) |
 | System | build-essential, git, gh | ✅ Present |
 | System | screen | ✅ Present (essentials) |
+| System | bubblewrap | ✅ Present |
 | Global pkg | gh-setup-git-identity | ✅ Present (essentials) |
 | Global pkg | glab-setup-git-identity | ✅ Present (essentials, bonus) |
-| **Global pkg** | **@anthropic-ai/claude-code** | ❌ **MISSING** |
-| **Global pkg** | **@openai/codex** | ❌ **MISSING** |
-| **Global pkg** | **@qwen-code/qwen-code** | ❌ **MISSING** |
-| **Global pkg** | **@google/gemini-cli** | ❌ **MISSING** |
-| **Global pkg** | **@github/copilot** | ❌ **MISSING** |
-| **Global pkg** | **opencode-ai** | ❌ **MISSING** |
-| **Global pkg** | **@link-assistant/hive-mind** | ❌ **MISSING** |
-| **Global pkg** | **@link-assistant/claude-profiles** | ❌ **MISSING** |
-| **Global pkg** | **@link-assistant/agent** | ❌ **MISSING** |
-| **Global pkg** | **start-command** | ❌ **MISSING** |
-| **Global pkg** | **gh-pull-all** | ❌ **MISSING** |
-| **Global pkg** | **gh-load-issue** | ❌ **MISSING** |
-| **Global pkg** | **gh-load-pull-request** | ❌ **MISSING** |
-| **Global pkg** | **gh-upload-log** | ❌ **MISSING** |
-| **Browser automation** | **Playwright (OS deps + browsers + MCP)** | ❌ **MISSING** |
+| **System** | **expect** | ❌ **MISSING** |
 
 ---
 
 ## 2. Root Cause Analysis
 
-### 2.1 Why Are These Tools Missing?
+### 2.1 Architecture Principle: Separation of Concerns
 
-The sandbox was originally designed as a **programming language runtime environment** — providing compilers, interpreters, and build tools. The Hive Mind system extends this to include an **AI coding agent workflow** layer, which requires:
+The `full-sandbox` is designed as a **universal development sandbox** — a base image for software development across many languages. It is intentionally not AI-specific.
 
-1. **AI CLI tools** (`claude-code`, `codex`, `gemini-cli`, etc.) — These are the agent frontends that enable AI-assisted coding.
-2. **Workflow utilities** (`gh-pull-all`, `gh-load-issue`, etc.) — These are hive-mind–specific tools for managing GitHub workflows within the AI agent loop.
-3. **Browser automation** (Playwright) — Required for web interaction, screenshot capture, and UI testing within AI agent workflows.
+The Hive Mind system is an AI coding agent orchestrator that **inherits from the sandbox** and adds:
+- AI agent CLI frontends
+- Workflow automation utilities
+- Playwright browser automation
 
-### 2.2 Installation Strategy: Local Over Global
+This separation means:
+- **Sandbox** → universal programming environment (language runtimes, compilers, tools)
+- **Hive Mind image** → extends sandbox + adds AI tools on top
 
-Per `REQUIREMENTS.md` and the hive-mind script philosophy: **user-specific (local) installation is prioritized over global installation** for portability between Docker images. This means:
+Violating this boundary by adding AI tools to the sandbox would:
+1. Bloat the universal sandbox with AI-specific software
+2. Create a maintenance burden when AI tool versions change
+3. Make the sandbox less useful for non-AI use cases
 
-- Bun global packages: `bun install -g <pkg>` → installs to `~/.bun/bin/`
-- npm global packages: `npm install -g <pkg>` → installs to NVM-managed node prefix
-- System (apt) packages are only used when no local alternative exists
+### 2.2 The One True Gap: `expect`
+
+The `expect` tool is a **general-purpose interactive automation utility** — it allows scripts to programmatically interact with programs that require user input (TTY interaction scripting). This is not AI-specific; it's a standard development and operations tool.
+
+Hive-mind installs `expect` in its main apt section alongside other essential tools (`wget`, `curl`, `git`, etc.), confirming it's considered a general-purpose tool needed for the development environment.
 
 ---
 
 ## 3. Gap Analysis Summary
 
-### Missing: AI Coding Agent CLI Tools
+### General-Purpose Tools: Missing From Sandbox
 
-These tools are required for the Hive Mind system to function as an AI coding environment:
+| # | Tool | Category | Severity | Fix |
+|---|------|----------|----------|-----|
+| 1 | `expect` | System (apt) | Low | Add to Dockerfile apt-get install |
 
-| Package | Purpose | Install Method |
-|---------|---------|----------------|
-| `@anthropic-ai/claude-code` | Claude Code CLI (primary AI agent) | `bun install -g` |
-| `@openai/codex` | OpenAI Codex CLI | `bun install -g` |
-| `@qwen-code/qwen-code` | Qwen coding agent | `bun install -g` |
-| `@google/gemini-cli` | Google Gemini CLI | `bun install -g` |
-| `@github/copilot` | GitHub Copilot CLI | `bun install -g` |
-| `opencode-ai` | OpenCode AI agent | `bun install -g` |
+### AI-Specific Tools: Out-of-Scope for Sandbox
 
-### Missing: Hive Mind Workflow Tools
+These tools are installed by hive-mind but are **intentionally NOT added** to the universal sandbox. Hive Mind inherits from the sandbox and adds them on top:
 
-| Package | Purpose | Install Method |
-|---------|---------|----------------|
-| `@link-assistant/hive-mind` | Hive Mind orchestrator | `bun install -g` |
-| `@link-assistant/claude-profiles` | Claude profile manager | `bun install -g` |
-| `@link-assistant/agent` | Agent runner | `bun install -g` |
-| `start-command` | Process start utility | `bun install -g` |
-| `gh-pull-all` | Clone all user repos | `bun install -g` |
-| `gh-load-issue` | Load GitHub issue | `bun install -g` |
-| `gh-load-pull-request` | Load GitHub PR | `bun install -g` |
-| `gh-upload-log` | Upload log to GitHub | `bun install -g` |
+| Tool | Reason Not in Sandbox |
+|------|----------------------|
+| `@anthropic-ai/claude-code` | AI-agent specific, not general development |
+| `@openai/codex` | AI-agent specific |
+| `@google/gemini-cli` | AI-agent specific |
+| `@qwen-code/qwen-code` | AI-agent specific |
+| `@github/copilot` | AI-agent specific |
+| `opencode-ai` | AI-agent specific |
+| `@link-assistant/hive-mind` | Hive Mind orchestrator — belongs in hive-mind image |
+| `start-command`, `gh-pull-all`, etc. | Hive Mind workflow tools — belongs in hive-mind image |
+| Playwright + browsers | Browser automation for AI workflows — belongs in hive-mind image |
 
-### Missing: Playwright Browser Automation
+### Things Full-Sandbox Has That Hive-Mind Does Not (Bonuses)
 
-| Component | Purpose |
-|-----------|---------|
-| Playwright OS dependencies | System libs required by browser engines |
-| `@playwright/mcp` | Playwright MCP server for Claude Code |
-| `@playwright/test` | Playwright test CLI |
-| Chromium browser | Primary headless browser |
-| Firefox browser | Secondary browser |
-| WebKit browser | Safari-compatible browser |
-| Chrome/Edge (x86_64 only) | Additional browsers |
-| Chromium Headless Shell | CI-optimized headless browser |
+The sandbox is already a superset of hive-mind's general-purpose stack:
+
+| Tool | Present In |
+|------|-----------|
+| Kotlin (SDKMAN) | Full-sandbox only |
+| Ruby (rbenv) | Full-sandbox only |
+| Swift | Full-sandbox only |
+| R (`r-base`) | Full-sandbox only |
+| Assembly (nasm, fasm) | Full-sandbox only |
+| GitLab CLI (`glab`) + `glab-setup-git-identity` | Full-sandbox only |
 
 ---
 
 ## 4. Solution
 
-### 4.1 Approach
+### 4.1 Changes Made
 
-Add the missing tools to `ubuntu/24.04/full-sandbox/install.sh` and `Dockerfile`:
+1. **`ubuntu/24.04/full-sandbox/Dockerfile`**: Add `expect` to the apt-get install block
+2. **`ubuntu/24.04/full-sandbox/install.sh`**: Add `expect` install to the system packages section
+3. **`REQUIREMENTS.md`**: Document `expect` in FR-3 (Development Tools); add C-5 (local-first installation policy)
+4. **`.github/workflows/release.yml`**: Add `expect -v` check to CI tests
 
-1. **Global bun/npm packages** — Install as `sandbox` user in the user-setup section of `install.sh`
-2. **Playwright** — Install OS deps as root, then browsers as `sandbox` user
-3. Update `REQUIREMENTS.md` to document the new requirements
-4. Follow the existing pattern of local (user-space) installation
+### 4.2 Design Decision: Where AI Tools Belong
 
-### 4.2 Key Design Decisions
+The Hive Mind system should:
+1. Use the sandbox image as its base (`FROM konard/sandbox:latest`)
+2. Add its AI CLIs (`claude-code`, `codex`, `gemini-cli`, etc.) in the hive-mind Dockerfile
+3. Add Playwright and browser automation in the hive-mind Dockerfile
+4. Add its workflow utilities (`gh-pull-all`, `gh-load-issue`, etc.) in the hive-mind Dockerfile
 
-- **Graceful failures**: Some packages (like `@link-assistant/hive-mind`) may not be published yet; use `|| true` and skip on errors
-- **Architecture-aware browsers**: Chrome/Edge not available on ARM64; install Chromium instead
-- **Local priority**: All packages installed to user's home directory, not system-wide
-- **Playwright MCP config**: Added to Claude CLI config if available
+This way, the sandbox remains a clean, universal development environment that any project can build upon.
 
 ---
 
 ## 5. References
 
 - [Hive Mind Install Script](https://github.com/link-assistant/hive-mind/blob/main/scripts/ubuntu-24-server-install.sh)
-- [Playwright Installation Docs](https://playwright.dev/docs/intro)
-- [Playwright MCP](https://github.com/microsoft/playwright-mcp)
-- [Claude Code npm package](https://www.npmjs.com/package/@anthropic-ai/claude-code)
-- [OpenAI Codex](https://www.npmjs.com/package/@openai/codex)
-- [Google Gemini CLI](https://www.npmjs.com/package/@google/gemini-cli)
+- [expect(1) man page](https://linux.die.net/man/1/expect)
 - [Issue #44: PHP installation strategy](../../case-studies/issue-44/CASE-STUDY.md)
 - [Issue #62: CI toolchain tests](../../case-studies/issue-62/CASE-STUDY.md)

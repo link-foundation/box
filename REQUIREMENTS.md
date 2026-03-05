@@ -47,6 +47,7 @@ The Docker image MUST include:
 - LLVM
 - LLD linker
 - Assembly tools (GNU Assembler, NASM, LLVM-MC, FASM)
+- `expect` (interactive automation tool for scripting TTY interactions)
 
 ### FR-4: Multi-Architecture Support
 
@@ -58,52 +59,6 @@ The Docker image MUST be available for:
 ### FR-5: Container Registry
 
 The Docker image MUST be published to GitHub Container Registry (ghcr.io).
-
-### FR-6: AI Coding Agent CLI Tools
-
-The Docker image MUST include the following AI coding agent CLIs (installed as the `sandbox` user via `bun install -g`, preferring local over global installation):
-
-| Package | Purpose |
-|---------|---------|
-| `@anthropic-ai/claude-code` | Claude Code CLI (primary AI agent) |
-| `@openai/codex` | OpenAI Codex CLI |
-| `@qwen-code/qwen-code` | Qwen coding agent |
-| `@google/gemini-cli` | Google Gemini CLI |
-| `@github/copilot` | GitHub Copilot CLI |
-| `opencode-ai` | OpenCode AI agent |
-
-Optional packages that may not always be published — installation failures MUST be non-fatal (graceful skip):
-
-| Package | Purpose |
-|---------|---------|
-| `@link-assistant/hive-mind` | Hive Mind orchestrator |
-| `@link-assistant/claude-profiles` | Claude profile manager |
-| `@link-assistant/agent` | Agent runner |
-
-### FR-7: Hive Mind Workflow Utilities
-
-The Docker image MUST include the following workflow utilities (installed as the `sandbox` user via `bun install -g`):
-
-| Package | Purpose |
-|---------|---------|
-| `start-command` | Process start utility |
-| `gh-pull-all` | Clone all user repos |
-| `gh-load-issue` | Load GitHub issue |
-| `gh-load-pull-request` | Load GitHub PR |
-| `gh-upload-log` | Upload log to GitHub |
-
-### FR-8: Playwright Browser Automation
-
-The Docker image MUST include a full Playwright browser automation stack:
-
-- **Playwright OS system dependencies** (installed via `npx playwright@latest install-deps`)
-- **`@playwright/mcp@latest`** (npm global) — MCP server for Claude Code integration
-- **`@playwright/test@latest`** (npm global) — Playwright test CLI
-- **Browsers** (architecture-aware):
-  - All architectures: Chromium, Firefox, WebKit, Chromium Headless Shell
-  - x86_64 only: Chrome, Microsoft Edge (not available for ARM64)
-
-**Rationale**: The Hive Mind system uses Playwright for web interaction, screenshot capture, and UI testing within AI agent workflows.
 
 ## Non-Functional Requirements
 
@@ -215,15 +170,7 @@ All tools MUST prefer **local (user-specific) installation** over global (system
 - npm global packages: `npm install -g` → NVM-managed node prefix
 - System (apt) packages only when no local alternative exists
 
-**Rationale**: Local installation allows Docker image layers to be assembled via `COPY --from`, enabling parallel builds and easy portability between images.
-
-### C-6: Graceful Failure for Optional Packages (Issue #64)
-
-Some packages (especially `@link-assistant/*` packages) may not be published on NPM at all times. Their installation MUST:
-
-- Use `|| true` or equivalent to allow failure
-- Log the failure with a clear message
-- NOT abort the overall installation
+**Rationale**: Local installation allows Docker image layers to be assembled via `COPY --from`, enabling parallel builds and easy portability between images. Tools that require AI-specific packages (such as AI coding agents or workflow utilities) should be installed in images that inherit from the sandbox, rather than in the sandbox itself.
 
 ## Future Considerations
 
@@ -254,4 +201,4 @@ Before merging any CI/CD changes, verify:
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-01-16 | Initial requirements document |
-| 1.1 | 2026-03-05 | Add FR-6 (AI CLIs), FR-7 (workflow utilities), FR-8 (Playwright), C-5 (local-first), C-6 (graceful failures) per issue #64 |
+| 1.1 | 2026-03-05 | Add `expect` to FR-3, add C-5 (local-first installation policy) per issue #64 |
