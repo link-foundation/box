@@ -187,39 +187,39 @@ The container runs as the `sandbox` user with home directory at `/home/sandbox`.
 <!-- COMPONENT_SIZES_START -->
 ## Component Sizes
 
-_Last updated: 2026-02-26T14:29:09Z_
+_Last updated: 2026-03-06T14:16:07Z_
 
-**Total installation size: 7548.0 MB**
+**Total installation size: 7003.0 MB**
 
 | Component | Category | Size (MB) |
 |-----------|----------|-----------|
 | Swift 6.x | Runtime | 2655.26 |
-| Opam + Rocq/Coq | Runtime | 1307.15 |
-| Rust (via rustup) | Runtime | 650.19 |
-| SDKMAN + Java 21 | Runtime | 579.1 |
-| .NET SDK 8.0 | Runtime | 504.88 |
-| Pyenv + Python (latest) | Runtime | 387.76 |
-| Perlbrew + Perl (latest) | Runtime | 364.99 |
-| Go (latest) | Runtime | 281.64 |
-| NVM + Node.js 20 | Runtime | 230.57 |
-| Kotlin (via SDKMAN) | Runtime | 169.11 |
-| rbenv + Ruby (latest) | Runtime | 164.97 |
-| R Language | Runtime | 121.16 |
-| Deno | Runtime | 119.38 |
+| Opam + Rocq/Coq | Runtime | 1307.26 |
+| Rust (via rustup) | Runtime | 647.62 |
+| .NET SDK 8.0 | Runtime | 504.93 |
+| Pyenv + Python (latest) | Runtime | 387.77 |
+| Perlbrew + Perl (latest) | Runtime | 364.98 |
+| Go (latest) | Runtime | 281.74 |
+| NVM + Node.js 20 | Runtime | 230.74 |
+| Kotlin (via SDKMAN) | Runtime | 169.1 |
+| rbenv + Ruby (latest) | Runtime | 165.11 |
+| Deno | Runtime | 121.92 |
+| R Language | Runtime | 121.14 |
 | Bun | Runtime | 103.94 |
-| PHP 8.3 (via Homebrew) | Runtime | 55.03 |
+| PHP 8.3 (via Homebrew) | Runtime | 55.04 |
 | Lean (via elan) | Runtime | 13.25 |
+| SDKMAN + Java 21 | Runtime | 6.3 |
 | C/C++ Tools (CMake, Clang, LLVM, LLD) | Build Tools | 58.85 |
 | Assembly Tools (NASM, FASM) | Build Tools | 3.92 |
-| GitLab CLI | Development Tools | 29.2 |
+| GitLab CLI | Development Tools | 29.19 |
+| gh-setup-git-identity | Development Tools | 4.37 |
 | glab-setup-git-identity | Development Tools | 4.37 |
-| gh-setup-git-identity | Development Tools | 4.36 |
 | GitHub CLI | Development Tools | 0.02 |
-| Homebrew | Package Manager | 178.14 |
-| Python Build Dependencies | Dependencies | 41.8 |
+| Homebrew | Package Manager | 178.92 |
+| Python Build Dependencies | Dependencies | 41.82 |
 | Bubblewrap | Dependencies | 0.17 |
-| Ruby Build Dependencies | Dependencies | 0.01 |
-| Essential Tools | System | 0.76 |
+| Ruby Build Dependencies | Dependencies | 0.0 |
+| Essential Tools | System | 0.75 |
 
 _Note: Sizes are measured after cleanup and may vary based on system state and package versions._
 
