@@ -27,7 +27,7 @@ if [ ! -d "$HOME/.sdkman" ]; then
       echo ''
       echo '# SDKMAN configuration'
       echo 'export SDKMAN_DIR="$HOME/.sdkman"'
-      echo '[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"'
+      echo '[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ] && . "$HOME/.sdkman/bin/sdkman-init.sh"'
     } >> "$HOME/.bashrc"
   fi
   log_success "SDKMAN installed and configured"

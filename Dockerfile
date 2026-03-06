@@ -134,14 +134,28 @@ COPY --from=lean-stage --chown=sandbox:sandbox /home/sandbox/.bashrc /tmp/.bashr
 COPY --from=rocq-stage --chown=sandbox:sandbox /home/sandbox/.bashrc /tmp/.bashrc-rocq
 
 # Merge bashrc configurations: take the essentials bashrc as base,
-# then append unique lines from each language stage
+# then append sections from each language stage that are not yet present.
+# Uses section-header deduplication (checks for unique "# <Tool> configuration"
+# comment) to avoid corrupting multi-line shell constructs (if/fi blocks) that
+# would break when individual lines like bare "fi" are deduplicated.
 RUN cp /home/sandbox/.bashrc /tmp/.bashrc-base && \
     for lang_bashrc in /tmp/.bashrc-python /tmp/.bashrc-go /tmp/.bashrc-rust \
       /tmp/.bashrc-java /tmp/.bashrc-kotlin /tmp/.bashrc-ruby /tmp/.bashrc-php \
       /tmp/.bashrc-perl /tmp/.bashrc-swift /tmp/.bashrc-lean /tmp/.bashrc-rocq; do \
       if [ -f "$lang_bashrc" ]; then \
+        in_new_section=0; \
+        section_header=""; \
         while IFS= read -r line; do \
-          if [ -n "$line" ] && ! grep -qxF "$line" /tmp/.bashrc-base 2>/dev/null; then \
+          if echo "$line" | grep -qE '^# .+ configuration$'; then \
+            section_header="$line"; \
+            if grep -qxF "$section_header" /tmp/.bashrc-base 2>/dev/null; then \
+              in_new_section=0; \
+            else \
+              in_new_section=1; \
+              echo "" >> /tmp/.bashrc-base; \
+              echo "$section_header" >> /tmp/.bashrc-base; \
+            fi; \
+          elif [ "$in_new_section" = "1" ]; then \
             echo "$line" >> /tmp/.bashrc-base; \
           fi; \
         done < "$lang_bashrc"; \
