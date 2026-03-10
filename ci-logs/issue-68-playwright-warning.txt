@@ -1,0 +1,22 @@
+# Extracted from issue #68 description
+# Source: https://github.com/link-assistant/hive-mind/actions/runs/22902572178/job/66453518615
+
+#16 13.80 WebKit 26.0 (playwright webkit v2248) downloaded to /home/hive/.cache/ms-playwright/webkit-2248
+#16 14.22 Playwright Host validation warning: 
+#16 14.22 ╔══════════════════════════════════════════════════════╗
+#16 14.22 ║ Host system is missing dependencies to run browsers. ║
+#16 14.22 ║ Please install them with the following command:      ║
+#16 14.22 ║                                                      ║
+#16 14.22 ║     sudo npx playwright install-deps                 ║
+#16 14.22 ║                                                      ║
+#16 14.22 ║ Alternatively, use apt:                              ║
+#16 14.22 ║     sudo apt-get install libatk1.0-0t64\             ║
+#16 14.22 ║         libatk-bridge2.0-0t64\                       ║
+#16 14.22 ║         libcups2t64\                                 ║
+#16 14.22 ║         libxkbcommon0\                               ║
+#16 14.22 ║         libatspi2.0-0t64\                            ║
+#16 14.22 ║         libxdamage1\                                 ║
+#16 14.22 ║         libasound2t64                                ║
+#16 14.22 ║                                                      ║
+#16 14.22 ║ <3 Playwright Team                                   ║
+#16 14.22 ╚══════════════════════════════════════════════════════╝
