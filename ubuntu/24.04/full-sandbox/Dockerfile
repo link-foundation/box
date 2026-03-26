@@ -19,7 +19,7 @@
 #
 # PHP Integration (Issue #44):
 #   The php-stage image may have PHP installed locally (Homebrew) or globally (apt).
-#   A marker file at /home/sandbox/.php-install-method indicates the method:
+#   A marker file at /workspace/.php-install-method indicates the method:
 #     "local"  → COPY /home/linuxbrew/.linuxbrew from php-stage (user-specific)
 #     "global" → Install PHP via apt in this image directly
 #
@@ -80,26 +80,26 @@ RUN apt-get update -y && \
 # --- Copy user-home language runtimes from pre-built images ---
 
 # Python (pyenv)
-COPY --from=python-stage --chown=sandbox:sandbox /home/sandbox/.pyenv /home/sandbox/.pyenv
+COPY --from=python-stage --chown=sandbox:sandbox /workspace/.pyenv /workspace/.pyenv
 
 # Go
-COPY --from=go-stage --chown=sandbox:sandbox /home/sandbox/.go /home/sandbox/.go
+COPY --from=go-stage --chown=sandbox:sandbox /workspace/.go /workspace/.go
 
 # Rust (cargo + rustup)
-COPY --from=rust-stage --chown=sandbox:sandbox /home/sandbox/.cargo /home/sandbox/.cargo
-COPY --from=rust-stage --chown=sandbox:sandbox /home/sandbox/.rustup /home/sandbox/.rustup
+COPY --from=rust-stage --chown=sandbox:sandbox /workspace/.cargo /workspace/.cargo
+COPY --from=rust-stage --chown=sandbox:sandbox /workspace/.rustup /workspace/.rustup
 
 # Java (SDKMAN)
-COPY --from=java-stage --chown=sandbox:sandbox /home/sandbox/.sdkman /home/sandbox/.sdkman
+COPY --from=java-stage --chown=sandbox:sandbox /workspace/.sdkman /workspace/.sdkman
 
 # Kotlin (SDKMAN - merge with Java's SDKMAN)
-COPY --from=kotlin-stage --chown=sandbox:sandbox /home/sandbox/.sdkman/candidates/kotlin /home/sandbox/.sdkman/candidates/kotlin
+COPY --from=kotlin-stage --chown=sandbox:sandbox /workspace/.sdkman/candidates/kotlin /workspace/.sdkman/candidates/kotlin
 
 # Ruby (rbenv)
-COPY --from=ruby-stage --chown=sandbox:sandbox /home/sandbox/.rbenv /home/sandbox/.rbenv
+COPY --from=ruby-stage --chown=sandbox:sandbox /workspace/.rbenv /workspace/.rbenv
 
 # PHP: Copy marker file to determine install method
-COPY --from=php-stage --chown=sandbox:sandbox /home/sandbox/.php-install-method /home/sandbox/.php-install-method
+COPY --from=php-stage --chown=sandbox:sandbox /workspace/.php-install-method /workspace/.php-install-method
 
 # PHP (local/Homebrew): Copy linuxbrew directory if it exists in php-stage
 # This COPY succeeds if PHP was installed locally (Homebrew), and the directory exists
@@ -112,7 +112,7 @@ RUN mkdir -p /home/linuxbrew/.linuxbrew && \
 COPY --from=php-stage --chown=sandbox:sandbox /home/linuxbrew/.linuxbrew/ /home/linuxbrew/.linuxbrew/
 
 # PHP (global/apt fallback): If php-stage used global install, install PHP via apt here too
-RUN PHP_METHOD=$(cat /home/sandbox/.php-install-method 2>/dev/null || echo "unknown") && \
+RUN PHP_METHOD=$(cat /workspace/.php-install-method 2>/dev/null || echo "unknown") && \
     echo "PHP install method from php-stage: $PHP_METHOD" && \
     if [ "$PHP_METHOD" = "global" ]; then \
       echo "Installing PHP globally via apt (matching php-stage method)..." && \
@@ -128,36 +128,36 @@ RUN PHP_METHOD=$(cat /home/sandbox/.php-install-method 2>/dev/null || echo "unkn
     fi
 
 # Perl (Perlbrew)
-COPY --from=perl-stage --chown=sandbox:sandbox /home/sandbox/.perl5 /home/sandbox/.perl5
+COPY --from=perl-stage --chown=sandbox:sandbox /workspace/.perl5 /workspace/.perl5
 
 # Swift
-COPY --from=swift-stage --chown=sandbox:sandbox /home/sandbox/.swift /home/sandbox/.swift
+COPY --from=swift-stage --chown=sandbox:sandbox /workspace/.swift /workspace/.swift
 
 # Lean (elan)
-COPY --from=lean-stage --chown=sandbox:sandbox /home/sandbox/.elan /home/sandbox/.elan
+COPY --from=lean-stage --chown=sandbox:sandbox /workspace/.elan /workspace/.elan
 
 # Rocq/Coq (Opam)
-COPY --from=rocq-stage --chown=sandbox:sandbox /home/sandbox/.opam /home/sandbox/.opam
+COPY --from=rocq-stage --chown=sandbox:sandbox /workspace/.opam /workspace/.opam
 
 # --- Copy bashrc configurations from language stages ---
-COPY --from=python-stage --chown=sandbox:sandbox /home/sandbox/.bashrc /tmp/.bashrc-python
-COPY --from=go-stage --chown=sandbox:sandbox /home/sandbox/.bashrc /tmp/.bashrc-go
-COPY --from=rust-stage --chown=sandbox:sandbox /home/sandbox/.bashrc /tmp/.bashrc-rust
-COPY --from=java-stage --chown=sandbox:sandbox /home/sandbox/.bashrc /tmp/.bashrc-java
-COPY --from=kotlin-stage --chown=sandbox:sandbox /home/sandbox/.bashrc /tmp/.bashrc-kotlin
-COPY --from=ruby-stage --chown=sandbox:sandbox /home/sandbox/.bashrc /tmp/.bashrc-ruby
-COPY --from=php-stage --chown=sandbox:sandbox /home/sandbox/.bashrc /tmp/.bashrc-php
-COPY --from=perl-stage --chown=sandbox:sandbox /home/sandbox/.bashrc /tmp/.bashrc-perl
-COPY --from=swift-stage --chown=sandbox:sandbox /home/sandbox/.bashrc /tmp/.bashrc-swift
-COPY --from=lean-stage --chown=sandbox:sandbox /home/sandbox/.bashrc /tmp/.bashrc-lean
-COPY --from=rocq-stage --chown=sandbox:sandbox /home/sandbox/.bashrc /tmp/.bashrc-rocq
+COPY --from=python-stage --chown=sandbox:sandbox /workspace/.bashrc /tmp/.bashrc-python
+COPY --from=go-stage --chown=sandbox:sandbox /workspace/.bashrc /tmp/.bashrc-go
+COPY --from=rust-stage --chown=sandbox:sandbox /workspace/.bashrc /tmp/.bashrc-rust
+COPY --from=java-stage --chown=sandbox:sandbox /workspace/.bashrc /tmp/.bashrc-java
+COPY --from=kotlin-stage --chown=sandbox:sandbox /workspace/.bashrc /tmp/.bashrc-kotlin
+COPY --from=ruby-stage --chown=sandbox:sandbox /workspace/.bashrc /tmp/.bashrc-ruby
+COPY --from=php-stage --chown=sandbox:sandbox /workspace/.bashrc /tmp/.bashrc-php
+COPY --from=perl-stage --chown=sandbox:sandbox /workspace/.bashrc /tmp/.bashrc-perl
+COPY --from=swift-stage --chown=sandbox:sandbox /workspace/.bashrc /tmp/.bashrc-swift
+COPY --from=lean-stage --chown=sandbox:sandbox /workspace/.bashrc /tmp/.bashrc-lean
+COPY --from=rocq-stage --chown=sandbox:sandbox /workspace/.bashrc /tmp/.bashrc-rocq
 
 # Merge bashrc configurations: take the essentials bashrc as base,
 # then append sections from each language stage that are not yet present.
 # Uses section-header deduplication (checks for unique "# <Tool> configuration"
 # comment) to avoid corrupting multi-line shell constructs (if/fi blocks) that
 # would break when individual lines like bare "fi" are deduplicated.
-RUN cp /home/sandbox/.bashrc /tmp/.bashrc-base && \
+RUN cp /workspace/.bashrc /tmp/.bashrc-base && \
     for lang_bashrc in /tmp/.bashrc-python /tmp/.bashrc-go /tmp/.bashrc-rust \
       /tmp/.bashrc-java /tmp/.bashrc-kotlin /tmp/.bashrc-ruby /tmp/.bashrc-php \
       /tmp/.bashrc-perl /tmp/.bashrc-swift /tmp/.bashrc-lean /tmp/.bashrc-rocq; do \
@@ -180,35 +180,36 @@ RUN cp /home/sandbox/.bashrc /tmp/.bashrc-base && \
         done < "$lang_bashrc"; \
       fi; \
     done && \
-    cp /tmp/.bashrc-base /home/sandbox/.bashrc && \
-    chown sandbox:sandbox /home/sandbox/.bashrc && \
+    cp /tmp/.bashrc-base /workspace/.bashrc && \
+    chown sandbox:sandbox /workspace/.bashrc && \
     rm -f /tmp/.bashrc-*
 
 USER sandbox
-WORKDIR /home/sandbox
+WORKDIR /workspace
 
 # Environment variables for all tools
-ENV NVM_DIR="/home/sandbox/.nvm"
-ENV PYENV_ROOT="/home/sandbox/.pyenv"
-ENV BUN_INSTALL="/home/sandbox/.bun"
-ENV DENO_INSTALL="/home/sandbox/.deno"
-ENV CARGO_HOME="/home/sandbox/.cargo"
-ENV GOROOT="/home/sandbox/.go"
-ENV GOPATH="/home/sandbox/.go/path"
-ENV SDKMAN_DIR="/home/sandbox/.sdkman"
-ENV PERLBREW_ROOT="/home/sandbox/.perl5"
-ENV RBENV_ROOT="/home/sandbox/.rbenv"
+ENV HOME=/workspace
+ENV NVM_DIR="/workspace/.nvm"
+ENV PYENV_ROOT="/workspace/.pyenv"
+ENV BUN_INSTALL="/workspace/.bun"
+ENV DENO_INSTALL="/workspace/.deno"
+ENV CARGO_HOME="/workspace/.cargo"
+ENV GOROOT="/workspace/.go"
+ENV GOPATH="/workspace/.go/path"
+ENV SDKMAN_DIR="/workspace/.sdkman"
+ENV PERLBREW_ROOT="/workspace/.perl5"
+ENV RBENV_ROOT="/workspace/.rbenv"
 
 # PATH for tools that don't need special initialization
 # Includes Homebrew PHP paths (only effective if local install was used, harmless otherwise)
-ENV PATH="/home/linuxbrew/.linuxbrew/opt/php@8.3/bin:/home/linuxbrew/.linuxbrew/opt/php@8.3/sbin:/home/linuxbrew/.linuxbrew/bin:/home/sandbox/.pyenv/bin:/home/sandbox/.pyenv/shims:/home/sandbox/.rbenv/bin:/home/sandbox/.rbenv/shims:/home/sandbox/.swift/usr/bin:/home/sandbox/.elan/bin:/home/sandbox/.opam/default/bin:/home/sandbox/.cargo/bin:/home/sandbox/.deno/bin:/home/sandbox/.bun/bin:/home/sandbox/.go/bin:/home/sandbox/.go/path/bin:${PATH}"
+ENV PATH="/home/linuxbrew/.linuxbrew/opt/php@8.3/bin:/home/linuxbrew/.linuxbrew/opt/php@8.3/sbin:/home/linuxbrew/.linuxbrew/bin:/workspace/.pyenv/bin:/workspace/.pyenv/shims:/workspace/.rbenv/bin:/workspace/.rbenv/shims:/workspace/.swift/usr/bin:/workspace/.elan/bin:/workspace/.opam/default/bin:/workspace/.cargo/bin:/workspace/.deno/bin:/workspace/.bun/bin:/workspace/.go/bin:/workspace/.go/path/bin:${PATH}"
 
 SHELL ["/bin/bash", "-c"]
 
 # Opam environment variables for Rocq/Coq theorem prover
-ENV OPAM_SWITCH_PREFIX="/home/sandbox/.opam/default"
-ENV CAML_LD_LIBRARY_PATH="/home/sandbox/.opam/default/lib/stublibs:/home/sandbox/.opam/default/lib/ocaml/stublibs:/home/sandbox/.opam/default/lib/ocaml"
-ENV OCAML_TOPLEVEL_PATH="/home/sandbox/.opam/default/lib/toplevel"
+ENV OPAM_SWITCH_PREFIX="/workspace/.opam/default"
+ENV CAML_LD_LIBRARY_PATH="/workspace/.opam/default/lib/stublibs:/workspace/.opam/default/lib/ocaml/stublibs:/workspace/.opam/default/lib/ocaml"
+ENV OCAML_TOPLEVEL_PATH="/workspace/.opam/default/lib/toplevel"
 
 SHELL ["/bin/bash", "-c"]
 

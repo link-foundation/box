@@ -13,11 +13,11 @@ RUN chmod +x /tmp/install.sh /tmp/common.sh && \
     bash /tmp/install.sh && \
     rm -f /tmp/install.sh /tmp/common.sh
 
-WORKDIR /home/sandbox
+WORKDIR /workspace
 
-ENV GOROOT="/home/sandbox/.go"
-ENV GOPATH="/home/sandbox/.go/path"
-ENV PATH="/home/sandbox/.go/bin:/home/sandbox/.go/path/bin:${PATH}"
+ENV GOROOT="/workspace/.go"
+ENV GOPATH="/workspace/.go/path"
+ENV PATH="/workspace/.go/bin:/workspace/.go/path/bin:${PATH}"
 
 SHELL ["/bin/bash", "-c"]
 CMD ["/bin/bash"]

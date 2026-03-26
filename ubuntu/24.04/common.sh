@@ -117,12 +117,14 @@ ensure_sandbox_user() {
     log_info "sandbox user already exists."
   else
     log_info "Creating sandbox user..."
-    useradd -m -s /bin/bash sandbox 2>/dev/null || {
+    groupadd -g 1000 sandbox 2>/dev/null || true
+    useradd -m -u 1000 -g sandbox -d /workspace -s /bin/bash sandbox 2>/dev/null || {
       log_warning "User creation with useradd failed, trying adduser..."
-      adduser --disabled-password --gecos "" sandbox
+      adduser --disabled-password --gecos "" --home /workspace sandbox
     }
     passwd -d sandbox 2>/dev/null || log_note "Could not remove password requirement"
     usermod -aG sudo sandbox 2>/dev/null || log_note "Could not add to sudo group"
+    chmod 2775 /workspace 2>/dev/null || true
     log_success "sandbox user created and configured"
   fi
 }

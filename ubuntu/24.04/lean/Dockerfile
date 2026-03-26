@@ -13,9 +13,9 @@ RUN chmod +x /tmp/install.sh /tmp/common.sh && \
     bash /tmp/install.sh && \
     rm -f /tmp/install.sh /tmp/common.sh
 
-WORKDIR /home/sandbox
+WORKDIR /workspace
 
-ENV PATH="/home/sandbox/.elan/bin:${PATH}"
+ENV PATH="/workspace/.elan/bin:${PATH}"
 
 SHELL ["/bin/bash", "-c"]
 CMD ["/bin/bash"]

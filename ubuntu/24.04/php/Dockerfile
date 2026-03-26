@@ -9,7 +9,7 @@ FROM ${ESSENTIALS_IMAGE}
 #   1. Try Homebrew installation as sandbox user (user-specific, under /home/linuxbrew/.linuxbrew)
 #      - With timeout to prevent 2+ hour source compilations
 #   2. If Homebrew fails/times out, fall back to apt (global, under /usr/bin)
-#   3. Write marker file /home/sandbox/.php-install-method with "local" or "global"
+#   3. Write marker file /workspace/.php-install-method with "local" or "global"
 #
 # The marker file is used by the full-sandbox Dockerfile to determine how to merge PHP:
 #   - "local": COPY /home/linuxbrew/.linuxbrew from php-stage
@@ -43,7 +43,7 @@ RUN PHP_HOMEBREW_TIMEOUT=${PHP_HOMEBREW_TIMEOUT} PHP_VERBOSE=${PHP_VERBOSE} bash
 
 # --- Step 3: Handle global fallback (apt install as root if needed) ---
 USER root
-RUN PHP_METHOD=$(cat /home/sandbox/.php-install-method 2>/dev/null || echo "unknown") && \
+RUN PHP_METHOD=$(cat /workspace/.php-install-method 2>/dev/null || echo "unknown") && \
     echo "PHP install method: $PHP_METHOD" && \
     if [ "$PHP_METHOD" = "global" ]; then \
       echo "Installing PHP globally via apt (Homebrew failed/timed out)..." && \
@@ -58,7 +58,7 @@ RUN PHP_METHOD=$(cat /home/sandbox/.php-install-method 2>/dev/null || echo "unkn
     fi
 
 # Verify PHP installation (use full path for local, or /usr/bin/php for global)
-RUN PHP_METHOD=$(cat /home/sandbox/.php-install-method 2>/dev/null || echo "unknown") && \
+RUN PHP_METHOD=$(cat /workspace/.php-install-method 2>/dev/null || echo "unknown") && \
     if [ "$PHP_METHOD" = "local" ]; then \
       /home/linuxbrew/.linuxbrew/opt/php@8.3/bin/php --version; \
     else \
@@ -72,7 +72,7 @@ RUN rm -f /tmp/install.sh /tmp/common.sh
 # so that COPY --from in full-sandbox Dockerfile always succeeds
 
 USER sandbox
-WORKDIR /home/sandbox
+WORKDIR /workspace
 
 # PATH: include Homebrew PHP paths (only effective if local install succeeded)
 # For global (apt) install, /usr/bin/php is already in PATH

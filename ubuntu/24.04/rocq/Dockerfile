@@ -17,12 +17,12 @@ RUN chmod +x /tmp/install.sh /tmp/common.sh && \
     bash /tmp/install.sh && \
     rm -f /tmp/install.sh /tmp/common.sh
 
-WORKDIR /home/sandbox
+WORKDIR /workspace
 
-ENV OPAM_SWITCH_PREFIX="/home/sandbox/.opam/default"
-ENV CAML_LD_LIBRARY_PATH="/home/sandbox/.opam/default/lib/stublibs:/home/sandbox/.opam/default/lib/ocaml/stublibs:/home/sandbox/.opam/default/lib/ocaml"
-ENV OCAML_TOPLEVEL_PATH="/home/sandbox/.opam/default/lib/toplevel"
-ENV PATH="/home/sandbox/.opam/default/bin:${PATH}"
+ENV OPAM_SWITCH_PREFIX="/workspace/.opam/default"
+ENV CAML_LD_LIBRARY_PATH="/workspace/.opam/default/lib/stublibs:/workspace/.opam/default/lib/ocaml/stublibs:/workspace/.opam/default/lib/ocaml"
+ENV OCAML_TOPLEVEL_PATH="/workspace/.opam/default/lib/toplevel"
+ENV PATH="/workspace/.opam/default/bin:${PATH}"
 
 SHELL ["/bin/bash", "-c"]
 CMD ["/bin/bash"]

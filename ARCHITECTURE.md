@@ -13,7 +13,7 @@ The sandbox is a multi-architecture Docker image that provides a comprehensive d
 |           Docker Container               |
 |  +------------------------------------+  |
 |  |     User: sandbox (non-root)       |  |
-|  |     Home: /home/sandbox            |  |
+|  |     Home: /workspace               |  |
 |  +------------------------------------+  |
 |                                          |
 |  +------------------------------------+  |

@@ -13,10 +13,10 @@ RUN chmod +x /tmp/install.sh /tmp/common.sh && \
     bash /tmp/install.sh && \
     rm -f /tmp/install.sh /tmp/common.sh
 
-WORKDIR /home/sandbox
+WORKDIR /workspace
 
-ENV CARGO_HOME="/home/sandbox/.cargo"
-ENV PATH="/home/sandbox/.cargo/bin:${PATH}"
+ENV CARGO_HOME="/workspace/.cargo"
+ENV PATH="/workspace/.cargo/bin:${PATH}"
 
 SHELL ["/bin/bash", "-c"]
 CMD ["/bin/bash"]

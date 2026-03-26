@@ -99,10 +99,14 @@ RUN apt-get update -y && \
       fonts-freefont-ttf \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Create sandbox user
-RUN useradd -m -s /bin/bash sandbox && \
+# Create sandbox group and user with /workspace as home directory
+# Using /workspace instead of /home/sandbox decouples identity from filesystem,
+# enabling downstream images to add users to the sandbox group without renaming/chowning
+RUN groupadd -g 1000 sandbox && \
+    useradd -m -u 1000 -g sandbox -d /workspace -s /bin/bash sandbox && \
     passwd -d sandbox && \
-    usermod -aG sudo sandbox
+    usermod -aG sudo sandbox && \
+    chmod 2775 /workspace
 
 # Copy and run install script
 COPY ubuntu/24.04/common.sh /tmp/common.sh
@@ -112,12 +116,13 @@ RUN chmod +x /tmp/install.sh /tmp/common.sh && \
     rm -f /tmp/install.sh /tmp/common.sh
 
 USER sandbox
-WORKDIR /home/sandbox
+WORKDIR /workspace
 
-ENV NVM_DIR="/home/sandbox/.nvm"
-ENV BUN_INSTALL="/home/sandbox/.bun"
-ENV DENO_INSTALL="/home/sandbox/.deno"
-ENV PATH="/home/sandbox/.deno/bin:/home/sandbox/.bun/bin:${PATH}"
+ENV HOME=/workspace
+ENV NVM_DIR="/workspace/.nvm"
+ENV BUN_INSTALL="/workspace/.bun"
+ENV DENO_INSTALL="/workspace/.deno"
+ENV PATH="/workspace/.deno/bin:/workspace/.bun/bin:${PATH}"
 
 SHELL ["/bin/bash", "-c"]
 

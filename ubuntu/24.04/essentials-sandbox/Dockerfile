@@ -25,8 +25,14 @@ RUN chmod +x /tmp/install.sh /tmp/common.sh /usr/local/bin/entrypoint.sh && \
     DOCKER_BUILD=1 bash /tmp/install.sh && \
     rm -f /tmp/install.sh /tmp/common.sh
 
+# Install ACL support for shared group permissions on /workspace
+RUN apt-get update -y && apt-get install -y acl && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    setfacl -R -m g:sandbox:rwx /workspace && \
+    setfacl -d -m g:sandbox:rwx /workspace
+
 USER sandbox
-WORKDIR /home/sandbox
+WORKDIR /workspace
 
 # Environment variables inherited from JS sandbox base image
 # Additional ones for essentials are not needed (gh, glab are system-wide)

@@ -15,7 +15,7 @@ RUN chmod +x /tmp/install.sh /tmp/common.sh && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 USER sandbox
-WORKDIR /home/sandbox
+WORKDIR /workspace
 
 SHELL ["/bin/bash", "-c"]
 CMD ["/bin/bash"]

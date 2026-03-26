@@ -706,7 +706,7 @@ chmod +x /tmp/sandbox-measure.sh
 
 # Resolve JSON output path to absolute before passing to sandbox user.
 # 'su - sandbox' and 'sudo -i -u sandbox' both create login shells that change
-# the working directory to the sandbox user's home (/home/sandbox). Relative
+# the working directory to the sandbox user's home (/workspace). Relative
 # paths like 'data/disk-space-measurements.json' would then resolve to the wrong
 # location, causing "No such file or directory" errors.
 # See docs/case-studies/issue-46 for the full root cause analysis.

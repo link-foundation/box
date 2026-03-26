@@ -13,9 +13,9 @@ RUN chmod +x /tmp/install.sh /tmp/common.sh && \
     bash /tmp/install.sh && \
     rm -f /tmp/install.sh /tmp/common.sh
 
-WORKDIR /home/sandbox
+WORKDIR /workspace
 
-ENV PERLBREW_ROOT="/home/sandbox/.perl5"
+ENV PERLBREW_ROOT="/workspace/.perl5"
 
 SHELL ["/bin/bash", "-c"]
 CMD ["/bin/bash"]

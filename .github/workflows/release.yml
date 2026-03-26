@@ -527,8 +527,8 @@ jobs:
 
           echo ""
           echo "=== PHP install method check ==="
-          docker run --rm sandbox-php cat /home/sandbox/.php-install-method
-          docker run --rm sandbox-test cat /home/sandbox/.php-install-method
+          docker run --rm sandbox-php cat /workspace/.php-install-method
+          docker run --rm sandbox-test cat /workspace/.php-install-method
 
           echo ""
           echo "=== All full sandbox tests passed ==="
@@ -1110,7 +1110,7 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           # Pull the image and inspect the marker file
           docker pull ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64
-          PHP_METHOD=$(docker run --rm ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 cat /home/sandbox/.php-install-method 2>/dev/null || echo "unknown")
+          PHP_METHOD=$(docker run --rm ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 cat /workspace/.php-install-method 2>/dev/null || echo "unknown")
           echo "PHP install method (amd64): $PHP_METHOD"
 
           if [ "$PHP_METHOD" = "local" ] || [ "$PHP_METHOD" = "global" ]; then
@@ -1247,7 +1247,7 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           # Pull the image and inspect the marker file
           docker pull ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64
-          PHP_METHOD=$(docker run --rm ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 cat /home/sandbox/.php-install-method 2>/dev/null || echo "unknown")
+          PHP_METHOD=$(docker run --rm ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 cat /workspace/.php-install-method 2>/dev/null || echo "unknown")
           echo "PHP install method (arm64): $PHP_METHOD"
 
           if [ "$PHP_METHOD" = "local" ] || [ "$PHP_METHOD" = "global" ]; then

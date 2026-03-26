@@ -13,10 +13,10 @@ RUN chmod +x /tmp/install.sh /tmp/common.sh && \
     bash /tmp/install.sh && \
     rm -f /tmp/install.sh /tmp/common.sh
 
-WORKDIR /home/sandbox
+WORKDIR /workspace
 
-ENV RBENV_ROOT="/home/sandbox/.rbenv"
-ENV PATH="/home/sandbox/.rbenv/bin:/home/sandbox/.rbenv/shims:${PATH}"
+ENV RBENV_ROOT="/workspace/.rbenv"
+ENV PATH="/workspace/.rbenv/bin:/workspace/.rbenv/shims:${PATH}"
 
 SHELL ["/bin/bash", "-c"]
 CMD ["/bin/bash"]

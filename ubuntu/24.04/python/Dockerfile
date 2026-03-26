@@ -13,10 +13,10 @@ RUN chmod +x /tmp/install.sh /tmp/common.sh && \
     bash /tmp/install.sh && \
     rm -f /tmp/install.sh /tmp/common.sh
 
-WORKDIR /home/sandbox
+WORKDIR /workspace
 
-ENV PYENV_ROOT="/home/sandbox/.pyenv"
-ENV PATH="/home/sandbox/.pyenv/bin:/home/sandbox/.pyenv/shims:${PATH}"
+ENV PYENV_ROOT="/workspace/.pyenv"
+ENV PATH="/workspace/.pyenv/bin:/workspace/.pyenv/shims:${PATH}"
 
 SHELL ["/bin/bash", "-c"]
 CMD ["/bin/bash"]

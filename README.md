@@ -171,7 +171,7 @@ For detailed analysis, see [Case Study: Issue #7](docs/case-studies/issue-7/READ
 
 ## Environment
 
-The container runs as the `sandbox` user with home directory at `/home/sandbox`. All language runtimes are installed in user-local directories:
+The container runs as the `sandbox` user with home directory at `/workspace`. All language runtimes are installed in user-local directories under `/workspace`:
 
 - Node.js: `~/.nvm`
 - Python: `~/.pyenv`
