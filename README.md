@@ -108,24 +108,77 @@ Each install script can be run standalone on Ubuntu 24.04:
 curl -fsSL https://raw.githubusercontent.com/link-foundation/sandbox/main/ubuntu/24.04/go/install.sh | bash
 ```
 
+## Docker Images
+
+### Docker Hub - Combo Sandboxes
+
+| Image | Multi-arch | AMD64 | ARM64 |
+|-------|------------|-------|-------|
+| Full Sandbox | [`konard/sandbox:latest`](https://hub.docker.com/r/konard/sandbox/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/sandbox/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/sandbox/tags?name=latest-arm64) |
+| Essentials | [`konard/sandbox-essentials:latest`](https://hub.docker.com/r/konard/sandbox-essentials/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/sandbox-essentials/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/sandbox-essentials/tags?name=latest-arm64) |
+| JS | [`konard/sandbox-js:latest`](https://hub.docker.com/r/konard/sandbox-js/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/sandbox-js/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/sandbox-js/tags?name=latest-arm64) |
+
+### Docker Hub - Language Sandboxes
+
+| Language | Multi-arch | AMD64 | ARM64 |
+|----------|------------|-------|-------|
+| Python | [`konard/sandbox-python:latest`](https://hub.docker.com/r/konard/sandbox-python/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/sandbox-python/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/sandbox-python/tags?name=latest-arm64) |
+| Go | [`konard/sandbox-go:latest`](https://hub.docker.com/r/konard/sandbox-go/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/sandbox-go/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/sandbox-go/tags?name=latest-arm64) |
+| Rust | [`konard/sandbox-rust:latest`](https://hub.docker.com/r/konard/sandbox-rust/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/sandbox-rust/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/sandbox-rust/tags?name=latest-arm64) |
+| Java | [`konard/sandbox-java:latest`](https://hub.docker.com/r/konard/sandbox-java/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/sandbox-java/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/sandbox-java/tags?name=latest-arm64) |
+| Kotlin | [`konard/sandbox-kotlin:latest`](https://hub.docker.com/r/konard/sandbox-kotlin/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/sandbox-kotlin/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/sandbox-kotlin/tags?name=latest-arm64) |
+| Ruby | [`konard/sandbox-ruby:latest`](https://hub.docker.com/r/konard/sandbox-ruby/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/sandbox-ruby/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/sandbox-ruby/tags?name=latest-arm64) |
+| PHP | [`konard/sandbox-php:latest`](https://hub.docker.com/r/konard/sandbox-php/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/sandbox-php/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/sandbox-php/tags?name=latest-arm64) |
+| Perl | [`konard/sandbox-perl:latest`](https://hub.docker.com/r/konard/sandbox-perl/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/sandbox-perl/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/sandbox-perl/tags?name=latest-arm64) |
+| Swift | [`konard/sandbox-swift:latest`](https://hub.docker.com/r/konard/sandbox-swift/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/sandbox-swift/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/sandbox-swift/tags?name=latest-arm64) |
+| Lean | [`konard/sandbox-lean:latest`](https://hub.docker.com/r/konard/sandbox-lean/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/sandbox-lean/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/sandbox-lean/tags?name=latest-arm64) |
+| Rocq | [`konard/sandbox-rocq:latest`](https://hub.docker.com/r/konard/sandbox-rocq/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/sandbox-rocq/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/sandbox-rocq/tags?name=latest-arm64) |
+
+### GitHub Container Registry - Combo Sandboxes
+
+| Image | Multi-arch | AMD64 | ARM64 |
+|-------|------------|-------|-------|
+| Full Sandbox | [`ghcr.io/link-foundation/sandbox:latest`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox?tag=latest-arm64) |
+| Essentials | [`ghcr.io/link-foundation/sandbox-essentials:latest`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-essentials?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-essentials?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-essentials?tag=latest-arm64) |
+| JS | [`ghcr.io/link-foundation/sandbox-js:latest`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-js?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-js?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-js?tag=latest-arm64) |
+
+### GitHub Container Registry - Language Sandboxes
+
+| Language | Multi-arch | AMD64 | ARM64 |
+|----------|------------|-------|-------|
+| Python | [`ghcr.io/link-foundation/sandbox-python:latest`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-python?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-python?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-python?tag=latest-arm64) |
+| Go | [`ghcr.io/link-foundation/sandbox-go:latest`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-go?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-go?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-go?tag=latest-arm64) |
+| Rust | [`ghcr.io/link-foundation/sandbox-rust:latest`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-rust?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-rust?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-rust?tag=latest-arm64) |
+| Java | [`ghcr.io/link-foundation/sandbox-java:latest`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-java?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-java?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-java?tag=latest-arm64) |
+| Kotlin | [`ghcr.io/link-foundation/sandbox-kotlin:latest`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-kotlin?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-kotlin?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-kotlin?tag=latest-arm64) |
+| Ruby | [`ghcr.io/link-foundation/sandbox-ruby:latest`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-ruby?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-ruby?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-ruby?tag=latest-arm64) |
+| PHP | [`ghcr.io/link-foundation/sandbox-php:latest`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-php?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-php?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-php?tag=latest-arm64) |
+| Perl | [`ghcr.io/link-foundation/sandbox-perl:latest`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-perl?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-perl?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-perl?tag=latest-arm64) |
+| Swift | [`ghcr.io/link-foundation/sandbox-swift:latest`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-swift?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-swift?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-swift?tag=latest-arm64) |
+| Lean | [`ghcr.io/link-foundation/sandbox-lean:latest`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-lean?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-lean?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-lean?tag=latest-arm64) |
+| Rocq | [`ghcr.io/link-foundation/sandbox-rocq:latest`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-rocq?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-rocq?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/sandbox/pkgs/container/sandbox-rocq?tag=latest-arm64) |
+
 ## Usage
 
-### Pull the full image
+### Quick Start
 
+Pull multi-arch (auto-selects your platform):
+```bash
+docker pull konard/sandbox:latest
+```
+
+Pull specific architecture:
+```bash
+# AMD64
+docker pull konard/sandbox:latest-amd64
+
+# ARM64 (Apple Silicon, Raspberry Pi, etc.)
+docker pull konard/sandbox:latest-arm64
+```
+
+Pull from GHCR:
 ```bash
 docker pull ghcr.io/link-foundation/sandbox:latest
-```
-
-### Pull the JS image
-
-```bash
-docker pull ghcr.io/link-foundation/sandbox-js:latest
-```
-
-### Pull the essentials image
-
-```bash
-docker pull ghcr.io/link-foundation/sandbox-essentials:latest
 ```
 
 ### Run interactively
