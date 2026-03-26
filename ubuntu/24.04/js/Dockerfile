@@ -102,8 +102,8 @@ RUN apt-get update -y && \
 # Create sandbox group and user with /workspace as home directory
 # Using /workspace instead of /home/sandbox decouples identity from filesystem,
 # enabling downstream images to add users to the sandbox group without renaming/chowning
-RUN groupadd -g 1000 sandbox && \
-    useradd -m -u 1000 -g sandbox -d /workspace -s /bin/bash sandbox && \
+RUN groupadd sandbox && \
+    useradd -m -g sandbox -d /workspace -s /bin/bash sandbox && \
     passwd -d sandbox && \
     usermod -aG sudo sandbox && \
     chmod 2775 /workspace

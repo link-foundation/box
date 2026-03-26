@@ -117,8 +117,8 @@ ensure_sandbox_user() {
     log_info "sandbox user already exists."
   else
     log_info "Creating sandbox user..."
-    groupadd -g 1000 sandbox 2>/dev/null || true
-    useradd -m -u 1000 -g sandbox -d /workspace -s /bin/bash sandbox 2>/dev/null || {
+    groupadd sandbox 2>/dev/null || true
+    useradd -m -g sandbox -d /workspace -s /bin/bash sandbox 2>/dev/null || {
       log_warning "User creation with useradd failed, trying adduser..."
       adduser --disabled-password --gecos "" --home /workspace sandbox
     }
