@@ -130,9 +130,9 @@ if id "sandbox" &>/dev/null; then
   log_info "sandbox user already exists."
 else
   log_info "Creating sandbox user..."
-  useradd -m -s /bin/bash sandbox 2>/dev/null || {
+  useradd -m -d /workspace -s /bin/bash sandbox 2>/dev/null || {
     log_warning "User creation with useradd failed, trying adduser..."
-    adduser --disabled-password --gecos "" sandbox
+    adduser --disabled-password --gecos "" --home /workspace sandbox
   }
   passwd -d sandbox 2>/dev/null || log_note "Could not remove password requirement"
   usermod -aG sudo sandbox 2>/dev/null || log_note "Could not add to sudo group"

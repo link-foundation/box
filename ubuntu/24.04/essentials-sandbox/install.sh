@@ -51,7 +51,7 @@ if id "sandbox" &>/dev/null; then
   log_info "sandbox user already exists."
 else
   log_info "Creating sandbox user..."
-  useradd -m -s /bin/bash sandbox 2>/dev/null || adduser --disabled-password --gecos "" sandbox
+  useradd -m -d /workspace -s /bin/bash sandbox 2>/dev/null || adduser --disabled-password --gecos "" --home /workspace sandbox
   passwd -d sandbox 2>/dev/null || true
   usermod -aG sudo sandbox 2>/dev/null || true
   log_success "sandbox user created"

@@ -227,7 +227,7 @@ log_success "Pre-flight checks passed"
 # --- Create sandbox user if missing ---
 if ! id "sandbox" &>/dev/null; then
   log_info "Creating sandbox user..."
-  useradd -m -s /bin/bash sandbox 2>/dev/null || adduser --disabled-password --gecos "" sandbox
+  useradd -m -d /workspace -s /bin/bash sandbox 2>/dev/null || adduser --disabled-password --gecos "" --home /workspace sandbox
   passwd -d sandbox 2>/dev/null || true
   usermod -aG sudo sandbox 2>/dev/null || true
 fi
