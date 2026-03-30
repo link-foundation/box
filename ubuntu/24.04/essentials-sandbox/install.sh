@@ -85,89 +85,9 @@ maybe_sudo apt install -y \
 
 log_success "System prerequisites installed"
 
-# --- Playwright and Puppeteer system dependencies ---
-log_step "Installing Playwright and Puppeteer browser system dependencies"
-# These are the system-level libraries required by Chromium, Firefox, and WebKit browsers
-# Source: https://playwright.dev/docs/browsers#install-system-dependencies
-#         https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/registry/nativeDeps.ts
-#         https://pptr.dev/troubleshooting
-maybe_sudo apt install -y \
-  libasound2t64 \
-  libatk-bridge2.0-0t64 \
-  libatk1.0-0t64 \
-  libatspi2.0-0t64 \
-  libcairo2 \
-  libcups2t64 \
-  libdbus-1-3 \
-  libdrm2 \
-  libgbm1 \
-  libglib2.0-0t64 \
-  libnspr4 \
-  libnss3 \
-  libpango-1.0-0 \
-  libx11-6 \
-  libxcb1 \
-  libxcomposite1 \
-  libxdamage1 \
-  libxext6 \
-  libxfixes3 \
-  libxkbcommon0 \
-  libxrandr2 \
-  libavcodec60 \
-  libcairo-gobject2 \
-  libfontconfig1 \
-  libfreetype6 \
-  libgdk-pixbuf-2.0-0 \
-  libgtk-3-0t64 \
-  libpangocairo-1.0-0 \
-  libx11-xcb1 \
-  libxcb-shm0 \
-  libxcursor1 \
-  libxi6 \
-  libxrender1 \
-  gstreamer1.0-libav \
-  gstreamer1.0-plugins-bad \
-  gstreamer1.0-plugins-base \
-  gstreamer1.0-plugins-good \
-  libatomic1 \
-  libenchant-2-2 \
-  libepoxy0 \
-  libevent-2.1-7t64 \
-  libflite1 \
-  libgles2 \
-  libgstreamer-gl1.0-0 \
-  libgstreamer-plugins-bad1.0-0 \
-  libgstreamer-plugins-base1.0-0 \
-  libgstreamer1.0-0 \
-  libgtk-4-1 \
-  libharfbuzz-icu0 \
-  libharfbuzz0b \
-  libhyphen0 \
-  libjpeg-turbo8 \
-  liblcms2-2 \
-  libmanette-0.2-0 \
-  libopus0 \
-  libpng16-16t64 \
-  libsecret-1-0 \
-  libvpx9 \
-  libwayland-client0 \
-  libwayland-egl1 \
-  libwayland-server0 \
-  libwebp7 \
-  libwebpdemux2 \
-  libwoff1 \
-  libxml2 \
-  libxslt1.1 \
-  libxss1 \
-  libxtst6 \
-  xdg-utils \
-  xvfb \
-  fonts-liberation \
-  fonts-noto-color-emoji \
-  fonts-ipafont-gothic \
-  fonts-wqy-zenhei \
-  fonts-freefont-ttf
-log_success "Playwright and Puppeteer system dependencies installed"
+# Note: Playwright/Puppeteer system dependencies and browser binaries are now
+# installed in the JS sandbox layer (ubuntu/24.04/js/Dockerfile and install.sh).
+# See issue #74 for details.
 
 # --- GitHub CLI ---
 log_step "Installing GitHub CLI"
@@ -238,27 +158,9 @@ if gh auth status &>/dev/null; then
   gh auth setup-git
 fi
 
-# --- Playwright CLI ---
-log_info "Installing Playwright CLI globally via npm..."
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-if command_exists npm; then
-  npm install -g playwright --no-fund --silent
-  log_success "playwright CLI installed"
-elif command_exists bun; then
-  bun install -g playwright
-  log_success "playwright CLI installed via bun"
-fi
-
-# --- Puppeteer browsers CLI ---
-log_info "Installing @puppeteer/browsers CLI globally via npm..."
-if command_exists npm; then
-  npm install -g @puppeteer/browsers --no-fund --silent
-  log_success "@puppeteer/browsers CLI installed"
-elif command_exists bun; then
-  bun install -g @puppeteer/browsers
-  log_success "@puppeteer/browsers CLI installed via bun"
-fi
+# Note: playwright, @playwright/test, and @puppeteer/browsers CLIs are now
+# installed in the JS sandbox layer (ubuntu/24.04/js/install.sh).
+# Browser binaries are also pre-downloaded there. See issue #74.
 
 log_success "Essentials identity tools setup complete"
 EOF_IDENTITY
@@ -279,4 +181,4 @@ maybe_sudo apt-get autoremove -y
 maybe_sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 log_step "Essentials Sandbox setup complete!"
-log_success "Added on top of JS sandbox: git, gh, glab, gh-setup-git-identity, glab-setup-git-identity, playwright, @puppeteer/browsers"
+log_success "Added on top of JS sandbox: git, gh, glab, gh-setup-git-identity, glab-setup-git-identity"
