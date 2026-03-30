@@ -1,5 +1,5 @@
 ---
-type: minor
+bump: minor
 ---
 
 Pre-install Playwright browsers, @playwright/test, and @puppeteer/browsers in JS sandbox image (issue #74)
