@@ -76,4 +76,36 @@ log_info "Updating npm to latest version..."
 npm install -g npm@latest --no-fund --silent
 log_success "npm updated to latest version"
 
+# --- Playwright CLI + @playwright/test + @puppeteer/browsers ---
+log_step "Installing Playwright, @playwright/test, and @puppeteer/browsers CLIs"
+
+log_info "Installing playwright, @playwright/test, and @puppeteer/browsers globally via npm..."
+npm install -g playwright @playwright/test @puppeteer/browsers --no-fund --force
+log_success "playwright, @playwright/test, and @puppeteer/browsers CLIs installed"
+
+# Verify installations
+command -v playwright || { echo "ERROR: playwright not found after install"; exit 1; }
+log_success "playwright CLI verified"
+
+# --- Download Playwright browser binaries ---
+log_step "Downloading Playwright browser binaries"
+
+ARCH=$(uname -m)
+if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; then
+  log_info "x86_64 detected: installing all browsers (chromium, firefox, webkit, msedge, chromium-headless-shell, chrome)"
+  playwright install chromium firefox webkit msedge chromium-headless-shell chrome
+else
+  log_info "$ARCH detected: installing compatible browsers (chromium, firefox, webkit, chromium-headless-shell)"
+  playwright install chromium firefox webkit chromium-headless-shell
+fi
+log_success "Playwright browser binaries downloaded"
+
+# Verify at least chromium is available
+if [ -d "$HOME/.cache/ms-playwright" ]; then
+  log_success "Playwright browser cache exists at $HOME/.cache/ms-playwright"
+else
+  echo "ERROR: Playwright browser cache not found at $HOME/.cache/ms-playwright"
+  exit 1
+fi
+
 log_success "JavaScript/TypeScript runtimes installation complete"

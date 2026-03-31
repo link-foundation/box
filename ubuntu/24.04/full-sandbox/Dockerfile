@@ -184,6 +184,10 @@ RUN cp /workspace/.bashrc /tmp/.bashrc-base && \
     chown sandbox:sandbox /workspace/.bashrc && \
     rm -f /tmp/.bashrc-*
 
+# Restore /workspace ownership after all COPY --from operations (which run as root)
+# This prevents permission issues (EACCES) for the sandbox user at runtime
+RUN chown sandbox:sandbox /workspace
+
 USER sandbox
 WORKDIR /workspace
 
