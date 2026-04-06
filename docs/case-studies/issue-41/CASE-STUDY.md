@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The Docker image publishing workflow (Run ID: 21997899227) failed on February 13, 2026, due to **disk space exhaustion** on the GitHub Actions runner. The `docker-build-push` job failed at the "Build and push full sandbox (amd64)" step with the error:
+The Docker image publishing workflow (Run ID: 21997899227) failed on February 13, 2026, due to **disk space exhaustion** on the GitHub Actions runner. The `docker-build-push` job failed at the "Build and push full box (amd64)" step with the error:
 
 ```
 System.IO.IOException: No space left on device : '/home/runner/actions-runner/cached/_diag/Worker_20260213-183604-utc.log'
@@ -37,10 +37,10 @@ The GitHub Actions runner ran out of disk space during the Docker build and push
 
 1. **Multiple Large Images Built in Single Workflow**
    - The workflow builds multiple Docker images in parallel:
-     - JS sandbox (2 architectures)
-     - Essentials sandbox (2 architectures)
-     - 11 language sandboxes (2 architectures each = 22 builds)
-     - Full sandbox (2 architectures)
+     - JS box (2 architectures)
+     - Essentials box (2 architectures)
+     - 11 language boxes (2 architectures each = 22 builds)
+     - Full box (2 architectures)
    - Total: ~30+ Docker image builds
 
 2. **Cumulative Resource Consumption**
@@ -63,7 +63,7 @@ The GitHub Actions runner ran out of disk space during the Docker build and push
 ## Impact Assessment
 
 - **Failed Release**: Version 1.3.1 Docker images were not published
-- **Partial Success**: Earlier jobs (JS, essentials, some language sandboxes) completed successfully
+- **Partial Success**: Earlier jobs (JS, essentials, some language boxes) completed successfully
 - **No Data Loss**: The failure was recoverable; no permanent damage occurred
 
 ## Proposed Solutions
@@ -117,10 +117,10 @@ Optimize Docker builds to use layer caching more efficiently:
 
 Split the monolithic workflow into separate workflows per image type:
 
-1. `release-js.yml` - JS sandbox only
-2. `release-essentials.yml` - Essentials sandbox only
-3. `release-languages.yml` - Language sandboxes
-4. `release-full.yml` - Full sandbox (triggered after others)
+1. `release-js.yml` - JS box only
+2. `release-essentials.yml` - Essentials box only
+3. `release-languages.yml` - Language boxes
+4. `release-full.yml` - Full box (triggered after others)
 
 **Pros:**
 - Each workflow gets fresh disk space
@@ -157,15 +157,15 @@ Implement **Solution 1** (Free Disk Space Action) as the primary fix, with **Sol
 ### Implementation Steps
 
 1. Add disk space cleanup to the `docker-build-push` job
-2. Add docker system prune before the full sandbox build
+2. Add docker system prune before the full box build
 3. Test with a manual workflow_dispatch run
 4. Monitor disk usage in future runs
 
 ## References
 
 ### Error Details
-- **Run URL**: https://github.com/link-foundation/sandbox/actions/runs/21997899227
-- **Failed Job**: https://github.com/link-foundation/sandbox/actions/runs/21997899227/job/63564368345
+- **Run URL**: https://github.com/link-foundation/box/actions/runs/21997899227
+- **Failed Job**: https://github.com/link-foundation/box/actions/runs/21997899227/job/63564368345
 - **Error**: `System.IO.IOException: No space left on device`
 
 ### Related GitHub Issues

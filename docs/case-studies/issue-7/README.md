@@ -1,8 +1,8 @@
 # Case Study: Docker ARM64 Build Timeout
 
-**Issue:** [#7 - Investigate why docker image build has stuck and what we can do to avoid such problems in the future](https://github.com/link-foundation/sandbox/issues/7)
+**Issue:** [#7 - Investigate why docker image build has stuck and what we can do to avoid such problems in the future](https://github.com/link-foundation/box/issues/7)
 
-**GitHub Actions Run:** [#21002878662](https://github.com/link-foundation/sandbox/actions/runs/21002878662/job/60377477070)
+**GitHub Actions Run:** [#21002878662](https://github.com/link-foundation/box/actions/runs/21002878662/job/60377477070)
 
 **Date of Incident:** 2026-01-14
 
@@ -121,8 +121,8 @@ Implement better caching strategies:
     context: .
     platforms: linux/arm64
     push: true
-    cache-from: type=registry,ref=ghcr.io/link-foundation/sandbox:buildcache-arm64
-    cache-to: type=registry,ref=ghcr.io/link-foundation/sandbox:buildcache-arm64,mode=max
+    cache-from: type=registry,ref=ghcr.io/link-foundation/box:buildcache-arm64
+    cache-to: type=registry,ref=ghcr.io/link-foundation/box:buildcache-arm64,mode=max
 ```
 
 ### Solution 4: Add Workflow Timeout

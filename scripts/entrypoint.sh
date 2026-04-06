@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Entrypoint script for sandbox container
+# Entrypoint script for box container
 # Sources all environment managers and runs the given command
 
 # Source bashrc to load all environment managers

@@ -2,9 +2,9 @@
 
 ## Executive Summary
 
-This case study documents a systematic comparison between the sandbox's `full-sandbox` Docker image and the general-purpose development tools required by the [hive-mind system](https://github.com/link-assistant/hive-mind/blob/main/scripts/ubuntu-24-server-install.sh). The analysis identifies what general-purpose (non-AI-specific) tools are missing from the sandbox.
+This case study documents a systematic comparison between the box's `full-box` Docker image and the general-purpose development tools required by the [hive-mind system](https://github.com/link-assistant/hive-mind/blob/main/scripts/ubuntu-24-server-install.sh). The analysis identifies what general-purpose (non-AI-specific) tools are missing from the box.
 
-**Key finding**: The full-sandbox is already a superset of the general-purpose development stack that hive-mind requires. The only missing general-purpose tool is `expect`, used for interactive TTY scripting automation. AI-specific tools (Claude Code, Codex, Gemini CLI, Playwright, Hive Mind workflow utilities) belong in the hive-mind image, not in the universal sandbox.
+**Key finding**: The full-box is already a superset of the general-purpose development stack that hive-mind requires. The only missing general-purpose tool is `expect`, used for interactive TTY scripting automation. AI-specific tools (Claude Code, Codex, Gemini CLI, Playwright, Hive Mind workflow utilities) belong in the hive-mind image, not in the universal box.
 
 ---
 
@@ -16,7 +16,7 @@ Source: `https://github.com/link-assistant/hive-mind/blob/main/scripts/ubuntu-24
 
 The hive-mind install script installs two categories of tools:
 
-**A. General-purpose development tools** (also belong in the sandbox):
+**A. General-purpose development tools** (also belong in the box):
 
 | Category | Tool | Install Method | Location |
 |----------|------|----------------|----------|
@@ -42,7 +42,7 @@ The hive-mind install script installs two categories of tools:
 | Prover | Rocq/Coq | opam | `~/.opam` |
 | Package mgr | Homebrew | Official installer | `/home/linuxbrew` |
 
-**B. AI/Hive-Mind-specific tools** (belong in the hive-mind image, NOT in the sandbox):
+**B. AI/Hive-Mind-specific tools** (belong in the hive-mind image, NOT in the box):
 
 | Category | Tool | Install Method |
 |----------|------|----------------|
@@ -62,13 +62,13 @@ The hive-mind install script installs two categories of tools:
 | Workflow | `gh-upload-log` | `bun install -g` |
 | Browser automation | Playwright (OS deps + browsers + MCP) | npm + npx |
 
-### 1.2 Full-Sandbox Current State (Before This Fix)
+### 1.2 Full-Box Current State (Before This Fix)
 
 | Category | Tool | Status |
 |----------|------|--------|
-| Runtime | Node.js 20 (NVM) | ✅ Present (JS sandbox) |
-| Runtime | Bun | ✅ Present (JS sandbox) |
-| Runtime | Deno | ✅ Present (JS sandbox) |
+| Runtime | Node.js 20 (NVM) | ✅ Present (JS box) |
+| Runtime | Bun | ✅ Present (JS box) |
+| Runtime | Deno | ✅ Present (JS box) |
 | Runtime | Python (pyenv) | ✅ Present |
 | Runtime | Go | ✅ Present |
 | Runtime | Rust | ✅ Present |
@@ -97,21 +97,21 @@ The hive-mind install script installs two categories of tools:
 
 ### 2.1 Architecture Principle: Separation of Concerns
 
-The `full-sandbox` is designed as a **universal development sandbox** — a base image for software development across many languages. It is intentionally not AI-specific.
+The `full-box` is designed as a **universal development box** — a base image for software development across many languages. It is intentionally not AI-specific.
 
-The Hive Mind system is an AI coding agent orchestrator that **inherits from the sandbox** and adds:
+The Hive Mind system is an AI coding agent orchestrator that **inherits from the box** and adds:
 - AI agent CLI frontends
 - Workflow automation utilities
 - Playwright browser automation
 
 This separation means:
-- **Sandbox** → universal programming environment (language runtimes, compilers, tools)
-- **Hive Mind image** → extends sandbox + adds AI tools on top
+- **Box** → universal programming environment (language runtimes, compilers, tools)
+- **Hive Mind image** → extends box + adds AI tools on top
 
-Violating this boundary by adding AI tools to the sandbox would:
-1. Bloat the universal sandbox with AI-specific software
+Violating this boundary by adding AI tools to the box would:
+1. Bloat the universal box with AI-specific software
 2. Create a maintenance burden when AI tool versions change
-3. Make the sandbox less useful for non-AI use cases
+3. Make the box less useful for non-AI use cases
 
 ### 2.2 The One True Gap: `expect`
 
@@ -123,17 +123,17 @@ Hive-mind installs `expect` in its main apt section alongside other essential to
 
 ## 3. Gap Analysis Summary
 
-### General-Purpose Tools: Missing From Sandbox
+### General-Purpose Tools: Missing From Box
 
 | # | Tool | Category | Severity | Fix |
 |---|------|----------|----------|-----|
 | 1 | `expect` | System (apt) | Low | Add to Dockerfile apt-get install |
 
-### AI-Specific Tools: Out-of-Scope for Sandbox
+### AI-Specific Tools: Out-of-Scope for Box
 
-These tools are installed by hive-mind but are **intentionally NOT added** to the universal sandbox. Hive Mind inherits from the sandbox and adds them on top:
+These tools are installed by hive-mind but are **intentionally NOT added** to the universal box. Hive Mind inherits from the box and adds them on top:
 
-| Tool | Reason Not in Sandbox |
+| Tool | Reason Not in Box |
 |------|----------------------|
 | `@anthropic-ai/claude-code` | AI-agent specific, not general development |
 | `@openai/codex` | AI-agent specific |
@@ -145,18 +145,18 @@ These tools are installed by hive-mind but are **intentionally NOT added** to th
 | `start-command`, `gh-pull-all`, etc. | Hive Mind workflow tools — belongs in hive-mind image |
 | Playwright + browsers | Browser automation for AI workflows — belongs in hive-mind image |
 
-### Things Full-Sandbox Has That Hive-Mind Does Not (Bonuses)
+### Things Full-Box Has That Hive-Mind Does Not (Bonuses)
 
-The sandbox is already a superset of hive-mind's general-purpose stack:
+The box is already a superset of hive-mind's general-purpose stack:
 
 | Tool | Present In |
 |------|-----------|
-| Kotlin (SDKMAN) | Full-sandbox only |
-| Ruby (rbenv) | Full-sandbox only |
-| Swift | Full-sandbox only |
-| R (`r-base`) | Full-sandbox only |
-| Assembly (nasm, fasm) | Full-sandbox only |
-| GitLab CLI (`glab`) + `glab-setup-git-identity` | Full-sandbox only |
+| Kotlin (SDKMAN) | Full-box only |
+| Ruby (rbenv) | Full-box only |
+| Swift | Full-box only |
+| R (`r-base`) | Full-box only |
+| Assembly (nasm, fasm) | Full-box only |
+| GitLab CLI (`glab`) + `glab-setup-git-identity` | Full-box only |
 
 ---
 
@@ -164,20 +164,20 @@ The sandbox is already a superset of hive-mind's general-purpose stack:
 
 ### 4.1 Changes Made
 
-1. **`ubuntu/24.04/full-sandbox/Dockerfile`**: Add `expect` to the apt-get install block
-2. **`ubuntu/24.04/full-sandbox/install.sh`**: Add `expect` install to the system packages section
+1. **`ubuntu/24.04/full-box/Dockerfile`**: Add `expect` to the apt-get install block
+2. **`ubuntu/24.04/full-box/install.sh`**: Add `expect` install to the system packages section
 3. **`REQUIREMENTS.md`**: Document `expect` in FR-3 (Development Tools); add C-5 (local-first installation policy)
 4. **`.github/workflows/release.yml`**: Add `expect -v` check to CI tests
 
 ### 4.2 Design Decision: Where AI Tools Belong
 
 The Hive Mind system should:
-1. Use the sandbox image as its base (`FROM konard/sandbox:latest`)
+1. Use the box image as its base (`FROM konard/box:latest`)
 2. Add its AI CLIs (`claude-code`, `codex`, `gemini-cli`, etc.) in the hive-mind Dockerfile
 3. Add Playwright and browser automation in the hive-mind Dockerfile
 4. Add its workflow utilities (`gh-pull-all`, `gh-load-issue`, etc.) in the hive-mind Dockerfile
 
-This way, the sandbox remains a clean, universal development environment that any project can build upon.
+This way, the box remains a clean, universal development environment that any project can build upon.
 
 ---
 

@@ -1,10 +1,10 @@
-# Case Study: Issue #68 — Playwright and Puppeteer Dependencies Missing from Sandbox Images
+# Case Study: Issue #68 — Playwright and Puppeteer Dependencies Missing from Box Images
 
 ## Executive Summary
 
-When using the `konard/sandbox` (or any of the sandbox-based images: `konard/sandbox-js`, `konard/sandbox-essentials`) to run Playwright or Puppeteer browser automation, the host system is missing critical OS-level dependencies required to launch browsers (Chromium, Firefox, WebKit). Additionally, no CLI tools for managing browsers (`playwright`, `@puppeteer/browsers`) are preinstalled.
+When using the `konard/box` (or any of the box-based images: `konard/box-js`, `konard/box-essentials`) to run Playwright or Puppeteer browser automation, the host system is missing critical OS-level dependencies required to launch browsers (Chromium, Firefox, WebKit). Additionally, no CLI tools for managing browsers (`playwright`, `@puppeteer/browsers`) are preinstalled.
 
-**Root cause**: The sandbox Dockerfiles only install minimal prerequisites. The system libraries required by Chromium/Firefox/WebKit (GTK, CUPS, D-Bus, libXkbcommon, ALSA, ATK, etc.) are not included.
+**Root cause**: The box Dockerfiles only install minimal prerequisites. The system libraries required by Chromium/Firefox/WebKit (GTK, CUPS, D-Bus, libXkbcommon, ALSA, ATK, etc.) are not included.
 
 **Secondary issue**: No Playwright or Puppeteer CLI tools are globally installed, requiring users to install them before use.
 
@@ -46,15 +46,15 @@ The warning only lists the minimum deps missing for the installed browsers. The 
 
 ```
 ubuntu:24.04
-  └── konard/sandbox-js (JS runtimes: Node.js/NVM, Bun, Deno)
-        └── konard/sandbox-essentials (+ gh, glab, git identity tools)
-              ├── konard/sandbox-python, sandbox-go, ...  (language-specific)
-              └── konard/sandbox (full-sandbox — all languages merged)
+  └── konard/box-js (JS runtimes: Node.js/NVM, Bun, Deno)
+        └── konard/box-essentials (+ gh, glab, git identity tools)
+              ├── konard/box-python, box-go, ...  (language-specific)
+              └── konard/box (full-box — all languages merged)
 ```
 
-The CI log comes from building `konard/hive-mind` which is built on top of `konard/sandbox`.
+The CI log comes from building `konard/hive-mind` which is built on top of `konard/box`.
 
-### 1.3 Current System Dependencies in JS Sandbox (minimal)
+### 1.3 Current System Dependencies in JS Box (minimal)
 
 From `ubuntu/24.04/js/Dockerfile`:
 ```dockerfile
@@ -130,18 +130,18 @@ Note: On Ubuntu 24.04, some packages use the `t64` suffix (e.g., `libasound2t64`
 
 ### 2.1 Primary Root Cause
 
-The sandbox images are designed as development environments but do not include the system-level shared libraries required by browsers (Chromium, Firefox, WebKit). These libraries cannot be installed by the sandbox user (they require root/apt). They must be baked into the Docker image at build time.
+The box images are designed as development environments but do not include the system-level shared libraries required by browsers (Chromium, Firefox, WebKit). These libraries cannot be installed by the box user (they require root/apt). They must be baked into the Docker image at build time.
 
 The affected Dockerfiles:
 - `ubuntu/24.04/js/Dockerfile` — the base image that all others build upon
-- `ubuntu/24.04/essentials-sandbox/install.sh` — where system packages are installed for the essentials image
-- `ubuntu/24.04/full-sandbox/Dockerfile` and `ubuntu/24.04/full-sandbox/install.sh` — the full image
+- `ubuntu/24.04/essentials-box/install.sh` — where system packages are installed for the essentials image
+- `ubuntu/24.04/full-box/Dockerfile` and `ubuntu/24.04/full-box/install.sh` — the full image
 
-Since `sandbox-js` is the lowest-level image, adding Playwright/Puppeteer dependencies there propagates to all derived images (essentials, full-sandbox).
+Since `box-js` is the lowest-level image, adding Playwright/Puppeteer dependencies there propagates to all derived images (essentials, full-box).
 
 ### 2.2 Secondary Issue — No CLI Tools Preinstalled
 
-The `playwright` CLI (`npx playwright`) and `@puppeteer/browsers` CLI are not globally installed in the sandbox. Users need to run:
+The `playwright` CLI (`npx playwright`) and `@puppeteer/browsers` CLI are not globally installed in the box. Users need to run:
 ```bash
 npm install -D @playwright/test  # or
 npm install puppeteer
@@ -159,8 +159,8 @@ The complete list of all browser dependencies (Chromium + Firefox + WebKit) is s
 
 ## 3. Timeline / Sequence of Events
 
-1. **Sandbox image build**: `konard/sandbox-js`, `konard/sandbox-essentials`, and `konard/sandbox` are built with minimal system prerequisites.
-2. **hive-mind image build**: Built on top of `konard/sandbox`, runs `npx playwright install` to download browsers.
+1. **Box image build**: `konard/box-js`, `konard/box-essentials`, and `konard/box` are built with minimal system prerequisites.
+2. **hive-mind image build**: Built on top of `konard/box`, runs `npx playwright install` to download browsers.
 3. **Playwright validation**: After downloading browsers, Playwright checks whether host system has all required libraries.
 4. **Warning emitted**: Playwright detects 7 missing libraries for the installed browsers, reports:
    `"Host system is missing dependencies to run browsers."`
@@ -172,13 +172,13 @@ The complete list of all browser dependencies (Chromium + Firefox + WebKit) is s
 
 ### 4.1 Add Playwright/Puppeteer System Dependencies to `js/Dockerfile`
 
-Add all system-level library dependencies for Playwright and Puppeteer as an apt install step in `ubuntu/24.04/js/Dockerfile`. Since this is the base for all sandbox images, all derived images will automatically inherit these dependencies.
+Add all system-level library dependencies for Playwright and Puppeteer as an apt install step in `ubuntu/24.04/js/Dockerfile`. Since this is the base for all box images, all derived images will automatically inherit these dependencies.
 
 The dependencies to add are the union of:
 - Playwright's complete dependency list for ubuntu24.04 (Chromium + Firefox + WebKit)
 - Puppeteer's Chrome dependencies (mostly overlapping with Playwright's Chromium list)
 
-### 4.2 Add Browser CLI Tools to `essentials-sandbox/install.sh`
+### 4.2 Add Browser CLI Tools to `essentials-box/install.sh`
 
 Globally install Playwright CLI and Puppeteer browser management CLI via npm:
 ```bash
@@ -191,9 +191,9 @@ This allows users to run:
 
 ### 4.3 Architecture Decision
 
-Add dependencies to `js/Dockerfile` (base level) rather than only to `essentials-sandbox` or `full-sandbox` because:
+Add dependencies to `js/Dockerfile` (base level) rather than only to `essentials-box` or `full-box` because:
 1. The issue explicitly states "all core Dockerfiles should include dependencies for puppeteer and playwright CLI at apt level"
-2. `sandbox-js` is the smallest image that users might use directly for JS e2e testing
+2. `box-js` is the smallest image that users might use directly for JS e2e testing
 3. Adding at the base level avoids duplication
 
 ---
@@ -202,15 +202,15 @@ Add dependencies to `js/Dockerfile` (base level) rather than only to `essentials
 
 See the changes in:
 - `ubuntu/24.04/js/Dockerfile` — Playwright/Puppeteer system dependencies added
-- `ubuntu/24.04/essentials-sandbox/install.sh` — Playwright and Puppeteer CLIs installed globally
-- `ubuntu/24.04/full-sandbox/install.sh` — Playwright browser download step
+- `ubuntu/24.04/essentials-box/install.sh` — Playwright and Puppeteer CLIs installed globally
+- `ubuntu/24.04/full-box/install.sh` — Playwright browser download step
 
 ---
 
 ## 6. References
 
-- [Issue #68](https://github.com/link-foundation/sandbox/issues/68)
-- [PR #69](https://github.com/link-foundation/sandbox/pull/69)
+- [Issue #68](https://github.com/link-foundation/box/issues/68)
+- [PR #69](https://github.com/link-foundation/box/pull/69)
 - [CI run with warning](https://github.com/link-assistant/hive-mind/actions/runs/22902572178/job/66453518615)
 - [Playwright nativeDeps.ts (official dependency list)](https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/registry/nativeDeps.ts)
 - [Playwright: Install System Dependencies](https://playwright.dev/docs/browsers#install-system-dependencies)

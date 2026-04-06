@@ -1,12 +1,12 @@
 # Case Study: PHP Docker Image Build Takes 2+ Hours
 
-**Issue**: [#44 - Why PHP image is built for more than 2 hours?](https://github.com/link-foundation/sandbox/issues/44)
+**Issue**: [#44 - Why PHP image is built for more than 2 hours?](https://github.com/link-foundation/box/issues/44)
 **Date**: 2026-02-17
 **Status**: Investigation Complete
 
 ## Executive Summary
 
-The PHP Docker image build (`sandbox-php`) on x86_64/AMD64 architecture took over 2 hours, while the same build on ARM64 completed in ~7.5 minutes. The root cause is Homebrew falling back to compiling PHP from source when Docker build cache is invalidated and pre-built bottles cannot be used.
+The PHP Docker image build (`box-php`) on x86_64/AMD64 architecture took over 2 hours, while the same build on ARM64 completed in ~7.5 minutes. The root cause is Homebrew falling back to compiling PHP from source when Docker build cache is invalidated and pre-built bottles cannot be used.
 
 ## Timeline of Events
 
@@ -58,7 +58,7 @@ When Docker build cache is invalidated, the PHP installation via Homebrew (`brew
 # ubuntu/24.04/php/Dockerfile
 FROM ${ESSENTIALS_IMAGE}
 
-USER sandbox
+USER box
 COPY ubuntu/24.04/php/install.sh /tmp/install.sh
 RUN bash /tmp/install.sh
 ```
@@ -133,7 +133,7 @@ Add a timeout to the PHP build step with fallback to alternative installation me
 
 **Implementation:**
 ```yaml
-- name: Build PHP sandbox
+- name: Build PHP box
   timeout-minutes: 15  # Fail fast if bottles unavailable
   continue-on-error: true
 
@@ -172,7 +172,7 @@ Add a timeout to the PHP build step with fallback to alternative installation me
 ### Internal Logs
 
 - Fast build logs: `/ci-logs/php-amd64-fast-build.log`
-- Stuck build job: `gh run view 22109801787 --repo link-foundation/sandbox --job 63903035885`
+- Stuck build job: `gh run view 22109801787 --repo link-foundation/box --job 63903035885`
 
 ## Appendix
 
@@ -206,7 +206,7 @@ end
 
 Rather than completely replacing Homebrew with apt, the solution preserves user-specific (Homebrew) installation as the preferred method with apt as a fallback:
 
-1. **Homebrew first (user-specific/local)**: Try installing PHP via Homebrew as the sandbox user
+1. **Homebrew first (user-specific/local)**: Try installing PHP via Homebrew as the box user
    - Uses a configurable timeout (default: 30 minutes)
    - If bottles are available, completes in seconds
    - If source compilation starts and exceeds timeout, fails gracefully
@@ -216,14 +216,14 @@ Rather than completely replacing Homebrew with apt, the solution preserves user-
    - Installs to `/usr/bin` (system-wide)
 
 3. **Marker file**: `~/.php-install-method` records `local` or `global`
-   - Used by full-sandbox to determine merge strategy
+   - Used by full-box to determine merge strategy
    - Local: `COPY --from` the Homebrew directory
-   - Global: Install PHP via apt in full-sandbox
+   - Global: Install PHP via apt in full-box
 
 4. **Tagging**: PHP images get `-local` or `-global` suffix tags
-   - `sandbox-php:latest-amd64` (always exists)
-   - `sandbox-php:latest-amd64-local` (only if Homebrew succeeded)
-   - `sandbox-php:latest-amd64-global` (only if apt fallback used)
+   - `box-php:latest-amd64` (always exists)
+   - `box-php:latest-amd64-local` (only if Homebrew succeeded)
+   - `box-php:latest-amd64-global` (only if apt fallback used)
 
 ### Timeout Calculation
 

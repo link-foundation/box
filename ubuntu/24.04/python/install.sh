@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Python installation via Pyenv
 # Usage: curl -fsSL <url> | bash  OR  bash install.sh
-# Requires: essentials-sandbox (provides build dependencies: libssl-dev, zlib1g-dev, etc.)
+# Requires: essentials-box (provides build dependencies: libssl-dev, zlib1g-dev, etc.)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$SCRIPT_DIR/../common.sh" ]; then
@@ -22,7 +22,7 @@ log_step "Installing Python via Pyenv"
 
 # Note: Build dependencies (libssl-dev, zlib1g-dev, libbz2-dev, libreadline-dev,
 # libsqlite3-dev, libncursesw5-dev, xz-utils, tk-dev, libxml2-dev, libxmlsec1-dev,
-# libffi-dev, liblzma-dev) are provided by essentials-sandbox.
+# libffi-dev, liblzma-dev) are provided by essentials-box.
 
 # --- Pyenv ---
 if [ ! -d "$HOME/.pyenv" ]; then

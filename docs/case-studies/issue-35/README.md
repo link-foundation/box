@@ -1,6 +1,6 @@
 # Case Study: Component Sizes Not Calculated or Pushed to README on Push to Main
 
-**Issue:** [#35 - Components sizes are not calculated or pushed to README.md on push to main branch](https://github.com/link-foundation/sandbox/issues/35)
+**Issue:** [#35 - Components sizes are not calculated or pushed to README.md on push to main branch](https://github.com/link-foundation/box/issues/35)
 
 **Date of Investigation:** 2026-01-31
 
@@ -200,8 +200,8 @@ This run had no validation step, so it committed 0MB data to main.
 
 ## Related Issues
 
-- [#29 - Components size update failed](https://github.com/link-foundation/sandbox/issues/29) — APT cleanup breaking package installation (fixed)
-- [#31 - CI/CD failed](https://github.com/link-foundation/sandbox/issues/31) — sed delimiter error with `/` in component names (partially fixed, this issue completes the fix)
+- [#29 - Components size update failed](https://github.com/link-foundation/box/issues/29) — APT cleanup breaking package installation (fixed)
+- [#31 - CI/CD failed](https://github.com/link-foundation/box/issues/31) — sed delimiter error with `/` in component names (partially fixed, this issue completes the fix)
 
 ## CI Logs
 
@@ -210,8 +210,8 @@ Full CI logs are preserved in:
 - `ci-logs/measure-disk-space-success-21481304786.log` — Earlier run with broken apt
 
 Online:
-- [GitHub Actions Run 21489818730](https://github.com/link-foundation/sandbox/actions/runs/21489818730) — Failed measurement run
-- [GitHub Actions Run 21481304786](https://github.com/link-foundation/sandbox/actions/runs/21481304786) — Earlier "successful" run with 0MB data
+- [GitHub Actions Run 21489818730](https://github.com/link-foundation/box/actions/runs/21489818730) — Failed measurement run
+- [GitHub Actions Run 21481304786](https://github.com/link-foundation/box/actions/runs/21481304786) — Earlier "successful" run with 0MB data
 
 ## Conclusion
 

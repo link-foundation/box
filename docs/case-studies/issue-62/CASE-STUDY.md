@@ -1,16 +1,16 @@
-# Case Study: `cargo` Not Found in `konard/sandbox:1.3.13` Docker Image (Issue #62)
+# Case Study: `cargo` Not Found in `konard/box:1.3.13` Docker Image (Issue #62)
 
 ## Issue Reference
-- **Issue**: https://github.com/link-foundation/sandbox/issues/62
-- **PR**: https://github.com/link-foundation/sandbox/pull/63
-- **Docker image**: `konard/sandbox:1.3.13`
-- **CI run for 1.3.13**: [22596250182](https://github.com/link-foundation/sandbox/actions/runs/22596250182)
+- **Issue**: https://github.com/link-foundation/box/issues/62
+- **PR**: https://github.com/link-foundation/box/pull/63
+- **Docker image**: `konard/box:1.3.13`
+- **CI run for 1.3.13**: [22596250182](https://github.com/link-foundation/box/actions/runs/22596250182)
 
 ---
 
 ## Executive Summary
 
-The user reported that `cargo` (Rust toolchain) is "not found" when running commands inside the `konard/sandbox:1.3.13` Docker image using the `--isolated docker` tool with `--image konard/sandbox:1.3.13`. Investigation reveals **two distinct but related issues**:
+The user reported that `cargo` (Rust toolchain) is "not found" when running commands inside the `konard/box:1.3.13` Docker image using the `--isolated docker` tool with `--image konard/box:1.3.13`. Investigation reveals **two distinct but related issues**:
 
 1. **Immediate cause**: The command tested was `сargo` (using Cyrillic Unicode character U+0441 'с' instead of ASCII 'c'). This exact string does not exist as a binary and will always fail with "not found", regardless of whether the Rust toolchain is installed.
 
@@ -30,26 +30,26 @@ The user requested:
 ### 2026-03-02T21:21:21Z — Version 1.3.13 Released
 
 - **Event**: PR #61 merged to main, adding `release-only` mode to workflow_dispatch
-- **CI Run**: [22596250182](https://github.com/link-foundation/sandbox/actions/runs/22596250182) — SUCCESS
-- Docker image `konard/sandbox:1.3.13` published to Docker Hub and GHCR
-- All build jobs succeeded (JS, essentials, language images, full-sandbox)
+- **CI Run**: [22596250182](https://github.com/link-foundation/box/actions/runs/22596250182) — SUCCESS
+- Docker image `konard/box:1.3.13` published to Docker Hub and GHCR
+- All build jobs succeeded (JS, essentials, language images, full-box)
 - No CI test step ran against the full image (docker-build-test only runs on PRs)
 
 ### 2026-03-02T22:14Z — User Tests the Image
 
-The user ran commands using the `--isolated docker` runner with `konard/sandbox:1.3.13`:
+The user ran commands using the `--isolated docker` runner with `konard/box:1.3.13`:
 
 ```
-$ --isolated docker --image konard/sandbox:1.3.13 -- node -v
+$ --isolated docker --image konard/box:1.3.13 -- node -v
 v20.20.0   ✓
 
-$ --isolated docker --image konard/sandbox:1.3.13 -- dotnet --version
+$ --isolated docker --image konard/box:1.3.13 -- dotnet --version
 8.0.124    ✓
 
-$ --isolated docker --image konard/sandbox:1.3.13 -- сargo -v
+$ --isolated docker --image konard/box:1.3.13 -- сargo -v
 /bin/sh: 1: сargo: not found   ✗  (exit 127)
 
-$ --isolated docker --image konard/sandbox:1.3.13 -- nvm
+$ --isolated docker --image konard/box:1.3.13 -- nvm
 /bin/sh: 1: nvm: not found     ✗  (exit 127)
 ```
 
@@ -69,7 +69,7 @@ User files the issue, reporting that `cargo` and `nvm` are not found in the 1.3.
 
 **Verification**: The `node -v` command works (v20.20.0), and `dotnet --version` works. If the Docker image's PATH was completely broken, these would also fail. The fact that `node` and `dotnet` work confirms that PATH-accessible binaries function correctly.
 
-**Can `cargo` (ASCII) actually be found?** Yes — the Dockerfile sets `ENV PATH="/home/sandbox/.cargo/bin:..."` at image build time. Docker ENV variables are embedded in the image and are available even when running without the entrypoint. Running `docker run konard/sandbox:1.3.13 cargo --version` with ASCII 'c' should work.
+**Can `cargo` (ASCII) actually be found?** Yes — the Dockerfile sets `ENV PATH="/home/box/.cargo/bin:..."` at image build time. Docker ENV variables are embedded in the image and are available even when running without the entrypoint. Running `docker run konard/box:1.3.13 cargo --version` with ASCII 'c' should work.
 
 ### Root Cause 2 (For `nvm`): NVM Is a Shell Function, Not a Binary
 
@@ -88,21 +88,21 @@ This means the `--isolated docker` runner DOES call the ENTRYPOINT. The entrypoi
 
 **Actual mechanism**: The `--isolated docker` runner likely invokes:
 ```
-docker run konard/sandbox:1.3.13 /bin/sh -c "nvm"
+docker run konard/box:1.3.13 /bin/sh -c "nvm"
 ```
 Which calls the ENTRYPOINT with args `/bin/sh -c "nvm"`. The entrypoint does `exec /bin/sh -c "nvm"`. The `/bin/sh` process gets a fresh environment — it has ENV variables (from Docker) but NOT the bash function `nvm`. So `nvm` is not found.
 
 For `node`: the entrypoint, when running normally (i.e., via `exec /bin/sh -c "node -v"`), has already modified the PATH to include the NVM bin directory (via `source $NVM_DIR/nvm.sh`). This modified PATH is inherited by the child process `/bin/sh`. Since `node` is a binary (not a shell function), it's found in PATH. ✓
 
-For `cargo`: the entrypoint similarly inherits `/home/sandbox/.cargo/bin` in PATH (from both ENV and potentially from sourcing `.bashrc`). `cargo` is a binary. If the binary exists at `/home/sandbox/.cargo/bin/cargo`, it should be accessible. The **Cyrillic character** is what caused the actual failure.
+For `cargo`: the entrypoint similarly inherits `/home/box/.cargo/bin` in PATH (from both ENV and potentially from sourcing `.bashrc`). `cargo` is a binary. If the binary exists at `/home/box/.cargo/bin/cargo`, it should be accessible. The **Cyrillic character** is what caused the actual failure.
 
 ### Root Cause 3 (Structural): CI Tests Are Non-Fatal
 
-**Evidence**: In `.github/workflows/release.yml`, the "Test full sandbox" step (within `docker-build-test`):
+**Evidence**: In `.github/workflows/release.yml`, the "Test full box" step (within `docker-build-test`):
 
 ```yaml
-docker run --rm sandbox-test rustc --version || echo "Rust test failed"
-docker run --rm sandbox-test node --version  || echo "Node.js test failed"
+docker run --rm box-test rustc --version || echo "Rust test failed"
+docker run --rm box-test node --version  || echo "Node.js test failed"
 # ... etc
 ```
 
@@ -147,7 +147,7 @@ The Cyrillic 'с' (U+0441) is visually indistinguishable from ASCII 'c' (U+0063)
 
 **Change**: Remove `|| echo "..."` fallbacks from test commands in `docker-build-test`. Use `set -e` (or rely on bash's default error propagation) to make any test failure fail the CI step.
 
-**Implementation**: Updated the "Test JS sandbox", "Test essentials sandbox", and "Test full sandbox" steps in `.github/workflows/release.yml` to use strict test commands that fail the step on any error.
+**Implementation**: Updated the "Test JS box", "Test essentials box", and "Test full box" steps in `.github/workflows/release.yml` to use strict test commands that fail the step on any error.
 
 **Also added**: A dedicated "Verify toolchains" step that runs comprehensive commands for every installed language runtime, using the entrypoint (bash) to ensure all shell-function-based tools (like NVM) are accessible.
 
@@ -161,19 +161,19 @@ The Cyrillic 'с' (U+0441) is visually indistinguishable from ASCII 'c' (U+0063)
 
 ### Solution 3: Run Basic Smoke Tests on Every Build (Including Main/Dispatch)
 
-**Change**: Added a "smoke test" step to the `docker-build-push` job that runs after each full-sandbox image push. This ensures the released image is validated, not just PR builds.
+**Change**: Added a "smoke test" step to the `docker-build-push` job that runs after each full-box image push. This ensures the released image is validated, not just PR builds.
 
 ---
 
 ## Data Files
 
-- `ci-logs/release-1313-run-22596250182.log` — The successful CI run that built and released `konard/sandbox:1.3.13`
+- `ci-logs/release-1313-run-22596250182.log` — The successful CI run that built and released `konard/box:1.3.13`
 
 ---
 
 ## References
 
-- [Issue #62](https://github.com/link-foundation/sandbox/issues/62)
+- [Issue #62](https://github.com/link-foundation/box/issues/62)
 - [NVM README — NVM is a shell function](https://github.com/nvm-sh/nvm/blob/master/README.md)
 - [Docker ENTRYPOINT documentation](https://docs.docker.com/engine/containers/run/#entrypoint-default-command-to-execute-at-runtime)
 - [Unicode Confusables — Unicode.org](https://www.unicode.org/reports/tr39/#Confusable_Detection)

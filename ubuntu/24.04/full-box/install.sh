@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Full Sandbox Installation Script
+# Full Box Installation Script
 # Installs all additional language runtimes and development tools
-# on top of the essentials-sandbox (which already includes JS + git identity tools).
+# on top of the essentials-box (which already includes JS + git identity tools).
 #
 # Architecture:
-#   JS sandbox → essentials-sandbox → full-sandbox (this script)
+#   JS box → essentials-box → full-box (this script)
 #
 # Each language installer is a standalone script under ubuntu/24.04/<language>/install.sh.
 
@@ -25,7 +25,7 @@ else
   maybe_sudo() { if [ "$EUID" -eq 0 ]; then "$@"; elif command -v sudo &>/dev/null; then sudo "$@"; else "$@"; fi; }
 fi
 
-log_step "Installing Full Sandbox (on top of essentials)"
+log_step "Installing Full Box (on top of essentials)"
 
 # --- Install additional system packages ---
 log_step "Installing additional system packages"
@@ -64,7 +64,7 @@ maybe_sudo apt install -y expect
 log_success "expect installed"
 
 # Note: Common build dependencies (build-essential, libssl-dev, zlib1g-dev,
-# libyaml-dev, etc.) are already installed in the essentials-sandbox layer.
+# libyaml-dev, etc.) are already installed in the essentials-box layer.
 
 # Bubblewrap (needed by Rocq/Opam)
 log_info "Installing bubblewrap..."
@@ -75,19 +75,19 @@ log_success "Bubblewrap installed"
 log_step "Preparing Homebrew directory"
 if [ ! -d /home/linuxbrew/.linuxbrew ]; then
   maybe_sudo mkdir -p /home/linuxbrew/.linuxbrew
-  if id "sandbox" &>/dev/null; then
-    maybe_sudo chown -R sandbox:sandbox /home/linuxbrew
+  if id "box" &>/dev/null; then
+    maybe_sudo chown -R box:box /home/linuxbrew
   fi
 else
-  if id "sandbox" &>/dev/null; then
-    maybe_sudo chown -R sandbox:sandbox /home/linuxbrew
+  if id "box" &>/dev/null; then
+    maybe_sudo chown -R box:box /home/linuxbrew
   fi
 fi
 
-# --- Install all language runtimes as sandbox user ---
-log_step "Installing language runtimes as sandbox user"
+# --- Install all language runtimes as box user ---
+log_step "Installing language runtimes as box user"
 
-cat > /tmp/full-sandbox-user-setup.sh <<'EOF_FULL_SETUP'
+cat > /tmp/full-box-user-setup.sh <<'EOF_FULL_SETUP'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -98,7 +98,7 @@ log_note() { echo "[i] $1"; }
 log_step() { echo "==> $1"; }
 command_exists() { command -v "$1" &>/dev/null; }
 
-# Ensure JS tools are available (installed by essentials/JS sandbox)
+# Ensure JS tools are available (installed by essentials/JS box)
 export BUN_INSTALL="$HOME/.bun"
 export DENO_INSTALL="$HOME/.deno"
 export NVM_DIR="$HOME/.nvm"
@@ -449,13 +449,13 @@ command_exists opam && log_success "Opam: $(opam --version)" || true
 echo ""
 EOF_FULL_SETUP
 
-chmod +x /tmp/full-sandbox-user-setup.sh
+chmod +x /tmp/full-box-user-setup.sh
 if [ "$EUID" -eq 0 ]; then
-  su - sandbox -c "bash /tmp/full-sandbox-user-setup.sh"
+  su - box -c "bash /tmp/full-box-user-setup.sh"
 else
-  sudo -i -u sandbox bash /tmp/full-sandbox-user-setup.sh
+  sudo -i -u box bash /tmp/full-box-user-setup.sh
 fi
-rm -f /tmp/full-sandbox-user-setup.sh
+rm -f /tmp/full-box-user-setup.sh
 
 # --- Final cleanup ---
 log_step "Final cleanup"
@@ -464,6 +464,6 @@ maybe_sudo apt-get autoclean
 maybe_sudo apt-get autoremove -y
 maybe_sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-log_step "Full Sandbox setup complete!"
+log_step "Full Box setup complete!"
 log_success "All components installed successfully"
 log_note "Please restart your shell or run: source ~/.bashrc"

@@ -1,6 +1,6 @@
 # Requirements
 
-This document defines the requirements and constraints for the sandbox Docker image project.
+This document defines the requirements and constraints for the box Docker image project.
 
 ## Functional Requirements
 
@@ -146,9 +146,9 @@ PHP MUST be installed using a **user-specific** method (Homebrew) when possible,
 | Priority | Method | Location | Tag Suffix | Mergeability |
 |----------|--------|----------|------------|--------------|
 | 1 (preferred) | Homebrew | `/home/linuxbrew/.linuxbrew` | `-local` | COPY --from supported |
-| 2 (fallback) | apt | `/usr/bin` (global) | `-global` | Must install via apt in full-sandbox |
+| 2 (fallback) | apt | `/usr/bin` (global) | `-global` | Must install via apt in full-box |
 
-**Rationale**: User-specific installation allows Docker images to be merged via `COPY --from` in the full-sandbox. Global (apt) installation cannot be merged this way and requires reinstallation.
+**Rationale**: User-specific installation allows Docker images to be merged via `COPY --from` in the full-box. Global (apt) installation cannot be merged this way and requires reinstallation.
 
 **Timeout**: Homebrew PHP installation has a timeout (default: 30 minutes). If bottles are unavailable and source compilation is attempted, the timeout triggers fallback to apt.
 
@@ -170,7 +170,7 @@ All tools MUST prefer **local (user-specific) installation** over global (system
 - npm global packages: `npm install -g` → NVM-managed node prefix
 - System (apt) packages only when no local alternative exists
 
-**Rationale**: Local installation allows Docker image layers to be assembled via `COPY --from`, enabling parallel builds and easy portability between images. Tools that require AI-specific packages (such as AI coding agents or workflow utilities) should be installed in images that inherit from the sandbox, rather than in the sandbox itself.
+**Rationale**: Local installation allows Docker image layers to be assembled via `COPY --from`, enabling parallel builds and easy portability between images. Tools that require AI-specific packages (such as AI coding agents or workflow utilities) should be installed in images that inherit from the box, rather than in the box itself.
 
 ## Future Considerations
 

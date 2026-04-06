@@ -1,10 +1,10 @@
 # Architecture
 
-This document describes the architecture and design decisions for the sandbox Docker image project.
+This document describes the architecture and design decisions for the box Docker image project.
 
 ## Overview
 
-The sandbox is a multi-architecture Docker image that provides a comprehensive development environment with popular programming language runtimes and tools pre-installed. It is designed to be used as a base image for AI-assisted development workflows.
+The box is a multi-architecture Docker image that provides a comprehensive development environment with popular programming language runtimes and tools pre-installed. It is designed to be used as a base image for AI-assisted development workflows.
 
 ## System Architecture
 
@@ -12,8 +12,8 @@ The sandbox is a multi-architecture Docker image that provides a comprehensive d
 +------------------------------------------+
 |           Docker Container               |
 |  +------------------------------------+  |
-|  |     User: sandbox (non-root)       |  |
-|  |     Home: /workspace               |  |
+|  |     User: box (non-root)       |  |
+|  |     Home: /home/box               |  |
 |  +------------------------------------+  |
 |                                          |
 |  +------------------------------------+  |
@@ -80,7 +80,7 @@ See [Case Study: Docker ARM64 Build Timeout](docs/case-studies/issue-7/README.md
 The CI/CD pipeline uses per-image change detection for efficiency. Only images whose
 scripts or Dockerfiles changed are rebuilt. Unchanged images reuse the latest published version.
 
-All language images are built in parallel, and the full sandbox assembles them via
+All language images are built in parallel, and the full box assembles them via
 multi-stage `COPY --from` once all are ready.
 
 ```
@@ -97,7 +97,7 @@ multi-stage `COPY --from` once all are ready.
          │
          ▼
 ┌────────────────────────┐
-│  build-essentials      │  ← built on JS sandbox
+│  build-essentials      │  ← built on JS box
 │  (amd64 + arm64)       │  (parallel per arch)
 └────────┬───────────────┘
          │
@@ -111,7 +111,7 @@ multi-stage `COPY --from` once all are ready.
                      │
                      ▼
 ┌────────────────────────┐
-│  docker-build-push     │  ← full sandbox: COPY --from all language images
+│  docker-build-push     │  ← full box: COPY --from all language images
 │  (amd64 + arm64)       │  (multi-stage assembly, waits for all languages)
 └────────┬───────────────┘
          │
@@ -123,14 +123,14 @@ multi-stage `COPY --from` once all are ready.
 ```
 
 Each image only rebuilds if its own scripts/Dockerfiles changed, or if a dependency
-(common.sh, essentials) changed. The full sandbox uses `COPY --from` to merge
+(common.sh, essentials) changed. The full box uses `COPY --from` to merge
 pre-built language runtimes from all language images, plus `apt install` for
 system-level packages (.NET, R, C/C++, Assembly).
 
 ## File Structure
 
 ```
-sandbox/
+box/
 ├── .github/
 │   └── workflows/
 │       └── release.yml              # CI/CD workflow
@@ -185,10 +185,10 @@ sandbox/
 │       ├── assembly/                # Assembly (NASM, FASM)
 │       │   ├── install.sh
 │       │   └── Dockerfile
-│       ├── essentials-sandbox/      # Minimal sandbox (git identity tools)
+│       ├── essentials-box/      # Minimal box (git identity tools)
 │       │   ├── install.sh
 │       │   └── Dockerfile
-│       └── full-sandbox/            # Complete sandbox (all languages)
+│       └── full-box/            # Complete box (all languages)
 │           ├── install.sh
 │           └── Dockerfile
 ├── scripts/
@@ -200,7 +200,7 @@ sandbox/
 │   └── case-studies/                # Case studies
 ├── data/                            # Data files
 ├── experiments/                     # Experimental scripts
-├── Dockerfile                       # Root Dockerfile (full sandbox)
+├── Dockerfile                       # Root Dockerfile (full box)
 ├── README.md                        # Project overview
 ├── ARCHITECTURE.md                  # This file
 ├── REQUIREMENTS.md                  # Project requirements
@@ -209,18 +209,18 @@ sandbox/
 
 ## Modular Design
 
-The sandbox follows a modular architecture where all language images depend on
-`essentials-sandbox`, and the full sandbox assembles them via multi-stage `COPY --from`:
+The box follows a modular architecture where all language images depend on
+`essentials-box`, and the full box assembles them via multi-stage `COPY --from`:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  JS sandbox (konard/sandbox-js)                             │
+│  JS box (konard/box-js)                             │
 │  └─ Node.js, Bun, Deno, npm                                │
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Essentials sandbox (konard/sandbox-essentials)              │
+│  Essentials box (konard/box-essentials)              │
 │  └─ + git, gh, glab, identity tools, dev libraries          │
 └──┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬────┬──┬─┘
    │      │      │      │      │      │      │      │    │  │
@@ -231,14 +231,14 @@ The sandbox follows a modular architecture where all language images depend on
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Full sandbox (konard/sandbox)                               │
+│  Full box (konard/box)                               │
 │  └─ COPY --from all language images                          │
 │  └─ + apt: .NET, R, C/C++, Assembly (system packages)       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 Each language image is also available as a standalone Docker image
-(e.g., `konard/sandbox-python`, `konard/sandbox-go`, etc.), each with
+(e.g., `konard/box-python`, `konard/box-go`, etc.), each with
 essentials pre-installed (JS, git, gh, glab, dev libraries).
 
 ### Benefits
@@ -246,7 +246,7 @@ essentials pre-installed (JS, git, gh, glab, dev libraries).
 1. **Configurable disk usage**: Users can choose only the languages they need
 2. **Parallel CI/CD**: All language images are built in parallel
 3. **Faster iteration**: Changes to one language only rebuild that image
-4. **Efficient assembly**: Full sandbox uses `COPY --from` to merge pre-built files
+4. **Efficient assembly**: Full box uses `COPY --from` to merge pre-built files
 5. **No dependency conflicts**: Each language builds in isolation on essentials
 6. **Standalone scripts**: Each `install.sh` works directly on Ubuntu 24.04 via `curl | bash`
 
@@ -254,7 +254,7 @@ essentials pre-installed (JS, git, gh, glab, dev libraries).
 
 ### 1. Non-Root User
 
-The container runs as a non-root user (`sandbox`) for security. All language runtimes are installed in user-local directories.
+The container runs as a non-root user (`box`) for security. All language runtimes are installed in user-local directories.
 
 ### 2. Version Managers
 
@@ -274,18 +274,18 @@ ARM64 and AMD64 builds run as separate jobs (not a single multi-platform build) 
 
 PHP uses a **tiered installation strategy**:
 
-1. **Homebrew (preferred/local)**: Installs to `/home/linuxbrew/.linuxbrew` as the sandbox user
+1. **Homebrew (preferred/local)**: Installs to `/home/linuxbrew/.linuxbrew` as the box user
    - Provides user-specific installation that can be merged via `COPY --from` in Docker
    - Subject to a 30-minute timeout to prevent 2+ hour source compilations
    - A marker file (`~/.php-install-method`) records `local` on success
 
 2. **apt (fallback/global)**: Installs to `/usr/bin` system-wide
    - Used when Homebrew bottles are unavailable and compilation would exceed timeout
-   - Cannot be merged via `COPY --from` — full-sandbox must reinstall via apt
+   - Cannot be merged via `COPY --from` — full-box must reinstall via apt
    - Marker file records `global`
 
 PHP images are tagged with `-local` or `-global` suffix to indicate the install method.
-The full-sandbox reads the marker file and adjusts accordingly:
+The full-box reads the marker file and adjusts accordingly:
 - If `local`: copies `/home/linuxbrew/.linuxbrew` from php-stage
 - If `global`: installs PHP packages via apt directly
 

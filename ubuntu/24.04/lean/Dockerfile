@@ -1,21 +1,21 @@
-ARG ESSENTIALS_IMAGE=konard/sandbox-essentials:latest
+ARG ESSENTIALS_IMAGE=konard/box-essentials:latest
 FROM ${ESSENTIALS_IMAGE}
-# Build: docker build -f ubuntu/24.04/lean/Dockerfile --build-arg ESSENTIALS_IMAGE=sandbox-essentials -t sandbox-lean .
+# Build: docker build -f ubuntu/24.04/lean/Dockerfile --build-arg ESSENTIALS_IMAGE=box-essentials -t box-lean .
 
-# Lean sandbox: Lean theorem prover via elan
-# Built on top of essentials-sandbox (inherits JS, git, gh, glab, dev libraries)
+# Lean box: Lean theorem prover via elan
+# Built on top of essentials-box (inherits JS, git, gh, glab, dev libraries)
 
-USER sandbox
+USER box
 
-COPY --chown=sandbox:sandbox ubuntu/24.04/common.sh /tmp/common.sh
-COPY --chown=sandbox:sandbox ubuntu/24.04/lean/install.sh /tmp/install.sh
+COPY --chown=box:box ubuntu/24.04/common.sh /tmp/common.sh
+COPY --chown=box:box ubuntu/24.04/lean/install.sh /tmp/install.sh
 RUN chmod +x /tmp/install.sh /tmp/common.sh && \
     bash /tmp/install.sh && \
     rm -f /tmp/install.sh /tmp/common.sh
 
-WORKDIR /workspace
+WORKDIR /home/box
 
-ENV PATH="/workspace/.elan/bin:${PATH}"
+ENV PATH="/home/box/.elan/bin:${PATH}"
 
 SHELL ["/bin/bash", "-c"]
 CMD ["/bin/bash"]

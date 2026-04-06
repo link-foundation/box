@@ -1,9 +1,9 @@
 # Case Study: Manual CI/CD Did Not Produce Any New Releases (Issue #60)
 
 ## Issue Reference
-- **Issue**: https://github.com/link-foundation/sandbox/issues/60
-- **Commit referenced in issue**: https://github.com/link-foundation/sandbox/commit/7f7671300d152cf110b5d0cf2a9f4e16b3982dab
-- **Actions page**: https://github.com/link-foundation/sandbox/actions
+- **Issue**: https://github.com/link-foundation/box/issues/60
+- **Commit referenced in issue**: https://github.com/link-foundation/box/commit/7f7671300d152cf110b5d0cf2a9f4e16b3982dab
+- **Actions page**: https://github.com/link-foundation/box/actions
 
 ---
 
@@ -29,7 +29,7 @@ The user then manually triggered `workflow_dispatch` with `bump-and-release` mod
 
 - **Event**: PR #58 merged to `main`, containing the issue-57 fix
 - **Trigger**: `push` event on `main`
-- **Workflow Run**: [22445566687](https://github.com/link-foundation/sandbox/actions/runs/22445566687) — `Build and Release Docker Image` — **FAILED**
+- **Workflow Run**: [22445566687](https://github.com/link-foundation/box/actions/runs/22445566687) — `Build and Release Docker Image` — **FAILED**
 
 **What happened inside this run:**
 
@@ -46,7 +46,7 @@ The user then manually triggered `workflow_dispatch` with `bump-and-release` mod
 
 **Jobs: build-js-arm64, build-js-amd64, build-essentials-*,  build-languages-*** (14:06:23Z - 14:18+Z) — ❌ FAILED
 - Started building v1.3.11 Docker images (tags included `1.3.11-amd64`, `1.3.11-arm64`)
-- JS images: Successfully built and pushed `sandbox-js:1.3.11-*`
+- JS images: Successfully built and pushed `box-js:1.3.11-*`
 - Essentials images: Successfully built and pushed
 - Language images: **FAILED** due to transient network timeouts:
   - `ruby` (amd64): `DeadlineExceeded: Post "https://results-receiver.actions.githubusercontent.com/...": dial tcp 140.82.112.22:443: i/o timeout`
@@ -69,7 +69,7 @@ This means: if the original push-triggered run fails, there is **no automatic me
 
 - **Actor**: `konard`
 - **Mode**: `bump-and-release`, `bump_type: patch`, `description: "Test patch release"`
-- **Workflow Run**: [22459099802](https://github.com/link-foundation/sandbox/actions/runs/22459099802) — **SUCCESS**
+- **Workflow Run**: [22459099802](https://github.com/link-foundation/box/actions/runs/22459099802) — **SUCCESS**
 
 **What happened:**
 - Read current version (1.3.11, from the `apply-changesets` commit)

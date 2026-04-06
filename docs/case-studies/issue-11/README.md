@@ -1,6 +1,6 @@
 # Case Study: Docker Image Publishing Issues
 
-**Issue:** [#11 - Docker image publishing](https://github.com/link-foundation/sandbox/issues/11)
+**Issue:** [#11 - Docker image publishing](https://github.com/link-foundation/box/issues/11)
 
 **Date of Analysis:** 2026-01-22
 
@@ -19,7 +19,7 @@ The Docker image publishing workflow has multiple issues that prevent successful
 ### Issue 1: Manual Force Build Doesn't Work
 
 **Observed Behavior:**
-- Run [#21232569144](https://github.com/link-foundation/sandbox/actions/runs/21232569144) was triggered with `workflow_dispatch` and `force_build: true`
+- Run [#21232569144](https://github.com/link-foundation/box/actions/runs/21232569144) was triggered with `workflow_dispatch` and `force_build: true`
 - All Docker build jobs were **skipped**
 
 **Root Cause:**
@@ -40,7 +40,7 @@ The force_build was correctly parsed as `true`, and `should-build` was set to `t
 ### Issue 2: Regular Releases Don't Trigger Builds
 
 **Observed Behavior:**
-- Run [#21206380504](https://github.com/link-foundation/sandbox/actions/runs/21206380504) was triggered by `push` to `main`
+- Run [#21206380504](https://github.com/link-foundation/box/actions/runs/21206380504) was triggered by `push` to `main`
 - All Docker build jobs were **skipped**
 
 **Root Cause:**
@@ -56,7 +56,7 @@ Note: `force_build` is empty (`""`) for push events, and `docker=false`, `script
 ### Issue 3: `unknown/unknown` Platform in GHCR
 
 **Observed Behavior:**
-According to the issue description, the GHCR package at https://github.com/link-foundation/sandbox/pkgs/container/sandbox shows `unknown/unknown` instead of `linux/arm64`.
+According to the issue description, the GHCR package at https://github.com/link-foundation/box/pkgs/container/box shows `unknown/unknown` instead of `linux/arm64`.
 
 **Root Cause:**
 This is caused by Docker Buildx's default behavior of including **provenance attestations** when pushing images. These attestations are stored as manifest entries with `unknown/unknown` platform.

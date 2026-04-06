@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Disk Space Measurement Script for Sandbox Environment
+# Disk Space Measurement Script for Box Environment
 # This script measures disk space used by each installed component.
 # It wraps the installation script with disk space tracking capabilities.
 #
@@ -224,12 +224,12 @@ fi
 
 log_success "Pre-flight checks passed"
 
-# --- Create sandbox user if missing ---
-if ! id "sandbox" &>/dev/null; then
-  log_info "Creating sandbox user..."
-  useradd -m -d /workspace -s /bin/bash sandbox 2>/dev/null || adduser --disabled-password --gecos "" --home /workspace sandbox
-  passwd -d sandbox 2>/dev/null || true
-  usermod -aG sudo sandbox 2>/dev/null || true
+# --- Create box user if missing ---
+if ! id "box" &>/dev/null; then
+  log_info "Creating box user..."
+  useradd -m -d /home/box -s /bin/bash box 2>/dev/null || adduser --disabled-password --gecos "" --home /home/box box
+  passwd -d box 2>/dev/null || true
+  usermod -aG sudo box 2>/dev/null || true
 fi
 
 # --- Prepare APT ---
@@ -296,19 +296,19 @@ log_step "Preparing Homebrew Directory"
 
 if [ ! -d /home/linuxbrew/.linuxbrew ]; then
   maybe_sudo mkdir -p /home/linuxbrew/.linuxbrew
-  if id "sandbox" &>/dev/null; then
-    maybe_sudo chown -R sandbox:sandbox /home/linuxbrew
+  if id "box" &>/dev/null; then
+    maybe_sudo chown -R box:box /home/linuxbrew
   fi
 fi
 
 # ============================================================================
-# SANDBOX USER INSTALLATIONS
-# The following tools are installed as the sandbox user
+# BOX USER INSTALLATIONS
+# The following tools are installed as the box user
 # ============================================================================
-log_step "Measuring Sandbox User Installations"
+log_step "Measuring Box User Installations"
 
-# Create measurement script for sandbox user
-cat > /tmp/sandbox-measure.sh << 'EOF_SANDBOX'
+# Create measurement script for box user
+cat > /tmp/box-measure.sh << 'EOF_BOX'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -699,40 +699,40 @@ install_swift() {
 }
 measure_install "Swift 6.x" "Runtime" install_swift
 
-log_success "Sandbox user measurements complete"
-EOF_SANDBOX
+log_success "Box user measurements complete"
+EOF_BOX
 
-chmod +x /tmp/sandbox-measure.sh
+chmod +x /tmp/box-measure.sh
 
-# Resolve JSON output path to absolute before passing to sandbox user.
-# 'su - sandbox' and 'sudo -i -u sandbox' both create login shells that change
-# the working directory to the sandbox user's home (/workspace). Relative
+# Resolve JSON output path to absolute before passing to box user.
+# 'su - box' and 'sudo -i -u box' both create login shells that change
+# the working directory to the box user's home (/home/box). Relative
 # paths like 'data/disk-space-measurements.json' would then resolve to the wrong
 # location, causing "No such file or directory" errors.
 # See docs/case-studies/issue-46 for the full root cause analysis.
 JSON_OUTPUT_FILE_ABS="$(realpath "$JSON_OUTPUT_FILE")"
-# The sandbox user needs to read and write the JSON file, but the GitHub Actions
-# workspace directories (e.g. /home/runner/work/sandbox/sandbox/) are owned by
-# 'runner' and typically have mode 750, so 'sandbox' (not in the 'runner' group)
+# The box user needs to read and write the JSON file, but the GitHub Actions
+# workspace directories (e.g. /home/runner/work/box/box/) are owned by
+# 'runner' and typically have mode 750, so 'box' (not in the 'runner' group)
 # cannot traverse them even if the file itself is world-readable.
 # Solution: copy the JSON file to /tmp (world-accessible, mode 1777), run the
-# sandbox measurements against that copy, then copy the result back.
+# box measurements against that copy, then copy the result back.
 JSON_TMP_COPY="$(mktemp /tmp/disk-space-measurements-XXXXXX.json)"
 cp "$JSON_OUTPUT_FILE_ABS" "$JSON_TMP_COPY"
 chmod o+rw "$JSON_TMP_COPY"
 
-# Execute sandbox user measurements against the /tmp copy
+# Execute box user measurements against the /tmp copy
 if [ "$EUID" -eq 0 ]; then
-  su - sandbox -c "bash /tmp/sandbox-measure.sh '$JSON_TMP_COPY'"
+  su - box -c "bash /tmp/box-measure.sh '$JSON_TMP_COPY'"
 else
-  sudo -i -u sandbox bash /tmp/sandbox-measure.sh "$JSON_TMP_COPY"
+  sudo -i -u box bash /tmp/box-measure.sh "$JSON_TMP_COPY"
 fi
 
 # Copy the updated measurements back to the original location
 cp "$JSON_TMP_COPY" "$JSON_OUTPUT_FILE_ABS"
 rm -f "$JSON_TMP_COPY"
 
-rm -f /tmp/sandbox-measure.sh
+rm -f /tmp/box-measure.sh
 
 # ============================================================================
 # FINALIZE

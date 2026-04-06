@@ -85,10 +85,10 @@ Consider using registry-based caching for better cross-run cache hits:
     labels: ${{ steps.meta.outputs.labels }}
     # Registry-based caching (persists longer than GHA cache)
     cache-from: |
-      type=registry,ref=ghcr.io/link-foundation/sandbox:buildcache-arm64
+      type=registry,ref=ghcr.io/link-foundation/box:buildcache-arm64
       type=gha
     cache-to: |
-      type=registry,ref=ghcr.io/link-foundation/sandbox:buildcache-arm64,mode=max
+      type=registry,ref=ghcr.io/link-foundation/box:buildcache-arm64,mode=max
       type=gha,mode=max
 ```
 
@@ -154,12 +154,12 @@ After implementing the solution:
 1. **Trigger a workflow run**
    ```bash
    # Via workflow dispatch or push to main
-   gh workflow run release.yml --repo link-foundation/sandbox
+   gh workflow run release.yml --repo link-foundation/box
    ```
 
 2. **Monitor the ARM64 build**
    ```bash
-   gh run watch --repo link-foundation/sandbox
+   gh run watch --repo link-foundation/box
    ```
 
 3. **Expected results:**

@@ -2,12 +2,12 @@
 
 ## Summary
 
-The CI/CD "Measure Disk Space and Update README" workflow failed with **exit code 1** on the merge of PR #56 (the Issue #55 fix). The script `scripts/measure-disk-space.sh` exited early inside the sandbox user sub-script when measuring Homebrew. The fix for Issue #55 introduced a regression: `du -sb` is called on paths that may not exist, and with `set -euo pipefail` active, a non-zero `du` exit code kills the script before it can record 0 MB and continue.
+The CI/CD "Measure Disk Space and Update README" workflow failed with **exit code 1** on the merge of PR #56 (the Issue #55 fix). The script `scripts/measure-disk-space.sh` exited early inside the box user sub-script when measuring Homebrew. The fix for Issue #55 introduced a regression: `du -sb` is called on paths that may not exist, and with `set -euo pipefail` active, a non-zero `du` exit code kills the script before it can record 0 MB and continue.
 
 ## Issue Reference
 
-- **Issue**: [#57 — We have CI/CD failed](https://github.com/link-foundation/sandbox/issues/57)
-- **Failed CI run**: https://github.com/link-foundation/sandbox/actions/runs/22347524656/job/64665886012
+- **Issue**: [#57 — We have CI/CD failed](https://github.com/link-foundation/box/issues/57)
+- **Failed CI run**: https://github.com/link-foundation/box/actions/runs/22347524656/job/64665886012
 - **Log file**: `docs/case-studies/issue-57/ci-job-64665886012.txt`
 - **Triggered by**: Merge of PR #56 (commit `f274bfab` — "1.3.10: Fix language runtime size measurements")
 
@@ -48,7 +48,7 @@ We will close any issues without response for these unsupported configurations.
 
 ### Root Cause 1: `du` returns exit code 1 for non-existent paths; `set -euo pipefail` kills the script
 
-**Location:** `scripts/measure-disk-space.sh` (sandbox sub-script, Homebrew section, around line 588)
+**Location:** `scripts/measure-disk-space.sh` (box sub-script, Homebrew section, around line 588)
 
 **The buggy code** (introduced by the Issue #55 fix in commit `3471bf8`):
 
@@ -65,18 +65,18 @@ if install_homebrew; then
    ```bash
    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
    ```
-   The Homebrew installer checks `sudo` access and write permissions. The `sandbox` user has no NOPASSWD sudo, so `sudo -n -l mkdir` fails. Even though `/home/linuxbrew/.linuxbrew` is owned by sandbox (created by the outer script), the Homebrew installer exits with code 1. The `|| true` suppresses this, so `install_homebrew()` returns **0** (success).
+   The Homebrew installer checks `sudo` access and write permissions. The `box` user has no NOPASSWD sudo, so `sudo -n -l mkdir` fails. Even though `/home/linuxbrew/.linuxbrew` is owned by box (created by the outer script), the Homebrew installer exits with code 1. The `|| true` suppresses this, so `install_homebrew()` returns **0** (success).
 
 2. Because `install_homebrew` returns 0, the `if install_homebrew; then` branch is taken.
 
 3. Inside the branch, `du -sb /home/linuxbrew/.linuxbrew "$HOME/.linuxbrew"` is run:
    - `/home/linuxbrew/.linuxbrew` exists (created by the outer script, but empty — brew install failed)
-   - `"$HOME/.linuxbrew"` does NOT exist (sandbox user HOME = `/home/sandbox`, no `.linuxbrew` there)
+   - `"$HOME/.linuxbrew"` does NOT exist (box user HOME = `/home/box`, no `.linuxbrew` there)
    - `du` exits with **code 1** because one argument doesn't exist
    - The `2>/dev/null` suppresses the stderr error message, but NOT the exit code
-   - With `set -euo pipefail` active in the sandbox sub-script, the non-zero exit from `du` kills the entire script
+   - With `set -euo pipefail` active in the box sub-script, the non-zero exit from `du` kills the entire script
 
-4. The sandbox sub-script exits with code 1, which propagates to the outer `sudo -i -u sandbox bash /tmp/sandbox-measure.sh` call, which propagates to the CI step.
+4. The box sub-script exits with code 1, which propagates to the outer `sudo -i -u box bash /tmp/box-measure.sh` call, which propagates to the CI step.
 
 **Reproducer:**
 ```bash
@@ -84,7 +84,7 @@ bash -c 'set -euo pipefail; result=$(du -sb /tmp/nonexistent_dir 2>/dev/null | a
 # → exits with code 1 (not 0)
 ```
 
-### Root Cause 2: Homebrew installer permission check vs. sandbox user
+### Root Cause 2: Homebrew installer permission check vs. box user
 
 The Homebrew installer (as of Jan 2026) aborts when ALL these conditions are true:
 - `HOMEBREW_PREFIX` (`/home/linuxbrew/.linuxbrew`) is not writable, OR
@@ -92,9 +92,9 @@ The Homebrew installer (as of Jan 2026) aborts when ALL these conditions are tru
 - `/home` is not writable, AND
 - `have_sudo_access()` returns false
 
-With `NONINTERACTIVE=1`, `have_sudo_access()` runs `sudo -n -l mkdir`. The sandbox user was added to the `sudo` group via `usermod -aG sudo sandbox`, but GitHub Actions runners only grant passwordless sudo to the `runner` user. The sandbox user has no NOPASSWD entry, so `sudo -n` fails.
+With `NONINTERACTIVE=1`, `have_sudo_access()` runs `sudo -n -l mkdir`. The box user was added to the `sudo` group via `usermod -aG sudo box`, but GitHub Actions runners only grant passwordless sudo to the `runner` user. The box user has no NOPASSWD entry, so `sudo -n` fails.
 
-The outer script creates `/home/linuxbrew/.linuxbrew` and `chown -R sandbox:sandbox /home/linuxbrew` (as root), which should make the directory writable by sandbox. However, this issue represents a brittle dependency: the permission pre-setup in the outer script must work correctly for every run. If something changes (runner image update, timing issue), Homebrew will fail.
+The outer script creates `/home/linuxbrew/.linuxbrew` and `chown -R box:box /home/linuxbrew` (as root), which should make the directory writable by box. However, this issue represents a brittle dependency: the permission pre-setup in the outer script must work correctly for every run. If something changes (runner image update, timing issue), Homebrew will fail.
 
 **Note**: In the previous run (commit `03a9d8da`), Homebrew also failed with the same "Insufficient permissions" error, but `measure_install "Homebrew" "Package Manager" install_homebrew` correctly handled the failure by recording 0 MB and continuing.
 
@@ -104,11 +104,11 @@ The outer script creates `/home/linuxbrew/.linuxbrew` and `chown -R sandbox:sand
 
 ```
 outer script (root) runs
-  → creates /home/linuxbrew/.linuxbrew, chowns to sandbox
-  → writes /tmp/sandbox-measure.sh
-  → runs: sudo -i -u sandbox bash /tmp/sandbox-measure.sh /tmp/disk-space-*.json
+  → creates /home/linuxbrew/.linuxbrew, chowns to box
+  → writes /tmp/box-measure.sh
+  → runs: sudo -i -u box bash /tmp/box-measure.sh /tmp/disk-space-*.json
 
-    sandbox-measure.sh (runs as sandbox user, set -euo pipefail)
+    box-measure.sh (runs as box user, set -euo pipefail)
       → measures Bun, deno, nvm, pyenv, Go, Rust, SDKMAN, Kotlin, Lean, Opam
       → cleanup_for_measurement
       → install_homebrew() called:
@@ -123,7 +123,7 @@ outer script (root) runs
           → 2>/dev/null silences the error message
           → EXIT CODE 1 propagates through command substitution $()
           → set -euo pipefail kills the script HERE
-      ← sandbox-measure.sh exits with code 1
+      ← box-measure.sh exits with code 1
 
 outer script exits with code 1
 CI step fails
@@ -205,7 +205,7 @@ The same pattern in the outer script (lines 509–517 for Rust) should also be r
 ## Related Issues
 
 - **Issue #55**: Incorrect language runtime size measurements (introduced the regression)
-- **Issue #46**: Relative path resolution for sandbox user JSON file
+- **Issue #46**: Relative path resolution for box user JSON file
 - **Issue #49**: sed-based JSON manipulation failures
 
 ---
@@ -241,9 +241,9 @@ The Homebrew installer's permission check (as of Feb 2026) aborts if ALL of thes
 ! have_sudo_access                    # no passwordless sudo
 ```
 
-In the failing CI run, even though the outer script pre-creates `/home/linuxbrew/.linuxbrew` and chowns it to sandbox, the Homebrew installer still aborts. This suggests that at the time Homebrew runs (inside the sandbox user sub-script), the writability check fails. Possible reasons:
-- The `chown` completed but the directory permissions prevent sandbox from writing (mode 755 with root:root group ownership)
-- OR the `chown -R sandbox:sandbox /home/linuxbrew` ran as expected, but `have_sudo_access` timing with `NONINTERACTIVE` causes ambiguous behavior
+In the failing CI run, even though the outer script pre-creates `/home/linuxbrew/.linuxbrew` and chowns it to box, the Homebrew installer still aborts. This suggests that at the time Homebrew runs (inside the box user sub-script), the writability check fails. Possible reasons:
+- The `chown` completed but the directory permissions prevent box from writing (mode 755 with root:root group ownership)
+- OR the `chown -R box:box /home/linuxbrew` ran as expected, but `have_sudo_access` timing with `NONINTERACTIVE` causes ambiguous behavior
 
 Regardless, this is considered a secondary root cause. The primary crash was the `du` exit code issue.
 

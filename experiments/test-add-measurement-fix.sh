@@ -56,7 +56,7 @@ with open('$JSON_FILE', 'w') as f:
   echo "[✓] Recorded: $name - ${size_mb}MB"
 }
 
-# Add sandbox user components
+# Add box user components
 add_measurement_python3 "Bun" "Runtime" 97000000 97
 add_measurement_python3 "gh-setup-git-identity" "Development Tools" 4000000 4
 add_measurement_python3 "glab-setup-git-identity" "Development Tools" 4000000 4

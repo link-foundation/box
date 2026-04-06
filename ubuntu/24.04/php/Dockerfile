@@ -1,19 +1,19 @@
-ARG ESSENTIALS_IMAGE=konard/sandbox-essentials:latest
+ARG ESSENTIALS_IMAGE=konard/box-essentials:latest
 FROM ${ESSENTIALS_IMAGE}
-# Build: docker build -f ubuntu/24.04/php/Dockerfile --build-arg ESSENTIALS_IMAGE=sandbox-essentials -t sandbox-php .
+# Build: docker build -f ubuntu/24.04/php/Dockerfile --build-arg ESSENTIALS_IMAGE=box-essentials -t box-php .
 
-# PHP sandbox: PHP 8.3 via Homebrew (user-specific/local) with apt fallback (global)
-# Built on top of essentials-sandbox (inherits JS, git, gh, glab, dev libraries)
+# PHP box: PHP 8.3 via Homebrew (user-specific/local) with apt fallback (global)
+# Built on top of essentials-box (inherits JS, git, gh, glab, dev libraries)
 #
 # Strategy (Issue #44):
-#   1. Try Homebrew installation as sandbox user (user-specific, under /home/linuxbrew/.linuxbrew)
+#   1. Try Homebrew installation as box user (user-specific, under /home/linuxbrew/.linuxbrew)
 #      - With timeout to prevent 2+ hour source compilations
 #   2. If Homebrew fails/times out, fall back to apt (global, under /usr/bin)
-#   3. Write marker file /workspace/.php-install-method with "local" or "global"
+#   3. Write marker file /home/box/.php-install-method with "local" or "global"
 #
-# The marker file is used by the full-sandbox Dockerfile to determine how to merge PHP:
+# The marker file is used by the full-box Dockerfile to determine how to merge PHP:
 #   - "local": COPY /home/linuxbrew/.linuxbrew from php-stage
-#   - "global": Install PHP via apt in full-sandbox directly
+#   - "global": Install PHP via apt in full-box directly
 
 # Build argument for Homebrew timeout (in seconds)
 # Default: 1200 (20 minutes) - enough for bottle install + dependencies,
@@ -28,13 +28,13 @@ ARG PHP_VERBOSE=0
 # --- Step 1: Prepare directories ---
 USER root
 RUN mkdir -p /home/linuxbrew/.linuxbrew && \
-    chown -R sandbox:sandbox /home/linuxbrew
+    chown -R box:box /home/linuxbrew
 
-# --- Step 2: Try Homebrew installation as sandbox user ---
-USER sandbox
+# --- Step 2: Try Homebrew installation as box user ---
+USER box
 
-COPY --chown=sandbox:sandbox ubuntu/24.04/common.sh /tmp/common.sh
-COPY --chown=sandbox:sandbox ubuntu/24.04/php/install.sh /tmp/install.sh
+COPY --chown=box:box ubuntu/24.04/common.sh /tmp/common.sh
+COPY --chown=box:box ubuntu/24.04/php/install.sh /tmp/install.sh
 RUN chmod +x /tmp/install.sh /tmp/common.sh
 
 # Run install script - tries Homebrew with timeout, writes marker file
@@ -43,7 +43,7 @@ RUN PHP_HOMEBREW_TIMEOUT=${PHP_HOMEBREW_TIMEOUT} PHP_VERBOSE=${PHP_VERBOSE} bash
 
 # --- Step 3: Handle global fallback (apt install as root if needed) ---
 USER root
-RUN PHP_METHOD=$(cat /workspace/.php-install-method 2>/dev/null || echo "unknown") && \
+RUN PHP_METHOD=$(cat /home/box/.php-install-method 2>/dev/null || echo "unknown") && \
     echo "PHP install method: $PHP_METHOD" && \
     if [ "$PHP_METHOD" = "global" ]; then \
       echo "Installing PHP globally via apt (Homebrew failed/timed out)..." && \
@@ -58,7 +58,7 @@ RUN PHP_METHOD=$(cat /workspace/.php-install-method 2>/dev/null || echo "unknown
     fi
 
 # Verify PHP installation (use full path for local, or /usr/bin/php for global)
-RUN PHP_METHOD=$(cat /workspace/.php-install-method 2>/dev/null || echo "unknown") && \
+RUN PHP_METHOD=$(cat /home/box/.php-install-method 2>/dev/null || echo "unknown") && \
     if [ "$PHP_METHOD" = "local" ]; then \
       /home/linuxbrew/.linuxbrew/opt/php@8.3/bin/php --version; \
     else \
@@ -69,10 +69,10 @@ RUN PHP_METHOD=$(cat /workspace/.php-install-method 2>/dev/null || echo "unknown
 # Cleanup temp files
 RUN rm -f /tmp/install.sh /tmp/common.sh
 # Note: /home/linuxbrew/.linuxbrew is kept even if empty (global install case)
-# so that COPY --from in full-sandbox Dockerfile always succeeds
+# so that COPY --from in full-box Dockerfile always succeeds
 
-USER sandbox
-WORKDIR /workspace
+USER box
+WORKDIR /home/box
 
 # PATH: include Homebrew PHP paths (only effective if local install succeeded)
 # For global (apt) install, /usr/bin/php is already in PATH

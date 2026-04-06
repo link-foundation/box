@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Sandbox Environment Installation Script
-# This script installs common language runtimes for a development sandbox.
+# Box Environment Installation Script
+# This script installs common language runtimes for a development box.
 # It is AI-agnostic - no AI tools or assistants are included.
 # Based on: https://github.com/link-assistant/hive-mind/blob/main/scripts/ubuntu-24-server-install.sh
 
@@ -123,20 +123,20 @@ fi
 
 log_success "Pre-flight checks passed"
 
-log_step "Starting sandbox environment setup"
+log_step "Starting box environment setup"
 
-# --- Create sandbox user if missing ---
-if id "sandbox" &>/dev/null; then
-  log_info "sandbox user already exists."
+# --- Create box user if missing ---
+if id "box" &>/dev/null; then
+  log_info "box user already exists."
 else
-  log_info "Creating sandbox user..."
-  useradd -m -d /workspace -s /bin/bash sandbox 2>/dev/null || {
+  log_info "Creating box user..."
+  useradd -m -d /home/box -s /bin/bash box 2>/dev/null || {
     log_warning "User creation with useradd failed, trying adduser..."
-    adduser --disabled-password --gecos "" --home /workspace sandbox
+    adduser --disabled-password --gecos "" --home /home/box box
   }
-  passwd -d sandbox 2>/dev/null || log_note "Could not remove password requirement"
-  usermod -aG sudo sandbox 2>/dev/null || log_note "Could not add to sudo group"
-  log_success "sandbox user created and configured"
+  passwd -d box 2>/dev/null || log_note "Could not remove password requirement"
+  usermod -aG sudo box 2>/dev/null || log_note "Could not add to sudo group"
+  log_success "box user created and configured"
 fi
 
 # --- Function: apt safe update ---
@@ -291,7 +291,7 @@ fi
 if [ "$is_docker" = true ]; then
   log_step "Skipping swap setup (running in Docker container)"
 else
-  log_step "Skipping swap setup (swap management is out of scope for sandbox)"
+  log_step "Skipping swap setup (swap management is out of scope for box)"
 fi
 
 # --- Prepare Homebrew directory ---
@@ -302,23 +302,23 @@ if [ ! -d /home/linuxbrew/.linuxbrew ]; then
   maybe_sudo mkdir -p /home/linuxbrew
   maybe_sudo mkdir -p /home/linuxbrew/.linuxbrew
 
-  if id "sandbox" &>/dev/null; then
-    maybe_sudo chown -R sandbox:sandbox /home/linuxbrew
-    log_success "Homebrew directory created and owned by sandbox user"
+  if id "box" &>/dev/null; then
+    maybe_sudo chown -R box:box /home/linuxbrew
+    log_success "Homebrew directory created and owned by box user"
   fi
 else
   log_info "Homebrew directory already exists"
-  if id "sandbox" &>/dev/null; then
-    maybe_sudo chown -R sandbox:sandbox /home/linuxbrew
+  if id "box" &>/dev/null; then
+    maybe_sudo chown -R box:box /home/linuxbrew
   fi
 fi
 
-# --- Switch to sandbox user for language tools setup ---
-cat > /tmp/sandbox-user-setup.sh <<'EOF_SANDBOX_SCRIPT'
+# --- Switch to box user for language tools setup ---
+cat > /tmp/box-user-setup.sh <<'EOF_BOX_SCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Define logging functions for sandbox user session
+# Define logging functions for box user session
 if [ -t 1 ]; then
   RED='\033[0;31m'
   GREEN='\033[0;32m'
@@ -351,7 +351,7 @@ maybe_sudo() {
   fi
 }
 
-log_step "Installing development tools as sandbox user"
+log_step "Installing development tools as box user"
 
 # --- Bun ---
 if ! command -v bun &>/dev/null; then
@@ -1029,20 +1029,20 @@ if command -v fasm &>/dev/null; then log_success "FASM: installed"; else log_not
 
 echo ""
 
-EOF_SANDBOX_SCRIPT
+EOF_BOX_SCRIPT
 
 # Make the script executable
-chmod +x /tmp/sandbox-user-setup.sh
+chmod +x /tmp/box-user-setup.sh
 
-# Execute as sandbox user
+# Execute as box user
 if [ "$EUID" -eq 0 ]; then
-  su - sandbox -c "bash /tmp/sandbox-user-setup.sh"
+  su - box -c "bash /tmp/box-user-setup.sh"
 else
-  sudo -i -u sandbox bash /tmp/sandbox-user-setup.sh
+  sudo -i -u box bash /tmp/box-user-setup.sh
 fi
 
 # Clean up the temporary script
-rm -f /tmp/sandbox-user-setup.sh
+rm -f /tmp/box-user-setup.sh
 
 # --- Cleanup after everything ---
 log_step "Cleaning up"

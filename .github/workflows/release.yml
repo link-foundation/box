@@ -49,7 +49,7 @@ env:
   GHCR_IMAGE_NAME: ${{ github.repository }}
   # Docker Hub
   DOCKERHUB_REGISTRY: docker.io
-  DOCKERHUB_IMAGE_NAME: konard/sandbox
+  DOCKERHUB_IMAGE_NAME: konard/box
 
 jobs:
   # === VERSION CHECK (PRs only) ===
@@ -318,22 +318,22 @@ jobs:
         run: |
           CHANGED_FILES=$(cat /tmp/changed-files.txt)
 
-          # JS sandbox changes
+          # JS box changes
           if echo "$CHANGED_FILES" | grep -qE '^ubuntu/24\.04/js/'; then
             echo "js=true" >> $GITHUB_OUTPUT
           else
             echo "js=false" >> $GITHUB_OUTPUT
           fi
 
-          # Essentials sandbox changes
-          if echo "$CHANGED_FILES" | grep -qE '^ubuntu/24\.04/essentials-sandbox/'; then
+          # Essentials box changes
+          if echo "$CHANGED_FILES" | grep -qE '^ubuntu/24\.04/essentials-box/'; then
             echo "essentials=true" >> $GITHUB_OUTPUT
           else
             echo "essentials=false" >> $GITHUB_OUTPUT
           fi
 
-          # Full sandbox changes (full-sandbox dir, root Dockerfile, or scripts)
-          if echo "$CHANGED_FILES" | grep -qE '^(ubuntu/24\.04/full-sandbox/|Dockerfile$|scripts/)'; then
+          # Full box changes (full-box dir, root Dockerfile, or scripts)
+          if echo "$CHANGED_FILES" | grep -qE '^(ubuntu/24\.04/full-box/|Dockerfile$|scripts/)'; then
             echo "full=true" >> $GITHUB_OUTPUT
           else
             echo "full=false" >> $GITHUB_OUTPUT
@@ -413,128 +413,128 @@ jobs:
 
       - name: Build layered images (JS -> essentials -> languages -> full)
         run: |
-          echo "=== Building JS sandbox ==="
-          docker build -f ubuntu/24.04/js/Dockerfile -t sandbox-js .
+          echo "=== Building JS box ==="
+          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
 
           echo ""
-          echo "=== Building essentials sandbox (on JS) ==="
-          docker build -f ubuntu/24.04/essentials-sandbox/Dockerfile \
-            --build-arg JS_IMAGE=sandbox-js -t sandbox-essentials .
+          echo "=== Building essentials box (on JS) ==="
+          docker build -f ubuntu/24.04/essentials-box/Dockerfile \
+            --build-arg JS_IMAGE=box-js -t box-essentials .
 
           echo ""
           echo "=== Building language images (on essentials) ==="
           for lang in python go rust java kotlin ruby php perl swift lean rocq; do
             echo ""
-            echo "--- Building ${lang} sandbox ---"
+            echo "--- Building ${lang} box ---"
             docker build -f "ubuntu/24.04/${lang}/Dockerfile" \
-              --build-arg ESSENTIALS_IMAGE=sandbox-essentials \
-              -t "sandbox-${lang}" .
+              --build-arg ESSENTIALS_IMAGE=box-essentials \
+              -t "box-${lang}" .
           done
 
           echo ""
-          echo "=== Building full sandbox (multi-stage from all language images) ==="
-          docker build -f ubuntu/24.04/full-sandbox/Dockerfile \
-            --build-arg ESSENTIALS_IMAGE=sandbox-essentials \
-            --build-arg PYTHON_IMAGE=sandbox-python \
-            --build-arg GO_IMAGE=sandbox-go \
-            --build-arg RUST_IMAGE=sandbox-rust \
-            --build-arg JAVA_IMAGE=sandbox-java \
-            --build-arg KOTLIN_IMAGE=sandbox-kotlin \
-            --build-arg RUBY_IMAGE=sandbox-ruby \
-            --build-arg PHP_IMAGE=sandbox-php \
-            --build-arg PERL_IMAGE=sandbox-perl \
-            --build-arg SWIFT_IMAGE=sandbox-swift \
-            --build-arg LEAN_IMAGE=sandbox-lean \
-            --build-arg ROCQ_IMAGE=sandbox-rocq \
-            -t sandbox-test .
+          echo "=== Building full box (multi-stage from all language images) ==="
+          docker build -f ubuntu/24.04/full-box/Dockerfile \
+            --build-arg ESSENTIALS_IMAGE=box-essentials \
+            --build-arg PYTHON_IMAGE=box-python \
+            --build-arg GO_IMAGE=box-go \
+            --build-arg RUST_IMAGE=box-rust \
+            --build-arg JAVA_IMAGE=box-java \
+            --build-arg KOTLIN_IMAGE=box-kotlin \
+            --build-arg RUBY_IMAGE=box-ruby \
+            --build-arg PHP_IMAGE=box-php \
+            --build-arg PERL_IMAGE=box-perl \
+            --build-arg SWIFT_IMAGE=box-swift \
+            --build-arg LEAN_IMAGE=box-lean \
+            --build-arg ROCQ_IMAGE=box-rocq \
+            -t box-test .
 
-      - name: Test JS sandbox
+      - name: Test JS box
         run: |
           set -e
-          echo "=== Testing JS sandbox ==="
-          docker run --rm sandbox-js bash -c '. $HOME/.nvm/nvm.sh && node --version'
-          docker run --rm sandbox-js bash -c 'export PATH=$HOME/.bun/bin:$PATH && bun --version'
-          docker run --rm sandbox-js bash -c 'export PATH=$HOME/.deno/bin:$PATH && deno --version'
-          echo "=== JS sandbox tests passed ==="
+          echo "=== Testing JS box ==="
+          docker run --rm box-js bash -c '. $HOME/.nvm/nvm.sh && node --version'
+          docker run --rm box-js bash -c 'export PATH=$HOME/.bun/bin:$PATH && bun --version'
+          docker run --rm box-js bash -c 'export PATH=$HOME/.deno/bin:$PATH && deno --version'
+          echo "=== JS box tests passed ==="
 
-      - name: Test essentials sandbox
+      - name: Test essentials box
         run: |
           set -e
-          echo "=== Testing essentials sandbox ==="
-          docker run --rm sandbox-essentials gh --version
-          docker run --rm sandbox-essentials glab --version
-          docker run --rm sandbox-essentials gh-setup-git-identity --version
-          docker run --rm sandbox-essentials glab-setup-git-identity --version
-          echo "=== Essentials sandbox tests passed ==="
+          echo "=== Testing essentials box ==="
+          docker run --rm box-essentials gh --version
+          docker run --rm box-essentials glab --version
+          docker run --rm box-essentials gh-setup-git-identity --version
+          docker run --rm box-essentials glab-setup-git-identity --version
+          echo "=== Essentials box tests passed ==="
 
-      - name: Test full sandbox
+      - name: Test full box
         run: |
           set -e
-          echo "=== Testing full sandbox ==="
+          echo "=== Testing full box ==="
           echo "Note: Using entrypoint script which initializes all environments"
 
           # JavaScript/TypeScript runtimes
-          docker run --rm sandbox-test node --version
-          docker run --rm sandbox-test bun --version
-          docker run --rm sandbox-test deno --version
+          docker run --rm box-test node --version
+          docker run --rm box-test bun --version
+          docker run --rm box-test deno --version
 
           # Python (pyenv)
-          docker run --rm sandbox-test python3 --version
-          docker run --rm sandbox-test pip3 --version
+          docker run --rm box-test python3 --version
+          docker run --rm box-test pip3 --version
 
           # Go
-          docker run --rm sandbox-test go version
+          docker run --rm box-test go version
 
           # Rust (rustup + cargo + rustc)
-          docker run --rm sandbox-test rustc --version
-          docker run --rm sandbox-test cargo --version
-          docker run --rm sandbox-test rustup --version
+          docker run --rm box-test rustc --version
+          docker run --rm box-test cargo --version
+          docker run --rm box-test rustup --version
 
           # Java/JVM (SDKMAN)
-          docker run --rm sandbox-test java -version
-          docker run --rm sandbox-test kotlin -version
+          docker run --rm box-test java -version
+          docker run --rm box-test kotlin -version
 
           # Ruby (rbenv)
-          docker run --rm sandbox-test ruby --version
-          docker run --rm sandbox-test gem --version
+          docker run --rm box-test ruby --version
+          docker run --rm box-test gem --version
 
           # PHP
-          docker run --rm sandbox-test php --version
+          docker run --rm box-test php --version
 
           # Perl (perlbrew)
-          docker run --rm sandbox-test perl --version
+          docker run --rm box-test perl --version
 
           # Swift
-          docker run --rm sandbox-test swift --version
+          docker run --rm box-test swift --version
 
           # Lean/Mathlib (elan)
-          docker run --rm sandbox-test lean --version
+          docker run --rm box-test lean --version
 
           # Dotnet
-          docker run --rm sandbox-test dotnet --version
+          docker run --rm box-test dotnet --version
 
           # R language
-          docker run --rm sandbox-test Rscript --version
+          docker run --rm box-test Rscript --version
 
           # CLI tools
-          docker run --rm sandbox-test gh --version
-          docker run --rm sandbox-test glab --version
-          docker run --rm sandbox-test gh-setup-git-identity --version
-          docker run --rm sandbox-test glab-setup-git-identity --version
+          docker run --rm box-test gh --version
+          docker run --rm box-test glab --version
+          docker run --rm box-test gh-setup-git-identity --version
+          docker run --rm box-test glab-setup-git-identity --version
 
           # expect (interactive automation tool, issue #64)
-          docker run --rm sandbox-test expect -v
+          docker run --rm box-test expect -v
 
           echo ""
           echo "=== PHP install method check ==="
-          docker run --rm sandbox-php cat /workspace/.php-install-method
-          docker run --rm sandbox-test cat /workspace/.php-install-method
+          docker run --rm box-php cat /home/box/.php-install-method
+          docker run --rm box-test cat /home/box/.php-install-method
 
           echo ""
-          echo "=== All full sandbox tests passed ==="
+          echo "=== All full box tests passed ==="
 
-  # === BUILD JS SANDBOX (amd64) ===
-  # JS sandbox is the base layer - built first, other images depend on it
+  # === BUILD JS BOX (amd64) ===
+  # JS box is the base layer - built first, other images depend on it
   build-js-amd64:
     runs-on: ubuntu-24.04
     needs: [detect-changes]
@@ -587,7 +587,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push JS sandbox (amd64)
+      - name: Build and push JS box (amd64)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -607,7 +607,7 @@ jobs:
         id: result
         run: echo "built=true" >> $GITHUB_OUTPUT
 
-  # === BUILD JS SANDBOX (arm64) ===
+  # === BUILD JS BOX (arm64) ===
   build-js-arm64:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 120
@@ -661,7 +661,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push JS sandbox (arm64)
+      - name: Build and push JS box (arm64)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -747,10 +747,10 @@ jobs:
             --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION}-arm64
           docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION}
 
-          echo "JS sandbox multi-arch manifests pushed for latest and ${VERSION}"
+          echo "JS box multi-arch manifests pushed for latest and ${VERSION}"
 
-  # === BUILD ESSENTIALS SANDBOX (amd64) ===
-  # Built on top of JS sandbox - waits for JS to complete (if JS was rebuilt)
+  # === BUILD ESSENTIALS BOX (amd64) ===
+  # Built on top of JS box - waits for JS to complete (if JS was rebuilt)
   build-essentials-amd64:
     runs-on: ubuntu-24.04
     needs: [detect-changes, build-js-amd64]
@@ -816,11 +816,11 @@ jobs:
             echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build and push essentials sandbox (amd64)
+      - name: Build and push essentials box (amd64)
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ubuntu/24.04/essentials-sandbox/Dockerfile
+          file: ubuntu/24.04/essentials-box/Dockerfile
           platforms: linux/amd64
           push: true
           build-args: |
@@ -838,7 +838,7 @@ jobs:
         id: result
         run: echo "built=true" >> $GITHUB_OUTPUT
 
-  # === BUILD ESSENTIALS SANDBOX (arm64) ===
+  # === BUILD ESSENTIALS BOX (arm64) ===
   build-essentials-arm64:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 120
@@ -904,11 +904,11 @@ jobs:
             echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build and push essentials sandbox (arm64)
+      - name: Build and push essentials box (arm64)
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ubuntu/24.04/essentials-sandbox/Dockerfile
+          file: ubuntu/24.04/essentials-box/Dockerfile
           platforms: linux/arm64
           push: true
           build-args: |
@@ -992,10 +992,10 @@ jobs:
             --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-arm64
           docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}
 
-          echo "Essentials sandbox multi-arch manifests pushed for latest and ${VERSION}"
+          echo "Essentials box multi-arch manifests pushed for latest and ${VERSION}"
 
   # === BUILD LANGUAGE IMAGES (amd64) ===
-  # All language images are built in parallel on top of essentials sandbox
+  # All language images are built in parallel on top of essentials box
   build-languages-amd64:
     runs-on: ubuntu-24.04
     timeout-minutes: 45    # Issue #53: Add timeout to fail fast on hangs (normal builds take ~10-15 min)
@@ -1084,7 +1084,7 @@ jobs:
             echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build and push ${{ matrix.language }} sandbox (amd64)
+      - name: Build and push ${{ matrix.language }} box (amd64)
         if: steps.check-lang.outputs.should_build == 'true'
         uses: docker/build-push-action@v5
         with:
@@ -1110,7 +1110,7 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           # Pull the image and inspect the marker file
           docker pull ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64
-          PHP_METHOD=$(docker run --rm ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 cat /workspace/.php-install-method 2>/dev/null || echo "unknown")
+          PHP_METHOD=$(docker run --rm ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 cat /home/box/.php-install-method 2>/dev/null || echo "unknown")
           echo "PHP install method (amd64): $PHP_METHOD"
 
           if [ "$PHP_METHOD" = "local" ] || [ "$PHP_METHOD" = "global" ]; then
@@ -1221,7 +1221,7 @@ jobs:
             echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build and push ${{ matrix.language }} sandbox (arm64)
+      - name: Build and push ${{ matrix.language }} box (arm64)
         if: steps.check-lang.outputs.should_build == 'true'
         uses: docker/build-push-action@v5
         with:
@@ -1247,7 +1247,7 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           # Pull the image and inspect the marker file
           docker pull ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64
-          PHP_METHOD=$(docker run --rm ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 cat /workspace/.php-install-method 2>/dev/null || echo "unknown")
+          PHP_METHOD=$(docker run --rm ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 cat /home/box/.php-install-method 2>/dev/null || echo "unknown")
           echo "PHP install method (arm64): $PHP_METHOD"
 
           if [ "$PHP_METHOD" = "local" ] || [ "$PHP_METHOD" = "global" ]; then
@@ -1340,9 +1340,9 @@ jobs:
             --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION}-arm64
           docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION}
 
-          echo "${LANG} sandbox multi-arch manifests pushed for latest and ${VERSION}"
+          echo "${LANG} box multi-arch manifests pushed for latest and ${VERSION}"
 
-  # === BUILD AND PUSH FULL SANDBOX (MAIN - amd64) ===
+  # === BUILD AND PUSH FULL BOX (MAIN - amd64) ===
   docker-build-push:
     runs-on: ubuntu-24.04
     needs: [detect-changes, build-languages-amd64, build-essentials-amd64]
@@ -1460,12 +1460,12 @@ jobs:
             type=sha,prefix=
             type=raw,value={{date 'YYYYMMDD'}}
 
-      - name: Build and push full sandbox (amd64)
+      - name: Build and push full box (amd64)
         id: build
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ubuntu/24.04/full-sandbox/Dockerfile
+          file: ubuntu/24.04/full-box/Dockerfile
           platforms: linux/amd64
           push: true
           build-args: |
@@ -1491,7 +1491,7 @@ jobs:
 
       # Smoke test the published image to verify all toolchains work (issue #62)
       # Tests each toolchain command to catch cases where tools are missing/broken
-      - name: Smoke test released full sandbox (amd64)
+      - name: Smoke test released full box (amd64)
         run: |
           set -e
           VERSION="${{ steps.version.outputs.version }}"
@@ -1654,12 +1654,12 @@ jobs:
             type=sha,prefix=
             type=raw,value={{date 'YYYYMMDD'}}
 
-      - name: Build and push full sandbox (arm64)
+      - name: Build and push full box (arm64)
         id: build
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ubuntu/24.04/full-sandbox/Dockerfile
+          file: ubuntu/24.04/full-box/Dockerfile
           platforms: linux/arm64
           push: true
           build-args: |
@@ -1810,15 +1810,15 @@ jobs:
           cat > /tmp/release-notes.md << ENDOFNOTES
           ## Docker Images
 
-          ### Docker Hub - Combo Sandboxes
+          ### Docker Hub - Combo Boxes
 
           | Image | Multi-arch | AMD64 | ARM64 |
           |-------|------------|-------|-------|
-          | Full Sandbox | [\`${DOCKERHUB_IMAGE}:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}/tags?name=${VERSION}-arm64) |
+          | Full Box | [\`${DOCKERHUB_IMAGE}:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}/tags?name=${VERSION}-arm64) |
           | Essentials | [\`${DOCKERHUB_IMAGE}-essentials:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-essentials/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-essentials/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-essentials/tags?name=${VERSION}-arm64) |
           | JS | [\`${DOCKERHUB_IMAGE}-js:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-js/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-js/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-js/tags?name=${VERSION}-arm64) |
 
-          ### Docker Hub - Language Sandboxes
+          ### Docker Hub - Language Boxes
 
           | Language | Multi-arch | AMD64 | ARM64 |
           |----------|------------|-------|-------|
@@ -1834,40 +1834,40 @@ jobs:
           | Lean | [\`${DOCKERHUB_IMAGE}-lean:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-lean/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-lean/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-lean/tags?name=${VERSION}-arm64) |
           | Rocq | [\`${DOCKERHUB_IMAGE}-rocq:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rocq/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rocq/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rocq/tags?name=${VERSION}-arm64) |
 
-          ### GitHub Container Registry - Combo Sandboxes
+          ### GitHub Container Registry - Combo Boxes
 
           | Image | Multi-arch | AMD64 | ARM64 |
           |-------|------------|-------|-------|
-          | Full Sandbox | [\`${GHCR_IMAGE}:${VERSION}\`](https://github.com/${REPO}/pkgs/container/sandbox?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/sandbox?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/sandbox?tag=${VERSION}-arm64) |
-          | Essentials | [\`${GHCR_IMAGE}-essentials:${VERSION}\`](https://github.com/${REPO}/pkgs/container/sandbox-essentials?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/sandbox-essentials?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/sandbox-essentials?tag=${VERSION}-arm64) |
-          | JS | [\`${GHCR_IMAGE}-js:${VERSION}\`](https://github.com/${REPO}/pkgs/container/sandbox-js?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/sandbox-js?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/sandbox-js?tag=${VERSION}-arm64) |
+          | Full Box | [\`${GHCR_IMAGE}:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box?tag=${VERSION}-arm64) |
+          | Essentials | [\`${GHCR_IMAGE}-essentials:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-essentials?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-essentials?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-essentials?tag=${VERSION}-arm64) |
+          | JS | [\`${GHCR_IMAGE}-js:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-js?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-js?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-js?tag=${VERSION}-arm64) |
 
-          ### GitHub Container Registry - Language Sandboxes
+          ### GitHub Container Registry - Language Boxes
 
           | Language | Multi-arch | AMD64 | ARM64 |
           |----------|------------|-------|-------|
-          | Python | [\`${GHCR_IMAGE}-python:${VERSION}\`](https://github.com/${REPO}/pkgs/container/sandbox-python?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/sandbox-python?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/sandbox-python?tag=${VERSION}-arm64) |
-          | Go | [\`${GHCR_IMAGE}-go:${VERSION}\`](https://github.com/${REPO}/pkgs/container/sandbox-go?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/sandbox-go?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/sandbox-go?tag=${VERSION}-arm64) |
-          | Rust | [\`${GHCR_IMAGE}-rust:${VERSION}\`](https://github.com/${REPO}/pkgs/container/sandbox-rust?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/sandbox-rust?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/sandbox-rust?tag=${VERSION}-arm64) |
-          | Java | [\`${GHCR_IMAGE}-java:${VERSION}\`](https://github.com/${REPO}/pkgs/container/sandbox-java?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/sandbox-java?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/sandbox-java?tag=${VERSION}-arm64) |
-          | Kotlin | [\`${GHCR_IMAGE}-kotlin:${VERSION}\`](https://github.com/${REPO}/pkgs/container/sandbox-kotlin?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/sandbox-kotlin?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/sandbox-kotlin?tag=${VERSION}-arm64) |
-          | Ruby | [\`${GHCR_IMAGE}-ruby:${VERSION}\`](https://github.com/${REPO}/pkgs/container/sandbox-ruby?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/sandbox-ruby?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/sandbox-ruby?tag=${VERSION}-arm64) |
-          | PHP | [\`${GHCR_IMAGE}-php:${VERSION}\`](https://github.com/${REPO}/pkgs/container/sandbox-php?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/sandbox-php?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/sandbox-php?tag=${VERSION}-arm64) |
-          | Perl | [\`${GHCR_IMAGE}-perl:${VERSION}\`](https://github.com/${REPO}/pkgs/container/sandbox-perl?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/sandbox-perl?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/sandbox-perl?tag=${VERSION}-arm64) |
-          | Swift | [\`${GHCR_IMAGE}-swift:${VERSION}\`](https://github.com/${REPO}/pkgs/container/sandbox-swift?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/sandbox-swift?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/sandbox-swift?tag=${VERSION}-arm64) |
-          | Lean | [\`${GHCR_IMAGE}-lean:${VERSION}\`](https://github.com/${REPO}/pkgs/container/sandbox-lean?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/sandbox-lean?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/sandbox-lean?tag=${VERSION}-arm64) |
-          | Rocq | [\`${GHCR_IMAGE}-rocq:${VERSION}\`](https://github.com/${REPO}/pkgs/container/sandbox-rocq?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/sandbox-rocq?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/sandbox-rocq?tag=${VERSION}-arm64) |
+          | Python | [\`${GHCR_IMAGE}-python:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-python?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-python?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-python?tag=${VERSION}-arm64) |
+          | Go | [\`${GHCR_IMAGE}-go:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-go?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-go?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-go?tag=${VERSION}-arm64) |
+          | Rust | [\`${GHCR_IMAGE}-rust:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-rust?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-rust?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-rust?tag=${VERSION}-arm64) |
+          | Java | [\`${GHCR_IMAGE}-java:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-java?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-java?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-java?tag=${VERSION}-arm64) |
+          | Kotlin | [\`${GHCR_IMAGE}-kotlin:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-kotlin?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-kotlin?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-kotlin?tag=${VERSION}-arm64) |
+          | Ruby | [\`${GHCR_IMAGE}-ruby:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-ruby?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-ruby?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-ruby?tag=${VERSION}-arm64) |
+          | PHP | [\`${GHCR_IMAGE}-php:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-php?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-php?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-php?tag=${VERSION}-arm64) |
+          | Perl | [\`${GHCR_IMAGE}-perl:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-perl?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-perl?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-perl?tag=${VERSION}-arm64) |
+          | Swift | [\`${GHCR_IMAGE}-swift:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-swift?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-swift?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-swift?tag=${VERSION}-arm64) |
+          | Lean | [\`${GHCR_IMAGE}-lean:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-lean?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-lean?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-lean?tag=${VERSION}-arm64) |
+          | Rocq | [\`${GHCR_IMAGE}-rocq:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-rocq?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-rocq?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-rocq?tag=${VERSION}-arm64) |
 
           ## Architecture
 
           \`\`\`
-          JS sandbox (konard/sandbox-js)
-            → Essentials sandbox (konard/sandbox-essentials)
-              ├─ sandbox-python  ├─ sandbox-go    ├─ sandbox-rust
-              ├─ sandbox-java    ├─ sandbox-kotlin ├─ sandbox-ruby
-              ├─ sandbox-php     ├─ sandbox-perl   ├─ sandbox-swift
-              ├─ sandbox-lean    └─ sandbox-rocq
-              → Full sandbox (konard/sandbox) [merges all language images]
+          JS box (konard/box-js)
+            → Essentials box (konard/box-essentials)
+              ├─ box-python  ├─ box-go    ├─ box-rust
+              ├─ box-java    ├─ box-kotlin ├─ box-ruby
+              ├─ box-php     ├─ box-perl   ├─ box-swift
+              ├─ box-lean    └─ box-rocq
+              → Full box (konard/box) [merges all language images]
           \`\`\`
 
           ## Quick Start
@@ -1893,7 +1893,7 @@ jobs:
 
           ## Links
           - [Docker Hub](https://hub.docker.com/r/${DOCKERHUB_IMAGE})
-          - [GHCR Package](https://github.com/${REPO}/pkgs/container/sandbox)
+          - [GHCR Package](https://github.com/${REPO}/pkgs/container/box)
 
           Released on ${DATE}
           ENDOFNOTES

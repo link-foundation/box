@@ -1,7 +1,7 @@
-# Case Study: Failing CI/CD — Component Count Below Threshold (sed JSON Bug Resurfaces in Sandbox Script)
+# Case Study: Failing CI/CD — Component Count Below Threshold (sed JSON Bug Resurfaces in Box Script)
 
-**Issue**: [#49 - Fix CI/CD](https://github.com/link-foundation/sandbox/issues/49)
-**CI Run**: [22265618808, Job 64411353868](https://github.com/link-foundation/sandbox/actions/runs/22265618808/job/64411353868)
+**Issue**: [#49 - Fix CI/CD](https://github.com/link-foundation/box/issues/49)
+**CI Run**: [22265618808, Job 64411353868](https://github.com/link-foundation/box/actions/runs/22265618808/job/64411353868)
 **Date**: 2026-02-21
 **Status**: Investigation Complete — Fix Applied (v1.3.7)
 
@@ -17,9 +17,9 @@ WARNING: Measurements appear incomplete or invalid!
   - Components: 9 (expected >= 10)
 ```
 
-Despite all 18 sandbox user components printing `[✓] Recorded: ...` to stdout, they were **not actually saved to the JSON file**. The `add_measurement()` function in the `sandbox-measure.sh` heredoc uses `sed` to append JSON components, but the `sed` pattern `s|\]$|,...|` does not match the compact (single-line) JSON produced by `python3`, so the function silently fails to write any data while still printing a success message.
+Despite all 18 box user components printing `[✓] Recorded: ...` to stdout, they were **not actually saved to the JSON file**. The `add_measurement()` function in the `box-measure.sh` heredoc uses `sed` to append JSON components, but the `sed` pattern `s|\]$|,...|` does not match the compact (single-line) JSON produced by `python3`, so the function silently fails to write any data while still printing a success message.
 
-This is the same class of bug previously fixed in the **outer** `measure-disk-space.sh` (Issue #35), but the fix was not applied to the **inner** `sandbox-measure.sh` heredoc that runs as the `sandbox` user.
+This is the same class of bug previously fixed in the **outer** `measure-disk-space.sh` (Issue #35), but the fix was not applied to the **inner** `box-measure.sh` heredoc that runs as the `box` user.
 
 ## Timeline of Events
 
@@ -28,14 +28,14 @@ This is the same class of bug previously fixed in the **outer** `measure-disk-sp
 | 2026-02-21T22:31:01 | Job started on ubuntu-24.04 runner (version 20260201.15.1) |
 | 2026-02-21T22:31:02 | Repository checked out at commit `50de572` (main branch) |
 | 2026-02-21T22:32:18 | APT updated, disk space freed |
-| 2026-02-21T22:32:29 | Pre-flight checks passed, sandbox user created |
+| 2026-02-21T22:32:29 | Pre-flight checks passed, box user created |
 | 2026-02-21T22:32:29–22:34:12 | 9 system components recorded via outer script (python3 JSON) |
-| 2026-02-21T22:34:12 | `su - sandbox -c "bash /tmp/sandbox-measure.sh '$JSON_TMP_COPY'"` executed |
-| 2026-02-21T22:34:13 | Bun install starts inside sandbox-measure.sh |
+| 2026-02-21T22:34:12 | `su - box -c "bash /tmp/box-measure.sh '$JSON_TMP_COPY'"` executed |
+| 2026-02-21T22:34:13 | Bun install starts inside box-measure.sh |
 | 2026-02-21T22:34:19 | Bun recorded (stdout: `[✓] Recorded: Bun - 97MB`) — but JSON file unchanged |
-| 2026-02-21T22:34:19–22:50:25 | 17 more sandbox components "recorded" (stdout only, JSON unchanged) |
+| 2026-02-21T22:34:19–22:50:25 | 17 more box components "recorded" (stdout only, JSON unchanged) |
 | 2026-02-21T22:42:28 | PHP 8.3 Homebrew tap fails (`git clone` exits with 128) — recorded as 52MB (partial install) |
-| 2026-02-21T22:50:25 | `[✓] Sandbox user measurements complete` printed |
+| 2026-02-21T22:50:25 | `[✓] Box user measurements complete` printed |
 | 2026-02-21T22:50:25 | JSON copied back from `/tmp` — still contains only 9 components |
 | 2026-02-21T22:50:25 | Validation: `Total size: 7545MB, Component count: 9` — **FAIL** |
 | 2026-02-21T22:50:25 | Workflow fails with exit code 1 |
@@ -44,7 +44,7 @@ This is the same class of bug previously fixed in the **outer** `measure-disk-sp
 
 ### Primary Cause: sed Pattern Does Not Match python3-Generated Compact JSON
 
-The `sandbox-measure.sh` heredoc (embedded in `measure-disk-space.sh` lines 304–640) defines its own `add_measurement()` function using `sed`:
+The `box-measure.sh` heredoc (embedded in `measure-disk-space.sh` lines 304–640) defines its own `add_measurement()` function using `sed`:
 
 ```bash
 add_measurement() {
@@ -85,7 +85,7 @@ cat > /tmp/test.json << 'EOF'
 {"generated_at": "", "total_size_mb": 0, "components": [{"name": "Essential Tools", "category": "System", "size_bytes": 0, "size_mb": 0}]}
 EOF
 
-# Attempt sed-based append (as sandbox-measure.sh does):
+# Attempt sed-based append (as box-measure.sh does):
 current_json=$(cat /tmp/test.json)
 new_component='{"name": "Bun", "category": "Runtime", "size_bytes": 97000000, "size_mb": 97}'
 current_json=$(echo "$current_json" | sed "s|\]$|,$new_component]|")
@@ -100,7 +100,7 @@ The `[✓] Recorded` message is always printed **after** the `echo "$current_jso
 
 ### Why the First Component Branch Also Fails
 
-The first branch (`grep -q '"components": \[\]'`) checks for an empty components array `"components": []`. However, since the outer script has already written 9 system components to the JSON before passing it to the sandbox user, the file never contains `"components": []`. So only the second (broken) branch is ever reached.
+The first branch (`grep -q '"components": \[\]'`) checks for an empty components array `"components": []`. However, since the outer script has already written 9 system components to the JSON before passing it to the box user, the file never contains `"components": []`. So only the second (broken) branch is ever reached.
 
 ### Secondary Issue: PHP Homebrew Tap Failure
 
@@ -115,7 +115,7 @@ However, because the `install_php` function is wrapped in `|| true`, the failure
 
 ### How the Bug Was Previously "Fixed" — and Why It Recurred
 
-Issue #35 identified the exact same `sed` fragility problem in the **outer** `measure-disk-space.sh` and fixed it by switching to `python3`. The fix comment in the outer script even mentions the `sandbox-measure.sh`:
+Issue #35 identified the exact same `sed` fragility problem in the **outer** `measure-disk-space.sh` and fixed it by switching to `python3`. The fix comment in the outer script even mentions the `box-measure.sh`:
 
 ```bash
 # Add component measurement to JSON
@@ -123,13 +123,13 @@ Issue #35 identified the exact same `sed` fragility problem in the **outer** `me
 # characters in component names (e.g., "C/C++ Tools"). See docs/case-studies/issue-35.
 ```
 
-However, the `sandbox-measure.sh` heredoc (embedded in the same file) was **not updated** at the time of the issue-35 fix. The inner script was added with sed-based manipulation and never converted to python3. Since the inner script runs with the outer script's already-python3-generated JSON (which is compact), the sed patterns fail silently.
+However, the `box-measure.sh` heredoc (embedded in the same file) was **not updated** at the time of the issue-35 fix. The inner script was added with sed-based manipulation and never converted to python3. Since the inner script runs with the outer script's already-python3-generated JSON (which is compact), the sed patterns fail silently.
 
 The issue-46 fix (copying JSON to `/tmp/`) confirmed that data transfer between the outer and inner scripts works correctly — the problem is that the inner script writes nothing back.
 
 ## Solution
 
-Replace the `sed`-based `add_measurement()` in `sandbox-measure.sh` with the same `python3`-based approach used in the outer script:
+Replace the `sed`-based `add_measurement()` in `box-measure.sh` with the same `python3`-based approach used in the outer script:
 
 **Before (broken sed approach):**
 ```bash
@@ -239,7 +239,7 @@ See docs/case-studies/issue-29 for common causes.
 
 ## Files Modified
 
-- `scripts/measure-disk-space.sh` — Replaced `sed`-based `add_measurement()` in the `sandbox-measure.sh` heredoc with `python3`-based implementation
+- `scripts/measure-disk-space.sh` — Replaced `sed`-based `add_measurement()` in the `box-measure.sh` heredoc with `python3`-based implementation
 
 ## Prevention
 
@@ -250,10 +250,10 @@ See docs/case-studies/issue-29 for common causes.
 
 ## Related Issues
 
-- [#35 - Component Sizes Not Calculated or Pushed to README](https://github.com/link-foundation/sandbox/issues/35) — Same `sed` JSON bug in the outer script (fixed with python3)
-- [#31 - CI/CD failed](https://github.com/link-foundation/sandbox/issues/31) — sed delimiter error with `/` in component names
-- [#29 - Components size update failed](https://github.com/link-foundation/sandbox/issues/29) — APT cleanup breaking package installation
-- [#46 - Fix CI/CD](https://github.com/link-foundation/sandbox/issues/46) — Permission denied when sandbox user reads JSON (fixed with `/tmp/` copy)
+- [#35 - Component Sizes Not Calculated or Pushed to README](https://github.com/link-foundation/box/issues/35) — Same `sed` JSON bug in the outer script (fixed with python3)
+- [#31 - CI/CD failed](https://github.com/link-foundation/box/issues/31) — sed delimiter error with `/` in component names
+- [#29 - Components size update failed](https://github.com/link-foundation/box/issues/29) — APT cleanup breaking package installation
+- [#46 - Fix CI/CD](https://github.com/link-foundation/box/issues/46) — Permission denied when box user reads JSON (fixed with `/tmp/` copy)
 
 ## CI Logs
 
@@ -261,7 +261,7 @@ Full CI logs preserved in:
 - `ci-logs/run-22265618808.log` — Full workflow log for the failing run
 
 Online:
-- [GitHub Actions Run 22265618808](https://github.com/link-foundation/sandbox/actions/runs/22265618808/job/64411353868) — Failed measurement run
+- [GitHub Actions Run 22265618808](https://github.com/link-foundation/box/actions/runs/22265618808/job/64411353868) — Failed measurement run
 
 ---
 

@@ -4,7 +4,7 @@ This directory contains scripts to collect, normalize, and aggregate programming
 
 ## Overview
 
-The goal is to create a scientifically weighted ranking of programming languages that can be regularly updated and used as a decision-making tool for selecting languages to include in the sandbox Docker image.
+The goal is to create a scientifically weighted ranking of programming languages that can be regularly updated and used as a decision-making tool for selecting languages to include in the box Docker image.
 
 ## Data Sources
 
@@ -151,7 +151,7 @@ Add to crontab for automatic updates:
 
 ```bash
 # Update monthly on the 1st at 3:00 AM
-0 3 1 * * cd /path/to/sandbox && node scripts/language-tops/fetch-all.mjs >> /var/log/language-rankings.log 2>&1
+0 3 1 * * cd /path/to/box && node scripts/language-tops/fetch-all.mjs >> /var/log/language-rankings.log 2>&1
 ```
 
 ## Links-Notation Integration

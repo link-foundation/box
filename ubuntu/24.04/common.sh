@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Common functions and utilities shared across all sandbox install scripts
+# Common functions and utilities shared across all box install scripts
 # Source this file at the top of each install.sh:
 #   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #   source "$SCRIPT_DIR/../common.sh"
@@ -111,21 +111,21 @@ cleanup_duplicate_apt_sources() {
   fi
 }
 
-# Create sandbox user if missing
-ensure_sandbox_user() {
-  if id "sandbox" &>/dev/null; then
-    log_info "sandbox user already exists."
+# Create box user if missing
+ensure_box_user() {
+  if id "box" &>/dev/null; then
+    log_info "box user already exists."
   else
-    log_info "Creating sandbox user..."
-    groupadd sandbox 2>/dev/null || true
-    useradd -m -g sandbox -d /workspace -s /bin/bash sandbox 2>/dev/null || {
+    log_info "Creating box user..."
+    groupadd box 2>/dev/null || true
+    useradd -m -g box -d /home/box -s /bin/bash box 2>/dev/null || {
       log_warning "User creation with useradd failed, trying adduser..."
-      adduser --disabled-password --gecos "" --home /workspace sandbox
+      adduser --disabled-password --gecos "" --home /home/box box
     }
-    passwd -d sandbox 2>/dev/null || log_note "Could not remove password requirement"
-    usermod -aG sudo sandbox 2>/dev/null || log_note "Could not add to sudo group"
-    chmod 2775 /workspace 2>/dev/null || true
-    log_success "sandbox user created and configured"
+    passwd -d box 2>/dev/null || log_note "Could not remove password requirement"
+    usermod -aG sudo box 2>/dev/null || log_note "Could not add to sudo group"
+    chmod 2775 /home/box 2>/dev/null || true
+    log_success "box user created and configured"
   fi
 }
 

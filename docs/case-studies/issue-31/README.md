@@ -1,6 +1,6 @@
 # Case Study: CI/CD Failed - sed Command Error with Special Characters
 
-**Issue:** [#31 - CI/CD failed](https://github.com/link-foundation/sandbox/issues/31)
+**Issue:** [#31 - CI/CD failed](https://github.com/link-foundation/box/issues/31)
 
 **Date of Investigation:** 2026-01-29
 
@@ -30,10 +30,10 @@ The `measure-disk-space.yml` workflow failed with exit code 1 because the disk s
 The `add_measurement()` function in `scripts/measure-disk-space.sh` uses `sed` with forward slash (`/`) as the delimiter:
 
 ```bash
-# Line 114 (main script) and line 344 (embedded sandbox script)
+# Line 114 (main script) and line 344 (embedded box script)
 current_json=$(echo "$current_json" | sed "s/\"components\": \[\]/\"components\": [$new_component]/")
 
-# Line 117 (main script) and line 346 (embedded sandbox script)
+# Line 117 (main script) and line 346 (embedded box script)
 current_json=$(echo "$current_json" | sed "s/\]$/,$new_component]/")
 ```
 
@@ -49,7 +49,7 @@ sed: -e expression #1, char 20: unknown option to `s'
 
 ### Evidence from Logs
 
-From [Run 21489818730](https://github.com/link-foundation/sandbox/actions/runs/21489818730/job/61909023165):
+From [Run 21489818730](https://github.com/link-foundation/box/actions/runs/21489818730/job/61909023165):
 
 **Successful measurements before the error:**
 ```
@@ -163,7 +163,7 @@ current_json=$(echo "$current_json" | sed "s|\]$|,$new_component]|")
 
 This change needs to be made in:
 1. `scripts/measure-disk-space.sh` - main script (lines 114, 117, 133, 134)
-2. The embedded sandbox-measure.sh script (lines 344, 346)
+2. The embedded box-measure.sh script (lines 344, 346)
 
 ### Alternative Solutions Considered
 
@@ -192,12 +192,12 @@ To prevent similar issues in the future:
 
 ## Related Issues
 
-- [#29 - Components size update failed](https://github.com/link-foundation/sandbox/issues/29) - Different root cause (APT cleanup issue), but same symptom (0MB measurements)
+- [#29 - Components size update failed](https://github.com/link-foundation/box/issues/29) - Different root cause (APT cleanup issue), but same symptom (0MB measurements)
 
 ## CI Logs
 
 The full CI logs are available at:
-- [GitHub Actions Run 21489818730](https://github.com/link-foundation/sandbox/actions/runs/21489818730/job/61909023165) - Complete workflow output
+- [GitHub Actions Run 21489818730](https://github.com/link-foundation/box/actions/runs/21489818730/job/61909023165) - Complete workflow output
 
 ## Conclusion
 

@@ -18,7 +18,7 @@ fi
 
 log_step "Installing Ruby via rbenv"
 
-# Note: Build dependencies (libyaml-dev, libssl-dev, etc.) are provided by essentials-sandbox.
+# Note: Build dependencies (libyaml-dev, libssl-dev, etc.) are provided by essentials-box.
 
 if [ ! -d "$HOME/.rbenv" ]; then
   log_info "Installing rbenv (Ruby version manager)..."

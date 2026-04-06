@@ -2,10 +2,10 @@
 
 ## Executive Summary
 
-Running `bash` (or `sh`, `zsh`) inside an already-running bash session in the sandbox container produces a fatal syntax error:
+Running `bash` (or `sh`, `zsh`) inside an already-running bash session in the box container produces a fatal syntax error:
 
 ```
-bash: /home/sandbox/.bashrc: line 167: syntax error: unexpected end of file
+bash: /home/box/.bashrc: line 167: syntax error: unexpected end of file
 ```
 
 **Root cause**: The `.bashrc` merge algorithm in the Dockerfile used line-level deduplication. It skipped any line already present in the base `.bashrc`. Since the base `.bashrc` already contains several standalone `fi` lines (closing Ubuntu's built-in `if` blocks), the `fi` that closes the Perlbrew `if [ -n "$PS1" ]; then ... fi` block was silently discarded, leaving an unclosed `if` — which produces the "unexpected end of file" syntax error every time bash starts.
@@ -21,9 +21,9 @@ bash: /home/sandbox/.bashrc: line 167: syntax error: unexpected end of file
 The reported error:
 
 ```
-konard@MacBook-Pro-Konstantin ~ % $ --isolated docker --image konard/sandbox:1.3.14 -- bash
+konard@MacBook-Pro-Konstantin ~ % $ --isolated docker --image konard/box:1.3.14 -- bash
 $ bash
-bash: /home/sandbox/.bashrc: line 167: syntax error: unexpected end of file
+bash: /home/box/.bashrc: line 167: syntax error: unexpected end of file
 ```
 
 This error occurs when:
@@ -35,10 +35,10 @@ The same error occurs with any interactive bash invocation: `bash`, `bash -i`, `
 
 ### 1.2 .bashrc Generation
 
-The `~/.bashrc` for the sandbox user is not a static file — it is constructed at Docker image build time by the Dockerfile's merge step (lines 136–152 in root `Dockerfile`, lines 155–171 in `ubuntu/24.04/full-sandbox/Dockerfile`).
+The `~/.bashrc` for the box user is not a static file — it is constructed at Docker image build time by the Dockerfile's merge step (lines 136–152 in root `Dockerfile`, lines 155–171 in `ubuntu/24.04/full-box/Dockerfile`).
 
 The merge algorithm:
-1. Takes the essentials-sandbox `.bashrc` as the base
+1. Takes the essentials-box `.bashrc` as the base
 2. For each of 11 language stages (python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq), reads each line of that language's `.bashrc`
 3. Appends each line **only if it is not already present** in the base (`grep -qxF "$line"`)
 
@@ -78,7 +78,7 @@ if [ -n "$PS1" ]; then            ← if block opens
 
 This unclosed `if` causes bash to report:
 ```
-bash: /home/sandbox/.bashrc: line N: syntax error: unexpected end of file
+bash: /home/box/.bashrc: line N: syntax error: unexpected end of file
 ```
 
 ### 1.4 Experiment Reproduction
@@ -106,11 +106,11 @@ Any line that appears as a "structural token" in shell syntax — `fi`, `done`, 
 
 **Affected code:**
 - `Dockerfile` lines 136–152
-- `ubuntu/24.04/full-sandbox/Dockerfile` lines 155–171
+- `ubuntu/24.04/full-box/Dockerfile` lines 155–171
 
 ### 2.2 Secondary Issue: Bash-Specific Syntax in `.bashrc`
 
-The SDKMAN install sections in `java/install.sh`, `kotlin/install.sh`, and `full-sandbox/install.sh` write:
+The SDKMAN install sections in `java/install.sh`, `kotlin/install.sh`, and `full-box/install.sh` write:
 
 ```bash
 [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
@@ -130,7 +130,7 @@ The POSIX-compatible equivalent is:
 **Affected files:**
 - `ubuntu/24.04/java/install.sh` line 30
 - `ubuntu/24.04/kotlin/install.sh` line 31
-- `ubuntu/24.04/full-sandbox/install.sh` line 188
+- `ubuntu/24.04/full-box/install.sh` line 188
 
 ---
 
@@ -160,7 +160,7 @@ This preserves all multi-line constructs intact and handles cross-language dedup
 
 **Files changed:**
 - `Dockerfile` (merge RUN step)
-- `ubuntu/24.04/full-sandbox/Dockerfile` (merge RUN step)
+- `ubuntu/24.04/full-box/Dockerfile` (merge RUN step)
 
 ### 4.2 Fix 2: POSIX-Compatible SDKMAN Syntax
 
@@ -169,7 +169,7 @@ Replace `[[ -s ... ]] && source` with `[ -s ... ] && .` in all three install scr
 **Files changed:**
 - `ubuntu/24.04/java/install.sh`
 - `ubuntu/24.04/kotlin/install.sh`
-- `ubuntu/24.04/full-sandbox/install.sh`
+- `ubuntu/24.04/full-box/install.sh`
 
 ### 4.3 Verification
 
@@ -211,8 +211,8 @@ This also explains the issue title: "We should not run `bash` inside `bash`" —
 
 ## 6. References
 
-- [Issue #66: We should not run bash inside bash](https://github.com/link-foundation/sandbox/issues/66)
-- [PR #67: Fix .bashrc merge algorithm and SDKMAN POSIX syntax](https://github.com/link-foundation/sandbox/pull/67)
+- [Issue #66: We should not run bash inside bash](https://github.com/link-foundation/box/issues/66)
+- [PR #67: Fix .bashrc merge algorithm and SDKMAN POSIX syntax](https://github.com/link-foundation/box/pull/67)
 - [Bash manual: Bash startup files](https://www.gnu.org/software/bash/manual/bash.html#Bash-Startup-Files)
 - [POSIX Shell Grammar](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html)
 - [experiments/test-bashrc-merge.sh](../../experiments/test-bashrc-merge.sh) — bug reproduction

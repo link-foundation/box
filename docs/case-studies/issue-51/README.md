@@ -1,7 +1,7 @@
 # Case Study: CI Failure — `git push` Rejected Due to Concurrent Push Race Condition
 
-**Issue**: [#51 - Fix CI/CD](https://github.com/link-foundation/sandbox/issues/51)
-**CI Run**: [22267653514, Job 64416730310](https://github.com/link-foundation/sandbox/actions/runs/22267653514/job/64416730310)
+**Issue**: [#51 - Fix CI/CD](https://github.com/link-foundation/box/issues/51)
+**CI Run**: [22267653514, Job 64416730310](https://github.com/link-foundation/box/actions/runs/22267653514/job/64416730310)
 **Date**: 2026-02-22
 **Status**: Investigation Complete — Fix Applied
 
@@ -10,9 +10,9 @@
 The "Measure Disk Space and Update README" CI workflow failed at the "Commit and push changes" step with:
 
 ```
-To https://github.com/link-foundation/sandbox
+To https://github.com/link-foundation/box
  ! [rejected]        main -> main (fetch first)
-error: failed to push some refs to 'https://github.com/link-foundation/sandbox'
+error: failed to push some refs to 'https://github.com/link-foundation/box'
 hint: Updates were rejected because the remote contains work that you do not
 hint: have locally. This is usually caused by another repository pushing to
 hint: the same ref. If you want to integrate the remote changes, use

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Essentials Sandbox Installation Script
+# Essentials Box Installation Script
 # Installs tooling required for gh-setup-git-identity and glab-setup-git-identity
-# on top of an existing JS sandbox (Node.js, Bun, Deno already available).
+# on top of an existing JS box (Node.js, Bun, Deno already available).
 #
 # Components added: system essentials, GitHub CLI, GitLab CLI, git identity tools
 #
-# This is the layer between JS sandbox and full-sandbox.
+# This is the layer between JS box and full-box.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$SCRIPT_DIR/../common.sh" ]; then
@@ -24,7 +24,7 @@ else
   maybe_sudo() { if [ "$EUID" -eq 0 ]; then "$@"; elif command -v sudo &>/dev/null; then sudo "$@"; else "$@"; fi; }
 fi
 
-log_step "Installing Essentials Sandbox (on top of JS sandbox)"
+log_step "Installing Essentials Box (on top of JS box)"
 
 # --- Pre-flight Checks ---
 log_step "Running pre-flight checks"
@@ -45,16 +45,16 @@ fi
 
 log_success "Pre-flight checks passed"
 
-# --- Ensure sandbox user exists ---
-log_step "Setting up sandbox user"
-if id "sandbox" &>/dev/null; then
-  log_info "sandbox user already exists."
+# --- Ensure box user exists ---
+log_step "Setting up box user"
+if id "box" &>/dev/null; then
+  log_info "box user already exists."
 else
-  log_info "Creating sandbox user..."
-  useradd -m -d /workspace -s /bin/bash sandbox 2>/dev/null || adduser --disabled-password --gecos "" --home /workspace sandbox
-  passwd -d sandbox 2>/dev/null || true
-  usermod -aG sudo sandbox 2>/dev/null || true
-  log_success "sandbox user created"
+  log_info "Creating box user..."
+  useradd -m -d /home/box -s /bin/bash box 2>/dev/null || adduser --disabled-password --gecos "" --home /home/box box
+  passwd -d box 2>/dev/null || true
+  usermod -aG sudo box 2>/dev/null || true
+  log_success "box user created"
 fi
 
 # --- System prerequisites ---
@@ -86,7 +86,7 @@ maybe_sudo apt install -y \
 log_success "System prerequisites installed"
 
 # Note: Playwright/Puppeteer system dependencies and browser binaries are now
-# installed in the JS sandbox layer (ubuntu/24.04/js/Dockerfile and install.sh).
+# installed in the JS box layer (ubuntu/24.04/js/Dockerfile and install.sh).
 # See issue #74 for details.
 
 # --- GitHub CLI ---
@@ -119,7 +119,7 @@ else
   log_success "GitLab CLI already installed"
 fi
 
-# --- Install git identity tools as sandbox user (using Bun from JS sandbox) ---
+# --- Install git identity tools as box user (using Bun from JS box) ---
 log_step "Installing git identity tools"
 
 cat > /tmp/essentials-identity-setup.sh <<'EOF_IDENTITY'
@@ -130,7 +130,7 @@ log_info() { echo "[*] $1"; }
 log_success() { echo "[✓] $1"; }
 command_exists() { command -v "$1" &>/dev/null; }
 
-# Load Bun from JS sandbox
+# Load Bun from JS box
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
@@ -159,7 +159,7 @@ if gh auth status &>/dev/null; then
 fi
 
 # Note: playwright, @playwright/test, and @puppeteer/browsers CLIs are now
-# installed in the JS sandbox layer (ubuntu/24.04/js/install.sh).
+# installed in the JS box layer (ubuntu/24.04/js/install.sh).
 # Browser binaries are also pre-downloaded there. See issue #74.
 
 log_success "Essentials identity tools setup complete"
@@ -167,9 +167,9 @@ EOF_IDENTITY
 
 chmod +x /tmp/essentials-identity-setup.sh
 if [ "$EUID" -eq 0 ]; then
-  su - sandbox -c "bash /tmp/essentials-identity-setup.sh"
+  su - box -c "bash /tmp/essentials-identity-setup.sh"
 else
-  sudo -i -u sandbox bash /tmp/essentials-identity-setup.sh
+  sudo -i -u box bash /tmp/essentials-identity-setup.sh
 fi
 rm -f /tmp/essentials-identity-setup.sh
 
@@ -180,5 +180,5 @@ maybe_sudo apt-get autoclean
 maybe_sudo apt-get autoremove -y
 maybe_sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-log_step "Essentials Sandbox setup complete!"
-log_success "Added on top of JS sandbox: git, gh, glab, gh-setup-git-identity, glab-setup-git-identity"
+log_step "Essentials Box setup complete!"
+log_success "Added on top of JS box: git, gh, glab, gh-setup-git-identity, glab-setup-git-identity"

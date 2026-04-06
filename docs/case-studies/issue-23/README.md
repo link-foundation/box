@@ -1,21 +1,21 @@
 # Case Study: Automatic Release Workflow Not Triggering on Push to Main
 
-**Issue:** [#23 - Changesets and automatic version bump, and GitHub releases support](https://github.com/link-foundation/sandbox/issues/23)
+**Issue:** [#23 - Changesets and automatic version bump, and GitHub releases support](https://github.com/link-foundation/box/issues/23)
 
 **Date of Investigation:** 2026-01-29
 
 ## Executive Summary
 
-The automatic release workflow for the sandbox Docker image fails to build and release when code is pushed to the main branch, despite the detect-changes job correctly identifying that a build should occur. The root cause is a GitHub Actions behavior where jobs in a dependency chain are skipped when an upstream job is skipped, even if the downstream job has an explicit `if` condition that evaluates to true.
+The automatic release workflow for the box Docker image fails to build and release when code is pushed to the main branch, despite the detect-changes job correctly identifying that a build should occur. The root cause is a GitHub Actions behavior where jobs in a dependency chain are skipped when an upstream job is skipped, even if the downstream job has an explicit `if` condition that evaluates to true.
 
 ## Timeline of Events
 
 | Date | Event | Run ID | Result |
 |------|-------|--------|--------|
-| 2026-01-22 16:38 | Manual workflow_dispatch release | [21256601666](https://github.com/link-foundation/sandbox/actions/runs/21256601666) | **Success** - v1.0.0 released |
-| 2026-01-23 21:30 | Push to main (after PR merge) | [21301810652](https://github.com/link-foundation/sandbox/actions/runs/21301810652) | **Failure** - ARM64 build error |
-| 2026-01-25 17:55 | Push to main (after PR merge) | [21336989545](https://github.com/link-foundation/sandbox/actions/runs/21336989545) | **Failure** - ARM64 build error |
-| 2026-01-29 00:55 | Push to main (PR #22 merged) | [21461368663](https://github.com/link-foundation/sandbox/actions/runs/21461368663) | **All jobs skipped** |
+| 2026-01-22 16:38 | Manual workflow_dispatch release | [21256601666](https://github.com/link-foundation/box/actions/runs/21256601666) | **Success** - v1.0.0 released |
+| 2026-01-23 21:30 | Push to main (after PR merge) | [21301810652](https://github.com/link-foundation/box/actions/runs/21301810652) | **Failure** - ARM64 build error |
+| 2026-01-25 17:55 | Push to main (after PR merge) | [21336989545](https://github.com/link-foundation/box/actions/runs/21336989545) | **Failure** - ARM64 build error |
+| 2026-01-29 00:55 | Push to main (PR #22 merged) | [21461368663](https://github.com/link-foundation/box/actions/runs/21461368663) | **All jobs skipped** |
 
 ## Root Cause Analysis
 
@@ -52,7 +52,7 @@ When `version-bump` is skipped, the implicit `success()` check fails for all dow
 
 ### Evidence from Logs
 
-Run [21461368663](https://github.com/link-foundation/sandbox/actions/runs/21461368663):
+Run [21461368663](https://github.com/link-foundation/box/actions/runs/21461368663):
 
 1. **detect-changes** job ran successfully:
    - Set `should-build=true`
@@ -150,7 +150,7 @@ The [js-ai-driven-development-pipeline-template](https://github.com/link-foundat
 
 ### Recommended Approach for Docker-based Projects
 
-For projects like sandbox that primarily release Docker images (not npm packages):
+For projects like box that primarily release Docker images (not npm packages):
 
 1. **Keep VERSION file** - Simple and explicit version tracking
 2. **Add changeset support** - For documenting changes between versions

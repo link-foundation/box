@@ -4,16 +4,16 @@
 
 ### Slow Build (Issue Case)
 - **Run ID**: 22109801787
-- **URL**: https://github.com/link-foundation/sandbox/actions/runs/22109801787
+- **URL**: https://github.com/link-foundation/box/actions/runs/22109801787
 - **Job ID (PHP AMD64)**: 63903035885
-- **Job URL**: https://github.com/link-foundation/sandbox/actions/runs/22109801787/job/63903035885
+- **Job URL**: https://github.com/link-foundation/box/actions/runs/22109801787/job/63903035885
 - **Status**: In Progress (stuck)
 - **Started**: 2026-02-17T18:04:44Z
 - **Duration**: 2+ hours (ongoing)
 
 ### Fast Build (Reference)
 - **Run ID**: 22002755482
-- **URL**: https://github.com/link-foundation/sandbox/actions/runs/22002755482
+- **URL**: https://github.com/link-foundation/box/actions/runs/22002755482
 - **Job ID (PHP AMD64)**: 63579321456
 - **Status**: Completed (success)
 - **Started**: 2026-02-13T21:05:16Z
@@ -31,16 +31,16 @@
 
 ```bash
 # View run overview
-gh run view 22109801787 --repo link-foundation/sandbox
+gh run view 22109801787 --repo link-foundation/box
 
 # Get job details
-gh run view 22109801787 --repo link-foundation/sandbox --job 63903035885
+gh run view 22109801787 --repo link-foundation/box --job 63903035885
 
 # Download logs from completed run
-gh run view 22002755482 --repo link-foundation/sandbox --job 63579321456 --log
+gh run view 22002755482 --repo link-foundation/box --job 63579321456 --log
 
 # List jobs with status
-gh api repos/link-foundation/sandbox/actions/runs/22109801787/jobs --paginate
+gh api repos/link-foundation/box/actions/runs/22109801787/jobs --paginate
 
 # Get PHP formula details
 gh api repos/shivammathur/homebrew-php/contents/Formula/php@8.3.rb
@@ -92,7 +92,7 @@ gh api repos/shivammathur/homebrew-php/contents/Formula/php@8.3.rb
 | `ubuntu/24.04/php/Dockerfile` | PHP Docker image definition |
 | `ubuntu/24.04/php/install.sh` | PHP installation script |
 | `.github/workflows/release.yml` | CI/CD workflow definition |
-| `ubuntu/24.04/essentials-sandbox/Dockerfile` | Base image definition |
+| `ubuntu/24.04/essentials-box/Dockerfile` | Base image definition |
 | `ubuntu/24.04/js/Dockerfile` | JS base image (uses ubuntu:24.04) |
 
 ---

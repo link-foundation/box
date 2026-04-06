@@ -1,9 +1,9 @@
-ARG ESSENTIALS_IMAGE=konard/sandbox-essentials:latest
+ARG ESSENTIALS_IMAGE=konard/box-essentials:latest
 FROM ${ESSENTIALS_IMAGE}
-# Build: docker build -f ubuntu/24.04/dotnet/Dockerfile --build-arg ESSENTIALS_IMAGE=sandbox-essentials -t sandbox-dotnet .
+# Build: docker build -f ubuntu/24.04/dotnet/Dockerfile --build-arg ESSENTIALS_IMAGE=box-essentials -t box-dotnet .
 
-# .NET sandbox: .NET SDK 8.0
-# Built on top of essentials-sandbox (inherits JS, git, gh, glab, dev libraries)
+# .NET box: .NET SDK 8.0
+# Built on top of essentials-box (inherits JS, git, gh, glab, dev libraries)
 
 USER root
 
@@ -14,8 +14,8 @@ RUN chmod +x /tmp/install.sh /tmp/common.sh && \
     rm -f /tmp/install.sh /tmp/common.sh && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-USER sandbox
-WORKDIR /workspace
+USER box
+WORKDIR /home/box
 
 SHELL ["/bin/bash", "-c"]
 CMD ["/bin/bash"]

@@ -19,7 +19,7 @@ fi
 
 log_step "Installing Rocq/Coq via Opam"
 
-# Note: bubblewrap is provided by essentials-sandbox or the Dockerfile.
+# Note: bubblewrap is provided by essentials-box or the Dockerfile.
 
 # --- Opam ---
 if ! command_exists opam; then
@@ -95,7 +95,7 @@ if command_exists opam; then
   fi
 fi
 
-# Ensure .opam directory exists (required for COPY --from in full-sandbox)
+# Ensure .opam directory exists (required for COPY --from in full-box)
 if [ ! -d "$HOME/.opam" ]; then
   log_warning "Opam directory not found - creating minimal structure"
   mkdir -p "$HOME/.opam"

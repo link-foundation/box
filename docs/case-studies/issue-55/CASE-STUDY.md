@@ -6,7 +6,7 @@ The component size table in the README reported several language runtimes and to
 
 ## Issue Description
 
-The issue ([#55](https://github.com/link-foundation/sandbox/issues/55)) requested:
+The issue ([#55](https://github.com/link-foundation/box/issues/55)) requested:
 1. Verify all language runtimes and tools are listed in the component sizes table.
 2. Double-check correctness of size calculations.
 3. Investigate zero values suspected to be incorrect.
@@ -76,9 +76,9 @@ Because these are already present before the measurement script runs, the `df /`
 
 **Root cause:** The Rust installation uses `rustup`, which installs to `~/.cargo` and `~/.rustup`. These directories ARE on the `/` filesystem and should be captured by `df /`. However, the measurement shows only 96 KiB — which corresponds to just directory metadata (inode blocks), not actual file content.
 
-The most likely explanation is a **measurement ordering side effect**: The Rust installer (`sh.rustup.rs`) downloads and extracts large files to `/tmp` first, then moves them to `~/.cargo` and `~/.rustup`. The `cleanup_for_measurement` function in the inner sandbox script runs `sync` before and after, but the key issue is that the `df --block-size=1` measurement captures **used blocks** at the filesystem level. When files are moved (hardlinked) rather than copied, the filesystem block count does not change. If rustup uses `mv` from a tmpfs (`/tmp`) mount to the home directory on the root filesystem (`/`), this would show up correctly. But if the temp download location is on the same filesystem as the home dir, a `mv` is a rename (no block reallocation), and `df /` would only show the *net new* blocks — which could be just directory entries.
+The most likely explanation is a **measurement ordering side effect**: The Rust installer (`sh.rustup.rs`) downloads and extracts large files to `/tmp` first, then moves them to `~/.cargo` and `~/.rustup`. The `cleanup_for_measurement` function in the inner box script runs `sync` before and after, but the key issue is that the `df --block-size=1` measurement captures **used blocks** at the filesystem level. When files are moved (hardlinked) rather than copied, the filesystem block count does not change. If rustup uses `mv` from a tmpfs (`/tmp`) mount to the home directory on the root filesystem (`/`), this would show up correctly. But if the temp download location is on the same filesystem as the home dir, a `mv` is a rename (no block reallocation), and `df /` would only show the *net new* blocks — which could be just directory entries.
 
-**Additional factor:** The `cleanup_for_measurement` in the inner script cleans `/tmp/measure-*` files, not all of `/tmp`. But the outer script's `cleanup_for_measurement` (which cleans all of `/tmp/*`) is NOT called during sandbox user measurements. So this cleanup behavior does not explain the Rust measurement issue.
+**Additional factor:** The `cleanup_for_measurement` in the inner script cleans `/tmp/measure-*` files, not all of `/tmp`. But the outer script's `cleanup_for_measurement` (which cleans all of `/tmp/*`) is NOT called during box user measurements. So this cleanup behavior does not explain the Rust measurement issue.
 
 **Verification attempt:** A typical `rustup` installation creates:
 - `~/.rustup/toolchains/stable-*/` (~700 MB)
@@ -102,7 +102,7 @@ See Root Cause 5 for the general methodology fix.
 
 **Actual measured:** 16,384 bytes = 16 KiB = 4 filesystem blocks
 
-**Root cause:** The outer measurement script (running as root) creates the directory `/home/linuxbrew/.linuxbrew` before the sandbox user runs:
+**Root cause:** The outer measurement script (running as root) creates the directory `/home/linuxbrew/.linuxbrew` before the box user runs:
 
 ```bash
 # In measure-disk-space.sh (outer, root):
@@ -112,7 +112,7 @@ if [ ! -d /home/linuxbrew/.linuxbrew ]; then
 fi
 ```
 
-Then, in the sandbox user's inner script, `measure_install "Homebrew"` runs `install_homebrew`, which calls:
+Then, in the box user's inner script, `measure_install "Homebrew"` runs `install_homebrew`, which calls:
 
 ```bash
 NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
@@ -162,13 +162,13 @@ This gives the actual consumed disk space for each language's home directory, in
 
 ### Root Cause 6: Missing Component — `bubblewrap`
 
-**Location:** `ubuntu/24.04/full-sandbox/install.sh`, line 66:
+**Location:** `ubuntu/24.04/full-box/install.sh`, line 66:
 
 ```bash
 maybe_sudo apt install -y bubblewrap
 ```
 
-`bubblewrap` is a sandboxing tool installed as a system prerequisite for Rocq/Opam. It is listed in the install script but **not measured** in `scripts/measure-disk-space.sh`.
+`bubblewrap` is a boxing tool installed as a system prerequisite for Rocq/Opam. It is listed in the install script but **not measured** in `scripts/measure-disk-space.sh`.
 
 **Estimated size:** ~100–300 KB (small system utility).
 

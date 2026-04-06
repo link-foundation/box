@@ -1,6 +1,6 @@
 # Case Study: Components Size Update Failed (0MB Total)
 
-**Issue:** [#29 - Components size update failed](https://github.com/link-foundation/sandbox/issues/29)
+**Issue:** [#29 - Components size update failed](https://github.com/link-foundation/box/issues/29)
 
 **Date of Investigation:** 2026-01-29
 
@@ -12,8 +12,8 @@ The `measure-disk-space.yml` workflow ran successfully but produced incorrect re
 
 | Date | Event | Commit | Result |
 |------|-------|--------|--------|
-| 2026-01-29 14:07 | Measure Disk Space workflow triggered | [035998b](https://github.com/link-foundation/sandbox/commit/035998b08217cfa99ea947fc73b060cd4260f93c) | Workflow "succeeded" but produced incorrect data |
-| 2026-01-29 14:09 | Workflow committed results | [3d75e41](https://github.com/link-foundation/sandbox/commit/3d75e41e572224f31248aff1262ef565e7f23a34) | Commit message: "chore: update component disk space measurements (0MB total)" |
+| 2026-01-29 14:07 | Measure Disk Space workflow triggered | [035998b](https://github.com/link-foundation/box/commit/035998b08217cfa99ea947fc73b060cd4260f93c) | Workflow "succeeded" but produced incorrect data |
+| 2026-01-29 14:09 | Workflow committed results | [3d75e41](https://github.com/link-foundation/box/commit/3d75e41e572224f31248aff1262ef565e7f23a34) | Commit message: "chore: update component disk space measurements (0MB total)" |
 
 ## Root Cause Analysis
 
@@ -62,7 +62,7 @@ cleanup_for_measurement() {
 
 ### Evidence from Logs
 
-From [Run 21481304786](https://github.com/link-foundation/sandbox/actions/runs/21481304786):
+From [Run 21481304786](https://github.com/link-foundation/box/actions/runs/21481304786):
 
 **Step 1: Free up disk space removed critical packages:**
 ```

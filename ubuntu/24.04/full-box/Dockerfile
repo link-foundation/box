@@ -1,21 +1,30 @@
-# Full Box environment Docker image
-# Contains all language runtimes and development tools.
-# This is the "full-box" image (konard/box or konard/box-full).
+# Full Box Docker image - Multi-stage assembly
+# Copies pre-built language runtimes from individual language images
+# Published as: konard/box (or konard/box-full)
 #
 # Architecture:
 #   essentials-box (base for all language images)
-#     ├─ box-python, box-go, box-rust, ... (built in parallel)
-#     └─ full-box (merges all language images via COPY --from)
+#     ├─ box-python   (built in parallel)
+#     ├─ box-go       (built in parallel)
+#     ├─ box-rust     (built in parallel)
+#     ├─ box-java     (built in parallel)
+#     ├─ box-kotlin   (built in parallel)
+#     ├─ box-ruby     (built in parallel)
+#     ├─ box-php      (built in parallel)
+#     ├─ box-perl     (built in parallel)
+#     ├─ box-swift    (built in parallel)
+#     ├─ box-lean     (built in parallel)
+#     ├─ box-rocq     (built in parallel)
+#     └─ full-box     (merges all + adds dotnet, r, cpp, assembly via apt)
+#
+# PHP Integration (Issue #44):
+#   The php-stage image may have PHP installed locally (Homebrew) or globally (apt).
+#   A marker file at /home/box/.php-install-method indicates the method:
+#     "local"  → COPY /home/linuxbrew/.linuxbrew from php-stage (user-specific)
+#     "global" → Install PHP via apt in this image directly
 #
 # Build from repository root:
-#   docker build -t box .
-#
-# Build with specific images:
-#   docker build --build-arg ESSENTIALS_IMAGE=konard/box-essentials:latest -t box .
-#
-# For a lighter image with just essentials, see ubuntu/24.04/essentials-box/Dockerfile.
-# For just JavaScript, see ubuntu/24.04/js/Dockerfile.
-# For individual language images, see ubuntu/24.04/<language>/Dockerfile.
+#   docker build -f ubuntu/24.04/full-box/Dockerfile -t box-full .
 
 # === Build arguments (all declared before first FROM for global scope) ===
 ARG ESSENTIALS_IMAGE=konard/box-essentials:latest
@@ -31,6 +40,7 @@ ARG SWIFT_IMAGE=konard/box-swift:latest
 ARG LEAN_IMAGE=konard/box-lean:latest
 ARG ROCQ_IMAGE=konard/box-rocq:latest
 
+# === Language image stages (for COPY --from) ===
 FROM ${PYTHON_IMAGE} AS python-stage
 FROM ${GO_IMAGE} AS go-stage
 FROM ${RUST_IMAGE} AS rust-stage
@@ -48,7 +58,6 @@ FROM ${ESSENTIALS_IMAGE}
 
 USER root
 ENV DEBIAN_FRONTEND=noninteractive
-WORKDIR /home/box
 
 # Copy entrypoint script
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
@@ -62,6 +71,7 @@ RUN apt-get update -y && \
       r-base \
       cmake clang llvm lld \
       nasm \
+      expect \
       bubblewrap && \
     # FASM only available on x86_64
     if [ "$(uname -m)" = "x86_64" ]; then apt-get install -y fasm; fi && \
@@ -82,17 +92,26 @@ COPY --from=rust-stage --chown=box:box /home/box/.rustup /home/box/.rustup
 # Java (SDKMAN)
 COPY --from=java-stage --chown=box:box /home/box/.sdkman /home/box/.sdkman
 
-# Kotlin (SDKMAN - merge Kotlin candidate into Java's SDKMAN)
+# Kotlin (SDKMAN - merge with Java's SDKMAN)
 COPY --from=kotlin-stage --chown=box:box /home/box/.sdkman/candidates/kotlin /home/box/.sdkman/candidates/kotlin
 
 # Ruby (rbenv)
 COPY --from=ruby-stage --chown=box:box /home/box/.rbenv /home/box/.rbenv
 
-# PHP: Copy marker file and handle local (Homebrew) vs global (apt) install (Issue #44)
+# PHP: Copy marker file to determine install method
 COPY --from=php-stage --chown=box:box /home/box/.php-install-method /home/box/.php-install-method
+
+# PHP (local/Homebrew): Copy linuxbrew directory if it exists in php-stage
+# This COPY succeeds if PHP was installed locally (Homebrew), and the directory exists
+# If PHP was installed globally (apt), the directory was cleaned up and this will be empty/fail
+# We use a shell check after to handle the global case
 RUN mkdir -p /home/linuxbrew/.linuxbrew && \
     chown -R box:box /home/linuxbrew
+
+# Try to copy Homebrew PHP files (only present if local install succeeded)
 COPY --from=php-stage --chown=box:box /home/linuxbrew/.linuxbrew/ /home/linuxbrew/.linuxbrew/
+
+# PHP (global/apt fallback): If php-stage used global install, install PHP via apt here too
 RUN PHP_METHOD=$(cat /home/box/.php-install-method 2>/dev/null || echo "unknown") && \
     echo "PHP install method from php-stage: $PHP_METHOD" && \
     if [ "$PHP_METHOD" = "global" ]; then \
@@ -169,7 +188,6 @@ RUN cp /home/box/.bashrc /tmp/.bashrc-base && \
 # This prevents permission issues (EACCES) for the box user at runtime
 RUN chown box:box /home/box
 
-# Switch to box user
 USER box
 WORKDIR /home/box
 
@@ -190,11 +208,14 @@ ENV RBENV_ROOT="/home/box/.rbenv"
 # Includes Homebrew PHP paths (only effective if local install was used, harmless otherwise)
 ENV PATH="/home/linuxbrew/.linuxbrew/opt/php@8.3/bin:/home/linuxbrew/.linuxbrew/opt/php@8.3/sbin:/home/linuxbrew/.linuxbrew/bin:/home/box/.pyenv/bin:/home/box/.pyenv/shims:/home/box/.rbenv/bin:/home/box/.rbenv/shims:/home/box/.swift/usr/bin:/home/box/.elan/bin:/home/box/.opam/default/bin:/home/box/.cargo/bin:/home/box/.deno/bin:/home/box/.bun/bin:/home/box/.go/bin:/home/box/.go/path/bin:${PATH}"
 
+SHELL ["/bin/bash", "-c"]
+
 # Opam environment variables for Rocq/Coq theorem prover
 ENV OPAM_SWITCH_PREFIX="/home/box/.opam/default"
 ENV CAML_LD_LIBRARY_PATH="/home/box/.opam/default/lib/stublibs:/home/box/.opam/default/lib/ocaml/stublibs:/home/box/.opam/default/lib/ocaml"
 ENV OCAML_TOPLEVEL_PATH="/home/box/.opam/default/lib/toplevel"
 
 SHELL ["/bin/bash", "-c"]
+
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["/bin/bash"]

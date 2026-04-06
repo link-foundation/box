@@ -4,7 +4,7 @@
 
 ### CI Run Information
 
-- **Workflow Run URL**: https://github.com/link-foundation/sandbox/actions/runs/22261112919/job/64399507098
+- **Workflow Run URL**: https://github.com/link-foundation/box/actions/runs/22261112919/job/64399507098
 - **Run ID**: 22261112919
 - **Job ID**: 64399507098
 - **Job Name**: "Measure Component Disk Space"
@@ -17,13 +17,13 @@
 
 ```bash
 # List recent runs
-gh run list --repo link-foundation/sandbox --limit 5 --json databaseId,conclusion,createdAt,headSha
+gh run list --repo link-foundation/box --limit 5 --json databaseId,conclusion,createdAt,headSha
 
 # Download run logs
-gh run view 22261112919 --repo link-foundation/sandbox --log > ci-logs/measure-disk-space-22261112919.log
+gh run view 22261112919 --repo link-foundation/box --log > ci-logs/measure-disk-space-22261112919.log
 
 # View specific job
-gh run view 22261112919 --repo link-foundation/sandbox --job 64399507098
+gh run view 22261112919 --repo link-foundation/box --job 64399507098
 ```
 
 ## Key Log Excerpts
@@ -41,14 +41,14 @@ gh run view 22261112919 --repo link-foundation/sandbox --job 64399507098
 2026-02-21T17:31:26.0172612Z [*] Initialized JSON output at data/disk-space-measurements.json
 ```
 
-### Context Switch to Sandbox User (Lines 1598-1617)
+### Context Switch to Box User (Lines 1598-1617)
 
 ```
 2026-02-21T17:32:57.2186148Z [✓] Recorded: GitLab CLI - 27MB
 2026-02-21T17:32:57.2186516Z
 2026-02-21T17:32:57.2186621Z ==> Preparing Homebrew Directory
 ...
-2026-02-21T17:32:57.2266635Z ==> Measuring Sandbox User Installations
+2026-02-21T17:32:57.2266635Z ==> Measuring Box User Installations
 ...
 2026-02-21T17:32:57.4165096Z [*] Measuring: Bun
 2026-02-21T17:32:58.0291267Z #=#=#
@@ -61,7 +61,7 @@ gh run view 22261112919 --repo link-foundation/sandbox --job 64399507098
 2026-02-21T17:32:58.8236217Z
 2026-02-21T17:32:58.8237067Z To get started, run:
 2026-02-21T17:32:58.8237409Z
-2026-02-21T17:32:58.8284531Z   source /home/sandbox/.bash_profile
+2026-02-21T17:32:58.8284531Z   source /home/box/.bash_profile
 2026-02-21T17:32:58.8285158Z   bun --help
 2026-02-21T17:32:58.8658778Z cat: data/disk-space-measurements.json: No such file or directory
 2026-02-21T17:32:58.8708101Z ##[error]Process completed with exit code 1.
@@ -124,17 +124,17 @@ EOF
 ```
 File created successfully at the relative path — works because CWD is the runner's workspace.
 
-**Sandbox User Execution (lines 644-649)**:
+**Box User Execution (lines 644-649)**:
 ```bash
 if [ "$EUID" -eq 0 ]; then
-  su - sandbox -c "bash /tmp/sandbox-measure.sh '$JSON_OUTPUT_FILE'"
+  su - box -c "bash /tmp/box-measure.sh '$JSON_OUTPUT_FILE'"
 else
-  sudo -i -u sandbox bash /tmp/sandbox-measure.sh "$JSON_OUTPUT_FILE"
+  sudo -i -u box bash /tmp/box-measure.sh "$JSON_OUTPUT_FILE"
 fi
 ```
-The `-` flag to `su` and `-i` flag to `sudo` both create login shells, changing CWD to `/home/sandbox`.
+The `-` flag to `su` and `-i` flag to `sudo` both create login shells, changing CWD to `/home/box`.
 
-**sandbox-measure.sh `add_measurement` (lines 335-353)**:
+**box-measure.sh `add_measurement` (lines 335-353)**:
 ```bash
 add_measurement() {
   local current_json
@@ -149,11 +149,11 @@ add_measurement() {
 
 The evidence chain:
 
-1. **JSON initialized at relative path** in runner's CWD (`/home/runner/work/sandbox/sandbox/data/disk-space-measurements.json`) — log line 254 confirms this.
+1. **JSON initialized at relative path** in runner's CWD (`/home/runner/work/box/box/data/disk-space-measurements.json`) — log line 254 confirms this.
 
-2. **`su - sandbox` changes CWD** to `/home/sandbox` — this is documented behavior of login shells.
+2. **`su - box` changes CWD** to `/home/box` — this is documented behavior of login shells.
 
-3. **First read of JSON fails** in sandbox-measure.sh's `add_measurement`, which runs after `install_bun` succeeds — log lines 1605-1618 show Bun installing successfully before the error.
+3. **First read of JSON fails** in box-measure.sh's `add_measurement`, which runs after `install_bun` succeeds — log lines 1605-1618 show Bun installing successfully before the error.
 
 4. **No other errors** in the log between GitLab CLI recording and the JSON error — confirming no other failure points.
 

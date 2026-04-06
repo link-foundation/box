@@ -1,14 +1,14 @@
 FROM ubuntu:24.04
 
-# JavaScript/TypeScript sandbox: Node.js (NVM), Bun, Deno
+# JavaScript/TypeScript box: Node.js (NVM), Bun, Deno
 # Standalone JS image without essentials overhead
-# Published as: konard/sandbox-js
+# Published as: konard/box-js
 #
 # Build from repository root:
-#   docker build -f ubuntu/24.04/js/Dockerfile -t sandbox-js .
+#   docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
 
 ENV DEBIAN_FRONTEND=noninteractive
-WORKDIR /workspace
+WORKDIR /home/box
 
 # Install minimal system prerequisites
 RUN apt update -y && \
@@ -99,31 +99,30 @@ RUN apt-get update -y && \
       fonts-freefont-ttf \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Create sandbox group and user with /workspace as home directory
-# Using /workspace instead of /home/sandbox decouples identity from filesystem,
-# enabling downstream images to add users to the sandbox group without renaming/chowning
-RUN groupadd sandbox && \
-    useradd -m -g sandbox -d /workspace -s /bin/bash sandbox && \
-    passwd -d sandbox && \
-    usermod -aG sudo sandbox && \
-    chown sandbox:sandbox /workspace && \
-    chmod 2775 /workspace
+# Create box group and user with /home/box as home directory
+# Standard home directory location for the box user
+RUN groupadd box && \
+    useradd -m -g box -d /home/box -s /bin/bash box && \
+    passwd -d box && \
+    usermod -aG sudo box && \
+    chown box:box /home/box && \
+    chmod 2775 /home/box
 
 # Copy and run install script
 COPY ubuntu/24.04/common.sh /tmp/common.sh
 COPY ubuntu/24.04/js/install.sh /tmp/install.sh
 RUN chmod +x /tmp/install.sh /tmp/common.sh && \
-    su - sandbox -c "bash /tmp/install.sh" && \
+    su - box -c "bash /tmp/install.sh" && \
     rm -f /tmp/install.sh /tmp/common.sh
 
-USER sandbox
-WORKDIR /workspace
+USER box
+WORKDIR /home/box
 
-ENV HOME=/workspace
-ENV NVM_DIR="/workspace/.nvm"
-ENV BUN_INSTALL="/workspace/.bun"
-ENV DENO_INSTALL="/workspace/.deno"
-ENV PATH="/workspace/.deno/bin:/workspace/.bun/bin:${PATH}"
+ENV HOME=/home/box
+ENV NVM_DIR="/home/box/.nvm"
+ENV BUN_INSTALL="/home/box/.bun"
+ENV DENO_INSTALL="/home/box/.deno"
+ENV PATH="/home/box/.deno/bin:/home/box/.bun/bin:${PATH}"
 
 SHELL ["/bin/bash", "-c"]
 

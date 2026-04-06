@@ -76,7 +76,7 @@ For ARM64 systems, consider using native ARM assemblers as alternatives:
 
 ### Solution 3: Skip FASM Entirely
 
-If FASM is not critical for the sandbox environment, simply remove it from the installation list.
+If FASM is not critical for the box environment, simply remove it from the installation list.
 
 ## Recommended Fix
 
@@ -92,7 +92,7 @@ If FASM is not critical for the sandbox environment, simply remove it from the i
 - [FASMARM - ARM Cross Assembler](https://arm.flatassembler.net/)
 - [Ubuntu fasm Package](https://packages.ubuntu.com/noble/fasm)
 - [Ubuntu Launchpad - fasm](https://launchpad.net/ubuntu/+source/fasm)
-- [GitHub Actions Run #21472785075](https://github.com/link-foundation/sandbox/actions/runs/21472785075)
+- [GitHub Actions Run #21472785075](https://github.com/link-foundation/box/actions/runs/21472785075)
 
 ## Architecture Analysis of All Installation Items
 
