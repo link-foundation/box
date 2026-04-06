@@ -1,0 +1,130 @@
+Apply Changesets	UNKNOWN STEP	2026-04-06T08:19:39.7844686Z ##[group]GITHUB_TOKEN Permissions
+detect-changes	UNKNOWN STEP	2026-04-06T08:19:47.1957041Z ##[group]GITHUB_TOKEN Permissions
+detect-changes	UNKNOWN STEP	2026-04-06T08:19:47.1964230Z Packages: write
+build-js-amd64	UNKNOWN STEP	2026-04-06T08:19:57.1869314Z ##[group]GITHUB_TOKEN Permissions
+build-js-amd64	UNKNOWN STEP	2026-04-06T08:19:57.1873979Z Packages: write
+build-js-amd64	UNKNOWN STEP	2026-04-06T08:20:05.8593752Z Login Succeeded!
+build-js-amd64	UNKNOWN STEP	2026-04-06T08:20:06.2789873Z Login Succeeded!
+build-js-arm64	UNKNOWN STEP	2026-04-06T08:19:56.8564193Z ##[group]GITHUB_TOKEN Permissions
+build-js-arm64	UNKNOWN STEP	2026-04-06T08:19:56.8568342Z Packages: write
+build-js-arm64	UNKNOWN STEP	2026-04-06T08:20:09.2679578Z Login Succeeded!
+build-js-arm64	UNKNOWN STEP	2026-04-06T08:20:09.6332104Z Login Succeeded!
+build-essentials-arm64	UNKNOWN STEP	2026-04-06T08:24:07.8743924Z ##[group]GITHUB_TOKEN Permissions
+build-essentials-arm64	UNKNOWN STEP	2026-04-06T08:24:07.8748260Z Packages: write
+build-essentials-arm64	UNKNOWN STEP	2026-04-06T08:24:21.9133219Z Login Succeeded!
+build-essentials-arm64	UNKNOWN STEP	2026-04-06T08:24:22.3859647Z Login Succeeded!
+build-essentials-amd64	UNKNOWN STEP	2026-04-06T08:24:53.6346813Z ##[group]GITHUB_TOKEN Permissions
+build-essentials-amd64	UNKNOWN STEP	2026-04-06T08:24:53.6349736Z Packages: write
+build-essentials-amd64	UNKNOWN STEP	2026-04-06T08:25:04.0613710Z Login Succeeded!
+build-essentials-amd64	UNKNOWN STEP	2026-04-06T08:25:04.5773375Z Login Succeeded!
+js-manifest	UNKNOWN STEP	2026-04-06T08:24:53.3385494Z ##[group]GITHUB_TOKEN Permissions
+js-manifest	UNKNOWN STEP	2026-04-06T08:24:53.3388866Z Packages: write
+js-manifest	UNKNOWN STEP	2026-04-06T08:24:58.3988242Z Login Succeeded!
+js-manifest	UNKNOWN STEP	2026-04-06T08:24:59.2921505Z Login Succeeded!
+build-languages-amd64 (kotlin)	UNKNOWN STEP	2026-04-06T08:28:42.8470680Z ##[group]GITHUB_TOKEN Permissions
+build-languages-amd64 (kotlin)	UNKNOWN STEP	2026-04-06T08:28:42.8473954Z Packages: write
+build-languages-amd64 (kotlin)	UNKNOWN STEP	2026-04-06T08:28:49.5672010Z Login Succeeded!
+build-languages-amd64 (kotlin)	UNKNOWN STEP	2026-04-06T08:28:49.9992915Z Login Succeeded!
+build-languages-amd64 (kotlin)	UNKNOWN STEP	2026-04-06T08:28:50.9592257Z #2 [auth] ***/box-essentials:pull token for registry-1.docker.io
+build-languages-amd64 (kotlin)	UNKNOWN STEP	2026-04-06T08:29:39.2975356Z #12 exporting to image
+build-languages-amd64 (kotlin)	UNKNOWN STEP	2026-04-06T08:29:43.4429328Z #13 [auth] link-foundation/box-kotlin:pull,push token for ghcr.io
+build-languages-amd64 (kotlin)	UNKNOWN STEP	2026-04-06T08:29:55.0643141Z ERROR: failed to build: failed to solve: failed to push ghcr.io/link-foundation/box-kotlin:2.0.0-amd64: unexpected status from HEAD request to https://ghcr.io/v2/link-foundation/box-kotlin/blobs/sha256:31e5c778549155610fd5c26dd3589f79c524ed47195fea0658630fbd72ed3ce0: 403 Forbidden
+build-languages-amd64 (kotlin)	UNKNOWN STEP	2026-04-06T08:29:55.0792959Z ##[error]buildx failed with: ERROR: failed to build: failed to solve: failed to push ghcr.io/link-foundation/box-kotlin:2.0.0-amd64: unexpected status from HEAD request to https://ghcr.io/v2/link-foundation/box-kotlin/blobs/sha256:31e5c778549155610fd5c26dd3589f79c524ed47195fea0658630fbd72ed3ce0: 403 Forbidden
+build-languages-amd64 (rocq)	UNKNOWN STEP	2026-04-06T08:28:42.8169494Z ##[group]GITHUB_TOKEN Permissions
+build-languages-amd64 (rocq)	UNKNOWN STEP	2026-04-06T08:28:42.8174157Z Packages: write
+build-languages-amd64 (rocq)	UNKNOWN STEP	2026-04-06T08:28:52.0056267Z Login Succeeded!
+build-languages-amd64 (rocq)	UNKNOWN STEP	2026-04-06T08:28:52.4078911Z Login Succeeded!
+build-languages-amd64 (python)	UNKNOWN STEP	2026-04-06T08:28:42.8374415Z ##[group]GITHUB_TOKEN Permissions
+build-languages-amd64 (python)	UNKNOWN STEP	2026-04-06T08:28:42.8378124Z Packages: write
+build-languages-amd64 (python)	UNKNOWN STEP	2026-04-06T08:28:52.5745063Z Login Succeeded!
+build-languages-amd64 (python)	UNKNOWN STEP	2026-04-06T08:28:52.9990276Z Login Succeeded!
+build-languages-amd64 (python)	UNKNOWN STEP	2026-04-06T08:28:54.0155509Z #2 [auth] ***/box-essentials:pull token for registry-1.docker.io
+build-languages-amd64 (python)	UNKNOWN STEP	2026-04-06T08:31:47.8067481Z #12 exporting to image
+build-languages-amd64 (python)	UNKNOWN STEP	2026-04-06T08:31:58.7979777Z #13 [auth] link-foundation/box-python:pull,push token for ghcr.io
+build-languages-amd64 (python)	UNKNOWN STEP	2026-04-06T08:32:10.4330886Z ERROR: failed to build: failed to solve: failed to push ghcr.io/link-foundation/box-python:2.0.0-amd64: unexpected status from HEAD request to https://ghcr.io/v2/link-foundation/box-python/blobs/sha256:9c09dd8e153f5a85595ac2d89d18c9ec426b7a2786868c3e51866433123ae9fe: 403 Forbidden
+build-languages-amd64 (python)	UNKNOWN STEP	2026-04-06T08:32:10.4441526Z ##[error]buildx failed with: ERROR: failed to build: failed to solve: failed to push ghcr.io/link-foundation/box-python:2.0.0-amd64: unexpected status from HEAD request to https://ghcr.io/v2/link-foundation/box-python/blobs/sha256:9c09dd8e153f5a85595ac2d89d18c9ec426b7a2786868c3e51866433123ae9fe: 403 Forbidden
+build-languages-amd64 (swift)	UNKNOWN STEP	2026-04-06T08:28:43.4167926Z ##[group]GITHUB_TOKEN Permissions
+build-languages-amd64 (swift)	UNKNOWN STEP	2026-04-06T08:28:43.4170875Z Packages: write
+build-languages-amd64 (swift)	UNKNOWN STEP	2026-04-06T08:28:53.9738586Z Login Succeeded!
+build-languages-amd64 (swift)	UNKNOWN STEP	2026-04-06T08:28:54.6716400Z Login Succeeded!
+build-languages-amd64 (swift)	UNKNOWN STEP	2026-04-06T08:28:55.6713851Z #3 [auth] ***/box-essentials:pull token for registry-1.docker.io
+build-languages-amd64 (swift)	UNKNOWN STEP	2026-04-06T08:30:05.5730428Z #12 exporting to image
+build-languages-amd64 (swift)	UNKNOWN STEP	2026-04-06T08:31:22.9930687Z #14 [auth] link-foundation/box-swift:pull,push token for ghcr.io
+build-languages-amd64 (swift)	UNKNOWN STEP	2026-04-06T08:31:46.8336233Z ERROR: failed to build: failed to solve: failed to push ghcr.io/link-foundation/box-swift:2.0.0-amd64: unexpected status from HEAD request to https://ghcr.io/v2/link-foundation/box-swift/blobs/sha256:202e76296c60393df1af5dfd6c523e58fe45b51ed0af6f4fca770737b1773b8b: 403 Forbidden
+build-languages-amd64 (swift)	UNKNOWN STEP	2026-04-06T08:31:46.8433126Z ##[error]buildx failed with: ERROR: failed to build: failed to solve: failed to push ghcr.io/link-foundation/box-swift:2.0.0-amd64: unexpected status from HEAD request to https://ghcr.io/v2/link-foundation/box-swift/blobs/sha256:202e76296c60393df1af5dfd6c523e58fe45b51ed0af6f4fca770737b1773b8b: 403 Forbidden
+build-languages-amd64 (php)	UNKNOWN STEP	2026-04-06T08:28:42.9767662Z ##[group]GITHUB_TOKEN Permissions
+build-languages-amd64 (php)	UNKNOWN STEP	2026-04-06T08:28:42.9770795Z Packages: write
+build-languages-amd64 (php)	UNKNOWN STEP	2026-04-06T08:28:54.4597516Z Login Succeeded!
+build-languages-amd64 (php)	UNKNOWN STEP	2026-04-06T08:28:54.9648032Z Login Succeeded!
+build-languages-amd64 (ruby)	UNKNOWN STEP	2026-04-06T08:28:42.9687439Z ##[group]GITHUB_TOKEN Permissions
+build-languages-amd64 (ruby)	UNKNOWN STEP	2026-04-06T08:28:42.9690824Z Packages: write
+build-languages-amd64 (ruby)	UNKNOWN STEP	2026-04-06T08:28:50.8945509Z Login Succeeded!
+build-languages-amd64 (ruby)	UNKNOWN STEP	2026-04-06T08:28:51.4444912Z Login Succeeded!
+build-languages-amd64 (rust)	UNKNOWN STEP	2026-04-06T08:28:44.9055063Z ##[group]GITHUB_TOKEN Permissions
+build-languages-amd64 (rust)	UNKNOWN STEP	2026-04-06T08:28:44.9058019Z Packages: write
+build-languages-amd64 (rust)	UNKNOWN STEP	2026-04-06T08:28:55.3392110Z Login Succeeded!
+build-languages-amd64 (rust)	UNKNOWN STEP	2026-04-06T08:28:56.1942464Z Login Succeeded!
+build-languages-amd64 (lean)	UNKNOWN STEP	2026-04-06T08:28:42.8731104Z ##[group]GITHUB_TOKEN Permissions
+build-languages-amd64 (lean)	UNKNOWN STEP	2026-04-06T08:28:42.8736710Z Packages: write
+build-languages-amd64 (lean)	UNKNOWN STEP	2026-04-06T08:28:52.4698428Z Login Succeeded!
+build-languages-amd64 (lean)	UNKNOWN STEP	2026-04-06T08:28:52.9048083Z Login Succeeded!
+build-languages-amd64 (go)	UNKNOWN STEP	2026-04-06T08:28:43.0960456Z ##[group]GITHUB_TOKEN Permissions
+build-languages-amd64 (go)	UNKNOWN STEP	2026-04-06T08:28:43.0963481Z Packages: write
+build-languages-amd64 (go)	UNKNOWN STEP	2026-04-06T08:28:54.0389283Z Login Succeeded!
+build-languages-amd64 (go)	UNKNOWN STEP	2026-04-06T08:28:54.5816654Z Login Succeeded!
+build-languages-amd64 (java)	UNKNOWN STEP	2026-04-06T08:28:42.8851537Z ##[group]GITHUB_TOKEN Permissions
+build-languages-amd64 (java)	UNKNOWN STEP	2026-04-06T08:28:42.8854856Z Packages: write
+build-languages-amd64 (java)	UNKNOWN STEP	2026-04-06T08:28:54.2358432Z Login Succeeded!
+build-languages-amd64 (java)	UNKNOWN STEP	2026-04-06T08:28:54.6829162Z Login Succeeded!
+build-languages-amd64 (perl)	UNKNOWN STEP	2026-04-06T08:28:42.8169507Z ##[group]GITHUB_TOKEN Permissions
+build-languages-amd64 (perl)	UNKNOWN STEP	2026-04-06T08:28:42.8173255Z Packages: write
+build-languages-amd64 (perl)	UNKNOWN STEP	2026-04-06T08:28:49.1648616Z Login Succeeded!
+build-languages-amd64 (perl)	UNKNOWN STEP	2026-04-06T08:28:49.5834813Z Login Succeeded!
+essentials-manifest	UNKNOWN STEP	2026-04-06T08:30:02.4509407Z ##[group]GITHUB_TOKEN Permissions
+essentials-manifest	UNKNOWN STEP	2026-04-06T08:30:02.4512930Z Packages: write
+essentials-manifest	UNKNOWN STEP	2026-04-06T08:30:04.9437790Z Login Succeeded!
+essentials-manifest	UNKNOWN STEP	2026-04-06T08:30:05.4095387Z Login Succeeded!
+build-languages-arm64 (swift)	UNKNOWN STEP	2026-04-06T08:29:21.6886848Z ##[group]GITHUB_TOKEN Permissions
+build-languages-arm64 (swift)	UNKNOWN STEP	2026-04-06T08:29:21.6891236Z Packages: write
+build-languages-arm64 (swift)	UNKNOWN STEP	2026-04-06T08:29:40.8880531Z Login Succeeded!
+build-languages-arm64 (swift)	UNKNOWN STEP	2026-04-06T08:29:41.5051514Z Login Succeeded!
+build-languages-arm64 (go)	UNKNOWN STEP	2026-04-06T08:29:19.5843997Z ##[group]GITHUB_TOKEN Permissions
+build-languages-arm64 (go)	UNKNOWN STEP	2026-04-06T08:29:19.5848303Z Packages: write
+build-languages-arm64 (go)	UNKNOWN STEP	2026-04-06T08:29:33.7147883Z Login Succeeded!
+build-languages-arm64 (go)	UNKNOWN STEP	2026-04-06T08:29:34.1166875Z Login Succeeded!
+build-languages-arm64 (python)	UNKNOWN STEP	2026-04-06T08:29:20.1837431Z ##[group]GITHUB_TOKEN Permissions
+build-languages-arm64 (python)	UNKNOWN STEP	2026-04-06T08:29:20.1840888Z Packages: write
+build-languages-arm64 (python)	UNKNOWN STEP	2026-04-06T08:29:36.2266528Z Login Succeeded!
+build-languages-arm64 (python)	UNKNOWN STEP	2026-04-06T08:29:36.9855045Z Login Succeeded!
+build-languages-arm64 (php)	UNKNOWN STEP	2026-04-06T08:30:40.2348429Z ##[group]GITHUB_TOKEN Permissions
+build-languages-arm64 (php)	UNKNOWN STEP	2026-04-06T08:30:40.2353066Z Packages: write
+build-languages-arm64 (php)	UNKNOWN STEP	2026-04-06T08:30:55.5388832Z Login Succeeded!
+build-languages-arm64 (php)	UNKNOWN STEP	2026-04-06T08:30:56.3052903Z Login Succeeded!
+build-languages-arm64 (rocq)	UNKNOWN STEP	2026-04-06T08:29:19.8393556Z ##[group]GITHUB_TOKEN Permissions
+build-languages-arm64 (rocq)	UNKNOWN STEP	2026-04-06T08:29:19.8397184Z Packages: write
+build-languages-arm64 (rocq)	UNKNOWN STEP	2026-04-06T08:29:32.9546782Z Login Succeeded!
+build-languages-arm64 (rocq)	UNKNOWN STEP	2026-04-06T08:29:33.6044767Z Login Succeeded!
+build-languages-arm64 (java)	UNKNOWN STEP	2026-04-06T08:30:19.6738810Z ##[group]GITHUB_TOKEN Permissions
+build-languages-arm64 (java)	UNKNOWN STEP	2026-04-06T08:30:19.6743201Z Packages: write
+build-languages-arm64 (java)	UNKNOWN STEP	2026-04-06T08:30:37.3811251Z Login Succeeded!
+build-languages-arm64 (java)	UNKNOWN STEP	2026-04-06T08:30:37.9729940Z Login Succeeded!
+build-languages-arm64 (kotlin)	UNKNOWN STEP	2026-04-06T08:30:20.7058533Z ##[group]GITHUB_TOKEN Permissions
+build-languages-arm64 (kotlin)	UNKNOWN STEP	2026-04-06T08:30:20.7063078Z Packages: write
+build-languages-arm64 (kotlin)	UNKNOWN STEP	2026-04-06T08:30:34.9957797Z Login Succeeded!
+build-languages-arm64 (kotlin)	UNKNOWN STEP	2026-04-06T08:30:35.6064513Z Login Succeeded!
+build-languages-arm64 (rust)	UNKNOWN STEP	2026-04-06T08:29:20.3573245Z ##[group]GITHUB_TOKEN Permissions
+build-languages-arm64 (rust)	UNKNOWN STEP	2026-04-06T08:29:20.3577524Z Packages: write
+build-languages-arm64 (rust)	UNKNOWN STEP	2026-04-06T08:29:34.6701948Z Login Succeeded!
+build-languages-arm64 (rust)	UNKNOWN STEP	2026-04-06T08:29:35.5042457Z Login Succeeded!
+build-languages-arm64 (ruby)	UNKNOWN STEP	2026-04-06T08:29:19.4532067Z ##[group]GITHUB_TOKEN Permissions
+build-languages-arm64 (ruby)	UNKNOWN STEP	2026-04-06T08:29:19.4536099Z Packages: write
+build-languages-arm64 (ruby)	UNKNOWN STEP	2026-04-06T08:29:31.2680863Z Login Succeeded!
+build-languages-arm64 (ruby)	UNKNOWN STEP	2026-04-06T08:29:31.8530482Z Login Succeeded!
+build-languages-arm64 (lean)	UNKNOWN STEP	2026-04-06T08:29:20.1855214Z ##[group]GITHUB_TOKEN Permissions
+build-languages-arm64 (lean)	UNKNOWN STEP	2026-04-06T08:29:20.1859306Z Packages: write
+build-languages-arm64 (lean)	UNKNOWN STEP	2026-04-06T08:29:35.5963822Z Login Succeeded!
+build-languages-arm64 (lean)	UNKNOWN STEP	2026-04-06T08:29:36.3401034Z Login Succeeded!
+build-languages-arm64 (perl)	UNKNOWN STEP	2026-04-06T08:29:19.5791488Z ##[group]GITHUB_TOKEN Permissions
+build-languages-arm64 (perl)	UNKNOWN STEP	2026-04-06T08:29:19.5796987Z Packages: write
+build-languages-arm64 (perl)	UNKNOWN STEP	2026-04-06T08:29:31.2053969Z Login Succeeded!
+build-languages-arm64 (perl)	UNKNOWN STEP	2026-04-06T08:29:31.5879226Z Login Succeeded!
