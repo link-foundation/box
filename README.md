@@ -59,6 +59,15 @@ JS box (konard/box-js)
        ├─ box-lean       (built in parallel)
        └─ box-rocq       (built in parallel)
             └─ Full box (konard/box) ← merges all via COPY --from
+
+dind-box variants (issue #80, Docker-in-Docker):
+  Any of the boxes above also has a "dind" sibling that adds a working
+  Docker Engine on top of the source image:
+
+    konard/box-js          → konard/box-js-dind
+    konard/box-essentials  → konard/box-essentials-dind
+    konard/box-<language>  → konard/box-<language>-dind
+    konard/box (full)      → konard/box-dind
 ```
 
 | Image | Description | Base Image |
@@ -77,6 +86,8 @@ JS box (konard/box-js)
 | `konard/box-swift` | Swift 6.x | Built on essentials |
 | `konard/box-lean` | Lean (elan) | Built on essentials |
 | `konard/box-rocq` | Rocq/Coq (Opam) | Built on essentials |
+| `konard/box-dind` | Full box + Docker-in-Docker (issue #80) | Layered on Full box |
+| `konard/box-<lang>-dind` | Any language box + Docker-in-Docker (issue #80) | Layered on each language box |
 
 ### Per-Language Install Scripts & Dockerfiles
 
@@ -100,6 +111,7 @@ Each language has its own standalone `install.sh` and `Dockerfile` under `ubuntu
 | Rocq/Coq | `ubuntu/24.04/rocq/` | Opam, Rocq prover |
 | C/C++ | `ubuntu/24.04/cpp/` | CMake, Clang, LLVM, LLD |
 | Assembly | `ubuntu/24.04/assembly/` | NASM, FASM (x86_64) |
+| Docker-in-Docker | `ubuntu/24.04/dind/` | Docker CE, Buildx, Compose, dockerd entrypoint (issue #80) |
 
 Each install script can be run standalone on Ubuntu 24.04:
 
@@ -134,6 +146,27 @@ curl -fsSL https://raw.githubusercontent.com/link-foundation/box/main/ubuntu/24.
 | Lean | [`konard/box-lean:latest`](https://hub.docker.com/r/konard/box-lean/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-lean/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-lean/tags?name=latest-arm64) |
 | Rocq | [`konard/box-rocq:latest`](https://hub.docker.com/r/konard/box-rocq/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-rocq/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-rocq/tags?name=latest-arm64) |
 
+### Docker Hub - dind-box (Docker-in-Docker variants, issue #80)
+
+Each row below has the same toolchain as its non-dind sibling **plus** a working Docker Engine (Docker CLI + dockerd + containerd + Buildx + Compose v2). The default is nested Docker-in-Docker — each container has its own daemon, so `docker ps -a` from inside the container only lists containers it created. See the [security model](#docker-in-docker-security-model) section below and [docs/case-studies/issue-80](docs/case-studies/issue-80/CASE-STUDY.md).
+
+| Image | Multi-arch | AMD64 | ARM64 |
+|-------|------------|-------|-------|
+| Full + dind | [`konard/box-dind:latest`](https://hub.docker.com/r/konard/box-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-dind/tags?name=latest-arm64) |
+| Essentials + dind | [`konard/box-essentials-dind:latest`](https://hub.docker.com/r/konard/box-essentials-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-essentials-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-essentials-dind/tags?name=latest-arm64) |
+| JS + dind | [`konard/box-js-dind:latest`](https://hub.docker.com/r/konard/box-js-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-js-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-js-dind/tags?name=latest-arm64) |
+| Python + dind | [`konard/box-python-dind:latest`](https://hub.docker.com/r/konard/box-python-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-python-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-python-dind/tags?name=latest-arm64) |
+| Go + dind | [`konard/box-go-dind:latest`](https://hub.docker.com/r/konard/box-go-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-go-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-go-dind/tags?name=latest-arm64) |
+| Rust + dind | [`konard/box-rust-dind:latest`](https://hub.docker.com/r/konard/box-rust-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-rust-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-rust-dind/tags?name=latest-arm64) |
+| Java + dind | [`konard/box-java-dind:latest`](https://hub.docker.com/r/konard/box-java-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-java-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-java-dind/tags?name=latest-arm64) |
+| Kotlin + dind | [`konard/box-kotlin-dind:latest`](https://hub.docker.com/r/konard/box-kotlin-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-kotlin-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-kotlin-dind/tags?name=latest-arm64) |
+| Ruby + dind | [`konard/box-ruby-dind:latest`](https://hub.docker.com/r/konard/box-ruby-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-ruby-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-ruby-dind/tags?name=latest-arm64) |
+| PHP + dind | [`konard/box-php-dind:latest`](https://hub.docker.com/r/konard/box-php-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-php-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-php-dind/tags?name=latest-arm64) |
+| Perl + dind | [`konard/box-perl-dind:latest`](https://hub.docker.com/r/konard/box-perl-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-perl-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-perl-dind/tags?name=latest-arm64) |
+| Swift + dind | [`konard/box-swift-dind:latest`](https://hub.docker.com/r/konard/box-swift-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-swift-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-swift-dind/tags?name=latest-arm64) |
+| Lean + dind | [`konard/box-lean-dind:latest`](https://hub.docker.com/r/konard/box-lean-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-lean-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-lean-dind/tags?name=latest-arm64) |
+| Rocq + dind | [`konard/box-rocq-dind:latest`](https://hub.docker.com/r/konard/box-rocq-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-rocq-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-rocq-dind/tags?name=latest-arm64) |
+
 ### GitHub Container Registry - Combo Boxes
 
 | Image | Multi-arch | AMD64 | ARM64 |
@@ -157,6 +190,36 @@ curl -fsSL https://raw.githubusercontent.com/link-foundation/box/main/ubuntu/24.
 | Swift | [`ghcr.io/link-foundation/box-swift:latest`](https://github.com/link-foundation/box/pkgs/container/box-swift?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-swift?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-swift?tag=latest-arm64) |
 | Lean | [`ghcr.io/link-foundation/box-lean:latest`](https://github.com/link-foundation/box/pkgs/container/box-lean?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-lean?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-lean?tag=latest-arm64) |
 | Rocq | [`ghcr.io/link-foundation/box-rocq:latest`](https://github.com/link-foundation/box/pkgs/container/box-rocq?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-rocq?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-rocq?tag=latest-arm64) |
+
+### GitHub Container Registry - dind-box (Docker-in-Docker variants, issue #80)
+
+| Image | Multi-arch | AMD64 | ARM64 |
+|-------|------------|-------|-------|
+| Full + dind | [`ghcr.io/link-foundation/box-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-dind?tag=latest-arm64) |
+| Essentials + dind | [`ghcr.io/link-foundation/box-essentials-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-essentials-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-essentials-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-essentials-dind?tag=latest-arm64) |
+| JS + dind | [`ghcr.io/link-foundation/box-js-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-js-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-js-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-js-dind?tag=latest-arm64) |
+| Python + dind | [`ghcr.io/link-foundation/box-python-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-python-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-python-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-python-dind?tag=latest-arm64) |
+| Go + dind | [`ghcr.io/link-foundation/box-go-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-go-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-go-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-go-dind?tag=latest-arm64) |
+| Rust + dind | [`ghcr.io/link-foundation/box-rust-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-rust-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-rust-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-rust-dind?tag=latest-arm64) |
+| Java + dind | [`ghcr.io/link-foundation/box-java-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-java-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-java-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-java-dind?tag=latest-arm64) |
+| Kotlin + dind | [`ghcr.io/link-foundation/box-kotlin-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-kotlin-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-kotlin-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-kotlin-dind?tag=latest-arm64) |
+| Ruby + dind | [`ghcr.io/link-foundation/box-ruby-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-ruby-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-ruby-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-ruby-dind?tag=latest-arm64) |
+| PHP + dind | [`ghcr.io/link-foundation/box-php-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-php-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-php-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-php-dind?tag=latest-arm64) |
+| Perl + dind | [`ghcr.io/link-foundation/box-perl-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-perl-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-perl-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-perl-dind?tag=latest-arm64) |
+| Swift + dind | [`ghcr.io/link-foundation/box-swift-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-swift-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-swift-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-swift-dind?tag=latest-arm64) |
+| Lean + dind | [`ghcr.io/link-foundation/box-lean-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-lean-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-lean-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-lean-dind?tag=latest-arm64) |
+| Rocq + dind | [`ghcr.io/link-foundation/box-rocq-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-rocq-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-rocq-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-rocq-dind?tag=latest-arm64) |
+
+### Docker-in-Docker security model
+
+> ⚠️ **dind-box variants ship a Docker daemon and require elevated privileges to run.**
+>
+> - **Default invocation:** `docker run --privileged konard/box-dind` — the inner `dockerd` needs `CAP_SYS_ADMIN` and access to the kernel's overlay/namespace machinery. Each container has its own daemon, so `docker ps -a` from inside lists only that container's children.
+> - **Recommended secure invocation:** [`docker run --runtime=sysbox-runc konard/box-dind`](https://github.com/nestybox/sysbox) — Sysbox is a drop-in OCI runtime that runs system containers without `--privileged` and without exposing host devices.
+> - **Do NOT bind-mount `/var/run/docker.sock`.** That gives the container root on the host ([Quarkslab](https://blog.quarkslab.com/why-is-exposing-the-docker-socket-a-really-bad-idea.html), [OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html)) and breaks the per-box `docker ps` scoping property.
+> - **Storage:** the inner daemon writes to `/var/lib/docker` inside the container by default. For persistence, mount a volume: `-v box-dind-data:/var/lib/docker`.
+
+See [docs/case-studies/issue-80/CASE-STUDY.md](docs/case-studies/issue-80/CASE-STUDY.md) for the full design and threat model.
 
 ## Usage
 

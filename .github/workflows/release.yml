@@ -237,6 +237,8 @@ jobs:
       rocq-changed: ${{ steps.language-changes.outputs.rocq }}
       cpp-changed: ${{ steps.language-changes.outputs.cpp }}
       assembly-changed: ${{ steps.language-changes.outputs.assembly }}
+      # dind-box change detection (issue #80)
+      dind-changed: ${{ steps.image-changes.outputs.dind }}
 
     steps:
       - uses: actions/checkout@v4
@@ -344,6 +346,13 @@ jobs:
             echo "common=true" >> $GITHUB_OUTPUT
           else
             echo "common=false" >> $GITHUB_OUTPUT
+          fi
+
+          # dind-box changes (issue #80)
+          if echo "$CHANGED_FILES" | grep -qE '^ubuntu/24\.04/dind/'; then
+            echo "dind=true" >> $GITHUB_OUTPUT
+          else
+            echo "dind=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Detect per-language changes
@@ -532,6 +541,27 @@ jobs:
 
           echo ""
           echo "=== All full box tests passed ==="
+
+      - name: Build dind-box variant (amd64, on full)
+        run: |
+          set -e
+          echo "=== Building dind-box on full-box (issue #80) ==="
+          docker build -f ubuntu/24.04/dind/Dockerfile \
+            --build-arg BASE_IMAGE=box-test \
+            -t box-dind-test .
+
+      - name: Test dind-box variant
+        run: |
+          set -e
+          echo "=== Testing dind-box (CLI presence only - no privileged mode in PR CI) ==="
+          # Verify Docker CLI, dockerd binary, buildx and compose plugins are present.
+          # We do NOT start dockerd here because GitHub-hosted runners disallow --privileged.
+          docker run --rm --entrypoint=/bin/bash box-dind-test -c 'docker --version'
+          docker run --rm --entrypoint=/bin/bash box-dind-test -c 'dockerd --version'
+          docker run --rm --entrypoint=/bin/bash box-dind-test -c 'docker buildx version'
+          docker run --rm --entrypoint=/bin/bash box-dind-test -c 'docker compose version'
+          docker run --rm --entrypoint=/bin/bash box-dind-test -c 'cat /etc/box/variant'
+          echo "=== dind-box smoke tests passed ==="
 
   # === BUILD JS BOX (amd64) ===
   # JS box is the base layer - built first, other images depend on it
@@ -2074,10 +2104,335 @@ jobs:
 
           echo "Docker Hub multi-arch manifest created and pushed successfully for latest and ${VERSION}"
 
+  # === BUILD DIND-BOX VARIANTS (amd64) - issue #80 ===
+  # Layers Docker Engine on top of every base box image so each variant has a
+  # "<base>-dind" sibling. Runs after the source variant's manifest is published.
+  build-dind-amd64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: [detect-changes, js-manifest, essentials-manifest, languages-manifest, docker-manifest]
+    strategy:
+      fail-fast: false
+      matrix:
+        # variant -> base box flavour. Special value "full" maps to konard/box.
+        # Everything else maps to konard/box-<variant>.
+        variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      (needs.js-manifest.result == 'success' || needs.js-manifest.result == 'skipped') &&
+      (needs.essentials-manifest.result == 'success' || needs.essentials-manifest.result == 'skipped') &&
+      (needs.languages-manifest.result == 'success' || needs.languages-manifest.result == 'skipped') &&
+      (needs.docker-manifest.result == 'success' || needs.docker-manifest.result == 'skipped') &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
+        (github.event_name == 'workflow_dispatch')
+      )
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Get latest version
+        id: version
+        run: |
+          git pull origin main || true
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Compute image names
+        id: names
+        run: |
+          NAME="${{ matrix.variant }}"
+          # Source base image: full -> "konard/box"; others -> "konard/box-<name>"
+          # Target dind image: full -> "konard/box-dind"; others -> "konard/box-<name>-dind"
+          if [ "$NAME" = "full" ]; then
+            BASE_SUFFIX=""
+            DIND_SUFFIX="-dind"
+          else
+            BASE_SUFFIX="-$NAME"
+            DIND_SUFFIX="-${NAME}-dind"
+          fi
+          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-amd64" >> $GITHUB_OUTPUT
+          echo "dind_suffix=${DIND_SUFFIX}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKERHUB_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.variant }} dind-box (amd64)
+        id: build-push
+        continue-on-error: true
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ubuntu/24.04/dind/Dockerfile
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            BASE_IMAGE=${{ steps.names.outputs.base_image }}
+          tags: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64
+            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64
+            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64
+          provenance: false
+          cache-from: type=gha,scope=dind-${{ matrix.variant }}-amd64
+          cache-to: type=gha,scope=dind-${{ matrix.variant }}-amd64,mode=max
+
+      - name: Retry push ${{ matrix.variant }} dind-box (amd64) on failure
+        if: steps.build-push.outcome == 'failure'
+        run: |
+          echo "First push attempt failed, retrying with backoff..."
+          for attempt in 1 2 3; do
+            echo "==> Retry attempt $attempt/3..."
+            if docker buildx build \
+              --file ubuntu/24.04/dind/Dockerfile \
+              --platform linux/amd64 \
+              --build-arg BASE_IMAGE=${{ steps.names.outputs.base_image }} \
+              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64 \
+              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64 \
+              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64 \
+              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64 \
+              --provenance=false \
+              --cache-from type=gha,scope=dind-${{ matrix.variant }}-amd64 \
+              --push \
+              .; then
+              echo "==> Push succeeded on retry attempt $attempt"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              delay=$((10 * attempt))
+              echo "==> Retry failed, waiting ${delay}s before next attempt..."
+              sleep "$delay"
+            fi
+          done
+          echo "==> All retry attempts failed"
+          exit 1
+
+  # === BUILD DIND-BOX VARIANTS (arm64) - issue #80 ===
+  build-dind-arm64:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    needs: [detect-changes, js-manifest, essentials-manifest, languages-manifest, docker-manifest]
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      (needs.js-manifest.result == 'success' || needs.js-manifest.result == 'skipped') &&
+      (needs.essentials-manifest.result == 'success' || needs.essentials-manifest.result == 'skipped') &&
+      (needs.languages-manifest.result == 'success' || needs.languages-manifest.result == 'skipped') &&
+      (needs.docker-manifest.result == 'success' || needs.docker-manifest.result == 'skipped') &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
+        (github.event_name == 'workflow_dispatch')
+      )
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Get latest version
+        id: version
+        run: |
+          git pull origin main || true
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Compute image names
+        id: names
+        run: |
+          NAME="${{ matrix.variant }}"
+          if [ "$NAME" = "full" ]; then
+            BASE_SUFFIX=""
+            DIND_SUFFIX="-dind"
+          else
+            BASE_SUFFIX="-$NAME"
+            DIND_SUFFIX="-${NAME}-dind"
+          fi
+          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-arm64" >> $GITHUB_OUTPUT
+          echo "dind_suffix=${DIND_SUFFIX}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKERHUB_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.variant }} dind-box (arm64)
+        id: build-push
+        continue-on-error: true
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ubuntu/24.04/dind/Dockerfile
+          platforms: linux/arm64
+          push: true
+          build-args: |
+            BASE_IMAGE=${{ steps.names.outputs.base_image }}
+          tags: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64
+            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64
+            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64
+          provenance: false
+          cache-from: type=gha,scope=dind-${{ matrix.variant }}-arm64
+          cache-to: type=gha,scope=dind-${{ matrix.variant }}-arm64,mode=max
+
+      - name: Retry push ${{ matrix.variant }} dind-box (arm64) on failure
+        if: steps.build-push.outcome == 'failure'
+        run: |
+          echo "First push attempt failed, retrying with backoff..."
+          for attempt in 1 2 3; do
+            echo "==> Retry attempt $attempt/3..."
+            if docker buildx build \
+              --file ubuntu/24.04/dind/Dockerfile \
+              --platform linux/arm64 \
+              --build-arg BASE_IMAGE=${{ steps.names.outputs.base_image }} \
+              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64 \
+              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64 \
+              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64 \
+              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64 \
+              --provenance=false \
+              --cache-from type=gha,scope=dind-${{ matrix.variant }}-arm64 \
+              --push \
+              .; then
+              echo "==> Push succeeded on retry attempt $attempt"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              delay=$((10 * attempt))
+              echo "==> Retry failed, waiting ${delay}s before next attempt..."
+              sleep "$delay"
+            fi
+          done
+          echo "==> All retry attempts failed"
+          exit 1
+
+  # === CREATE DIND-BOX MULTI-ARCH MANIFESTS - issue #80 ===
+  dind-manifest:
+    runs-on: ubuntu-24.04
+    needs: [detect-changes, build-dind-amd64, build-dind-arm64]
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.build-dind-amd64.result == 'success' &&
+      needs.build-dind-arm64.result == 'success'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Get latest version
+        id: version
+        run: |
+          git pull origin main || true
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKERHUB_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compute dind suffix
+        id: names
+        run: |
+          NAME="${{ matrix.variant }}"
+          if [ "$NAME" = "full" ]; then
+            echo "dind_suffix=-dind" >> $GITHUB_OUTPUT
+          else
+            echo "dind_suffix=-${NAME}-dind" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create and push ${{ matrix.variant }} dind multi-arch manifests
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DSUF="${{ steps.names.outputs.dind_suffix }}"
+
+          # GHCR
+          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest \
+            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest-amd64 \
+            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest-arm64
+          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest
+
+          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION} \
+            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}-amd64 \
+            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}-arm64
+          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}
+
+          # Docker Hub
+          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest \
+            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest-amd64 \
+            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest-arm64
+          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest
+
+          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION} \
+            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION}-amd64 \
+            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION}-arm64
+          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION}
+
+          echo "Pushed multi-arch manifest for ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF} (latest, ${VERSION})"
+
   # === CREATE GITHUB RELEASE ===
   create-release:
     runs-on: ubuntu-24.04
-    needs: [detect-changes, docker-manifest, js-manifest, essentials-manifest, languages-manifest]
+    needs: [detect-changes, docker-manifest, js-manifest, essentials-manifest, languages-manifest, dind-manifest]
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
@@ -2206,7 +2561,47 @@ jobs:
           Released on ${DATE}
           ENDOFNOTES
 
-          # Check if release already exists
+      # Append dind-box tables in a separate step to stay under GitHub's
+      # 21000-char per-step expression limit (issue #80).
+      - name: Append dind-box tables to release notes
+        env:
+          GHCR_REG: ${{ env.GHCR_REGISTRY }}
+          GHCR_NAME: ${{ env.GHCR_IMAGE_NAME }}
+          DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_IMAGE_NAME }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          REPO="${{ github.repository }}"
+
+          {
+            printf '\n### Docker Hub - dind-box (Docker-in-Docker variants, issue #80)\n\n'
+            printf 'Each variant runs an inner Docker daemon. Run with `docker run --privileged` (default) or `docker run --runtime=sysbox-runc` (recommended for shared hosts). `docker ps -a` inside the container only lists containers created by that container - see [docs/case-studies/issue-80](https://github.com/%s/blob/v%s/docs/case-studies/issue-80/CASE-STUDY.md).\n\n' "$REPO" "$VERSION"
+            printf '| Image | Multi-arch | AMD64 | ARM64 |\n'
+            printf '|-------|------------|-------|-------|\n'
+            for variant in "Full|" "Essentials|-essentials" "JS|-js" "Python|-python" "Go|-go" "Rust|-rust" "Java|-java" "Kotlin|-kotlin" "Ruby|-ruby" "PHP|-php" "Perl|-perl" "Swift|-swift" "Lean|-lean" "Rocq|-rocq"; do
+              label="${variant%%|*}"
+              suffix="${variant#*|}"
+              dh="${DOCKERHUB_IMAGE}${suffix}-dind"
+              printf '| %s + dind | [`%s:%s`](https://hub.docker.com/r/%s/tags?name=%s) | [`%s-amd64`](https://hub.docker.com/r/%s/tags?name=%s-amd64) | [`%s-arm64`](https://hub.docker.com/r/%s/tags?name=%s-arm64) |\n' \
+                "$label" "$dh" "$VERSION" "$dh" "$VERSION" "$VERSION" "$dh" "$VERSION" "$VERSION" "$dh" "$VERSION"
+            done
+            printf '\n### GitHub Container Registry - dind-box (Docker-in-Docker variants, issue #80)\n\n'
+            printf '| Image | Multi-arch | AMD64 | ARM64 |\n'
+            printf '|-------|------------|-------|-------|\n'
+            for variant in "Full|box" "Essentials|box-essentials" "JS|box-js" "Python|box-python" "Go|box-go" "Rust|box-rust" "Java|box-java" "Kotlin|box-kotlin" "Ruby|box-ruby" "PHP|box-php" "Perl|box-perl" "Swift|box-swift" "Lean|box-lean" "Rocq|box-rocq"; do
+              label="${variant%%|*}"
+              pkg="${variant#*|}-dind"
+              gh_image="${GHCR_REG}/${GHCR_NAME%/*}/${pkg}"
+              printf '| %s + dind | [`%s:%s`](https://github.com/%s/pkgs/container/%s?tag=%s) | [`%s-amd64`](https://github.com/%s/pkgs/container/%s?tag=%s-amd64) | [`%s-arm64`](https://github.com/%s/pkgs/container/%s?tag=%s-arm64) |\n' \
+                "$label" "$gh_image" "$VERSION" "$REPO" "$pkg" "$VERSION" "$VERSION" "$REPO" "$pkg" "$VERSION" "$VERSION" "$REPO" "$pkg" "$VERSION"
+            done
+          } >> /tmp/release-notes.md
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
           if gh release view "v${VERSION}" &>/dev/null; then
             echo "Release v${VERSION} already exists, updating..."
             gh release edit "v${VERSION}" --title "v${VERSION}" --notes-file /tmp/release-notes.md
