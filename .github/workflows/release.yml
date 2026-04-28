@@ -2115,22 +2115,36 @@ jobs:
       fail-fast: false
       matrix:
         # variant.name -> tag suffix on box images, e.g. "js" => konard/box-js-dind
-        # variant.base -> the base image suffix (empty for full box "konard/box")
+        # variant.base_image_suffix -> the base image suffix (empty for full box "konard/box")
         variant:
-          - { name: js,         base_image_suffix: -js,         needs_manifest: js }
-          - { name: essentials, base_image_suffix: -essentials, needs_manifest: essentials }
-          - { name: python,     base_image_suffix: -python,     needs_manifest: languages }
-          - { name: go,         base_image_suffix: -go,         needs_manifest: languages }
-          - { name: rust,       base_image_suffix: -rust,       needs_manifest: languages }
-          - { name: java,       base_image_suffix: -java,       needs_manifest: languages }
-          - { name: kotlin,     base_image_suffix: -kotlin,     needs_manifest: languages }
-          - { name: ruby,       base_image_suffix: -ruby,       needs_manifest: languages }
-          - { name: php,        base_image_suffix: -php,        needs_manifest: languages }
-          - { name: perl,       base_image_suffix: -perl,       needs_manifest: languages }
-          - { name: swift,      base_image_suffix: -swift,      needs_manifest: languages }
-          - { name: lean,       base_image_suffix: -lean,       needs_manifest: languages }
-          - { name: rocq,       base_image_suffix: -rocq,       needs_manifest: languages }
-          - { name: full,       base_image_suffix: '',          needs_manifest: docker }
+          - name: "js"
+            base_image_suffix: "-js"
+          - name: "essentials"
+            base_image_suffix: "-essentials"
+          - name: "python"
+            base_image_suffix: "-python"
+          - name: "go"
+            base_image_suffix: "-go"
+          - name: "rust"
+            base_image_suffix: "-rust"
+          - name: "java"
+            base_image_suffix: "-java"
+          - name: "kotlin"
+            base_image_suffix: "-kotlin"
+          - name: "ruby"
+            base_image_suffix: "-ruby"
+          - name: "php"
+            base_image_suffix: "-php"
+          - name: "perl"
+            base_image_suffix: "-perl"
+          - name: "swift"
+            base_image_suffix: "-swift"
+          - name: "lean"
+            base_image_suffix: "-lean"
+          - name: "rocq"
+            base_image_suffix: "-rocq"
+          - name: "full"
+            base_image_suffix: ""
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
@@ -2249,20 +2263,34 @@ jobs:
       fail-fast: false
       matrix:
         variant:
-          - { name: js,         base_image_suffix: -js,         needs_manifest: js }
-          - { name: essentials, base_image_suffix: -essentials, needs_manifest: essentials }
-          - { name: python,     base_image_suffix: -python,     needs_manifest: languages }
-          - { name: go,         base_image_suffix: -go,         needs_manifest: languages }
-          - { name: rust,       base_image_suffix: -rust,       needs_manifest: languages }
-          - { name: java,       base_image_suffix: -java,       needs_manifest: languages }
-          - { name: kotlin,     base_image_suffix: -kotlin,     needs_manifest: languages }
-          - { name: ruby,       base_image_suffix: -ruby,       needs_manifest: languages }
-          - { name: php,        base_image_suffix: -php,        needs_manifest: languages }
-          - { name: perl,       base_image_suffix: -perl,       needs_manifest: languages }
-          - { name: swift,      base_image_suffix: -swift,      needs_manifest: languages }
-          - { name: lean,       base_image_suffix: -lean,       needs_manifest: languages }
-          - { name: rocq,       base_image_suffix: -rocq,       needs_manifest: languages }
-          - { name: full,       base_image_suffix: '',          needs_manifest: docker }
+          - name: "js"
+            base_image_suffix: "-js"
+          - name: "essentials"
+            base_image_suffix: "-essentials"
+          - name: "python"
+            base_image_suffix: "-python"
+          - name: "go"
+            base_image_suffix: "-go"
+          - name: "rust"
+            base_image_suffix: "-rust"
+          - name: "java"
+            base_image_suffix: "-java"
+          - name: "kotlin"
+            base_image_suffix: "-kotlin"
+          - name: "ruby"
+            base_image_suffix: "-ruby"
+          - name: "php"
+            base_image_suffix: "-php"
+          - name: "perl"
+            base_image_suffix: "-perl"
+          - name: "swift"
+            base_image_suffix: "-swift"
+          - name: "lean"
+            base_image_suffix: "-lean"
+          - name: "rocq"
+            base_image_suffix: "-rocq"
+          - name: "full"
+            base_image_suffix: ""
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
@@ -2378,20 +2406,34 @@ jobs:
       fail-fast: false
       matrix:
         variant:
-          - { name: js,         base_image_suffix: -js }
-          - { name: essentials, base_image_suffix: -essentials }
-          - { name: python,     base_image_suffix: -python }
-          - { name: go,         base_image_suffix: -go }
-          - { name: rust,       base_image_suffix: -rust }
-          - { name: java,       base_image_suffix: -java }
-          - { name: kotlin,     base_image_suffix: -kotlin }
-          - { name: ruby,       base_image_suffix: -ruby }
-          - { name: php,        base_image_suffix: -php }
-          - { name: perl,       base_image_suffix: -perl }
-          - { name: swift,      base_image_suffix: -swift }
-          - { name: lean,       base_image_suffix: -lean }
-          - { name: rocq,       base_image_suffix: -rocq }
-          - { name: full,       base_image_suffix: '' }
+          - name: "js"
+            base_image_suffix: "-js"
+          - name: "essentials"
+            base_image_suffix: "-essentials"
+          - name: "python"
+            base_image_suffix: "-python"
+          - name: "go"
+            base_image_suffix: "-go"
+          - name: "rust"
+            base_image_suffix: "-rust"
+          - name: "java"
+            base_image_suffix: "-java"
+          - name: "kotlin"
+            base_image_suffix: "-kotlin"
+          - name: "ruby"
+            base_image_suffix: "-ruby"
+          - name: "php"
+            base_image_suffix: "-php"
+          - name: "perl"
+            base_image_suffix: "-perl"
+          - name: "swift"
+            base_image_suffix: "-swift"
+          - name: "lean"
+            base_image_suffix: "-lean"
+          - name: "rocq"
+            base_image_suffix: "-rocq"
+          - name: "full"
+            base_image_suffix: ""
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
