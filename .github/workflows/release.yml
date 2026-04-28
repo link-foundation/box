@@ -2116,21 +2116,7 @@ jobs:
       matrix:
         # variant -> base box flavour. Special value "full" maps to konard/box.
         # Everything else maps to konard/box-<variant>.
-        variant:
-          - "js"
-          - "essentials"
-          - "python"
-          - "go"
-          - "rust"
-          - "java"
-          - "kotlin"
-          - "ruby"
-          - "php"
-          - "perl"
-          - "swift"
-          - "lean"
-          - "rocq"
-          - "full"
+        variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
@@ -2250,21 +2236,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant:
-          - "js"
-          - "essentials"
-          - "python"
-          - "go"
-          - "rust"
-          - "java"
-          - "kotlin"
-          - "ruby"
-          - "php"
-          - "perl"
-          - "swift"
-          - "lean"
-          - "rocq"
-          - "full"
+        variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
@@ -2381,21 +2353,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant:
-          - "js"
-          - "essentials"
-          - "python"
-          - "go"
-          - "rust"
-          - "java"
-          - "kotlin"
-          - "ruby"
-          - "php"
-          - "perl"
-          - "swift"
-          - "lean"
-          - "rocq"
-          - "full"
+        variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
