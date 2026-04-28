@@ -1,0 +1,728 @@
+build-js-arm64	Log in to Docker Hub	﻿2026-04-28T19:27:07.9609739Z ##[group]Run docker/login-action@v3
+build-js-arm64	Log in to Docker Hub	2026-04-28T19:27:07.9610114Z with:
+build-js-arm64	Log in to Docker Hub	2026-04-28T19:27:07.9610311Z   registry: docker.io
+build-js-arm64	Log in to Docker Hub	2026-04-28T19:27:07.9610972Z   username: ***
+build-js-arm64	Log in to Docker Hub	2026-04-28T19:27:07.9611893Z   password: ***
+build-js-arm64	Log in to Docker Hub	2026-04-28T19:27:07.9612121Z   logout: true
+build-js-arm64	Log in to Docker Hub	2026-04-28T19:27:07.9612403Z env:
+build-js-arm64	Log in to Docker Hub	2026-04-28T19:27:07.9612578Z   GHCR_REGISTRY: ghcr.io
+build-js-arm64	Log in to Docker Hub	2026-04-28T19:27:07.9612821Z   GHCR_IMAGE_NAME: link-foundation/box
+build-js-arm64	Log in to Docker Hub	2026-04-28T19:27:07.9613192Z   DOCKERHUB_REGISTRY: docker.io
+build-js-arm64	Log in to Docker Hub	2026-04-28T19:27:07.9613451Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-js-arm64	Log in to Docker Hub	2026-04-28T19:27:07.9613691Z ##[endgroup]
+build-js-arm64	Log in to Docker Hub	2026-04-28T19:27:08.2165768Z Logging into docker.io...
+build-js-arm64	Log in to Docker Hub	2026-04-28T19:27:08.5093890Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-js-amd64	Log in to Docker Hub	﻿2026-04-28T19:26:59.8464484Z ##[group]Run docker/login-action@v3
+build-js-amd64	Log in to Docker Hub	2026-04-28T19:26:59.8464886Z with:
+build-js-amd64	Log in to Docker Hub	2026-04-28T19:26:59.8466181Z   registry: docker.io
+build-js-amd64	Log in to Docker Hub	2026-04-28T19:26:59.8466656Z   username: ***
+build-js-amd64	Log in to Docker Hub	2026-04-28T19:26:59.8467138Z   password: ***
+build-js-amd64	Log in to Docker Hub	2026-04-28T19:26:59.8467411Z   logout: true
+build-js-amd64	Log in to Docker Hub	2026-04-28T19:26:59.8467724Z env:
+build-js-amd64	Log in to Docker Hub	2026-04-28T19:26:59.8468086Z   GHCR_REGISTRY: ghcr.io
+build-js-amd64	Log in to Docker Hub	2026-04-28T19:26:59.8468412Z   GHCR_IMAGE_NAME: link-foundation/box
+build-js-amd64	Log in to Docker Hub	2026-04-28T19:26:59.8468820Z   DOCKERHUB_REGISTRY: docker.io
+build-js-amd64	Log in to Docker Hub	2026-04-28T19:26:59.8469422Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-js-amd64	Log in to Docker Hub	2026-04-28T19:26:59.8469791Z ##[endgroup]
+build-js-amd64	Log in to Docker Hub	2026-04-28T19:27:00.1599995Z Logging into docker.io...
+build-js-amd64	Log in to Docker Hub	2026-04-28T19:27:00.2484438Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-amd64 (ruby)	Log in to Docker Hub	﻿2026-04-28T19:27:22.3287684Z ##[group]Run docker/login-action@v3
+build-languages-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:22.3287978Z with:
+build-languages-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:22.3288153Z   registry: docker.io
+build-languages-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:22.3288482Z   username: ***
+build-languages-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:22.3288724Z   password: ***
+build-languages-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:22.3288906Z   logout: true
+build-languages-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:22.3289080Z env:
+build-languages-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:22.3289243Z   GHCR_REGISTRY: ghcr.io
+build-languages-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:22.3289477Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:22.3289737Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:22.3289988Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:22.3290201Z ##[endgroup]
+build-languages-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:22.6403028Z Logging into docker.io...
+build-languages-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:22.9859133Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-amd64 (php)	Log in to Docker Hub	﻿2026-04-28T19:27:19.6032033Z ##[group]Run docker/login-action@v3
+build-languages-amd64 (php)	Log in to Docker Hub	2026-04-28T19:27:19.6032310Z with:
+build-languages-amd64 (php)	Log in to Docker Hub	2026-04-28T19:27:19.6032495Z   registry: docker.io
+build-languages-amd64 (php)	Log in to Docker Hub	2026-04-28T19:27:19.6032863Z   username: ***
+build-languages-amd64 (php)	Log in to Docker Hub	2026-04-28T19:27:19.6033105Z   password: ***
+build-languages-amd64 (php)	Log in to Docker Hub	2026-04-28T19:27:19.6033292Z   logout: true
+build-languages-amd64 (php)	Log in to Docker Hub	2026-04-28T19:27:19.6033478Z env:
+build-languages-amd64 (php)	Log in to Docker Hub	2026-04-28T19:27:19.6033648Z   GHCR_REGISTRY: ghcr.io
+build-languages-amd64 (php)	Log in to Docker Hub	2026-04-28T19:27:19.6033891Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-amd64 (php)	Log in to Docker Hub	2026-04-28T19:27:19.6034160Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-amd64 (php)	Log in to Docker Hub	2026-04-28T19:27:19.6034419Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-amd64 (php)	Log in to Docker Hub	2026-04-28T19:27:19.6034634Z ##[endgroup]
+build-languages-amd64 (php)	Log in to Docker Hub	2026-04-28T19:27:19.9079030Z Logging into docker.io...
+build-languages-amd64 (php)	Log in to Docker Hub	2026-04-28T19:27:20.1816642Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-amd64 (java)	Log in to Docker Hub	﻿2026-04-28T19:27:19.9785386Z ##[group]Run docker/login-action@v3
+build-languages-amd64 (java)	Log in to Docker Hub	2026-04-28T19:27:19.9785682Z with:
+build-languages-amd64 (java)	Log in to Docker Hub	2026-04-28T19:27:19.9785872Z   registry: docker.io
+build-languages-amd64 (java)	Log in to Docker Hub	2026-04-28T19:27:19.9786218Z   username: ***
+build-languages-amd64 (java)	Log in to Docker Hub	2026-04-28T19:27:19.9786834Z   password: ***
+build-languages-amd64 (java)	Log in to Docker Hub	2026-04-28T19:27:19.9787050Z   logout: true
+build-languages-amd64 (java)	Log in to Docker Hub	2026-04-28T19:27:19.9787241Z env:
+build-languages-amd64 (java)	Log in to Docker Hub	2026-04-28T19:27:19.9787415Z   GHCR_REGISTRY: ghcr.io
+build-languages-amd64 (java)	Log in to Docker Hub	2026-04-28T19:27:19.9787661Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-amd64 (java)	Log in to Docker Hub	2026-04-28T19:27:19.9787937Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-amd64 (java)	Log in to Docker Hub	2026-04-28T19:27:19.9788203Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-amd64 (java)	Log in to Docker Hub	2026-04-28T19:27:19.9788435Z ##[endgroup]
+build-languages-amd64 (java)	Log in to Docker Hub	2026-04-28T19:27:20.3163101Z Logging into docker.io...
+build-languages-amd64 (java)	Log in to Docker Hub	2026-04-28T19:27:20.6015099Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-amd64 (lean)	Log in to Docker Hub	﻿2026-04-28T19:27:16.8745909Z ##[group]Run docker/login-action@v3
+build-languages-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:27:16.8746181Z with:
+build-languages-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:27:16.8746368Z   registry: docker.io
+build-languages-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:27:16.8746709Z   username: ***
+build-languages-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:27:16.8746961Z   password: ***
+build-languages-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:27:16.8747155Z   logout: true
+build-languages-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:27:16.8747328Z env:
+build-languages-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:27:16.8747509Z   GHCR_REGISTRY: ghcr.io
+build-languages-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:27:16.8747750Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:27:16.8748013Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:27:16.8748271Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:27:16.8748492Z ##[endgroup]
+build-languages-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:27:17.1787623Z Logging into docker.io...
+build-languages-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:27:17.3265906Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-amd64 (python)	Log in to Docker Hub	﻿2026-04-28T19:27:14.3713599Z ##[group]Run docker/login-action@v3
+build-languages-amd64 (python)	Log in to Docker Hub	2026-04-28T19:27:14.3713880Z with:
+build-languages-amd64 (python)	Log in to Docker Hub	2026-04-28T19:27:14.3714070Z   registry: docker.io
+build-languages-amd64 (python)	Log in to Docker Hub	2026-04-28T19:27:14.3714382Z   username: ***
+build-languages-amd64 (python)	Log in to Docker Hub	2026-04-28T19:27:14.3714628Z   password: ***
+build-languages-amd64 (python)	Log in to Docker Hub	2026-04-28T19:27:14.3714816Z   logout: true
+build-languages-amd64 (python)	Log in to Docker Hub	2026-04-28T19:27:14.3714987Z env:
+build-languages-amd64 (python)	Log in to Docker Hub	2026-04-28T19:27:14.3715161Z   GHCR_REGISTRY: ghcr.io
+build-languages-amd64 (python)	Log in to Docker Hub	2026-04-28T19:27:14.3715398Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-amd64 (python)	Log in to Docker Hub	2026-04-28T19:27:14.3716089Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-amd64 (python)	Log in to Docker Hub	2026-04-28T19:27:14.3716510Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-amd64 (python)	Log in to Docker Hub	2026-04-28T19:27:14.3716749Z ##[endgroup]
+build-languages-amd64 (python)	Log in to Docker Hub	2026-04-28T19:27:14.6721233Z Logging into docker.io...
+build-languages-amd64 (python)	Log in to Docker Hub	2026-04-28T19:27:14.7651985Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-amd64 (rocq)	Log in to Docker Hub	﻿2026-04-28T19:27:16.3960298Z ##[group]Run docker/login-action@v3
+build-languages-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:16.3960579Z with:
+build-languages-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:16.3960767Z   registry: docker.io
+build-languages-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:16.3961080Z   username: ***
+build-languages-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:16.3961320Z   password: ***
+build-languages-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:16.3961504Z   logout: true
+build-languages-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:16.3961677Z env:
+build-languages-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:16.3961848Z   GHCR_REGISTRY: ghcr.io
+build-languages-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:16.3962086Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:16.3962345Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:16.3962594Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:16.3962806Z ##[endgroup]
+build-languages-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:16.7056742Z Logging into docker.io...
+build-languages-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:16.7778550Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-amd64 (perl)	Log in to Docker Hub	﻿2026-04-28T19:27:19.6937066Z ##[group]Run docker/login-action@v3
+build-languages-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:19.6937339Z with:
+build-languages-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:19.6937541Z   registry: docker.io
+build-languages-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:19.6937887Z   username: ***
+build-languages-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:19.6938136Z   password: ***
+build-languages-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:19.6938336Z   logout: true
+build-languages-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:19.6938528Z env:
+build-languages-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:19.6938707Z   GHCR_REGISTRY: ghcr.io
+build-languages-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:19.6938962Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:19.6939242Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:19.6939507Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:19.6939733Z ##[endgroup]
+build-languages-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:19.9933817Z Logging into docker.io...
+build-languages-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:20.0983151Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-amd64 (rust)	Log in to Docker Hub	﻿2026-04-28T19:27:15.8381033Z ##[group]Run docker/login-action@v3
+build-languages-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:27:15.8381306Z with:
+build-languages-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:27:15.8381481Z   registry: docker.io
+build-languages-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:27:15.8381790Z   username: ***
+build-languages-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:27:15.8382033Z   password: ***
+build-languages-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:27:15.8382213Z   logout: true
+build-languages-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:27:15.8382385Z env:
+build-languages-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:27:15.8382552Z   GHCR_REGISTRY: ghcr.io
+build-languages-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:27:15.8382791Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:27:15.8383047Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:27:15.8383295Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:27:15.8383514Z ##[endgroup]
+build-languages-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:27:16.1732115Z Logging into docker.io...
+build-languages-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:27:16.3188204Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-amd64 (go)	Log in to Docker Hub	﻿2026-04-28T19:27:17.5511313Z ##[group]Run docker/login-action@v3
+build-languages-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:17.5511613Z with:
+build-languages-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:17.5511812Z   registry: docker.io
+build-languages-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:17.5512157Z   username: ***
+build-languages-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:17.5512399Z   password: ***
+build-languages-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:17.5512591Z   logout: true
+build-languages-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:17.5513139Z env:
+build-languages-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:17.5513434Z   GHCR_REGISTRY: ghcr.io
+build-languages-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:17.5513729Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:17.5513992Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:17.5514249Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:17.5514474Z ##[endgroup]
+build-languages-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:17.8631245Z Logging into docker.io...
+build-languages-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:17.9617919Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-amd64 (kotlin)	Log in to Docker Hub	﻿2026-04-28T19:27:18.2196196Z ##[group]Run docker/login-action@v3
+build-languages-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:18.2196455Z with:
+build-languages-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:18.2196657Z   registry: docker.io
+build-languages-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:18.2196977Z   username: ***
+build-languages-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:18.2197220Z   password: ***
+build-languages-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:18.2197693Z   logout: true
+build-languages-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:18.2197882Z env:
+build-languages-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:18.2198057Z   GHCR_REGISTRY: ghcr.io
+build-languages-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:18.2198302Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:18.2198571Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:18.2198838Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:18.2199055Z ##[endgroup]
+build-languages-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:18.5308354Z Logging into docker.io...
+build-languages-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:18.6610209Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-amd64 (swift)	Log in to Docker Hub	﻿2026-04-28T19:27:14.7525945Z ##[group]Run docker/login-action@v3
+build-languages-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:27:14.7526213Z with:
+build-languages-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:27:14.7526409Z   registry: docker.io
+build-languages-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:27:14.7526763Z   username: ***
+build-languages-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:27:14.7527014Z   password: ***
+build-languages-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:27:14.7527207Z   logout: true
+build-languages-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:27:14.7527393Z env:
+build-languages-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:27:14.7527578Z   GHCR_REGISTRY: ghcr.io
+build-languages-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:27:14.7527828Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:27:14.7528099Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:27:14.7528362Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:27:14.7528579Z ##[endgroup]
+build-languages-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:27:15.0604476Z Logging into docker.io...
+build-languages-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:27:15.1310274Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-arm64 (python)	Log in to Docker Hub	﻿2026-04-28T19:27:30.6524662Z ##[group]Run docker/login-action@v3
+build-languages-arm64 (python)	Log in to Docker Hub	2026-04-28T19:27:30.6525060Z with:
+build-languages-arm64 (python)	Log in to Docker Hub	2026-04-28T19:27:30.6525355Z   registry: docker.io
+build-languages-arm64 (python)	Log in to Docker Hub	2026-04-28T19:27:30.6525863Z   username: ***
+build-languages-arm64 (python)	Log in to Docker Hub	2026-04-28T19:27:30.6526136Z   password: ***
+build-languages-arm64 (python)	Log in to Docker Hub	2026-04-28T19:27:30.6526376Z   logout: true
+build-languages-arm64 (python)	Log in to Docker Hub	2026-04-28T19:27:30.6526586Z env:
+build-languages-arm64 (python)	Log in to Docker Hub	2026-04-28T19:27:30.6526760Z   GHCR_REGISTRY: ghcr.io
+build-languages-arm64 (python)	Log in to Docker Hub	2026-04-28T19:27:30.6527053Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-arm64 (python)	Log in to Docker Hub	2026-04-28T19:27:30.6527366Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-arm64 (python)	Log in to Docker Hub	2026-04-28T19:27:30.6527622Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-arm64 (python)	Log in to Docker Hub	2026-04-28T19:27:30.6527889Z ##[endgroup]
+build-languages-arm64 (python)	Log in to Docker Hub	2026-04-28T19:27:30.9078936Z Logging into docker.io...
+build-languages-arm64 (python)	Log in to Docker Hub	2026-04-28T19:27:31.0391415Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-arm64 (kotlin)	Log in to Docker Hub	﻿2026-04-28T19:27:29.0377579Z ##[group]Run docker/login-action@v3
+build-languages-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:29.0378330Z with:
+build-languages-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:29.0378703Z   registry: docker.io
+build-languages-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:29.0379190Z   username: ***
+build-languages-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:29.0379589Z   password: ***
+build-languages-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:29.0379840Z   logout: true
+build-languages-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:29.0380025Z env:
+build-languages-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:29.0380255Z   GHCR_REGISTRY: ghcr.io
+build-languages-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:29.0380536Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:29.0380823Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:29.0381145Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:29.0381414Z ##[endgroup]
+build-languages-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:29.3021197Z Logging into docker.io...
+build-languages-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:27:29.4466058Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-arm64 (go)	Log in to Docker Hub	﻿2026-04-28T19:27:31.0874065Z ##[group]Run docker/login-action@v3
+build-languages-arm64 (go)	Log in to Docker Hub	2026-04-28T19:27:31.0874398Z with:
+build-languages-arm64 (go)	Log in to Docker Hub	2026-04-28T19:27:31.0874600Z   registry: docker.io
+build-languages-arm64 (go)	Log in to Docker Hub	2026-04-28T19:27:31.0875043Z   username: ***
+build-languages-arm64 (go)	Log in to Docker Hub	2026-04-28T19:27:31.0875363Z   password: ***
+build-languages-arm64 (go)	Log in to Docker Hub	2026-04-28T19:27:31.0875555Z   logout: true
+build-languages-arm64 (go)	Log in to Docker Hub	2026-04-28T19:27:31.0875802Z env:
+build-languages-arm64 (go)	Log in to Docker Hub	2026-04-28T19:27:31.0875996Z   GHCR_REGISTRY: ghcr.io
+build-languages-arm64 (go)	Log in to Docker Hub	2026-04-28T19:27:31.0876220Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-arm64 (go)	Log in to Docker Hub	2026-04-28T19:27:31.0876535Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-arm64 (go)	Log in to Docker Hub	2026-04-28T19:27:31.0876838Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-arm64 (go)	Log in to Docker Hub	2026-04-28T19:27:31.0877061Z ##[endgroup]
+build-languages-arm64 (go)	Log in to Docker Hub	2026-04-28T19:27:31.3398899Z Logging into docker.io...
+build-languages-arm64 (go)	Log in to Docker Hub	2026-04-28T19:27:31.5433650Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-arm64 (java)	Log in to Docker Hub	﻿2026-04-28T19:27:33.3155688Z ##[group]Run docker/login-action@v3
+build-languages-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:33.3156018Z with:
+build-languages-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:33.3156235Z   registry: docker.io
+build-languages-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:33.3156648Z   username: ***
+build-languages-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:33.3157000Z   password: ***
+build-languages-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:33.3157214Z   logout: true
+build-languages-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:33.3157460Z env:
+build-languages-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:33.3157654Z   GHCR_REGISTRY: ghcr.io
+build-languages-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:33.3157906Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:33.3158213Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:33.3158528Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:33.3158791Z ##[endgroup]
+build-languages-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:33.5589830Z Logging into docker.io...
+build-languages-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:33.9066701Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-arm64 (ruby)	Log in to Docker Hub	﻿2026-04-28T19:27:30.2045198Z ##[group]Run docker/login-action@v3
+build-languages-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:30.2045562Z with:
+build-languages-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:30.2045772Z   registry: docker.io
+build-languages-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:30.2046287Z   username: ***
+build-languages-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:30.2046546Z   password: ***
+build-languages-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:30.2046761Z   logout: true
+build-languages-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:30.2046999Z env:
+build-languages-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:30.2047172Z   GHCR_REGISTRY: ghcr.io
+build-languages-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:30.2047446Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:30.2047783Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:30.2048038Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:30.2048283Z ##[endgroup]
+build-languages-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:30.4663353Z Logging into docker.io...
+build-languages-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:30.6536112Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-arm64 (lean)	Log in to Docker Hub	﻿2026-04-28T19:27:31.0325935Z ##[group]Run docker/login-action@v3
+build-languages-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:27:31.0326274Z with:
+build-languages-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:27:31.0326500Z   registry: docker.io
+build-languages-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:27:31.0327080Z   username: ***
+build-languages-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:27:31.0327413Z   password: ***
+build-languages-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:27:31.0327625Z   logout: true
+build-languages-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:27:31.0327941Z env:
+build-languages-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:27:31.0328158Z   GHCR_REGISTRY: ghcr.io
+build-languages-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:27:31.0328421Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:27:31.0328808Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:27:31.0329353Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:27:31.0329601Z ##[endgroup]
+build-languages-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:27:31.2855614Z Logging into docker.io...
+build-languages-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:27:31.6317522Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-arm64 (rust)	Log in to Docker Hub	﻿2026-04-28T19:27:30.5682117Z ##[group]Run docker/login-action@v3
+build-languages-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:27:30.5682579Z with:
+build-languages-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:27:30.5682798Z   registry: docker.io
+build-languages-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:27:30.5683368Z   username: ***
+build-languages-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:27:30.5683764Z   password: ***
+build-languages-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:27:30.5684016Z   logout: true
+build-languages-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:27:30.5684209Z env:
+build-languages-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:27:30.5684412Z   GHCR_REGISTRY: ghcr.io
+build-languages-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:27:30.5684700Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:27:30.5685000Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:27:30.5685286Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:27:30.5685553Z ##[endgroup]
+build-languages-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:27:30.8183655Z Logging into docker.io...
+build-languages-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:27:31.1708027Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-arm64 (php)	Log in to Docker Hub	﻿2026-04-28T19:27:37.3666727Z ##[group]Run docker/login-action@v3
+build-languages-arm64 (php)	Log in to Docker Hub	2026-04-28T19:27:37.3667082Z with:
+build-languages-arm64 (php)	Log in to Docker Hub	2026-04-28T19:27:37.3667283Z   registry: docker.io
+build-languages-arm64 (php)	Log in to Docker Hub	2026-04-28T19:27:37.3667755Z   username: ***
+build-languages-arm64 (php)	Log in to Docker Hub	2026-04-28T19:27:37.3668056Z   password: ***
+build-languages-arm64 (php)	Log in to Docker Hub	2026-04-28T19:27:37.3668265Z   logout: true
+build-languages-arm64 (php)	Log in to Docker Hub	2026-04-28T19:27:37.3668519Z env:
+build-languages-arm64 (php)	Log in to Docker Hub	2026-04-28T19:27:37.3668686Z   GHCR_REGISTRY: ghcr.io
+build-languages-arm64 (php)	Log in to Docker Hub	2026-04-28T19:27:37.3668951Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-arm64 (php)	Log in to Docker Hub	2026-04-28T19:27:37.3669296Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-arm64 (php)	Log in to Docker Hub	2026-04-28T19:27:37.3669551Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-arm64 (php)	Log in to Docker Hub	2026-04-28T19:27:37.3669788Z ##[endgroup]
+build-languages-arm64 (php)	Log in to Docker Hub	2026-04-28T19:27:37.6299218Z Logging into docker.io...
+build-languages-arm64 (php)	Log in to Docker Hub	2026-04-28T19:27:37.8551608Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-arm64 (swift)	Log in to Docker Hub	﻿2026-04-28T19:27:34.5938552Z ##[group]Run docker/login-action@v3
+build-languages-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:34.5938898Z with:
+build-languages-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:34.5939143Z   registry: docker.io
+build-languages-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:34.5940179Z   username: ***
+build-languages-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:34.5940572Z   password: ***
+build-languages-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:34.5940888Z   logout: true
+build-languages-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:34.5941094Z env:
+build-languages-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:34.5941287Z   GHCR_REGISTRY: ghcr.io
+build-languages-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:34.5941597Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:34.5941876Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:34.5942148Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:34.5942446Z ##[endgroup]
+build-languages-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:34.8525200Z Logging into docker.io...
+build-languages-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:35.0370870Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-arm64 (rocq)	Log in to Docker Hub	﻿2026-04-28T19:27:32.1450571Z ##[group]Run docker/login-action@v3
+build-languages-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:32.1450949Z with:
+build-languages-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:32.1451164Z   registry: docker.io
+build-languages-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:32.1451677Z   username: ***
+build-languages-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:32.1451989Z   password: ***
+build-languages-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:32.1452216Z   logout: true
+build-languages-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:32.1452436Z env:
+build-languages-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:32.1452643Z   GHCR_REGISTRY: ghcr.io
+build-languages-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:32.1452924Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:32.1453239Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:32.1453528Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:32.1453794Z ##[endgroup]
+build-languages-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:32.4007762Z Logging into docker.io...
+build-languages-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:27:32.4940923Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-languages-arm64 (perl)	Log in to Docker Hub	﻿2026-04-28T19:27:31.5648092Z ##[group]Run docker/login-action@v3
+build-languages-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:31.5648462Z with:
+build-languages-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:31.5648652Z   registry: docker.io
+build-languages-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:31.5649107Z   username: ***
+build-languages-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:31.5649449Z   password: ***
+build-languages-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:31.5649652Z   logout: true
+build-languages-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:31.5649887Z env:
+build-languages-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:31.5650089Z   GHCR_REGISTRY: ghcr.io
+build-languages-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:31.5650343Z   GHCR_IMAGE_NAME: link-foundation/box
+build-languages-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:31.5650648Z   DOCKERHUB_REGISTRY: docker.io
+build-languages-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:31.5650963Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-languages-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:31.5651208Z ##[endgroup]
+build-languages-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:31.8238116Z Logging into docker.io...
+build-languages-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:32.0520774Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-arm64 (essentials)	Log in to Docker Hub	﻿2026-04-28T19:27:58.7349172Z ##[group]Run docker/login-action@v3
+build-dind-arm64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:58.7349678Z with:
+build-dind-arm64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:58.7349967Z   registry: docker.io
+build-dind-arm64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:58.7350421Z   username: ***
+build-dind-arm64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:58.7350751Z   password: ***
+build-dind-arm64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:58.7350939Z   logout: true
+build-dind-arm64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:58.7351124Z env:
+build-dind-arm64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:58.7351355Z   GHCR_REGISTRY: ghcr.io
+build-dind-arm64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:58.7351579Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-arm64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:58.7351866Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-arm64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:58.7352197Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-arm64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:58.7352433Z ##[endgroup]
+build-dind-arm64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:59.0052150Z Logging into docker.io...
+build-dind-arm64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:59.1246999Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-arm64 (js)	Log in to Docker Hub	﻿2026-04-28T19:27:57.1335518Z ##[group]Run docker/login-action@v3
+build-dind-arm64 (js)	Log in to Docker Hub	2026-04-28T19:27:57.1335856Z with:
+build-dind-arm64 (js)	Log in to Docker Hub	2026-04-28T19:27:57.1336033Z   registry: docker.io
+build-dind-arm64 (js)	Log in to Docker Hub	2026-04-28T19:27:57.1336517Z   username: ***
+build-dind-arm64 (js)	Log in to Docker Hub	2026-04-28T19:27:57.1336794Z   password: ***
+build-dind-arm64 (js)	Log in to Docker Hub	2026-04-28T19:27:57.1337059Z   logout: true
+build-dind-arm64 (js)	Log in to Docker Hub	2026-04-28T19:27:57.1337261Z env:
+build-dind-arm64 (js)	Log in to Docker Hub	2026-04-28T19:27:57.1337449Z   GHCR_REGISTRY: ghcr.io
+build-dind-arm64 (js)	Log in to Docker Hub	2026-04-28T19:27:57.1337731Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-arm64 (js)	Log in to Docker Hub	2026-04-28T19:27:57.1338038Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-arm64 (js)	Log in to Docker Hub	2026-04-28T19:27:57.1338314Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-arm64 (js)	Log in to Docker Hub	2026-04-28T19:27:57.1338622Z ##[endgroup]
+build-dind-arm64 (js)	Log in to Docker Hub	2026-04-28T19:27:57.3809587Z Logging into docker.io...
+build-dind-arm64 (js)	Log in to Docker Hub	2026-04-28T19:27:57.4705984Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-arm64 (ruby)	Log in to Docker Hub	﻿2026-04-28T19:27:58.2767894Z ##[group]Run docker/login-action@v3
+build-dind-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:58.2768278Z with:
+build-dind-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:58.2768622Z   registry: docker.io
+build-dind-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:58.2769001Z   username: ***
+build-dind-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:58.2769338Z   password: ***
+build-dind-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:58.2769631Z   logout: true
+build-dind-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:58.2769816Z env:
+build-dind-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:58.2770015Z   GHCR_REGISTRY: ghcr.io
+build-dind-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:58.2770338Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:58.2770637Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:58.2770922Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:58.2771233Z ##[endgroup]
+build-dind-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:58.5192781Z Logging into docker.io...
+build-dind-arm64 (ruby)	Log in to Docker Hub	2026-04-28T19:27:58.6698319Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-arm64 (rocq)	Log in to Docker Hub	﻿2026-04-28T19:28:00.1434425Z ##[group]Run docker/login-action@v3
+build-dind-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:00.1434776Z with:
+build-dind-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:00.1435010Z   registry: docker.io
+build-dind-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:00.1435660Z   username: ***
+build-dind-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:00.1435987Z   password: ***
+build-dind-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:00.1436196Z   logout: true
+build-dind-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:00.1436450Z env:
+build-dind-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:00.1436644Z   GHCR_REGISTRY: ghcr.io
+build-dind-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:00.1436868Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:00.1437191Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:00.1437490Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:00.1437755Z ##[endgroup]
+build-dind-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:00.3925438Z Logging into docker.io...
+build-dind-arm64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:00.7294336Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-arm64 (python)	Log in to Docker Hub	﻿2026-04-28T19:28:00.2368846Z ##[group]Run docker/login-action@v3
+build-dind-arm64 (python)	Log in to Docker Hub	2026-04-28T19:28:00.2369163Z with:
+build-dind-arm64 (python)	Log in to Docker Hub	2026-04-28T19:28:00.2369476Z   registry: docker.io
+build-dind-arm64 (python)	Log in to Docker Hub	2026-04-28T19:28:00.2370106Z   username: ***
+build-dind-arm64 (python)	Log in to Docker Hub	2026-04-28T19:28:00.2370407Z   password: ***
+build-dind-arm64 (python)	Log in to Docker Hub	2026-04-28T19:28:00.2370699Z   logout: true
+build-dind-arm64 (python)	Log in to Docker Hub	2026-04-28T19:28:00.2370905Z env:
+build-dind-arm64 (python)	Log in to Docker Hub	2026-04-28T19:28:00.2371083Z   GHCR_REGISTRY: ghcr.io
+build-dind-arm64 (python)	Log in to Docker Hub	2026-04-28T19:28:00.2371362Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-arm64 (python)	Log in to Docker Hub	2026-04-28T19:28:00.2371661Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-arm64 (python)	Log in to Docker Hub	2026-04-28T19:28:00.2371928Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-arm64 (python)	Log in to Docker Hub	2026-04-28T19:28:00.2372225Z ##[endgroup]
+build-dind-arm64 (python)	Log in to Docker Hub	2026-04-28T19:28:00.5004375Z Logging into docker.io...
+build-dind-arm64 (python)	Log in to Docker Hub	2026-04-28T19:28:00.8354065Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-arm64 (swift)	Log in to Docker Hub	﻿2026-04-28T19:27:58.9348679Z ##[group]Run docker/login-action@v3
+build-dind-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:58.9349177Z with:
+build-dind-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:58.9349430Z   registry: docker.io
+build-dind-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:58.9349820Z   username: ***
+build-dind-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:58.9350163Z   password: ***
+build-dind-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:58.9350384Z   logout: true
+build-dind-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:58.9350581Z env:
+build-dind-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:58.9350817Z   GHCR_REGISTRY: ghcr.io
+build-dind-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:58.9351100Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:58.9351607Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:58.9351955Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:58.9352218Z ##[endgroup]
+build-dind-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:59.1864607Z Logging into docker.io...
+build-dind-arm64 (swift)	Log in to Docker Hub	2026-04-28T19:27:59.2775754Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-arm64 (php)	Log in to Docker Hub	﻿2026-04-28T19:28:03.1519797Z ##[group]Run docker/login-action@v3
+build-dind-arm64 (php)	Log in to Docker Hub	2026-04-28T19:28:03.1520164Z with:
+build-dind-arm64 (php)	Log in to Docker Hub	2026-04-28T19:28:03.1520457Z   registry: docker.io
+build-dind-arm64 (php)	Log in to Docker Hub	2026-04-28T19:28:03.1520876Z   username: ***
+build-dind-arm64 (php)	Log in to Docker Hub	2026-04-28T19:28:03.1521138Z   password: ***
+build-dind-arm64 (php)	Log in to Docker Hub	2026-04-28T19:28:03.1521429Z   logout: true
+build-dind-arm64 (php)	Log in to Docker Hub	2026-04-28T19:28:03.1521635Z env:
+build-dind-arm64 (php)	Log in to Docker Hub	2026-04-28T19:28:03.1521798Z   GHCR_REGISTRY: ghcr.io
+build-dind-arm64 (php)	Log in to Docker Hub	2026-04-28T19:28:03.1522088Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-arm64 (php)	Log in to Docker Hub	2026-04-28T19:28:03.1522385Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-arm64 (php)	Log in to Docker Hub	2026-04-28T19:28:03.1522843Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-arm64 (php)	Log in to Docker Hub	2026-04-28T19:28:03.1523089Z ##[endgroup]
+build-dind-arm64 (php)	Log in to Docker Hub	2026-04-28T19:28:03.4033697Z Logging into docker.io...
+build-dind-arm64 (php)	Log in to Docker Hub	2026-04-28T19:28:03.7120531Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-arm64 (rust)	Log in to Docker Hub	﻿2026-04-28T19:28:01.3154331Z ##[group]Run docker/login-action@v3
+build-dind-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:28:01.3154784Z with:
+build-dind-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:28:01.3154996Z   registry: docker.io
+build-dind-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:28:01.3155404Z   username: ***
+build-dind-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:28:01.3155787Z   password: ***
+build-dind-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:28:01.3155995Z   logout: true
+build-dind-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:28:01.3156162Z env:
+build-dind-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:28:01.3156394Z   GHCR_REGISTRY: ghcr.io
+build-dind-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:28:01.3156635Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:28:01.3156888Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:28:01.3157232Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:28:01.3157472Z ##[endgroup]
+build-dind-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:28:01.5786108Z Logging into docker.io...
+build-dind-arm64 (rust)	Log in to Docker Hub	2026-04-28T19:28:01.7930286Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-arm64 (java)	Log in to Docker Hub	﻿2026-04-28T19:27:59.0126025Z ##[group]Run docker/login-action@v3
+build-dind-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:59.0126468Z with:
+build-dind-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:59.0126722Z   registry: docker.io
+build-dind-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:59.0127208Z   username: ***
+build-dind-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:59.0127553Z   password: ***
+build-dind-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:59.0127813Z   logout: true
+build-dind-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:59.0127994Z env:
+build-dind-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:59.0128242Z   GHCR_REGISTRY: ghcr.io
+build-dind-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:59.0128530Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:59.0128824Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:59.0129145Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:59.0129424Z ##[endgroup]
+build-dind-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:59.2695791Z Logging into docker.io...
+build-dind-arm64 (java)	Log in to Docker Hub	2026-04-28T19:27:59.4140397Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-arm64 (go)	Log in to Docker Hub	﻿2026-04-28T19:28:03.8311264Z ##[group]Run docker/login-action@v3
+build-dind-arm64 (go)	Log in to Docker Hub	2026-04-28T19:28:03.8311680Z with:
+build-dind-arm64 (go)	Log in to Docker Hub	2026-04-28T19:28:03.8311917Z   registry: docker.io
+build-dind-arm64 (go)	Log in to Docker Hub	2026-04-28T19:28:03.8312326Z   username: ***
+build-dind-arm64 (go)	Log in to Docker Hub	2026-04-28T19:28:03.8312725Z   password: ***
+build-dind-arm64 (go)	Log in to Docker Hub	2026-04-28T19:28:03.8312932Z   logout: true
+build-dind-arm64 (go)	Log in to Docker Hub	2026-04-28T19:28:03.8313119Z env:
+build-dind-arm64 (go)	Log in to Docker Hub	2026-04-28T19:28:03.8313356Z   GHCR_REGISTRY: ghcr.io
+build-dind-arm64 (go)	Log in to Docker Hub	2026-04-28T19:28:03.8313580Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-arm64 (go)	Log in to Docker Hub	2026-04-28T19:28:03.8313842Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-arm64 (go)	Log in to Docker Hub	2026-04-28T19:28:03.8314187Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-arm64 (go)	Log in to Docker Hub	2026-04-28T19:28:03.8314420Z ##[endgroup]
+build-dind-arm64 (go)	Log in to Docker Hub	2026-04-28T19:28:04.0905446Z Logging into docker.io...
+build-dind-arm64 (go)	Log in to Docker Hub	2026-04-28T19:28:04.3036217Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-amd64 (go)	Log in to Docker Hub	﻿2026-04-28T19:27:54.7536051Z ##[group]Run docker/login-action@v3
+build-dind-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:54.7536571Z with:
+build-dind-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:54.7536746Z   registry: docker.io
+build-dind-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:54.7537001Z   username: ***
+build-dind-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:54.7537238Z   password: ***
+build-dind-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:54.7537408Z   logout: true
+build-dind-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:54.7537569Z env:
+build-dind-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:54.7537732Z   GHCR_REGISTRY: ghcr.io
+build-dind-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:54.7537958Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:54.7538211Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:54.7538455Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:54.7538662Z ##[endgroup]
+build-dind-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:55.0633125Z Logging into docker.io...
+build-dind-amd64 (go)	Log in to Docker Hub	2026-04-28T19:27:55.1532903Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-amd64 (js)	Log in to Docker Hub	﻿2026-04-28T19:27:58.2788638Z ##[group]Run docker/login-action@v3
+build-dind-amd64 (js)	Log in to Docker Hub	2026-04-28T19:27:58.2788910Z with:
+build-dind-amd64 (js)	Log in to Docker Hub	2026-04-28T19:27:58.2789092Z   registry: docker.io
+build-dind-amd64 (js)	Log in to Docker Hub	2026-04-28T19:27:58.2789347Z   username: ***
+build-dind-amd64 (js)	Log in to Docker Hub	2026-04-28T19:27:58.2789584Z   password: ***
+build-dind-amd64 (js)	Log in to Docker Hub	2026-04-28T19:27:58.2789760Z   logout: true
+build-dind-amd64 (js)	Log in to Docker Hub	2026-04-28T19:27:58.2789927Z env:
+build-dind-amd64 (js)	Log in to Docker Hub	2026-04-28T19:27:58.2790086Z   GHCR_REGISTRY: ghcr.io
+build-dind-amd64 (js)	Log in to Docker Hub	2026-04-28T19:27:58.2790326Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-amd64 (js)	Log in to Docker Hub	2026-04-28T19:27:58.2790583Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-amd64 (js)	Log in to Docker Hub	2026-04-28T19:27:58.2790826Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-amd64 (js)	Log in to Docker Hub	2026-04-28T19:27:58.2791032Z ##[endgroup]
+build-dind-amd64 (js)	Log in to Docker Hub	2026-04-28T19:27:58.5798380Z Logging into docker.io...
+build-dind-amd64 (js)	Log in to Docker Hub	2026-04-28T19:27:58.7223389Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-amd64 (python)	Log in to Docker Hub	﻿2026-04-28T19:28:17.9183171Z ##[group]Run docker/login-action@v3
+build-dind-amd64 (python)	Log in to Docker Hub	2026-04-28T19:28:17.9183432Z with:
+build-dind-amd64 (python)	Log in to Docker Hub	2026-04-28T19:28:17.9183613Z   registry: docker.io
+build-dind-amd64 (python)	Log in to Docker Hub	2026-04-28T19:28:17.9183854Z   username: ***
+build-dind-amd64 (python)	Log in to Docker Hub	2026-04-28T19:28:17.9184078Z   password: ***
+build-dind-amd64 (python)	Log in to Docker Hub	2026-04-28T19:28:17.9184252Z   logout: true
+build-dind-amd64 (python)	Log in to Docker Hub	2026-04-28T19:28:17.9184413Z env:
+build-dind-amd64 (python)	Log in to Docker Hub	2026-04-28T19:28:17.9184565Z   GHCR_REGISTRY: ghcr.io
+build-dind-amd64 (python)	Log in to Docker Hub	2026-04-28T19:28:17.9184793Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-amd64 (python)	Log in to Docker Hub	2026-04-28T19:28:17.9185037Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-amd64 (python)	Log in to Docker Hub	2026-04-28T19:28:17.9185264Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-amd64 (python)	Log in to Docker Hub	2026-04-28T19:28:17.9185471Z ##[endgroup]
+build-dind-amd64 (python)	Log in to Docker Hub	2026-04-28T19:28:18.1945050Z Logging into docker.io...
+build-dind-amd64 (python)	Log in to Docker Hub	2026-04-28T19:28:18.4592818Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-amd64 (essentials)	Log in to Docker Hub	﻿2026-04-28T19:27:56.3192169Z ##[group]Run docker/login-action@v3
+build-dind-amd64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:56.3192453Z with:
+build-dind-amd64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:56.3192635Z   registry: docker.io
+build-dind-amd64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:56.3192906Z   username: ***
+build-dind-amd64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:56.3193149Z   password: ***
+build-dind-amd64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:56.3193328Z   logout: true
+build-dind-amd64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:56.3193503Z env:
+build-dind-amd64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:56.3193669Z   GHCR_REGISTRY: ghcr.io
+build-dind-amd64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:56.3193908Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-amd64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:56.3194170Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-amd64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:56.3194421Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-amd64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:56.3194636Z ##[endgroup]
+build-dind-amd64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:56.6230488Z Logging into docker.io...
+build-dind-amd64 (essentials)	Log in to Docker Hub	2026-04-28T19:27:56.9508465Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-arm64 (perl)	Log in to Docker Hub	﻿2026-04-28T19:27:58.4317934Z ##[group]Run docker/login-action@v3
+build-dind-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:58.4318294Z with:
+build-dind-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:58.4318594Z   registry: docker.io
+build-dind-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:58.4319032Z   username: ***
+build-dind-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:58.4319307Z   password: ***
+build-dind-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:58.4319571Z   logout: true
+build-dind-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:58.4319975Z env:
+build-dind-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:58.4320226Z   GHCR_REGISTRY: ghcr.io
+build-dind-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:58.4320519Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:58.4320806Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:58.4321088Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:58.4321365Z ##[endgroup]
+build-dind-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:58.6914028Z Logging into docker.io...
+build-dind-arm64 (perl)	Log in to Docker Hub	2026-04-28T19:27:58.8348671Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-amd64 (java)	Log in to Docker Hub	﻿2026-04-28T19:28:05.3026784Z ##[group]Run docker/login-action@v3
+build-dind-amd64 (java)	Log in to Docker Hub	2026-04-28T19:28:05.3027116Z with:
+build-dind-amd64 (java)	Log in to Docker Hub	2026-04-28T19:28:05.3027327Z   registry: docker.io
+build-dind-amd64 (java)	Log in to Docker Hub	2026-04-28T19:28:05.3028118Z   username: ***
+build-dind-amd64 (java)	Log in to Docker Hub	2026-04-28T19:28:05.3028475Z   password: ***
+build-dind-amd64 (java)	Log in to Docker Hub	2026-04-28T19:28:05.3028673Z   logout: true
+build-dind-amd64 (java)	Log in to Docker Hub	2026-04-28T19:28:05.3028877Z env:
+build-dind-amd64 (java)	Log in to Docker Hub	2026-04-28T19:28:05.3029066Z   GHCR_REGISTRY: ghcr.io
+build-dind-amd64 (java)	Log in to Docker Hub	2026-04-28T19:28:05.3029328Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-amd64 (java)	Log in to Docker Hub	2026-04-28T19:28:05.3029623Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-amd64 (java)	Log in to Docker Hub	2026-04-28T19:28:05.3029894Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-amd64 (java)	Log in to Docker Hub	2026-04-28T19:28:05.3030141Z ##[endgroup]
+build-dind-amd64 (java)	Log in to Docker Hub	2026-04-28T19:28:05.6191835Z Logging into docker.io...
+build-dind-amd64 (java)	Log in to Docker Hub	2026-04-28T19:28:05.9421069Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-amd64 (php)	Log in to Docker Hub	﻿2026-04-28T19:28:07.0311137Z ##[group]Run docker/login-action@v3
+build-dind-amd64 (php)	Log in to Docker Hub	2026-04-28T19:28:07.0311413Z with:
+build-dind-amd64 (php)	Log in to Docker Hub	2026-04-28T19:28:07.0311590Z   registry: docker.io
+build-dind-amd64 (php)	Log in to Docker Hub	2026-04-28T19:28:07.0311834Z   username: ***
+build-dind-amd64 (php)	Log in to Docker Hub	2026-04-28T19:28:07.0312074Z   password: ***
+build-dind-amd64 (php)	Log in to Docker Hub	2026-04-28T19:28:07.0312250Z   logout: true
+build-dind-amd64 (php)	Log in to Docker Hub	2026-04-28T19:28:07.0312412Z env:
+build-dind-amd64 (php)	Log in to Docker Hub	2026-04-28T19:28:07.0312574Z   GHCR_REGISTRY: ghcr.io
+build-dind-amd64 (php)	Log in to Docker Hub	2026-04-28T19:28:07.0312799Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-amd64 (php)	Log in to Docker Hub	2026-04-28T19:28:07.0313346Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-amd64 (php)	Log in to Docker Hub	2026-04-28T19:28:07.0313623Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-amd64 (php)	Log in to Docker Hub	2026-04-28T19:28:07.0313842Z ##[endgroup]
+build-dind-amd64 (php)	Log in to Docker Hub	2026-04-28T19:28:07.3373405Z Logging into docker.io...
+build-dind-amd64 (php)	Log in to Docker Hub	2026-04-28T19:28:07.4849570Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-arm64 (kotlin)	Log in to Docker Hub	﻿2026-04-28T19:28:16.4416191Z ##[group]Run docker/login-action@v3
+build-dind-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.4416507Z with:
+build-dind-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.4416810Z   registry: docker.io
+build-dind-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.4417198Z   username: ***
+build-dind-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.4417514Z   password: ***
+build-dind-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.4417742Z   logout: true
+build-dind-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.4417951Z env:
+build-dind-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.4418141Z   GHCR_REGISTRY: ghcr.io
+build-dind-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.4418395Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.4418718Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.4418994Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.4419241Z ##[endgroup]
+build-dind-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.6971550Z Logging into docker.io...
+build-dind-arm64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.9095135Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-amd64 (perl)	Log in to Docker Hub	﻿2026-04-28T19:27:53.0614198Z ##[group]Run docker/login-action@v3
+build-dind-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:53.0614481Z with:
+build-dind-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:53.0614662Z   registry: docker.io
+build-dind-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:53.0614927Z   username: ***
+build-dind-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:53.0615166Z   password: ***
+build-dind-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:53.0615338Z   logout: true
+build-dind-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:53.0615504Z env:
+build-dind-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:53.0615663Z   GHCR_REGISTRY: ghcr.io
+build-dind-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:53.0615899Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:53.0616160Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:53.0616410Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:53.0616629Z ##[endgroup]
+build-dind-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:53.3812496Z Logging into docker.io...
+build-dind-amd64 (perl)	Log in to Docker Hub	2026-04-28T19:27:53.4841945Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-arm64 (lean)	Log in to Docker Hub	﻿2026-04-28T19:28:01.7238503Z ##[group]Run docker/login-action@v3
+build-dind-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:28:01.7238825Z with:
+build-dind-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:28:01.7239050Z   registry: docker.io
+build-dind-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:28:01.7239701Z   username: ***
+build-dind-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:28:01.7240025Z   password: ***
+build-dind-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:28:01.7240223Z   logout: true
+build-dind-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:28:01.7240483Z env:
+build-dind-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:28:01.7240670Z   GHCR_REGISTRY: ghcr.io
+build-dind-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:28:01.7240891Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:28:01.7241223Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:28:01.7241549Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:28:01.7241806Z ##[endgroup]
+build-dind-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:28:01.9822236Z Logging into docker.io...
+build-dind-arm64 (lean)	Log in to Docker Hub	2026-04-28T19:28:02.3388716Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-amd64 (full)	Log in to Docker Hub	﻿2026-04-28T19:27:56.6659909Z ##[group]Run docker/login-action@v3
+build-dind-amd64 (full)	Log in to Docker Hub	2026-04-28T19:27:56.6660215Z with:
+build-dind-amd64 (full)	Log in to Docker Hub	2026-04-28T19:27:56.6660396Z   registry: docker.io
+build-dind-amd64 (full)	Log in to Docker Hub	2026-04-28T19:27:56.6660667Z   username: ***
+build-dind-amd64 (full)	Log in to Docker Hub	2026-04-28T19:27:56.6660926Z   password: ***
+build-dind-amd64 (full)	Log in to Docker Hub	2026-04-28T19:27:56.6661107Z   logout: true
+build-dind-amd64 (full)	Log in to Docker Hub	2026-04-28T19:27:56.6661275Z env:
+build-dind-amd64 (full)	Log in to Docker Hub	2026-04-28T19:27:56.6661443Z   GHCR_REGISTRY: ghcr.io
+build-dind-amd64 (full)	Log in to Docker Hub	2026-04-28T19:27:56.6661676Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-amd64 (full)	Log in to Docker Hub	2026-04-28T19:27:56.6661938Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-amd64 (full)	Log in to Docker Hub	2026-04-28T19:27:56.6662181Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-amd64 (full)	Log in to Docker Hub	2026-04-28T19:27:56.6662388Z ##[endgroup]
+build-dind-amd64 (full)	Log in to Docker Hub	2026-04-28T19:27:56.9709917Z Logging into docker.io...
+build-dind-amd64 (full)	Log in to Docker Hub	2026-04-28T19:27:57.1196692Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-amd64 (lean)	Log in to Docker Hub	﻿2026-04-28T19:28:17.3650766Z ##[group]Run docker/login-action@v3
+build-dind-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:28:17.3651050Z with:
+build-dind-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:28:17.3651249Z   registry: docker.io
+build-dind-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:28:17.3651772Z   username: ***
+build-dind-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:28:17.3652032Z   password: ***
+build-dind-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:28:17.3652219Z   logout: true
+build-dind-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:28:17.3652404Z env:
+build-dind-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:28:17.3652583Z   GHCR_REGISTRY: ghcr.io
+build-dind-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:28:17.3652838Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:28:17.3653114Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:28:17.3653380Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:28:17.3653599Z ##[endgroup]
+build-dind-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:28:17.6798435Z Logging into docker.io...
+build-dind-amd64 (lean)	Log in to Docker Hub	2026-04-28T19:28:17.7496097Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-amd64 (kotlin)	Log in to Docker Hub	﻿2026-04-28T19:28:16.6623898Z ##[group]Run docker/login-action@v3
+build-dind-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.6624157Z with:
+build-dind-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.6624342Z   registry: docker.io
+build-dind-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.6624623Z   username: ***
+build-dind-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.6624880Z   password: ***
+build-dind-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.6625074Z   logout: true
+build-dind-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.6625251Z env:
+build-dind-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.6625426Z   GHCR_REGISTRY: ghcr.io
+build-dind-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.6625675Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.6625944Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.6626205Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.6626418Z ##[endgroup]
+build-dind-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:16.9723531Z Logging into docker.io...
+build-dind-amd64 (kotlin)	Log in to Docker Hub	2026-04-28T19:28:17.1819451Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-amd64 (ruby)	Log in to Docker Hub	﻿2026-04-28T19:28:02.7035411Z ##[group]Run docker/login-action@v3
+build-dind-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:28:02.7035691Z with:
+build-dind-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:28:02.7035871Z   registry: docker.io
+build-dind-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:28:02.7036385Z   username: ***
+build-dind-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:28:02.7036662Z   password: ***
+build-dind-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:28:02.7036840Z   logout: true
+build-dind-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:28:02.7037012Z env:
+build-dind-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:28:02.7037177Z   GHCR_REGISTRY: ghcr.io
+build-dind-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:28:02.7037414Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:28:02.7037673Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:28:02.7037924Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:28:02.7038130Z ##[endgroup]
+build-dind-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:28:03.0186584Z Logging into docker.io...
+build-dind-amd64 (ruby)	Log in to Docker Hub	2026-04-28T19:28:03.3720262Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-arm64 (full)	Log in to Docker Hub	﻿2026-04-28T19:28:14.9986854Z ##[group]Run docker/login-action@v3
+build-dind-arm64 (full)	Log in to Docker Hub	2026-04-28T19:28:14.9987359Z with:
+build-dind-arm64 (full)	Log in to Docker Hub	2026-04-28T19:28:14.9987591Z   registry: docker.io
+build-dind-arm64 (full)	Log in to Docker Hub	2026-04-28T19:28:14.9988017Z   username: ***
+build-dind-arm64 (full)	Log in to Docker Hub	2026-04-28T19:28:14.9988411Z   password: ***
+build-dind-arm64 (full)	Log in to Docker Hub	2026-04-28T19:28:14.9988626Z   logout: true
+build-dind-arm64 (full)	Log in to Docker Hub	2026-04-28T19:28:14.9988836Z env:
+build-dind-arm64 (full)	Log in to Docker Hub	2026-04-28T19:28:14.9989084Z   GHCR_REGISTRY: ghcr.io
+build-dind-arm64 (full)	Log in to Docker Hub	2026-04-28T19:28:14.9989338Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-arm64 (full)	Log in to Docker Hub	2026-04-28T19:28:14.9989618Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-arm64 (full)	Log in to Docker Hub	2026-04-28T19:28:14.9989936Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-arm64 (full)	Log in to Docker Hub	2026-04-28T19:28:14.9990196Z ##[endgroup]
+build-dind-arm64 (full)	Log in to Docker Hub	2026-04-28T19:28:15.2635160Z Logging into docker.io...
+build-dind-arm64 (full)	Log in to Docker Hub	2026-04-28T19:28:15.3616080Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-amd64 (swift)	Log in to Docker Hub	﻿2026-04-28T19:28:28.5931689Z ##[group]Run docker/login-action@v3
+build-dind-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:28:28.5931967Z with:
+build-dind-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:28:28.5932144Z   registry: docker.io
+build-dind-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:28:28.5932406Z   username: ***
+build-dind-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:28:28.5932663Z   password: ***
+build-dind-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:28:28.5932845Z   logout: true
+build-dind-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:28:28.5933013Z env:
+build-dind-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:28:28.5933172Z   GHCR_REGISTRY: ghcr.io
+build-dind-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:28:28.5933402Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:28:28.5933660Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:28:28.5933903Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:28:28.5934460Z ##[endgroup]
+build-dind-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:28:28.8990711Z Logging into docker.io...
+build-dind-amd64 (swift)	Log in to Docker Hub	2026-04-28T19:28:29.0306869Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-amd64 (rust)	Log in to Docker Hub	﻿2026-04-28T19:28:03.7518184Z ##[group]Run docker/login-action@v3
+build-dind-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:28:03.7518396Z with:
+build-dind-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:28:03.7518544Z   registry: docker.io
+build-dind-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:28:03.7518756Z   username: ***
+build-dind-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:28:03.7518947Z   password: ***
+build-dind-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:28:03.7519097Z   logout: true
+build-dind-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:28:03.7519228Z env:
+build-dind-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:28:03.7519374Z   GHCR_REGISTRY: ghcr.io
+build-dind-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:28:03.7519564Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:28:03.7519763Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:28:03.7519972Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:28:03.7520151Z ##[endgroup]
+build-dind-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:28:03.9870729Z Logging into docker.io...
+build-dind-amd64 (rust)	Log in to Docker Hub	2026-04-28T19:28:04.3162464Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired
+build-dind-amd64 (rocq)	Log in to Docker Hub	﻿2026-04-28T19:28:11.0121931Z ##[group]Run docker/login-action@v3
+build-dind-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:11.0122229Z with:
+build-dind-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:11.0122416Z   registry: docker.io
+build-dind-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:11.0122696Z   username: ***
+build-dind-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:11.0122942Z   password: ***
+build-dind-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:11.0123128Z   logout: true
+build-dind-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:11.0123302Z env:
+build-dind-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:11.0123482Z   GHCR_REGISTRY: ghcr.io
+build-dind-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:11.0123727Z   GHCR_IMAGE_NAME: link-foundation/box
+build-dind-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:11.0123985Z   DOCKERHUB_REGISTRY: docker.io
+build-dind-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:11.0124258Z   DOCKERHUB_IMAGE_NAME: ***/box
+build-dind-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:11.0124486Z ##[endgroup]
+build-dind-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:11.3233336Z Logging into docker.io...
+build-dind-amd64 (rocq)	Log in to Docker Hub	2026-04-28T19:28:11.4683358Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": unauthorized: personal access token is expired

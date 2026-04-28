@@ -610,12 +610,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
       - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check Docker Hub login (issue #82)
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
 
       - name: Build and push JS box (amd64)
         id: build-push
@@ -716,12 +725,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
       - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check Docker Hub login (issue #82)
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
 
       - name: Build and push JS box (arm64)
         id: build-push
@@ -808,12 +826,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
       - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check Docker Hub login (issue #82)
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
 
       - name: Create and push JS multi-arch manifests
         run: |
@@ -893,12 +920,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
       - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check Docker Hub login (issue #82)
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
 
       - name: Determine JS base image
         id: js-base
@@ -1015,12 +1051,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
       - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check Docker Hub login (issue #82)
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
 
       - name: Determine JS base image
         id: js-base
@@ -1119,12 +1164,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
       - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check Docker Hub login (issue #82)
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
 
       - name: Create and push essentials multi-arch manifests
         run: |
@@ -1226,13 +1280,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
       - name: Log in to Docker Hub
+        id: dockerhub-login
         if: steps.check-lang.outputs.should_build == 'true'
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check Docker Hub login (issue #82)
+        if: steps.check-lang.outputs.should_build == 'true' && steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
 
       - name: Determine essentials base image
         if: steps.check-lang.outputs.should_build == 'true'
@@ -1403,13 +1466,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
       - name: Log in to Docker Hub
+        id: dockerhub-login
         if: steps.check-lang.outputs.should_build == 'true'
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check Docker Hub login (issue #82)
+        if: steps.check-lang.outputs.should_build == 'true' && steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
 
       - name: Determine essentials base image
         if: steps.check-lang.outputs.should_build == 'true'
@@ -1546,12 +1618,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
       - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check Docker Hub login (issue #82)
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
 
       - name: Create and push ${{ matrix.language }} multi-arch manifests
         run: |
@@ -1642,12 +1723,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
       - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check Docker Hub login (issue #82)
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
 
       - name: Determine base images
         id: base-images
@@ -1901,12 +1991,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
       - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check Docker Hub login (issue #82)
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
 
       - name: Determine base images
         id: base-images
@@ -2057,12 +2156,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
       - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check Docker Hub login (issue #82)
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
 
       - name: Create and push multi-arch manifest (GHCR)
         run: |
@@ -2171,12 +2279,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
       - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check Docker Hub login (issue #82)
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
 
       - name: Build and push ${{ matrix.variant }} dind-box (amd64)
         id: build-push
@@ -2289,12 +2406,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
       - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check Docker Hub login (issue #82)
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
 
       - name: Build and push ${{ matrix.variant }} dind-box (arm64)
         id: build-push
@@ -2383,12 +2509,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
       - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check Docker Hub login (issue #82)
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
 
       - name: Compute dind suffix
         id: names

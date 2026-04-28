@@ -341,6 +341,30 @@ _Note: Sizes are measured after cleanup and may vary based on system state and p
 
 <!-- COMPONENT_SIZES_END -->
 
+## Releasing
+
+Releases are produced by `.github/workflows/release.yml`, which builds and pushes images to **both** the GitHub Container Registry (GHCR) and Docker Hub.
+
+The workflow uses two sets of credentials:
+
+| Registry | Credential | Source |
+|---|---|---|
+| `ghcr.io` | `GITHUB_TOKEN` | Auto-provisioned by GitHub Actions; no rotation required. |
+| `docker.io` | `secrets.DOCKERHUB_USERNAME` + `secrets.DOCKERHUB_TOKEN` | Configured at https://github.com/link-foundation/box/settings/secrets/actions. The `DOCKERHUB_TOKEN` is a Docker Hub Personal Access Token (PAT). |
+
+### Rotating the Docker Hub PAT
+
+Docker Hub PATs have an immutable expiry (set when the token is created) and **cannot be renewed in place** — they must be re-issued and re-saved as the `DOCKERHUB_TOKEN` secret. When the token expires, the release workflow will continue to push to GHCR (since issue #82) but will emit a `::warning` annotation on every build job and skip the Docker Hub portion of the release.
+
+Rotation runbook:
+
+1. Sign in to Docker Hub at https://hub.docker.com/settings/security
+2. Click **New Access Token**, scope it to `Read, Write, Delete` for the `konard/box*` repositories, set an expiry that fits the rotation policy (e.g. 90 days), and copy the token.
+3. Open https://github.com/link-foundation/box/settings/secrets/actions and update `DOCKERHUB_TOKEN`.
+4. Re-run the most recent failed release run, or push an empty commit, or trigger `workflow_dispatch` on `Build and Release Docker Image` with `release_mode=release-only` to re-publish the current `VERSION` to Docker Hub.
+
+See [`docs/case-studies/issue-82/CASE-STUDY.md`](docs/case-studies/issue-82/CASE-STUDY.md) for the incident that introduced this hardening.
+
 ## Documentation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and design decisions
