@@ -553,7 +553,7 @@ jobs:
       - name: Test dind-box variant
         run: |
           set -e
-          echo "=== Testing dind-box (CLI presence only — no privileged mode in PR CI) ==="
+          echo "=== Testing dind-box (CLI presence only - no privileged mode in PR CI) ==="
           # Verify Docker CLI, dockerd binary, buildx and compose plugins are present.
           # We do NOT start dockerd here because GitHub-hosted runners disallow --privileged.
           docker run --rm --entrypoint=/bin/bash box-dind-test -c 'docker --version'
@@ -2104,7 +2104,7 @@ jobs:
 
           echo "Docker Hub multi-arch manifest created and pushed successfully for latest and ${VERSION}"
 
-  # === BUILD DIND-BOX VARIANTS (amd64) — issue #80 ===
+  # === BUILD DIND-BOX VARIANTS (amd64) - issue #80 ===
   # Layers Docker Engine on top of every base box image so each variant has a
   # "<base>-dind" sibling. Runs after the source variant's manifest is published.
   build-dind-amd64:
@@ -2228,7 +2228,7 @@ jobs:
           echo "==> All retry attempts failed"
           exit 1
 
-  # === BUILD DIND-BOX VARIANTS (arm64) — issue #80 ===
+  # === BUILD DIND-BOX VARIANTS (arm64) - issue #80 ===
   build-dind-arm64:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 45
@@ -2346,7 +2346,7 @@ jobs:
           echo "==> All retry attempts failed"
           exit 1
 
-  # === CREATE DIND-BOX MULTI-ARCH MANIFESTS — issue #80 ===
+  # === CREATE DIND-BOX MULTI-ARCH MANIFESTS - issue #80 ===
   dind-manifest:
     runs-on: ubuntu-24.04
     needs: [detect-changes, build-dind-amd64, build-dind-arm64]
@@ -2499,7 +2499,7 @@ jobs:
 
           ### Docker Hub - dind-box (Docker-in-Docker variants, issue #80)
 
-          Each variant runs an inner Docker daemon. Run with \`docker run --privileged\` (default) or \`docker run --runtime=sysbox-runc\` (recommended for shared hosts). \`docker ps -a\` inside the container only lists containers created by that container — see [docs/case-studies/issue-80](https://github.com/${REPO}/blob/v${VERSION}/docs/case-studies/issue-80/CASE-STUDY.md).
+          Each variant runs an inner Docker daemon. Run with \`docker run --privileged\` (default) or \`docker run --runtime=sysbox-runc\` (recommended for shared hosts). \`docker ps -a\` inside the container only lists containers created by that container - see [docs/case-studies/issue-80](https://github.com/${REPO}/blob/v${VERSION}/docs/case-studies/issue-80/CASE-STUDY.md).
 
           | Image | Multi-arch | AMD64 | ARM64 |
           |-------|------------|-------|-------|
