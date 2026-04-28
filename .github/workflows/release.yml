@@ -2114,37 +2114,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # variant.name -> tag suffix on box images, e.g. "js" => konard/box-js-dind
-        # variant.base_image_suffix -> the base image suffix (empty for full box "konard/box")
+        # variant -> base box flavour. Special value "full" maps to konard/box.
+        # Everything else maps to konard/box-<variant>.
         variant:
-          - name: "js"
-            base_image_suffix: "-js"
-          - name: "essentials"
-            base_image_suffix: "-essentials"
-          - name: "python"
-            base_image_suffix: "-python"
-          - name: "go"
-            base_image_suffix: "-go"
-          - name: "rust"
-            base_image_suffix: "-rust"
-          - name: "java"
-            base_image_suffix: "-java"
-          - name: "kotlin"
-            base_image_suffix: "-kotlin"
-          - name: "ruby"
-            base_image_suffix: "-ruby"
-          - name: "php"
-            base_image_suffix: "-php"
-          - name: "perl"
-            base_image_suffix: "-perl"
-          - name: "swift"
-            base_image_suffix: "-swift"
-          - name: "lean"
-            base_image_suffix: "-lean"
-          - name: "rocq"
-            base_image_suffix: "-rocq"
-          - name: "full"
-            base_image_suffix: ""
+          - "js"
+          - "essentials"
+          - "python"
+          - "go"
+          - "rust"
+          - "java"
+          - "kotlin"
+          - "ruby"
+          - "php"
+          - "perl"
+          - "swift"
+          - "lean"
+          - "rocq"
+          - "full"
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
@@ -2176,16 +2162,18 @@ jobs:
       - name: Compute image names
         id: names
         run: |
-          BASE_SUFFIX="${{ matrix.variant.base_image_suffix }}"
-          NAME="${{ matrix.variant.name }}"
-          # Source base image (no -dind):
-          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-amd64" >> $GITHUB_OUTPUT
-          # Target dind image suffix: full -> "-dind", others -> "<base>-dind"
+          NAME="${{ matrix.variant }}"
+          # Source base image: full -> "konard/box"; others -> "konard/box-<name>"
+          # Target dind image: full -> "konard/box-dind"; others -> "konard/box-<name>-dind"
           if [ "$NAME" = "full" ]; then
-            echo "dind_suffix=-dind" >> $GITHUB_OUTPUT
+            BASE_SUFFIX=""
+            DIND_SUFFIX="-dind"
           else
-            echo "dind_suffix=${BASE_SUFFIX}-dind" >> $GITHUB_OUTPUT
+            BASE_SUFFIX="-$NAME"
+            DIND_SUFFIX="-${NAME}-dind"
           fi
+          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-amd64" >> $GITHUB_OUTPUT
+          echo "dind_suffix=${DIND_SUFFIX}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -2204,7 +2192,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push ${{ matrix.variant.name }} dind-box (amd64)
+      - name: Build and push ${{ matrix.variant }} dind-box (amd64)
         id: build-push
         continue-on-error: true
         uses: docker/build-push-action@v5
@@ -2221,10 +2209,10 @@ jobs:
             ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64
             ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64
           provenance: false
-          cache-from: type=gha,scope=dind-${{ matrix.variant.name }}-amd64
-          cache-to: type=gha,scope=dind-${{ matrix.variant.name }}-amd64,mode=max
+          cache-from: type=gha,scope=dind-${{ matrix.variant }}-amd64
+          cache-to: type=gha,scope=dind-${{ matrix.variant }}-amd64,mode=max
 
-      - name: Retry push ${{ matrix.variant.name }} dind-box (amd64) on failure
+      - name: Retry push ${{ matrix.variant }} dind-box (amd64) on failure
         if: steps.build-push.outcome == 'failure'
         run: |
           echo "First push attempt failed, retrying with backoff..."
@@ -2239,7 +2227,7 @@ jobs:
               --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64 \
               --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64 \
               --provenance=false \
-              --cache-from type=gha,scope=dind-${{ matrix.variant.name }}-amd64 \
+              --cache-from type=gha,scope=dind-${{ matrix.variant }}-amd64 \
               --push \
               .; then
               echo "==> Push succeeded on retry attempt $attempt"
@@ -2263,34 +2251,20 @@ jobs:
       fail-fast: false
       matrix:
         variant:
-          - name: "js"
-            base_image_suffix: "-js"
-          - name: "essentials"
-            base_image_suffix: "-essentials"
-          - name: "python"
-            base_image_suffix: "-python"
-          - name: "go"
-            base_image_suffix: "-go"
-          - name: "rust"
-            base_image_suffix: "-rust"
-          - name: "java"
-            base_image_suffix: "-java"
-          - name: "kotlin"
-            base_image_suffix: "-kotlin"
-          - name: "ruby"
-            base_image_suffix: "-ruby"
-          - name: "php"
-            base_image_suffix: "-php"
-          - name: "perl"
-            base_image_suffix: "-perl"
-          - name: "swift"
-            base_image_suffix: "-swift"
-          - name: "lean"
-            base_image_suffix: "-lean"
-          - name: "rocq"
-            base_image_suffix: "-rocq"
-          - name: "full"
-            base_image_suffix: ""
+          - "js"
+          - "essentials"
+          - "python"
+          - "go"
+          - "rust"
+          - "java"
+          - "kotlin"
+          - "ruby"
+          - "php"
+          - "perl"
+          - "swift"
+          - "lean"
+          - "rocq"
+          - "full"
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
@@ -2322,14 +2296,16 @@ jobs:
       - name: Compute image names
         id: names
         run: |
-          BASE_SUFFIX="${{ matrix.variant.base_image_suffix }}"
-          NAME="${{ matrix.variant.name }}"
-          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-arm64" >> $GITHUB_OUTPUT
+          NAME="${{ matrix.variant }}"
           if [ "$NAME" = "full" ]; then
-            echo "dind_suffix=-dind" >> $GITHUB_OUTPUT
+            BASE_SUFFIX=""
+            DIND_SUFFIX="-dind"
           else
-            echo "dind_suffix=${BASE_SUFFIX}-dind" >> $GITHUB_OUTPUT
+            BASE_SUFFIX="-$NAME"
+            DIND_SUFFIX="-${NAME}-dind"
           fi
+          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-arm64" >> $GITHUB_OUTPUT
+          echo "dind_suffix=${DIND_SUFFIX}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -2348,7 +2324,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push ${{ matrix.variant.name }} dind-box (arm64)
+      - name: Build and push ${{ matrix.variant }} dind-box (arm64)
         id: build-push
         continue-on-error: true
         uses: docker/build-push-action@v5
@@ -2365,10 +2341,10 @@ jobs:
             ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64
             ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64
           provenance: false
-          cache-from: type=gha,scope=dind-${{ matrix.variant.name }}-arm64
-          cache-to: type=gha,scope=dind-${{ matrix.variant.name }}-arm64,mode=max
+          cache-from: type=gha,scope=dind-${{ matrix.variant }}-arm64
+          cache-to: type=gha,scope=dind-${{ matrix.variant }}-arm64,mode=max
 
-      - name: Retry push ${{ matrix.variant.name }} dind-box (arm64) on failure
+      - name: Retry push ${{ matrix.variant }} dind-box (arm64) on failure
         if: steps.build-push.outcome == 'failure'
         run: |
           echo "First push attempt failed, retrying with backoff..."
@@ -2383,7 +2359,7 @@ jobs:
               --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64 \
               --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64 \
               --provenance=false \
-              --cache-from type=gha,scope=dind-${{ matrix.variant.name }}-arm64 \
+              --cache-from type=gha,scope=dind-${{ matrix.variant }}-arm64 \
               --push \
               .; then
               echo "==> Push succeeded on retry attempt $attempt"
@@ -2406,34 +2382,20 @@ jobs:
       fail-fast: false
       matrix:
         variant:
-          - name: "js"
-            base_image_suffix: "-js"
-          - name: "essentials"
-            base_image_suffix: "-essentials"
-          - name: "python"
-            base_image_suffix: "-python"
-          - name: "go"
-            base_image_suffix: "-go"
-          - name: "rust"
-            base_image_suffix: "-rust"
-          - name: "java"
-            base_image_suffix: "-java"
-          - name: "kotlin"
-            base_image_suffix: "-kotlin"
-          - name: "ruby"
-            base_image_suffix: "-ruby"
-          - name: "php"
-            base_image_suffix: "-php"
-          - name: "perl"
-            base_image_suffix: "-perl"
-          - name: "swift"
-            base_image_suffix: "-swift"
-          - name: "lean"
-            base_image_suffix: "-lean"
-          - name: "rocq"
-            base_image_suffix: "-rocq"
-          - name: "full"
-            base_image_suffix: ""
+          - "js"
+          - "essentials"
+          - "python"
+          - "go"
+          - "rust"
+          - "java"
+          - "kotlin"
+          - "ruby"
+          - "php"
+          - "perl"
+          - "swift"
+          - "lean"
+          - "rocq"
+          - "full"
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
@@ -2473,15 +2435,14 @@ jobs:
       - name: Compute dind suffix
         id: names
         run: |
-          NAME="${{ matrix.variant.name }}"
-          BASE_SUFFIX="${{ matrix.variant.base_image_suffix }}"
+          NAME="${{ matrix.variant }}"
           if [ "$NAME" = "full" ]; then
             echo "dind_suffix=-dind" >> $GITHUB_OUTPUT
           else
-            echo "dind_suffix=${BASE_SUFFIX}-dind" >> $GITHUB_OUTPUT
+            echo "dind_suffix=-${NAME}-dind" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create and push ${{ matrix.variant.name }} dind multi-arch manifests
+      - name: Create and push ${{ matrix.variant }} dind multi-arch manifests
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           DSUF="${{ steps.names.outputs.dind_suffix }}"
