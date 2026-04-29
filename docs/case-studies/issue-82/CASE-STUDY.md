@@ -217,6 +217,20 @@ In addition, every build job that lacked it now has the `jlumbroso/free-disk-spa
 * **`fail-fast: false`** on both matrices so a single language failure does not mask the others — when fixing CI, you want to see every broken variant at once.
 * **Aggregator pattern** (`docker-build-test` → `needs: [pr-test-*]`) preserves the existing branch-protection check name. No GitHub settings changes are required.
 
+### Latent bug surfaced by per-language tests: `box-kotlin` had no JVM
+
+Switching `pr-test-language` from "build everything serially on one VM" to "build and run a runtime check per VM" exposed a latent defect in the standalone `box-kotlin` image: it had never installed Java. `kotlinc` is a thin shell wrapper that ultimately `exec`s `java`, so the new matrix test `docker run --rm box-kotlin kotlin -version` failed with:
+
+```
+/home/box/.sdkman/candidates/kotlin/current/bin/kotlinc:
+line 102: java: command not found
+##[error]Process completed with exit code 127.
+```
+
+The `box-test` (full-box) image was unaffected because Java was supplied by the parallel `box-java` build stage in `full-box/Dockerfile`. The standalone `box-kotlin` image, however, was simply never exercised in isolation by the previous serial `docker-build-test` job.
+
+The fix is in [`ubuntu/24.04/kotlin/install.sh`](../../../ubuntu/24.04/kotlin/install.sh): install Java 21 LTS (Eclipse Temurin, fall back to OpenJDK) via SDKMAN before installing Kotlin, so the standalone `box-kotlin` image is self-sufficient. This is exactly the kind of regression the per-language matrix is designed to catch.
+
 ### Validation
 
 A static-analysis sanity check is included at [`experiments/test-issue82-pr-parallel-tests.sh`](../../../experiments/test-issue82-pr-parallel-tests.sh). It enforces:
