@@ -16,3 +16,19 @@ the PR-CI smoke job stops failing with `no space left on device`
 while building the JS -> essentials -> 11 language images -> full-box
 chain on a single ubuntu-24.04 runner. Mirrors the existing
 `jlumbroso/free-disk-space` step in `docker-build-push` (issue #41).
+
+ci(release): parallelize the PR test matrix and isolate every Docker
+image build on its own VM (issue #82). The single sequential
+`docker-build-test` job is replaced by a chain of parallel matrix jobs:
+`pr-test-js` (1 VM) -> `pr-test-essentials` (1 VM) ->
+`pr-test-language` (matrix x 11 languages, parallel) ->
+`pr-test-full` (1 VM, builds the full chain locally because the
+`full-box` Dockerfile uses `COPY --from=*-stage`), with
+`pr-test-dind` (matrix x 14 variants, parallel) running alongside
+`pr-test-full` once `pr-test-essentials` finishes. A
+`docker-build-test` aggregator job preserves the existing
+branch-protection check name. Every build job (15 jobs:
+`pr-test-*`, `build-{js,essentials,languages,dind}-{amd64,arm64}`,
+`docker-build-push{,-arm64}`) now runs `jlumbroso/free-disk-space@main`
+before its first build step. Cross-job layer reuse uses
+`docker/build-push-action` with `cache-from`/`cache-to: type=gha`.

@@ -399,12 +399,36 @@ jobs:
             echo "No build needed: no relevant changes detected"
           fi
 
-  # === BUILD AND TEST DOCKER IMAGE (PR) ===
-  docker-build-test:
+  # === BUILD AND TEST DOCKER IMAGES (PR) — issue #82 ===
+  #
+  # On every pull request we exercise *all* image configurations in parallel,
+  # each on its own clean GitHub-hosted VM with maximum free disk space. The
+  # parallel layout mirrors the production release matrix:
+  #
+  #   pr-test-js               (1 job)      - JS base box
+  #   pr-test-essentials       (1 job)      - essentials box on JS
+  #   pr-test-language         (matrix: 11) - one job per language box
+  #   pr-test-full             (1 job)      - full-box (all languages)
+  #   pr-test-dind             (matrix: 14) - one job per dind variant
+  #                                            (js, essentials, 11 languages, full)
+  #   docker-build-test        (1 job)      - aggregator for branch protection
+  #
+  # Layer sharing between jobs uses Docker buildx with type=gha cache. Each
+  # tier writes its layers to a scoped cache and the next tier reads from it,
+  # so a language matrix job rebuilds JS+essentials only via cache hits.
+  #
+  # Every build job runs `jlumbroso/free-disk-space@main` first to reclaim
+  # ~30 GB before pulling base images, fixing the "no space left on device"
+  # regression captured in run 25075335426 (see docs/case-studies/issue-82/).
+  #
+  # See: docs/case-studies/issue-82/CASE-STUDY.md
+
+  # --- Tier 1: JS box ---
+  pr-test-js:
+    name: pr-test / js
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     needs: [detect-changes, version-check, changeset-check]
-    # Use always() to prevent implicit success() check from skipping this job
-    # when upstream jobs are skipped (see docs/case-studies/issue-23)
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
@@ -412,33 +436,259 @@ jobs:
       (needs.changeset-check.result == 'success' || needs.changeset-check.result == 'skipped') &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.should-build == 'true'
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Fix for issue #82: Free disk space before building 13+ language images
-      # in sequence. Without this, the runner runs out of disk space during the
-      # full-box COPY --from=*-stage steps (observed at ruby-stage on run
-      # 25075335426: "no space left on device", 0 MB free). Mirrors the
-      # disk-cleanup already used in docker-build-push (issue #41).
-      # See: docs/case-studies/issue-82/CASE-STUDY.md
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
         with:
-          tool-cache: false  # Keep tool cache for setup-* action compatibility
-          android: true      # Free ~14 GB
-          dotnet: true       # Free ~2.7 GB
-          haskell: true      # Free ~0 GB (not pre-installed on ubuntu-24.04)
-          large-packages: true  # Free ~5.3 GB
-          docker-images: true   # Clean existing Docker images
-          swap-storage: true    # Free ~4 GB
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build layered images (JS -> essentials -> languages -> full)
+      - name: Build JS box (amd64)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ubuntu/24.04/js/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: box-js:pr
+          cache-from: type=gha,scope=pr-js-amd64
+          cache-to: type=gha,scope=pr-js-amd64,mode=max
+
+      - name: Test JS box
         run: |
+          set -e
+          echo "=== Testing JS box ==="
+          docker run --rm box-js:pr bash -c '. $HOME/.nvm/nvm.sh && node --version'
+          docker run --rm box-js:pr bash -c 'export PATH=$HOME/.bun/bin:$PATH && bun --version'
+          docker run --rm box-js:pr bash -c 'export PATH=$HOME/.deno/bin:$PATH && deno --version'
+          echo "=== JS box tests passed ==="
+
+  # --- Tier 2: essentials box ---
+  pr-test-essentials:
+    name: pr-test / essentials
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: [detect-changes, version-check, changeset-check, pr-test-js]
+    if: |
+      always() &&
+      needs.pr-test-js.result == 'success' &&
+      github.event_name == 'pull_request' &&
+      needs.detect-changes.outputs.should-build == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build JS box (cached, for use as base)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ubuntu/24.04/js/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: box-js:pr
+          cache-from: type=gha,scope=pr-js-amd64
+          cache-to: type=gha,scope=pr-js-amd64,mode=max
+
+      - name: Build essentials box (amd64)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ubuntu/24.04/essentials-box/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: box-essentials:pr
+          build-args: |
+            JS_IMAGE=box-js:pr
+          cache-from: |
+            type=gha,scope=pr-js-amd64
+            type=gha,scope=pr-essentials-amd64
+          cache-to: type=gha,scope=pr-essentials-amd64,mode=max
+
+      - name: Test essentials box
+        run: |
+          set -e
+          echo "=== Testing essentials box ==="
+          docker run --rm box-essentials:pr gh --version
+          docker run --rm box-essentials:pr glab --version
+          docker run --rm box-essentials:pr gh-setup-git-identity --version
+          docker run --rm box-essentials:pr glab-setup-git-identity --version
+          echo "=== Essentials box tests passed ==="
+
+  # --- Tier 3: per-language boxes (parallel matrix, one VM each) ---
+  pr-test-language:
+    name: pr-test / ${{ matrix.language }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    needs: [detect-changes, version-check, changeset-check, pr-test-essentials]
+    if: |
+      always() &&
+      needs.pr-test-essentials.result == 'success' &&
+      github.event_name == 'pull_request' &&
+      needs.detect-changes.outputs.should-build == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build JS box (cached)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ubuntu/24.04/js/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: box-js:pr
+          cache-from: type=gha,scope=pr-js-amd64
+
+      - name: Build essentials box (cached)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ubuntu/24.04/essentials-box/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: box-essentials:pr
+          build-args: |
+            JS_IMAGE=box-js:pr
+          cache-from: type=gha,scope=pr-essentials-amd64
+
+      - name: Build ${{ matrix.language }} box (amd64)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ubuntu/24.04/${{ matrix.language }}/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: box-${{ matrix.language }}:pr
+          build-args: |
+            ESSENTIALS_IMAGE=box-essentials:pr
+          cache-from: type=gha,scope=pr-${{ matrix.language }}-amd64
+          cache-to: type=gha,scope=pr-${{ matrix.language }}-amd64,mode=max
+
+      - name: Test ${{ matrix.language }} box
+        run: |
+          set -e
+          LANG="${{ matrix.language }}"
+          IMG="box-${LANG}:pr"
+          echo "=== Testing ${LANG} box (${IMG}) ==="
+          case "$LANG" in
+            python)
+              docker run --rm "$IMG" python3 --version
+              docker run --rm "$IMG" pip3 --version
+              ;;
+            go)
+              docker run --rm "$IMG" go version
+              ;;
+            rust)
+              docker run --rm "$IMG" rustc --version
+              docker run --rm "$IMG" cargo --version
+              docker run --rm "$IMG" rustup --version
+              ;;
+            java)
+              docker run --rm "$IMG" java -version
+              ;;
+            kotlin)
+              docker run --rm "$IMG" kotlin -version
+              ;;
+            ruby)
+              docker run --rm "$IMG" ruby --version
+              docker run --rm "$IMG" gem --version
+              ;;
+            php)
+              docker run --rm "$IMG" php --version
+              echo "=== PHP install method ==="
+              docker run --rm "$IMG" cat /home/box/.php-install-method
+              ;;
+            perl)
+              docker run --rm "$IMG" perl --version
+              ;;
+            swift)
+              docker run --rm "$IMG" swift --version
+              ;;
+            lean)
+              docker run --rm "$IMG" lean --version
+              ;;
+            rocq)
+              # rocq is invoked via "rocq --version" but historically coqc; check both
+              docker run --rm "$IMG" bash -c 'rocq --version 2>/dev/null || coqc --version'
+              ;;
+          esac
+          echo "=== ${LANG} box tests passed ==="
+
+  # --- Tier 4: full box (integration smoke test, all languages on one VM) ---
+  pr-test-full:
+    name: pr-test / full
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    needs: [detect-changes, version-check, changeset-check, pr-test-language]
+    if: |
+      always() &&
+      needs.pr-test-language.result == 'success' &&
+      github.event_name == 'pull_request' &&
+      needs.detect-changes.outputs.should-build == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build full chain (JS -> essentials -> languages -> full)
+        run: |
+          set -e
           echo "=== Building JS box ==="
           docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
 
@@ -473,25 +723,6 @@ jobs:
             --build-arg LEAN_IMAGE=box-lean \
             --build-arg ROCQ_IMAGE=box-rocq \
             -t box-test .
-
-      - name: Test JS box
-        run: |
-          set -e
-          echo "=== Testing JS box ==="
-          docker run --rm box-js bash -c '. $HOME/.nvm/nvm.sh && node --version'
-          docker run --rm box-js bash -c 'export PATH=$HOME/.bun/bin:$PATH && bun --version'
-          docker run --rm box-js bash -c 'export PATH=$HOME/.deno/bin:$PATH && deno --version'
-          echo "=== JS box tests passed ==="
-
-      - name: Test essentials box
-        run: |
-          set -e
-          echo "=== Testing essentials box ==="
-          docker run --rm box-essentials gh --version
-          docker run --rm box-essentials glab --version
-          docker run --rm box-essentials gh-setup-git-identity --version
-          docker run --rm box-essentials glab-setup-git-identity --version
-          echo "=== Essentials box tests passed ==="
 
       - name: Test full box
         run: |
@@ -559,26 +790,161 @@ jobs:
           echo ""
           echo "=== All full box tests passed ==="
 
-      - name: Build dind-box variant (amd64, on full)
+  # --- Tier 5: dind-box variants (parallel matrix: 14 variants, one VM each) — issue #80 ---
+  # Each dind variant rebuilds its base chain (JS + essentials + optional lang/full)
+  # locally and then layers dind on top, so this matrix only depends on
+  # pr-test-essentials having validated the base layer; it can run in parallel
+  # with the per-language and full-box jobs to minimise wall-clock time.
+  pr-test-dind:
+    name: pr-test / dind-${{ matrix.variant }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    needs: [detect-changes, version-check, changeset-check, pr-test-essentials]
+    if: |
+      always() &&
+      needs.pr-test-essentials.result == 'success' &&
+      github.event_name == 'pull_request' &&
+      needs.detect-changes.outputs.should-build == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        # variant -> base box flavour. Special value "full" rebuilds the entire chain;
+        # everything else needs only JS+essentials+<lang>.
+        variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build base box for dind variant
         run: |
           set -e
-          echo "=== Building dind-box on full-box (issue #80) ==="
+          VARIANT="${{ matrix.variant }}"
+
+          echo "=== Building JS box (base layer) ==="
+          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
+
+          if [ "$VARIANT" = "js" ]; then
+            BASE_IMAGE="box-js"
+          else
+            echo ""
+            echo "=== Building essentials box ==="
+            docker build -f ubuntu/24.04/essentials-box/Dockerfile \
+              --build-arg JS_IMAGE=box-js -t box-essentials .
+
+            if [ "$VARIANT" = "essentials" ]; then
+              BASE_IMAGE="box-essentials"
+            elif [ "$VARIANT" = "full" ]; then
+              echo ""
+              echo "=== Building all language images (full-box prerequisites) ==="
+              for lang in python go rust java kotlin ruby php perl swift lean rocq; do
+                echo "--- Building ${lang} box ---"
+                docker build -f "ubuntu/24.04/${lang}/Dockerfile" \
+                  --build-arg ESSENTIALS_IMAGE=box-essentials \
+                  -t "box-${lang}" .
+              done
+              echo ""
+              echo "=== Building full box ==="
+              docker build -f ubuntu/24.04/full-box/Dockerfile \
+                --build-arg ESSENTIALS_IMAGE=box-essentials \
+                --build-arg PYTHON_IMAGE=box-python \
+                --build-arg GO_IMAGE=box-go \
+                --build-arg RUST_IMAGE=box-rust \
+                --build-arg JAVA_IMAGE=box-java \
+                --build-arg KOTLIN_IMAGE=box-kotlin \
+                --build-arg RUBY_IMAGE=box-ruby \
+                --build-arg PHP_IMAGE=box-php \
+                --build-arg PERL_IMAGE=box-perl \
+                --build-arg SWIFT_IMAGE=box-swift \
+                --build-arg LEAN_IMAGE=box-lean \
+                --build-arg ROCQ_IMAGE=box-rocq \
+                -t box-full .
+              BASE_IMAGE="box-full"
+            else
+              echo ""
+              echo "=== Building ${VARIANT} box ==="
+              docker build -f "ubuntu/24.04/${VARIANT}/Dockerfile" \
+                --build-arg ESSENTIALS_IMAGE=box-essentials \
+                -t "box-${VARIANT}" .
+              BASE_IMAGE="box-${VARIANT}"
+            fi
+          fi
+
+          echo "BASE_IMAGE=${BASE_IMAGE}" >> "$GITHUB_ENV"
+
+      - name: Build dind-box variant
+        run: |
+          set -e
+          echo "=== Building dind-${{ matrix.variant }} on ${BASE_IMAGE} ==="
           docker build -f ubuntu/24.04/dind/Dockerfile \
-            --build-arg BASE_IMAGE=box-test \
-            -t box-dind-test .
+            --build-arg BASE_IMAGE="${BASE_IMAGE}" \
+            -t "box-dind-${{ matrix.variant }}" .
 
       - name: Test dind-box variant
         run: |
           set -e
-          echo "=== Testing dind-box (CLI presence only - no privileged mode in PR CI) ==="
+          IMG="box-dind-${{ matrix.variant }}"
+          echo "=== Testing ${IMG} (CLI presence only - no privileged mode in PR CI) ==="
           # Verify Docker CLI, dockerd binary, buildx and compose plugins are present.
           # We do NOT start dockerd here because GitHub-hosted runners disallow --privileged.
-          docker run --rm --entrypoint=/bin/bash box-dind-test -c 'docker --version'
-          docker run --rm --entrypoint=/bin/bash box-dind-test -c 'dockerd --version'
-          docker run --rm --entrypoint=/bin/bash box-dind-test -c 'docker buildx version'
-          docker run --rm --entrypoint=/bin/bash box-dind-test -c 'docker compose version'
-          docker run --rm --entrypoint=/bin/bash box-dind-test -c 'cat /etc/box/variant'
-          echo "=== dind-box smoke tests passed ==="
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'docker --version'
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'dockerd --version'
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'docker buildx version'
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'docker compose version'
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'cat /etc/box/variant'
+          echo "=== ${IMG} smoke tests passed ==="
+
+  # --- Aggregator: single status check for branch protection ---
+  # GitHub branch protection rules can require this one job to pass instead of
+  # listing every parallel pr-test-* job individually.
+  docker-build-test:
+    name: docker-build-test
+    runs-on: ubuntu-24.04
+    needs: [detect-changes, version-check, changeset-check, pr-test-js, pr-test-essentials, pr-test-language, pr-test-full, pr-test-dind]
+    if: |
+      always() &&
+      github.event_name == 'pull_request' &&
+      needs.detect-changes.outputs.should-build == 'true'
+    steps:
+      - name: Aggregate pr-test results
+        run: |
+          set -e
+          echo "pr-test-js:         ${{ needs.pr-test-js.result }}"
+          echo "pr-test-essentials: ${{ needs.pr-test-essentials.result }}"
+          echo "pr-test-language:   ${{ needs.pr-test-language.result }}"
+          echo "pr-test-full:       ${{ needs.pr-test-full.result }}"
+          echo "pr-test-dind:       ${{ needs.pr-test-dind.result }}"
+
+          fail=0
+          for r in \
+            "${{ needs.pr-test-js.result }}" \
+            "${{ needs.pr-test-essentials.result }}" \
+            "${{ needs.pr-test-language.result }}" \
+            "${{ needs.pr-test-full.result }}" \
+            "${{ needs.pr-test-dind.result }}"; do
+            case "$r" in
+              success|skipped) ;;
+              *) fail=1 ;;
+            esac
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::One or more pr-test jobs did not succeed."
+            exit 1
+          fi
+          echo "All pr-test jobs succeeded."
 
   # === BUILD JS BOX (amd64) ===
   # JS box is the base layer - built first, other images depend on it
@@ -609,6 +975,20 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
+
+      # Issue #82: free disk space on every build job's runner before pulling
+      # base images / running buildx so that COPY --from=*-stage and large
+      # apt installs never hit "no space left on device" mid-build.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
 
       - name: Get latest version
         id: version
@@ -724,6 +1104,20 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
+
+      # Issue #82: free disk space on every build job's runner before pulling
+      # base images / running buildx so that COPY --from=*-stage and large
+      # apt installs never hit "no space left on device" mid-build.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
 
       - name: Get latest version
         id: version
@@ -920,6 +1314,20 @@ jobs:
         with:
           ref: main
 
+      # Issue #82: free disk space on every build job's runner before pulling
+      # base images / running buildx so that COPY --from=*-stage and large
+      # apt installs never hit "no space left on device" mid-build.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
       - name: Get latest version
         id: version
         run: |
@@ -1050,6 +1458,20 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
+
+      # Issue #82: free disk space on every build job's runner before pulling
+      # base images / running buildx so that COPY --from=*-stage and large
+      # apt installs never hit "no space left on device" mid-build.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
 
       - name: Get latest version
         id: version
@@ -1277,6 +1699,21 @@ jobs:
         with:
           ref: main
 
+      # Issue #82: free disk space on every build job's runner before pulling
+      # base images / running buildx so that COPY --from=*-stage and large
+      # apt installs never hit "no space left on device" mid-build.
+      - name: Free disk space
+        if: steps.check-lang.outputs.should_build == 'true'
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
       - name: Get latest version
         if: steps.check-lang.outputs.should_build == 'true'
         id: version
@@ -1462,6 +1899,21 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
+
+      # Issue #82: free disk space on every build job's runner before pulling
+      # base images / running buildx so that COPY --from=*-stage and large
+      # apt installs never hit "no space left on device" mid-build.
+      - name: Free disk space
+        if: steps.check-lang.outputs.should_build == 'true'
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
 
       - name: Get latest version
         if: steps.check-lang.outputs.should_build == 'true'
@@ -2263,6 +2715,20 @@ jobs:
         with:
           ref: main
 
+      # Issue #82: free disk space on every build job's runner before pulling
+      # base images / running buildx so that COPY --from=*-stage and large
+      # apt installs never hit "no space left on device" mid-build.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
       - name: Get latest version
         id: version
         run: |
@@ -2391,6 +2857,20 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
+
+      # Issue #82: free disk space on every build job's runner before pulling
+      # base images / running buildx so that COPY --from=*-stage and large
+      # apt installs never hit "no space left on device" mid-build.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
 
       - name: Get latest version
         id: version

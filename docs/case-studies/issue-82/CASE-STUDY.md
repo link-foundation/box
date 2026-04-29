@@ -189,6 +189,46 @@ Add the same `jlumbroso/free-disk-space@main` step to `docker-build-test`, with 
 
 Captured logs: [`ci-logs/docker-build-test-job-73466319389.txt`](./ci-logs/docker-build-test-job-73466319389.txt).
 
+## Follow-up: parallelize the PR test matrix and free disk on every build job
+
+A subsequent PR-review request widened the scope: every Docker image configuration must be tested in the PR's CI/CD, each on its own VM with maximum free disk space, and in parallel where possible to keep iteration fast.
+
+### What changed
+
+The single sequential `docker-build-test` job (which built JS → essentials → 11 language images → full-box on one runner) is replaced by a chain of parallel matrix jobs in `release.yml`:
+
+| Job | Strategy | What it does |
+|---|---|---|
+| `pr-test-js` | 1 VM | Free disk → build + smoke-test the JS image; populates the `pr-js-amd64` GHA buildx cache. |
+| `pr-test-essentials` | 1 VM, `needs: pr-test-js` | Free disk → build + test essentials with `cache-from` `pr-js-amd64`; writes `pr-essentials-amd64`. |
+| `pr-test-language` | matrix × 11 (`python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq`), `needs: pr-test-essentials`, `fail-fast: false` | Each language on its own VM: free disk → build the language box (`cache-from` `pr-essentials-amd64`) → run a language-specific runtime check (e.g. `python3 --version`, `cat /home/box/.php-install-method`). |
+| `pr-test-full` | 1 VM, `needs: pr-test-language` | Rebuilds the entire JS → essentials → 11 langs → full-box chain locally (the `full` Dockerfile uses `COPY --from=*-stage` so all language images must be present in the local daemon) and runs the same comprehensive end-to-end checks the old `docker-build-test` performed. |
+| `pr-test-dind` | matrix × 14 (`js, essentials, 11 langs, full`), `needs: pr-test-essentials`, `fail-fast: false` | Each dind variant on its own VM: free disk → rebuild its base chain locally → build + smoke-test the `dind-*` image. Decoupled from `pr-test-full` so the 14 dind builds run in parallel with `pr-test-full`. |
+| `docker-build-test` | aggregator, `needs: [pr-test-js, pr-test-essentials, pr-test-language, pr-test-full, pr-test-dind]` | Branch-protection sentinel: succeeds only if every PR-test job above succeeded. Keeps the existing branch-protection rule pointing at `docker-build-test` working without a settings change. |
+
+In addition, every build job that lacked it now has the `jlumbroso/free-disk-space@main` step (`tool-cache: false, android: true, dotnet: true, haskell: true, large-packages: true, docker-images: true, swap-storage: true`) — 11 jobs total, up from 3 (`docker-build-push`, `docker-build-push-arm64`, `docker-build-test`).
+
+### Why this shape
+
+* **Per-image VM isolation.** Every leaf image build runs on a fresh `ubuntu-24.04` runner with ~30 GB freed up front, so a heavy image (e.g. `lean`, `rocq`, `swift`, or any `dind-*` variant) cannot starve disk for any other image.
+* **Parallel wall clock, not serial.** The 11 languages and 14 dind variants run concurrently rather than sequentially, trading CPU minutes for iteration speed.
+* **Cross-job layer reuse via GHA cache.** `docker/build-push-action`'s `type=gha` `cache-from`/`cache-to` reuses `js` → `essentials` layers across jobs without paying 5 GB artifact-upload disk pressure.
+* **`pr-test-full` and the `full` dind variant must build the chain locally** because `Dockerfile`'s `full-box` uses `COPY --from=python-stage`, `--from=ruby-stage`, etc., which requires every language image in the local Docker daemon. This is the only place where multiple images share a VM, and it is justified by the multi-stage Docker constraint.
+* **`fail-fast: false`** on both matrices so a single language failure does not mask the others — when fixing CI, you want to see every broken variant at once.
+* **Aggregator pattern** (`docker-build-test` → `needs: [pr-test-*]`) preserves the existing branch-protection check name. No GitHub settings changes are required.
+
+### Validation
+
+A static-analysis sanity check is included at [`experiments/test-issue82-pr-parallel-tests.sh`](../../../experiments/test-issue82-pr-parallel-tests.sh). It enforces:
+
+1. Every `pr-test-*` job exists.
+2. Every build job (`pr-test-*`, `build-{js,essentials,languages,dind}-{amd64,arm64}`, `docker-build-push{,-arm64}` — 15 jobs) has a `Free disk space` step using `jlumbroso/free-disk-space@main`.
+3. The `pr-test-language` matrix lists all 11 languages.
+4. The `pr-test-dind` matrix lists all 14 variants.
+5. The `docker-build-test` aggregator depends on every `pr-test-*` job.
+
+Running it against the post-fix `release.yml` reports `RESULT: PASS`.
+
 ## Files
 
 * [`ci-logs/failed-25073172386.txt`](./ci-logs/failed-25073172386.txt) — full failed-step logs from the original `release.yml` PAT-expiry incident, all 52 jobs.
