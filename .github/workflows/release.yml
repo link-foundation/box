@@ -413,13 +413,18 @@ jobs:
   #                                            (js, essentials, 11 languages, full)
   #   docker-build-test        (1 job)      - aggregator for branch protection
   #
-  # Layer sharing between jobs uses Docker buildx with type=gha cache. Each
-  # tier writes its layers to a scoped cache and the next tier reads from it,
-  # so a language matrix job rebuilds JS+essentials only via cache hits.
+  # Each job rebuilds its required base chain locally with plain `docker build`
+  # against the host Docker daemon. We deliberately do NOT use buildx with the
+  # docker-container driver here because subsequent `FROM box-js` /
+  # `FROM box-essentials` resolution in that driver would attempt a registry
+  # pull (which fails on PR forks and on Docker Hub outages). The trade-off is
+  # that each VM rebuilds JS and essentials from source — fine because every VM
+  # has 30 GB freed up front and the parallel matrix means wall-clock is bound
+  # by the slowest single image, not by the depth of the chain.
   #
   # Every build job runs `jlumbroso/free-disk-space@main` first to reclaim
-  # ~30 GB before pulling base images, fixing the "no space left on device"
-  # regression captured in run 25075335426 (see docs/case-studies/issue-82/).
+  # ~30 GB before building, fixing the "no space left on device" regression
+  # captured in run 25075335426 (see docs/case-studies/issue-82/).
   #
   # See: docs/case-studies/issue-82/CASE-STUDY.md
 
@@ -451,27 +456,19 @@ jobs:
           docker-images: true
           swap-storage: true
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Build JS box (amd64)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ubuntu/24.04/js/Dockerfile
-          platforms: linux/amd64
-          load: true
-          tags: box-js:pr
-          cache-from: type=gha,scope=pr-js-amd64
-          cache-to: type=gha,scope=pr-js-amd64,mode=max
+        run: |
+          set -e
+          echo "=== Building JS box ==="
+          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
 
       - name: Test JS box
         run: |
           set -e
           echo "=== Testing JS box ==="
-          docker run --rm box-js:pr bash -c '. $HOME/.nvm/nvm.sh && node --version'
-          docker run --rm box-js:pr bash -c 'export PATH=$HOME/.bun/bin:$PATH && bun --version'
-          docker run --rm box-js:pr bash -c 'export PATH=$HOME/.deno/bin:$PATH && deno --version'
+          docker run --rm box-js bash -c '. $HOME/.nvm/nvm.sh && node --version'
+          docker run --rm box-js bash -c 'export PATH=$HOME/.bun/bin:$PATH && bun --version'
+          docker run --rm box-js bash -c 'export PATH=$HOME/.deno/bin:$PATH && deno --version'
           echo "=== JS box tests passed ==="
 
   # --- Tier 2: essentials box ---
@@ -500,43 +497,25 @@ jobs:
           docker-images: true
           swap-storage: true
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Build JS + essentials chain
+        run: |
+          set -e
+          echo "=== Building JS box ==="
+          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
 
-      - name: Build JS box (cached, for use as base)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ubuntu/24.04/js/Dockerfile
-          platforms: linux/amd64
-          load: true
-          tags: box-js:pr
-          cache-from: type=gha,scope=pr-js-amd64
-          cache-to: type=gha,scope=pr-js-amd64,mode=max
-
-      - name: Build essentials box (amd64)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ubuntu/24.04/essentials-box/Dockerfile
-          platforms: linux/amd64
-          load: true
-          tags: box-essentials:pr
-          build-args: |
-            JS_IMAGE=box-js:pr
-          cache-from: |
-            type=gha,scope=pr-js-amd64
-            type=gha,scope=pr-essentials-amd64
-          cache-to: type=gha,scope=pr-essentials-amd64,mode=max
+          echo ""
+          echo "=== Building essentials box (on JS) ==="
+          docker build -f ubuntu/24.04/essentials-box/Dockerfile \
+            --build-arg JS_IMAGE=box-js -t box-essentials .
 
       - name: Test essentials box
         run: |
           set -e
           echo "=== Testing essentials box ==="
-          docker run --rm box-essentials:pr gh --version
-          docker run --rm box-essentials:pr glab --version
-          docker run --rm box-essentials:pr gh-setup-git-identity --version
-          docker run --rm box-essentials:pr glab-setup-git-identity --version
+          docker run --rm box-essentials gh --version
+          docker run --rm box-essentials glab --version
+          docker run --rm box-essentials gh-setup-git-identity --version
+          docker run --rm box-essentials glab-setup-git-identity --version
           echo "=== Essentials box tests passed ==="
 
   # --- Tier 3: per-language boxes (parallel matrix, one VM each) ---
@@ -569,49 +548,28 @@ jobs:
           docker-images: true
           swap-storage: true
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Build JS + essentials + ${{ matrix.language }} chain
+        run: |
+          set -e
+          echo "=== Building JS box ==="
+          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
 
-      - name: Build JS box (cached)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ubuntu/24.04/js/Dockerfile
-          platforms: linux/amd64
-          load: true
-          tags: box-js:pr
-          cache-from: type=gha,scope=pr-js-amd64
+          echo ""
+          echo "=== Building essentials box (on JS) ==="
+          docker build -f ubuntu/24.04/essentials-box/Dockerfile \
+            --build-arg JS_IMAGE=box-js -t box-essentials .
 
-      - name: Build essentials box (cached)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ubuntu/24.04/essentials-box/Dockerfile
-          platforms: linux/amd64
-          load: true
-          tags: box-essentials:pr
-          build-args: |
-            JS_IMAGE=box-js:pr
-          cache-from: type=gha,scope=pr-essentials-amd64
-
-      - name: Build ${{ matrix.language }} box (amd64)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ubuntu/24.04/${{ matrix.language }}/Dockerfile
-          platforms: linux/amd64
-          load: true
-          tags: box-${{ matrix.language }}:pr
-          build-args: |
-            ESSENTIALS_IMAGE=box-essentials:pr
-          cache-from: type=gha,scope=pr-${{ matrix.language }}-amd64
-          cache-to: type=gha,scope=pr-${{ matrix.language }}-amd64,mode=max
+          echo ""
+          echo "=== Building ${{ matrix.language }} box (on essentials) ==="
+          docker build -f "ubuntu/24.04/${{ matrix.language }}/Dockerfile" \
+            --build-arg ESSENTIALS_IMAGE=box-essentials \
+            -t "box-${{ matrix.language }}" .
 
       - name: Test ${{ matrix.language }} box
         run: |
           set -e
           LANG="${{ matrix.language }}"
-          IMG="box-${LANG}:pr"
+          IMG="box-${LANG}"
           echo "=== Testing ${LANG} box (${IMG}) ==="
           case "$LANG" in
             python)

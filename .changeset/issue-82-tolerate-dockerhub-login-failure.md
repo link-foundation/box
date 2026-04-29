@@ -30,5 +30,8 @@ image build on its own VM (issue #82). The single sequential
 branch-protection check name. Every build job (15 jobs:
 `pr-test-*`, `build-{js,essentials,languages,dind}-{amd64,arm64}`,
 `docker-build-push{,-arm64}`) now runs `jlumbroso/free-disk-space@main`
-before its first build step. Cross-job layer reuse uses
-`docker/build-push-action` with `cache-from`/`cache-to: type=gha`.
+before its first build step. PR-test jobs use plain `docker build`
+against the host Docker daemon (not buildx's `docker-container`
+driver) so that subsequent `FROM box-js` / `FROM box-essentials`
+references resolve against the locally-built images instead of
+trying to pull from `docker.io`.
