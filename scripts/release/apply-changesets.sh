@@ -30,22 +30,32 @@ echo "Current version: $CURRENT_VERSION"
 # Parse version components
 IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 
-# Find all changeset files
-CHANGESETS=$(find "$CHANGESET_DIR" -maxdepth 1 -name "*.md" ! -name "README.md" -type f 2>/dev/null || echo "")
+trim_description() {
+  sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//'
+}
 
-if [ -z "$CHANGESETS" ]; then
+# Find all changeset files. Use NUL-delimited paths so future changeset names
+# with whitespace or shell metacharacters are still processed safely.
+CHANGESETS=()
+if [ -d "$CHANGESET_DIR" ]; then
+  while IFS= read -r -d '' CHANGESET; do
+    CHANGESETS+=("$CHANGESET")
+  done < <(find "$CHANGESET_DIR" -maxdepth 1 -name "*.md" ! -name "README.md" -type f -print0 | sort -z)
+fi
+
+if [ "${#CHANGESETS[@]}" -eq 0 ]; then
   echo "No changesets found, nothing to apply"
   exit 0
 fi
 
 echo "Found changesets:"
-echo "$CHANGESETS"
+printf '%s\n' "${CHANGESETS[@]}"
 
 # Determine highest bump type
 HIGHEST_BUMP="patch"
 DESCRIPTIONS=""
 
-for CHANGESET in $CHANGESETS; do
+for CHANGESET in "${CHANGESETS[@]}"; do
   echo ""
   echo "Processing: $CHANGESET"
 
@@ -75,7 +85,7 @@ for CHANGESET in $CHANGESETS; do
   esac
 
   # Extract description (everything after the second ---)
-  DESCRIPTION=$(awk '/^---$/{n++; next} n>=2' "$CHANGESET" | tr '\n' ' ' | xargs)
+  DESCRIPTION=$(awk '/^---$/{n++; next} n>=2' "$CHANGESET" | tr '\n' ' ' | trim_description)
   if [ -n "$DESCRIPTION" ]; then
     if [ -n "$DESCRIPTIONS" ]; then
       DESCRIPTIONS="$DESCRIPTIONS; $DESCRIPTION"
@@ -114,7 +124,7 @@ echo "Updated VERSION file"
 # Delete processed changesets
 echo ""
 echo "Deleting processed changesets:"
-for CHANGESET in $CHANGESETS; do
+for CHANGESET in "${CHANGESETS[@]}"; do
   echo "  Removing: $CHANGESET"
   rm -f "$CHANGESET"
 done

@@ -1,0 +1,228 @@
+Apply Changesets	UNKNOWN STEP	﻿2026-04-29T18:04:48.7868437Z Current runner version: '2.334.0'
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7901676Z ##[group]Runner Image Provisioner
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7903347Z Hosted Compute Agent
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7904127Z Version: 20260213.493
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7904989Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7906054Z Build Date: 2026-02-13T00:28:41Z
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7907059Z Worker ID: {a89539c9-cab9-4322-a846-5d317f9eba66}
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7908068Z Azure Region: westus3
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7908903Z ##[endgroup]
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7911185Z ##[group]Operating System
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7912067Z Ubuntu
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7912812Z 24.04.4
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7913442Z LTS
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7914109Z ##[endgroup]
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7914749Z ##[group]Runner Image
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7915609Z Image: ubuntu-24.04
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7916300Z Version: 20260413.86.1
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7918192Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260413.86/images/ubuntu/Ubuntu2404-Readme.md
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7920831Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260413.86
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7922311Z ##[endgroup]
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7923769Z ##[group]GITHUB_TOKEN Permissions
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7926198Z Contents: write
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7927039Z Metadata: read
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7927708Z ##[endgroup]
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7930839Z Secret source: Actions
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.7931962Z Prepare workflow directory
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.8458803Z Prepare all required actions
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:48.8494611Z Getting action download info
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.3322520Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5319440Z Complete job name: Apply Changesets
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5883300Z ##[group]Run actions/checkout@v4
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5884244Z with:
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5884655Z   fetch-depth: 0
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5885061Z   repository: link-foundation/box
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5885796Z   token: ***
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5886202Z   ssh-strict: true
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5886625Z   ssh-user: git
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5887056Z   persist-credentials: true
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5887517Z   clean: true
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5887921Z   sparse-checkout-cone-mode: true
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5888419Z   fetch-tags: false
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5888865Z   show-progress: true
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5889258Z   lfs: false
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5889671Z   submodules: false
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5890260Z   set-safe-directory: true
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5890970Z env:
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5891370Z   GHCR_REGISTRY: ghcr.io
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5891862Z   GHCR_IMAGE_NAME: link-foundation/box
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5892377Z   DOCKERHUB_REGISTRY: docker.io
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5892994Z   DOCKERHUB_IMAGE_NAME: konard/box
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.5893449Z ##[endgroup]
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.6949908Z Syncing repository: link-foundation/box
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.6951824Z ##[group]Getting Git version info
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.6952441Z Working directory is '/home/runner/work/box/box'
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.6953439Z [command]/usr/bin/git version
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.6982064Z git version 2.53.0
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7005241Z ##[endgroup]
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7019364Z Temporarily overriding HOME='/home/runner/work/_temp/c27afc14-e778-4f5c-ad0d-eb70007db54a' before making global git config changes
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7022101Z Adding repository directory to the temporary git global config as a safe directory
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7025947Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/box/box
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7053671Z Deleting the contents of '/home/runner/work/box/box'
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7057221Z ##[group]Initializing the repository
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7061889Z [command]/usr/bin/git init /home/runner/work/box/box
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7124812Z hint: Using 'master' as the name for the initial branch. This default branch name
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7126084Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7127090Z hint: to use in all of your new repositories, which will suppress this warning,
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7128235Z hint: call:
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7128664Z hint:
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7129157Z hint: 	git config --global init.defaultBranch <name>
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7130174Z hint:
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7130737Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7131625Z hint: 'development'. The just-created branch can be renamed via this command:
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7132275Z hint:
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7132655Z hint: 	git branch -m <name>
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7133138Z hint:
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7133721Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7134599Z Initialized empty Git repository in /home/runner/work/box/box/.git/
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7136446Z [command]/usr/bin/git remote add origin https://github.com/link-foundation/box
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7159088Z ##[endgroup]
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7159958Z ##[group]Disabling automatic garbage collection
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7162820Z [command]/usr/bin/git config --local gc.auto 0
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7184111Z ##[endgroup]
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7184855Z ##[group]Setting up auth
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7191436Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7214801Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7440031Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7465986Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7649960Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7674305Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7841884Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7870588Z ##[endgroup]
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7871491Z ##[group]Fetching the repository
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:49.7878303Z [command]/usr/bin/git -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0533653Z From https://github.com/link-foundation/box
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0538799Z  * [new branch]      issue-1-fabf033ef396  -> origin/issue-1-fabf033ef396
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0542736Z  * [new branch]      issue-11-2508de5e2984 -> origin/issue-11-2508de5e2984
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0543702Z  * [new branch]      issue-13-5e8dbcf6f06f -> origin/issue-13-5e8dbcf6f06f
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0544477Z  * [new branch]      issue-14-018918b65bfd -> origin/issue-14-018918b65bfd
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0545279Z  * [new branch]      issue-15-8b114097df75 -> origin/issue-15-8b114097df75
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0546070Z  * [new branch]      issue-19-ef2261a999b7 -> origin/issue-19-ef2261a999b7
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0546957Z  * [new branch]      issue-21-b16a41c2dc1b -> origin/issue-21-b16a41c2dc1b
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0547870Z  * [new branch]      issue-23-bc50bc0a30c5 -> origin/issue-23-bc50bc0a30c5
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0548734Z  * [new branch]      issue-25-df6cf60946a1 -> origin/issue-25-df6cf60946a1
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0549687Z  * [new branch]      issue-27-d9b9450f5bc3 -> origin/issue-27-d9b9450f5bc3
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0550820Z  * [new branch]      issue-29-63c4dfadb482 -> origin/issue-29-63c4dfadb482
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0551682Z  * [new branch]      issue-3-76130d10106f  -> origin/issue-3-76130d10106f
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0552624Z  * [new branch]      issue-31-8743dd699319 -> origin/issue-31-8743dd699319
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0553559Z  * [new branch]      issue-33-d0155ee074ba -> origin/issue-33-d0155ee074ba
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0554895Z  * [new branch]      issue-35-9c4d8d6cb0f2 -> origin/issue-35-9c4d8d6cb0f2
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0555968Z  * [new branch]      issue-37-06e880b28d2a -> origin/issue-37-06e880b28d2a
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0557012Z  * [new branch]      issue-39-2bdad3e8ff81 -> origin/issue-39-2bdad3e8ff81
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0558057Z  * [new branch]      issue-39-fc90ac7ce636 -> origin/issue-39-fc90ac7ce636
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0559144Z  * [new branch]      issue-41-9147e2851aa6 -> origin/issue-41-9147e2851aa6
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0560362Z  * [new branch]      issue-44-6aff3ccd4f33 -> origin/issue-44-6aff3ccd4f33
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0561617Z  * [new branch]      issue-46-2e5336b482c3 -> origin/issue-46-2e5336b482c3
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0562691Z  * [new branch]      issue-46-479c0ca36ec0 -> origin/issue-46-479c0ca36ec0
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0563697Z  * [new branch]      issue-49-fe61efdf3339 -> origin/issue-49-fe61efdf3339
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0564652Z  * [new branch]      issue-5-aaf6edf86e3b  -> origin/issue-5-aaf6edf86e3b
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0674824Z  * [new branch]      issue-51-09375a949530 -> origin/issue-51-09375a949530
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0676483Z  * [new branch]      issue-53-cc7c40191d88 -> origin/issue-53-cc7c40191d88
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0678110Z  * [new branch]      issue-55-dc5914da7ab7 -> origin/issue-55-dc5914da7ab7
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0679735Z  * [new branch]      issue-57-17b75fe237f1 -> origin/issue-57-17b75fe237f1
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0681945Z  * [new branch]      issue-57-3b7cfd0944e2 -> origin/issue-57-3b7cfd0944e2
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0683741Z  * [new branch]      issue-60-df458118b033 -> origin/issue-60-df458118b033
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0685126Z  * [new branch]      issue-62-3002f19b72a9 -> origin/issue-62-3002f19b72a9
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0686980Z  * [new branch]      issue-64-7d732384eea2 -> origin/issue-64-7d732384eea2
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0688143Z  * [new branch]      issue-66-e55b3c48b549 -> origin/issue-66-e55b3c48b549
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0689295Z  * [new branch]      issue-68-4aeda74d2fdd -> origin/issue-68-4aeda74d2fdd
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0691014Z  * [new branch]      issue-7-9b8ef0433d7f  -> origin/issue-7-9b8ef0433d7f
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0692599Z  * [new branch]      issue-70-b31884acab59 -> origin/issue-70-b31884acab59
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0693638Z  * [new branch]      issue-71-af40ebf5191a -> origin/issue-71-af40ebf5191a
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0694474Z  * [new branch]      issue-74-16806f8cb5df -> origin/issue-74-16806f8cb5df
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0695294Z  * [new branch]      issue-76-e43c6203e329 -> origin/issue-76-e43c6203e329
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0696593Z  * [new branch]      issue-78-4e320e032341 -> origin/issue-78-4e320e032341
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0698135Z  * [new branch]      issue-80-bded956c66f7 -> origin/issue-80-bded956c66f7
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0699594Z  * [new branch]      issue-82-9bbaad39cc07 -> origin/issue-82-9bbaad39cc07
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0701176Z  * [new branch]      issue-9-c1093a7a89f1  -> origin/issue-9-c1093a7a89f1
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0702510Z  * [new branch]      main                  -> origin/main
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0703669Z  * [new tag]         v1.0.0                -> v1.0.0
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0704769Z  * [new tag]         v1.1.1                -> v1.1.1
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0705786Z  * [new tag]         v1.2.0                -> v1.2.0
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0706780Z  * [new tag]         v1.2.1                -> v1.2.1
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0707775Z  * [new tag]         v1.2.2                -> v1.2.2
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0708847Z  * [new tag]         v1.2.3                -> v1.2.3
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0710024Z  * [new tag]         v1.3.0                -> v1.3.0
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0711035Z  * [new tag]         v1.3.10               -> v1.3.10
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0712092Z  * [new tag]         v1.3.12               -> v1.3.12
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0713164Z  * [new tag]         v1.3.13               -> v1.3.13
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0714332Z  * [new tag]         v1.3.14               -> v1.3.14
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0715304Z  * [new tag]         v1.3.15               -> v1.3.15
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0716473Z  * [new tag]         v1.3.16               -> v1.3.16
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0717506Z  * [new tag]         v1.3.2                -> v1.3.2
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0718514Z  * [new tag]         v1.3.4                -> v1.3.4
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0719534Z  * [new tag]         v1.3.5                -> v1.3.5
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0720684Z  * [new tag]         v1.3.6                -> v1.3.6
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0721726Z  * [new tag]         v1.3.7                -> v1.3.7
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0722737Z  * [new tag]         v1.3.9                -> v1.3.9
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0723726Z  * [new tag]         v1.4.0                -> v1.4.0
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0724757Z  * [new tag]         v1.4.1                -> v1.4.1
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0725795Z  * [new tag]         v1.5.0                -> v1.5.0
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0726820Z  * [new tag]         v1.6.0                -> v1.6.0
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0727860Z  * [new tag]         v2.0.1                -> v2.0.1
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0730485Z [command]/usr/bin/git branch --list --remote origin/main
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0731593Z   origin/main
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0733390Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0734465Z c7626c0d9d2a08907634ebd5babcaa7579b83222
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0736670Z ##[endgroup]
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0737798Z ##[group]Determining the checkout info
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0739103Z ##[endgroup]
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0739951Z [command]/usr/bin/git sparse-checkout disable
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0742316Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0752669Z ##[group]Checking out the ref
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.0754043Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1373026Z Switched to a new branch 'main'
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1373770Z branch 'main' set up to track 'origin/main'.
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1380592Z ##[endgroup]
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1411854Z [command]/usr/bin/git log -1 --format=%H
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1431982Z c7626c0d9d2a08907634ebd5babcaa7579b83222
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1599508Z ##[group]Run chmod +x scripts/release/check-changesets.sh
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1600586Z [36;1mchmod +x scripts/release/check-changesets.sh[0m
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1601213Z [36;1m./scripts/release/check-changesets.sh[0m
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1617561Z shell: /usr/bin/bash -e {0}
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1618021Z env:
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1618346Z   GHCR_REGISTRY: ghcr.io
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1618776Z   GHCR_IMAGE_NAME: link-foundation/box
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1619258Z   DOCKERHUB_REGISTRY: docker.io
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1619703Z   DOCKERHUB_IMAGE_NAME: konard/box
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1620286Z ##[endgroup]
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1692610Z Checking for pending changeset files...
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1789670Z Found 1 changeset file(s)
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1793684Z has_changesets=true
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1794393Z changeset_count=1
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1879202Z ##[group]Run chmod +x scripts/release/apply-changesets.sh
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1880248Z [36;1mchmod +x scripts/release/apply-changesets.sh[0m
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1880927Z [36;1m./scripts/release/apply-changesets.sh[0m
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1893906Z shell: /usr/bin/bash -e {0}
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1894351Z env:
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1894679Z   GHCR_REGISTRY: ghcr.io
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1895128Z   GHCR_IMAGE_NAME: link-foundation/box
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1895635Z   DOCKERHUB_REGISTRY: docker.io
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1896099Z   DOCKERHUB_IMAGE_NAME: konard/box
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1896547Z ##[endgroup]
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1948855Z Applying changesets to VERSION file...
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1962785Z Current version: 2.1.0
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1977903Z Found changesets:
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1978840Z .changeset/issue-82-tolerate-dockerhub-login-failure.md
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1979345Z 
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1979704Z Processing: .changeset/issue-82-tolerate-dockerhub-login-failure.md
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.1996394Z   Bump type: patch
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.2057847Z xargs: unmatched single quote; by default quotes are special to xargs unless you use the -0 option
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.2078326Z ##[error]Process completed with exit code 1.
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.2217917Z Post job cleanup.
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.3134283Z [command]/usr/bin/git version
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.3166070Z git version 2.53.0
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.3204649Z Temporarily overriding HOME='/home/runner/work/_temp/86d56483-68d1-4746-a894-47f97c9d1fe8' before making global git config changes
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.3206240Z Adding repository directory to the temporary git global config as a safe directory
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.3217021Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/box/box
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.3245928Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.3272071Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.3438738Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.3455989Z http.https://github.com/.extraheader
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.3468913Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.3497363Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.3662290Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.3688336Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.3952734Z Evaluate and set job outputs
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.3961105Z Cleaning up orphan processes
+Apply Changesets	UNKNOWN STEP	2026-04-29T18:04:51.4206939Z ##[warning]Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: actions/checkout@v4. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Node.js 20 will be removed from the runner on September 16th, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
