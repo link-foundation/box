@@ -16,7 +16,7 @@
 #   - Sysbox :  docker run --runtime=sysbox-runc konard/<base>-dind   (no --privileged)
 #
 # Environment overrides:
-#   DIND_STORAGE_DRIVER  Override storage driver (default: auto-detected: overlay2, fallback to vfs)
+#   DIND_STORAGE_DRIVER  Override storage driver (default: auto-detected: overlay2, fuse-overlayfs, vfs)
 #   DIND_DATA_ROOT       Override --data-root for dockerd (default: /var/lib/docker)
 #   DIND_LOG_FILE        Where to write dockerd logs (default: /var/log/dockerd.log)
 #   DIND_WAIT_SECONDS    How long to wait for dockerd to come up (default: 30)
@@ -66,6 +66,68 @@ fix_socket_permissions() {
   fi
 }
 
+storage_driver_candidates() {
+  if [ -n "$DIND_STORAGE_DRIVER" ]; then
+    printf '%s\n' "$DIND_STORAGE_DRIVER"
+    return 0
+  fi
+
+  if grep -q overlay /proc/filesystems 2>/dev/null; then
+    printf '%s\n' overlay2
+  fi
+
+  if command -v fuse-overlayfs >/dev/null 2>&1; then
+    printf '%s\n' fuse-overlayfs
+  fi
+
+  printf '%s\n' vfs
+}
+
+launch_dockerd() {
+  storage_driver="$1"
+
+  if [ "$(id -u)" -eq 0 ]; then
+    nohup /usr/bin/dockerd \
+      --host=unix:///var/run/docker.sock \
+      --data-root="$DIND_DATA_ROOT" \
+      --storage-driver="$storage_driver" \
+      >>"$DIND_LOG_FILE" 2>&1 &
+  else
+    nohup sudo -n /usr/bin/dockerd \
+      --host=unix:///var/run/docker.sock \
+      --data-root="$DIND_DATA_ROOT" \
+      --storage-driver="$storage_driver" \
+      >>"$DIND_LOG_FILE" 2>&1 &
+  fi
+
+  DIND_DOCKERD_PID="$!"
+}
+
+wait_for_dockerd_ready() {
+  dockerd_pid="$1"
+  storage_driver="$2"
+  i=0
+
+  while [ "$i" -lt "$DIND_WAIT_SECONDS" ]; do
+    fix_socket_permissions
+    if docker info >/dev/null 2>&1; then
+      log "dockerd is ready after ${i}s"
+      return 0
+    fi
+
+    if ! kill -0 "$dockerd_pid" 2>/dev/null; then
+      wait "$dockerd_pid" 2>/dev/null || true
+      warn "dockerd exited before becoming ready with storage-driver=${storage_driver}"
+      return 1
+    fi
+
+    i=$((i + 1))
+    sleep 1
+  done
+
+  return 2
+}
+
 start_dockerd() {
   if pgrep -x dockerd >/dev/null 2>&1; then
     log "dockerd already running (pid $(pgrep -x dockerd | head -n1))"
@@ -79,47 +141,42 @@ start_dockerd() {
   fi
   prepare_log_file
 
-  # Pick a storage driver. overlay2 is the modern default; if it fails (the host
-  # can't mount overlay-on-overlay without fuse-overlayfs), fall back to vfs.
-  if [ -z "$DIND_STORAGE_DRIVER" ]; then
-    if grep -q overlay /proc/filesystems 2>/dev/null; then
-      DIND_STORAGE_DRIVER="overlay2"
-    elif command -v fuse-overlayfs >/dev/null 2>&1; then
-      DIND_STORAGE_DRIVER="fuse-overlayfs"
+  # iptables modules and overlay mounts depend on the outer runtime. Auto mode
+  # retries conservative drivers only when dockerd exits before it is ready.
+  explicit_storage_driver=0
+  if [ -n "$DIND_STORAGE_DRIVER" ]; then
+    explicit_storage_driver=1
+  fi
+
+  for storage_driver in $(storage_driver_candidates); do
+    DIND_STORAGE_DRIVER="$storage_driver"
+    log "Starting dockerd (storage-driver=${DIND_STORAGE_DRIVER}, data-root=${DIND_DATA_ROOT})"
+    launch_dockerd "$DIND_STORAGE_DRIVER"
+
+    if wait_for_dockerd_ready "$DIND_DOCKERD_PID" "$DIND_STORAGE_DRIVER"; then
+      return 0
     else
-      DIND_STORAGE_DRIVER="vfs"
+      result="$?"
     fi
-  fi
-  log "Starting dockerd (storage-driver=${DIND_STORAGE_DRIVER}, data-root=${DIND_DATA_ROOT})"
 
-  # iptables module may not be available in the outer container; let dockerd handle it.
-  if [ "$(id -u)" -eq 0 ]; then
-    nohup /usr/bin/dockerd \
-      --host=unix:///var/run/docker.sock \
-      --data-root="$DIND_DATA_ROOT" \
-      --storage-driver="$DIND_STORAGE_DRIVER" \
-      >>"$DIND_LOG_FILE" 2>&1 &
-  else
-    nohup sudo -n /usr/bin/dockerd \
-      --host=unix:///var/run/docker.sock \
-      --data-root="$DIND_DATA_ROOT" \
-      --storage-driver="$DIND_STORAGE_DRIVER" \
-      >>"$DIND_LOG_FILE" 2>&1 &
-  fi
-
-  # Wait until dockerd answers on /var/run/docker.sock.
-  i=0
-  while [ "$i" -lt "$DIND_WAIT_SECONDS" ]; do
-    fix_socket_permissions
-    if docker info >/dev/null 2>&1; then
-      log "dockerd is ready after ${i}s"
+    if [ "$result" -eq 2 ]; then
+      warn "dockerd did not become ready within ${DIND_WAIT_SECONDS}s"
+      warn "Last 40 lines of ${DIND_LOG_FILE}:"
+      tail -n 40 "$DIND_LOG_FILE" >&2 || true
+      warn "Continuing anyway; the user shell will still start, but 'docker' may fail"
       return 0
     fi
-    i=$((i + 1))
-    sleep 1
+
+    if [ "$explicit_storage_driver" -eq 1 ]; then
+      break
+    fi
+
+    warn "Last 20 lines of ${DIND_LOG_FILE}:"
+    tail -n 20 "$DIND_LOG_FILE" >&2 || true
+    warn "Retrying dockerd with next storage driver"
   done
 
-  warn "dockerd did not become ready within ${DIND_WAIT_SECONDS}s"
+  warn "dockerd did not become ready with any configured storage driver"
   warn "Last 40 lines of ${DIND_LOG_FILE}:"
   tail -n 40 "$DIND_LOG_FILE" >&2 || true
   warn "Continuing anyway; the user shell will still start, but 'docker' may fail"

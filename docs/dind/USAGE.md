@@ -142,8 +142,11 @@ DIND_IMAGE=box-dind-js tests/dind/example-sudoers-extension.sh
 
 ## Storage Driver
 
-When `DIND_STORAGE_DRIVER` is empty, the entrypoint chooses `overlay2` if the
-host advertises overlay support, then `fuse-overlayfs`, then `vfs`.
+When `DIND_STORAGE_DRIVER` is empty, the entrypoint tries `overlay2` if the
+host advertises overlay support, then `fuse-overlayfs` if it is installed, then
+`vfs`. If a candidate makes `dockerd` exit before it is ready, the entrypoint
+logs the failure and retries the next candidate. This covers nested runtimes
+where overlay support is visible but overlay-backed Docker still cannot start.
 
 Use the default for normal developer workflows. Pin `DIND_STORAGE_DRIVER=vfs`
 when the host cannot run overlay-backed nested Docker reliably or when you need
