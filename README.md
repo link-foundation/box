@@ -304,39 +304,39 @@ The container runs as the `box` user with home directory at `/home/box`. All lan
 <!-- COMPONENT_SIZES_START -->
 ## Component Sizes
 
-_Last updated: 2026-04-06T08:34:59Z_
+_Last updated: 2026-06-04T22:49:24Z_
 
-**Total installation size: 7280.0 MB**
+**Total installation size: 7287.0 MB**
 
 | Component | Category | Size (MB) |
 |-----------|----------|-----------|
-| Swift 6.x | Runtime | 2655.24 |
-| Opam + Rocq/Coq | Runtime | 1017.0 |
-| Rust (via rustup) | Runtime | 647.44 |
-| SDKMAN + Java 21 | Runtime | 579.09 |
-| .NET SDK 8.0 | Runtime | 504.93 |
-| Pyenv + Python (latest) | Runtime | 387.94 |
-| Perlbrew + Perl (latest) | Runtime | 364.98 |
-| Go (latest) | Runtime | 281.75 |
-| NVM + Node.js 20 | Runtime | 230.95 |
-| Kotlin (via SDKMAN) | Runtime | 173.97 |
-| rbenv + Ruby (latest) | Runtime | 165.15 |
-| Deno | Runtime | 123.64 |
-| R Language | Runtime | 121.13 |
-| Bun | Runtime | 99.68 |
-| PHP 8.3 (via Homebrew) | Runtime | 55.47 |
-| Lean (via elan) | Runtime | 13.23 |
+| Swift 6.x | Runtime | 2655.23 |
+| Opam + Rocq/Coq | Runtime | 1016.81 |
+| Rust (via rustup) | Runtime | 664.94 |
+| SDKMAN + Java 21 | Runtime | 578.01 |
+| .NET SDK 8.0 | Runtime | 504.96 |
+| Pyenv + Python (latest) | Runtime | 393.11 |
+| Perlbrew + Perl (latest) | Runtime | 364.97 |
+| Go (latest) | Runtime | 281.98 |
+| NVM + Node.js 20 | Runtime | 232.89 |
+| Kotlin (via SDKMAN) | Runtime | 182.11 |
+| rbenv + Ruby (latest) | Runtime | 163.15 |
+| R Language | Runtime | 121.38 |
+| Deno | Runtime | 107.86 |
+| Bun | Runtime | 92.77 |
+| PHP 8.3 (via Homebrew) | Runtime | 58.83 |
+| Lean (via elan) | Runtime | 13.21 |
 | C/C++ Tools (CMake, Clang, LLVM, LLD) | Build Tools | 58.83 |
-| Assembly Tools (NASM, FASM) | Build Tools | 3.92 |
-| GitLab CLI | Development Tools | 30.06 |
-| gh-setup-git-identity | Development Tools | 4.61 |
-| glab-setup-git-identity | Development Tools | 4.48 |
-| GitHub CLI | Development Tools | 0.54 |
-| Homebrew | Package Manager | 179.75 |
-| Python Build Dependencies | Dependencies | 44.24 |
+| Assembly Tools (NASM, FASM) | Build Tools | 3.91 |
+| GitLab CLI | Development Tools | 29.2 |
+| glab-setup-git-identity | Development Tools | 4.36 |
+| gh-setup-git-identity | Development Tools | 4.35 |
+| GitHub CLI | Development Tools | 0.15 |
+| Homebrew | Package Manager | 190.27 |
+| Python Build Dependencies | Dependencies | 43.16 |
 | Bubblewrap | Dependencies | 0.18 |
 | Ruby Build Dependencies | Dependencies | 0.0 |
-| Essential Tools | System | 0.75 |
+| Essential Tools | System | 0.76 |
 
 _Note: Sizes are measured after cleanup and may vary based on system state and package versions._
 
