@@ -24,6 +24,7 @@ on the Docker Hub manifest transaction.
   [`ci-logs/recent-main-runs.json`](./ci-logs/recent-main-runs.json)
 - Linked failing job log: [`ci-logs/job-79583415202-dind-manifest-perl.log`](./ci-logs/job-79583415202-dind-manifest-perl.log)
 - Focused failure extract: [`ci-logs/error-extracts.txt`](./ci-logs/error-extracts.txt)
+- PR #91 follow-up CI check: [`ci-logs/pr-91-run-26976940117-check-for-changesets.log`](./ci-logs/pr-91-run-26976940117-check-for-changesets.log)
 - Template comparison files: [`templates/template-ci-files.txt`](./templates/template-ci-files.txt),
   [`templates/dockerhub-patterns.txt`](./templates/dockerhub-patterns.txt)
 
@@ -161,6 +162,8 @@ custom release workflow, not present in the templates.
 6. Quoted `Check Docker Hub login (issue #82)` step names so GitHub logs retain the full issue reference.
 7. Added [`experiments/test-issue90-release-workflow-policy.sh`](../../../experiments/test-issue90-release-workflow-policy.sh)
    to enforce the manifest guard and action-version policy.
+8. Added [`issue-90-guard-dockerhub-manifests.md`](../../../.changeset/issue-90-guard-dockerhub-manifests.md)
+   after PR #91 CI correctly reported that workflow code changes require a patch changeset.
 
 ## Verification
 
@@ -169,6 +172,9 @@ Local checks:
 ```bash
 ruby -ryaml -e 'YAML.load_file(".github/workflows/release.yml"); YAML.load_file(".github/workflows/measure-disk-space.yml"); puts "workflow yaml parse ok"'
 bash experiments/test-issue90-release-workflow-policy.sh
+bash experiments/test-issue82-dockerhub-login-tolerance.sh
+bash experiments/test-issue82-pr-parallel-tests.sh
+bash -n scripts/*.sh scripts/release/*.sh experiments/*.sh tests/dind/*.sh
 ```
 
 The policy test would have failed on the original workflow because the Docker Hub manifest commands were mixed
