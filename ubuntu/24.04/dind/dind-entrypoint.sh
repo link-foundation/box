@@ -52,7 +52,10 @@ prepare_log_file() {
   if ! (: >>"$DIND_LOG_FILE") 2>/dev/null; then
     warn "Cannot write dockerd log file at ${DIND_LOG_FILE}; falling back to /tmp/dockerd.log"
     DIND_LOG_FILE="/tmp/dockerd.log"
-    : >>"$DIND_LOG_FILE"
+    if ! (: >>"$DIND_LOG_FILE") 2>/dev/null; then
+      warn "Cannot write fallback dockerd log file at ${DIND_LOG_FILE}; using /dev/null"
+      DIND_LOG_FILE="/dev/null"
+    fi
   fi
 }
 

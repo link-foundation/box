@@ -41,8 +41,10 @@ RUN chmod +x /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh && \
     bash /tmp/install.sh && \
     rm -f /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh
 
-# Sanity: docker, dockerd, buildx, compose must all be present.
-RUN docker --version && \
+# Sanity: docker, dockerd, buildx, compose must all be present at the paths
+# the entrypoint and sudoers contract depend on.
+RUN test -x /usr/bin/dockerd && \
+    docker --version && \
     dockerd --version && \
     docker buildx version && \
     docker compose version
