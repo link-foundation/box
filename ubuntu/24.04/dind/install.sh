@@ -85,6 +85,21 @@ else
   log_warning "box user not present yet; skipping group membership"
 fi
 
+# --- Allow the box-owned entrypoint to perform only the root setup dind needs ---
+if id box &>/dev/null; then
+  log_step "Configuring scoped sudo for dind entrypoint"
+  printf '%s\n' \
+    'box ALL=(root) NOPASSWD: /usr/bin/dockerd, /usr/bin/chgrp, /usr/bin/chmod, /usr/bin/mkdir' \
+    | maybe_sudo install -m 0440 -o root -g root /dev/stdin /etc/sudoers.d/box-dind
+  if command_exists visudo; then
+    maybe_sudo visudo -cf /etc/sudoers.d/box-dind >/dev/null
+  fi
+  maybe_sudo install -m 0644 -o box -g box /dev/null /var/log/dockerd.log
+  log_success "Configured dind sudoers entry and writable dockerd log"
+else
+  log_warning "box user not present; skipping dind sudoers entry"
+fi
+
 # --- Install dind entrypoint ---
 log_step "Installing dind entrypoint"
 maybe_sudo install -m 0755 "$SCRIPT_DIR/dind-entrypoint.sh" /usr/local/bin/dind-entrypoint.sh

@@ -148,7 +148,7 @@ curl -fsSL https://raw.githubusercontent.com/link-foundation/box/main/ubuntu/24.
 
 ### Docker Hub - dind-box (Docker-in-Docker variants, issue #80)
 
-Each row below has the same toolchain as its non-dind sibling **plus** a working Docker Engine (Docker CLI + dockerd + containerd + Buildx + Compose v2). The default is nested Docker-in-Docker — each container has its own daemon, so `docker ps -a` from inside the container only lists containers it created. See the [security model](#docker-in-docker-security-model) section below and [docs/case-studies/issue-80](docs/case-studies/issue-80/CASE-STUDY.md).
+Each row below has the same toolchain as its non-dind sibling **plus** a working Docker Engine (Docker CLI + dockerd + containerd + Buildx + Compose v2). The default is nested Docker-in-Docker — each container has its own daemon, so `docker ps -a` from inside the container only lists containers it created. See the [security model](#docker-in-docker-security-model) section below, the [dind usage guide](docs/dind/USAGE.md), and [docs/case-studies/issue-80](docs/case-studies/issue-80/CASE-STUDY.md).
 
 | Image | Multi-arch | AMD64 | ARM64 |
 |-------|------------|-------|-------|
@@ -218,6 +218,7 @@ Each row below has the same toolchain as its non-dind sibling **plus** a working
 > - **Recommended secure invocation:** [`docker run --runtime=sysbox-runc konard/box-dind`](https://github.com/nestybox/sysbox) — Sysbox is a drop-in OCI runtime that runs system containers without `--privileged` and without exposing host devices.
 > - **Do NOT bind-mount `/var/run/docker.sock`.** That gives the container root on the host ([Quarkslab](https://blog.quarkslab.com/why-is-exposing-the-docker-socket-a-really-bad-idea.html), [OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html)) and breaks the per-box `docker ps` scoping property.
 > - **Storage:** the inner daemon writes to `/var/lib/docker` inside the container by default. For persistence, mount a volume: `-v box-dind-data:/var/lib/docker`.
+> - **Usage examples:** see [`docs/dind/USAGE.md`](docs/dind/USAGE.md). Its examples are backed by executable tests under `tests/dind/`.
 
 See [docs/case-studies/issue-80/CASE-STUDY.md](docs/case-studies/issue-80/CASE-STUDY.md) for the full design and threat model.
 

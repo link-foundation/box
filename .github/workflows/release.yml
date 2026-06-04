@@ -349,7 +349,7 @@ jobs:
           fi
 
           # dind-box changes (issue #80)
-          if echo "$CHANGED_FILES" | grep -qE '^ubuntu/24\.04/dind/'; then
+          if echo "$CHANGED_FILES" | grep -qE '^(ubuntu/24\.04/dind/|docs/dind/|tests/dind/)'; then
             echo "dind=true" >> $GITHUB_OUTPUT
           else
             echo "dind=false" >> $GITHUB_OUTPUT
@@ -394,6 +394,9 @@ jobs:
           elif [ "${{ steps.changes.outputs.version }}" = "true" ]; then
             echo "result=true" >> $GITHUB_OUTPUT
             echo "Build triggered by: VERSION file changes"
+          elif [ "${{ steps.image-changes.outputs.dind }}" = "true" ]; then
+            echo "result=true" >> $GITHUB_OUTPUT
+            echo "Build triggered by: dind docs/tests changes"
           else
             echo "result=false" >> $GITHUB_OUTPUT
             echo "No build needed: no relevant changes detected"
@@ -855,7 +858,19 @@ jobs:
         run: |
           set -e
           IMG="box-dind-${{ matrix.variant }}"
-          echo "=== Testing ${IMG} (CLI presence only - no privileged mode in PR CI) ==="
+          echo "=== Testing ${IMG} (no privileged mode in PR CI) ==="
+          # Regression check for issue #88: docker exec and entrypoint-bypassed
+          # shells use the image's configured USER, so dind variants must keep
+          # Config.User aligned with the regular box images.
+          CONFIG_USER=$(docker inspect --format '{{.Config.User}}' "$IMG")
+          if [ "$CONFIG_USER" != "box" ]; then
+            echo "Expected ${IMG} Config.User to be box, got '${CONFIG_USER:-<empty>}'"
+            exit 1
+          fi
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'test "$(whoami)" = box'
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'test "$HOME" = /home/box'
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'sudo -n /usr/bin/dockerd --version'
+
           # Verify Docker CLI, dockerd binary, buildx and compose plugins are present.
           # We do NOT start dockerd here because GitHub-hosted runners disallow --privileged.
           docker run --rm --entrypoint=/bin/bash "$IMG" -c 'docker --version'
@@ -864,6 +879,20 @@ jobs:
           docker run --rm --entrypoint=/bin/bash "$IMG" -c 'docker compose version'
           docker run --rm --entrypoint=/bin/bash "$IMG" -c 'cat /etc/box/variant'
           echo "=== ${IMG} smoke tests passed ==="
+
+      - name: Test documented dind examples
+        if: matrix.variant == 'js'
+        env:
+          DIND_IMAGE: box-dind-js
+          DIND_WAIT_SECONDS: "60"
+        run: |
+          set -e
+          echo "=== Testing documented dind examples against ${DIND_IMAGE} ==="
+          tests/dind/example-basic-docker-ps.sh
+          tests/dind/example-commit-cycle.sh
+          tests/dind/example-sudoers-extension.sh
+          tests/dind/example-storage-driver-vfs.sh
+          echo "=== Documented dind examples passed ==="
 
   # --- Aggregator: single status check for branch protection ---
   # GitHub branch protection rules can require this one job to pass instead of

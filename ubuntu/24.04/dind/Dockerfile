@@ -41,8 +41,10 @@ RUN chmod +x /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh && \
     bash /tmp/install.sh && \
     rm -f /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh
 
-# Sanity: docker, dockerd, buildx, compose must all be present.
-RUN docker --version && \
+# Sanity: docker, dockerd, buildx, compose must all be present at the paths
+# the entrypoint and sudoers contract depend on.
+RUN test -x /usr/bin/dockerd && \
+    docker --version && \
     dockerd --version && \
     docker buildx version && \
     docker compose version
@@ -52,7 +54,9 @@ WORKDIR /home/box
 
 SHELL ["/bin/bash", "-c"]
 
-# IMPORTANT: dind-entrypoint.sh starts dockerd as root and then drops to box
-# via runuser/su. Do not switch back to USER box here.
+# Keep docker exec behavior consistent with the non-dind box images. The
+# dind entrypoint uses scoped passwordless sudo only for dockerd setup.
+USER box
+ENV HOME=/home/box
 ENTRYPOINT ["/usr/local/bin/dind-entrypoint.sh"]
 CMD ["/bin/bash"]
