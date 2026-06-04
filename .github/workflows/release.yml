@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -121,7 +121,7 @@ jobs:
       new_version: ${{ steps.apply.outputs.new_version }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -149,7 +149,7 @@ jobs:
       version_bumped: ${{ steps.bump.outputs.bumped }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -241,7 +241,7 @@ jobs:
       dind-changed: ${{ steps.image-changes.outputs.dind }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 2
           ref: ${{ github.ref }}
@@ -446,7 +446,7 @@ jobs:
       needs.detect-changes.outputs.should-build == 'true'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -487,7 +487,7 @@ jobs:
       needs.detect-changes.outputs.should-build == 'true'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -538,7 +538,7 @@ jobs:
         language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -631,7 +631,7 @@ jobs:
       needs.detect-changes.outputs.should-build == 'true'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -645,7 +645,7 @@ jobs:
           swap-storage: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build full chain (JS -> essentials -> languages -> full)
         run: |
@@ -774,7 +774,7 @@ jobs:
         variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -788,7 +788,7 @@ jobs:
           swap-storage: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build base box for dind variant
         run: |
@@ -959,7 +959,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -985,10 +985,10 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
@@ -999,21 +999,21 @@ jobs:
       - name: Log in to Docker Hub
         id: dockerhub-login
         continue-on-error: true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check Docker Hub login (issue #82)
+      - name: "Check Docker Hub login (issue #82)"
         if: steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
       - name: Build and push JS box (amd64)
         id: build-push
         continue-on-error: true
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ubuntu/24.04/js/Dockerfile
@@ -1088,7 +1088,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -1114,10 +1114,10 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
@@ -1128,21 +1128,21 @@ jobs:
       - name: Log in to Docker Hub
         id: dockerhub-login
         continue-on-error: true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check Docker Hub login (issue #82)
+      - name: "Check Docker Hub login (issue #82)"
         if: steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
       - name: Build and push JS box (arm64)
         id: build-push
         continue-on-error: true
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ubuntu/24.04/js/Dockerfile
@@ -1206,7 +1206,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -1218,7 +1218,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
@@ -1229,22 +1229,21 @@ jobs:
       - name: Log in to Docker Hub
         id: dockerhub-login
         continue-on-error: true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check Docker Hub login (issue #82)
+      - name: "Check Docker Hub login (issue #82)"
         if: steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
-      - name: Create and push JS multi-arch manifests
+      - name: Create and push JS multi-arch manifests (GHCR)
         run: |
           VERSION="${{ steps.version.outputs.version }}"
 
-          # GHCR
           docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest \
             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-amd64 \
             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-arm64
@@ -1255,7 +1254,13 @@ jobs:
             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION}-arm64
           docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION}
 
-          # Docker Hub
+          echo "JS box GHCR multi-arch manifests pushed for latest and ${VERSION}"
+
+      - name: Create and push JS multi-arch manifests (Docker Hub)
+        if: steps.dockerhub-login.outcome == 'success'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
           docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest \
             --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64 \
             --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64
@@ -1266,7 +1271,12 @@ jobs:
             --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION}-arm64
           docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION}
 
-          echo "JS box multi-arch manifests pushed for latest and ${VERSION}"
+          echo "JS box Docker Hub multi-arch manifests pushed for latest and ${VERSION}"
+
+      - name: Skip JS Docker Hub multi-arch manifests
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub manifest skipped::Skipping JS Docker Hub multi-arch manifests because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
 
   # === BUILD ESSENTIALS BOX (amd64) ===
   # Built on top of JS box - waits for JS to complete (if JS was rebuilt)
@@ -1297,7 +1307,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -1323,10 +1333,10 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
@@ -1337,16 +1347,16 @@ jobs:
       - name: Log in to Docker Hub
         id: dockerhub-login
         continue-on-error: true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check Docker Hub login (issue #82)
+      - name: "Check Docker Hub login (issue #82)"
         if: steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
       - name: Determine JS base image
         id: js-base
@@ -1361,7 +1371,7 @@ jobs:
       - name: Build and push essentials box (amd64)
         id: build-push
         continue-on-error: true
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ubuntu/24.04/essentials-box/Dockerfile
@@ -1442,7 +1452,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -1468,10 +1478,10 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
@@ -1482,16 +1492,16 @@ jobs:
       - name: Log in to Docker Hub
         id: dockerhub-login
         continue-on-error: true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check Docker Hub login (issue #82)
+      - name: "Check Docker Hub login (issue #82)"
         if: steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
       - name: Determine JS base image
         id: js-base
@@ -1505,7 +1515,7 @@ jobs:
       - name: Build and push essentials box (arm64)
         id: build-push
         continue-on-error: true
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ubuntu/24.04/essentials-box/Dockerfile
@@ -1572,7 +1582,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -1584,7 +1594,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
@@ -1595,22 +1605,21 @@ jobs:
       - name: Log in to Docker Hub
         id: dockerhub-login
         continue-on-error: true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check Docker Hub login (issue #82)
+      - name: "Check Docker Hub login (issue #82)"
         if: steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
-      - name: Create and push essentials multi-arch manifests
+      - name: Create and push essentials multi-arch manifests (GHCR)
         run: |
           VERSION="${{ steps.version.outputs.version }}"
 
-          # GHCR
           docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest \
             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-amd64 \
             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-arm64
@@ -1621,7 +1630,13 @@ jobs:
             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION}-arm64
           docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION}
 
-          # Docker Hub
+          echo "Essentials box GHCR multi-arch manifests pushed for latest and ${VERSION}"
+
+      - name: Create and push essentials multi-arch manifests (Docker Hub)
+        if: steps.dockerhub-login.outcome == 'success'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
           docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest \
             --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64 \
             --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64
@@ -1632,7 +1647,12 @@ jobs:
             --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-arm64
           docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}
 
-          echo "Essentials box multi-arch manifests pushed for latest and ${VERSION}"
+          echo "Essentials box Docker Hub multi-arch manifests pushed for latest and ${VERSION}"
+
+      - name: Skip essentials Docker Hub multi-arch manifests
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub manifest skipped::Skipping essentials Docker Hub multi-arch manifests because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
 
   # === BUILD LANGUAGE IMAGES (amd64) ===
   # All language images are built in parallel on top of essentials box
@@ -1682,7 +1702,7 @@ jobs:
 
       - name: Checkout repository
         if: steps.check-lang.outputs.should_build == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -1711,11 +1731,11 @@ jobs:
 
       - name: Set up Docker Buildx
         if: steps.check-lang.outputs.should_build == 'true'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
         if: steps.check-lang.outputs.should_build == 'true'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
@@ -1727,16 +1747,16 @@ jobs:
         id: dockerhub-login
         if: steps.check-lang.outputs.should_build == 'true'
         continue-on-error: true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check Docker Hub login (issue #82)
+      - name: "Check Docker Hub login (issue #82)"
         if: steps.check-lang.outputs.should_build == 'true' && steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
       - name: Determine essentials base image
         if: steps.check-lang.outputs.should_build == 'true'
@@ -1752,7 +1772,7 @@ jobs:
         id: build-push
         continue-on-error: true
         if: steps.check-lang.outputs.should_build == 'true'
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ubuntu/24.04/${{ matrix.language }}/Dockerfile
@@ -1883,7 +1903,7 @@ jobs:
 
       - name: Checkout repository
         if: steps.check-lang.outputs.should_build == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -1912,11 +1932,11 @@ jobs:
 
       - name: Set up Docker Buildx
         if: steps.check-lang.outputs.should_build == 'true'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
         if: steps.check-lang.outputs.should_build == 'true'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
@@ -1928,16 +1948,16 @@ jobs:
         id: dockerhub-login
         if: steps.check-lang.outputs.should_build == 'true'
         continue-on-error: true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check Docker Hub login (issue #82)
+      - name: "Check Docker Hub login (issue #82)"
         if: steps.check-lang.outputs.should_build == 'true' && steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
       - name: Determine essentials base image
         if: steps.check-lang.outputs.should_build == 'true'
@@ -1953,7 +1973,7 @@ jobs:
         id: build-push
         continue-on-error: true
         if: steps.check-lang.outputs.should_build == 'true'
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ubuntu/24.04/${{ matrix.language }}/Dockerfile
@@ -2056,7 +2076,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -2068,7 +2088,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
@@ -2079,23 +2099,22 @@ jobs:
       - name: Log in to Docker Hub
         id: dockerhub-login
         continue-on-error: true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check Docker Hub login (issue #82)
+      - name: "Check Docker Hub login (issue #82)"
         if: steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
-      - name: Create and push ${{ matrix.language }} multi-arch manifests
+      - name: Create and push ${{ matrix.language }} multi-arch manifests (GHCR)
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           LANG="${{ matrix.language }}"
 
-          # GHCR
           docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest \
             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest-amd64 \
             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest-arm64
@@ -2106,7 +2125,14 @@ jobs:
             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION}-arm64
           docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION}
 
-          # Docker Hub
+          echo "${LANG} box GHCR multi-arch manifests pushed for latest and ${VERSION}"
+
+      - name: Create and push ${{ matrix.language }} multi-arch manifests (Docker Hub)
+        if: steps.dockerhub-login.outcome == 'success'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          LANG="${{ matrix.language }}"
+
           docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:latest \
             --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:latest-amd64 \
             --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:latest-arm64
@@ -2117,7 +2143,12 @@ jobs:
             --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION}-arm64
           docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION}
 
-          echo "${LANG} box multi-arch manifests pushed for latest and ${VERSION}"
+          echo "${LANG} box Docker Hub multi-arch manifests pushed for latest and ${VERSION}"
+
+      - name: Skip ${{ matrix.language }} Docker Hub multi-arch manifests
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub manifest skipped::Skipping ${{ matrix.language }} Docker Hub multi-arch manifests because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
 
   # === BUILD AND PUSH FULL BOX (MAIN - amd64) ===
   docker-build-push:
@@ -2143,7 +2174,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main  # Always use latest main for releases
 
@@ -2170,10 +2201,10 @@ jobs:
           echo "Building version: $VERSION"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
@@ -2184,16 +2215,16 @@ jobs:
       - name: Log in to Docker Hub
         id: dockerhub-login
         continue-on-error: true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check Docker Hub login (issue #82)
+      - name: "Check Docker Hub login (issue #82)"
         if: steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
       - name: Determine base images
         id: base-images
@@ -2220,7 +2251,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
@@ -2233,7 +2264,7 @@ jobs:
 
       - name: Extract metadata for amd64-specific tags
         id: meta-amd64
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
@@ -2249,7 +2280,7 @@ jobs:
       - name: Build and push full box (amd64)
         id: build
         continue-on-error: true
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ubuntu/24.04/full-box/Dockerfile
@@ -2411,7 +2442,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main  # Always use latest main for releases
 
@@ -2438,10 +2469,10 @@ jobs:
           echo "Building version: $VERSION"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
@@ -2452,16 +2483,16 @@ jobs:
       - name: Log in to Docker Hub
         id: dockerhub-login
         continue-on-error: true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check Docker Hub login (issue #82)
+      - name: "Check Docker Hub login (issue #82)"
         if: steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
       - name: Determine base images
         id: base-images
@@ -2486,7 +2517,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
@@ -2502,7 +2533,7 @@ jobs:
       - name: Build and push full box (arm64)
         id: build
         continue-on-error: true
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ubuntu/24.04/full-box/Dockerfile
@@ -2593,7 +2624,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -2606,7 +2637,7 @@ jobs:
           echo "Creating manifest for version: $VERSION"
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
@@ -2617,16 +2648,16 @@ jobs:
       - name: Log in to Docker Hub
         id: dockerhub-login
         continue-on-error: true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check Docker Hub login (issue #82)
+      - name: "Check Docker Hub login (issue #82)"
         if: steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
       - name: Create and push multi-arch manifest (GHCR)
         run: |
@@ -2649,6 +2680,7 @@ jobs:
           echo "GHCR multi-arch manifest created and pushed successfully for latest and ${VERSION}"
 
       - name: Create and push multi-arch manifest (Docker Hub)
+        if: steps.dockerhub-login.outcome == 'success'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
 
@@ -2667,6 +2699,11 @@ jobs:
           docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION}
 
           echo "Docker Hub multi-arch manifest created and pushed successfully for latest and ${VERSION}"
+
+      - name: Skip Docker Hub multi-arch manifest
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub manifest skipped::Skipping Docker Hub multi-arch manifest because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
 
   # === BUILD DIND-BOX VARIANTS (amd64) - issue #80 ===
   # Layers Docker Engine on top of every base box image so each variant has a
@@ -2698,7 +2735,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -2740,10 +2777,10 @@ jobs:
           echo "dind_suffix=${DIND_SUFFIX}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
@@ -2754,21 +2791,21 @@ jobs:
       - name: Log in to Docker Hub
         id: dockerhub-login
         continue-on-error: true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check Docker Hub login (issue #82)
+      - name: "Check Docker Hub login (issue #82)"
         if: steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
       - name: Build and push ${{ matrix.variant }} dind-box (amd64)
         id: build-push
         continue-on-error: true
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ubuntu/24.04/dind/Dockerfile
@@ -2841,7 +2878,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -2881,10 +2918,10 @@ jobs:
           echo "dind_suffix=${DIND_SUFFIX}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
@@ -2895,21 +2932,21 @@ jobs:
       - name: Log in to Docker Hub
         id: dockerhub-login
         continue-on-error: true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check Docker Hub login (issue #82)
+      - name: "Check Docker Hub login (issue #82)"
         if: steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
       - name: Build and push ${{ matrix.variant }} dind-box (arm64)
         id: build-push
         continue-on-error: true
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ubuntu/24.04/dind/Dockerfile
@@ -2975,7 +3012,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -2987,7 +3024,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
@@ -2998,16 +3035,16 @@ jobs:
       - name: Log in to Docker Hub
         id: dockerhub-login
         continue-on-error: true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check Docker Hub login (issue #82)
+      - name: "Check Docker Hub login (issue #82)"
         if: steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
       - name: Compute dind suffix
         id: names
@@ -3019,12 +3056,11 @@ jobs:
             echo "dind_suffix=-${NAME}-dind" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create and push ${{ matrix.variant }} dind multi-arch manifests
+      - name: Create and push ${{ matrix.variant }} dind multi-arch manifests (GHCR)
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           DSUF="${{ steps.names.outputs.dind_suffix }}"
 
-          # GHCR
           docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest \
             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest-amd64 \
             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest-arm64
@@ -3035,7 +3071,14 @@ jobs:
             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}-arm64
           docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}
 
-          # Docker Hub
+          echo "Pushed GHCR multi-arch manifest for ${{ env.GHCR_IMAGE_NAME }}${DSUF} (latest, ${VERSION})"
+
+      - name: Create and push ${{ matrix.variant }} dind multi-arch manifests (Docker Hub)
+        if: steps.dockerhub-login.outcome == 'success'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DSUF="${{ steps.names.outputs.dind_suffix }}"
+
           docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest \
             --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest-amd64 \
             --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest-arm64
@@ -3047,6 +3090,11 @@ jobs:
           docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION}
 
           echo "Pushed multi-arch manifest for ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF} (latest, ${VERSION})"
+
+      - name: Skip ${{ matrix.variant }} dind Docker Hub multi-arch manifests
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub manifest skipped::Skipping ${{ matrix.variant }} dind Docker Hub multi-arch manifests because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
 
   # === CREATE GITHUB RELEASE ===
   create-release:
@@ -3065,7 +3113,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 

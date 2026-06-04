@@ -1,0 +1,32 @@
+Linked post-merge release failure: run 26966607948, job 79583415202, dind-manifest (perl)
+Source file committed in this folder: job-79583415202-dind-manifest-perl.log
+
+job-79583415202-dind-manifest-perl.log:154:
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8277110Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": context deadline exceeded
+
+job-79583415202-dind-manifest-perl.log:217:
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:33.5997507Z failed to configure transport: error pinging v2 registry: Get "https://registry-1.docker.io/v2/": net/http: request canceled while waiting for connection (Client.Timeout exceeded while awaiting headers)
+
+job-79583415202-dind-manifest-perl.log:218:
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:33.6017151Z ##[error]Process completed with exit code 1.
+
+job-79583415202-dind-manifest-perl.log:250:
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:34.6404785Z ##[warning]Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: actions/checkout@v4, docker/login-action@v3. Actions will be forced to run with Node.js 24 by default starting June 16th, 2026. Node.js 20 will be removed from the runner on September 16th, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+
+PR #89 false-positive/non-root-cause excerpts investigated during analysis
+Raw focused logs for these cancelled runs were downloaded during investigation, then omitted from the commit because their summaries and these excerpts were sufficient.
+
+Run 26959450744, pr-test / full:
+2026-06-04T15:25:10.0174262Z ##[error]The runner has received a shutdown signal. This can happen when the runner service is stopped, or a manually started runner is canceled.
+2026-06-04T15:25:10.4201449Z ERROR: failed to build: failed to solve: Canceled: context canceled
+2026-06-04T15:25:10.4409680Z ##[error]The operation was canceled.
+
+Run 26959450744, pr-test / dind-full:
+2026-06-04T15:25:10.2278215Z ##[error]The runner has received a shutdown signal. This can happen when the runner service is stopped, or a manually started runner is canceled.
+2026-06-04T15:25:10.7771153Z ERROR: failed to build: failed to solve: Canceled: context canceled
+2026-06-04T15:25:10.7934647Z ##[error]The operation was canceled.
+
+Run 26961091250, pr-test / dind-js:
+2026-06-04T15:39:32.3549452Z time="2026-06-04T15:38:29.360811782Z" level=info msg="Daemon shutdown complete" error="failed to start daemon: error initializing graphdriver: driver not supported: overlay2"
+2026-06-04T15:39:32.3550230Z failed to start daemon: error initializing graphdriver: driver not supported: overlay2
+2026-06-04T15:39:32.4965168Z ##[error]Process completed with exit code 1.

@@ -1,0 +1,430 @@
+docs/case-studies/issue-90/templates/rust-template-release.yml:42:  # Optional: set repository variable DOCKERHUB_IMAGE to namespace/image to publish Docker Hub releases.
+docs/case-studies/issue-90/templates/rust-template-release.yml:43:  DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_IMAGE }}
+docs/case-studies/issue-90/templates/rust-template-release.yml:308:      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME || secrets.DOCKERHUB_USERNAME }}
+docs/case-studies/issue-90/templates/rust-template-release.yml:309:      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+docs/case-studies/issue-90/templates/rust-template-release.yml:374:      - name: Configure Docker Hub publishing
+docs/case-studies/issue-90/templates/rust-template-release.yml:380:        id: dockerhub
+docs/case-studies/issue-90/templates/rust-template-release.yml:382:          disable_dockerhub() {
+docs/case-studies/issue-90/templates/rust-template-release.yml:387:          if [ -z "$DOCKERHUB_IMAGE" ]; then
+docs/case-studies/issue-90/templates/rust-template-release.yml:388:            disable_dockerhub "Docker Hub publishing disabled: DOCKERHUB_IMAGE repository variable is not set"
+docs/case-studies/issue-90/templates/rust-template-release.yml:393:            disable_dockerhub "Docker Hub publishing disabled: Dockerfile was not found at repository root"
+docs/case-studies/issue-90/templates/rust-template-release.yml:397:          if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+docs/case-studies/issue-90/templates/rust-template-release.yml:398:            echo "::error::Docker Hub publishing requires DOCKERHUB_USERNAME and DOCKERHUB_TOKEN"
+docs/case-studies/issue-90/templates/rust-template-release.yml:399:            echo "Set DOCKERHUB_USERNAME as a repository variable or secret, and DOCKERHUB_TOKEN as a secret."
+docs/case-studies/issue-90/templates/rust-template-release.yml:404:          echo "docker_hub_url=https://hub.docker.com/r/${DOCKERHUB_IMAGE}" >> "$GITHUB_OUTPUT"
+docs/case-studies/issue-90/templates/rust-template-release.yml:406:      - name: Log in to Docker Hub
+docs/case-studies/issue-90/templates/rust-template-release.yml:407:        if: steps.dockerhub.outputs.enabled == 'true'
+docs/case-studies/issue-90/templates/rust-template-release.yml:408:        uses: docker/login-action@v4
+docs/case-studies/issue-90/templates/rust-template-release.yml:410:          username: ${{ env.DOCKERHUB_USERNAME }}
+docs/case-studies/issue-90/templates/rust-template-release.yml:411:          password: ${{ env.DOCKERHUB_TOKEN }}
+docs/case-studies/issue-90/templates/rust-template-release.yml:414:        if: steps.dockerhub.outputs.enabled == 'true'
+docs/case-studies/issue-90/templates/rust-template-release.yml:418:        if: steps.dockerhub.outputs.enabled == 'true'
+docs/case-studies/issue-90/templates/rust-template-release.yml:422:          images: ${{ env.DOCKERHUB_IMAGE }}
+docs/case-studies/issue-90/templates/rust-template-release.yml:429:      - name: Publish Docker image to Docker Hub
+docs/case-studies/issue-90/templates/rust-template-release.yml:430:        if: steps.dockerhub.outputs.enabled == 'true'
+docs/case-studies/issue-90/templates/rust-template-release.yml:446:          DOCKER_HUB_URL: ${{ steps.dockerhub.outputs.docker_hub_url }}
+docs/case-studies/issue-90/templates/rust-template-release.yml:478:      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME || secrets.DOCKERHUB_USERNAME }}
+docs/case-studies/issue-90/templates/rust-template-release.yml:479:      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+docs/case-studies/issue-90/templates/rust-template-release.yml:530:      - name: Configure Docker Hub publishing
+docs/case-studies/issue-90/templates/rust-template-release.yml:535:        id: dockerhub
+docs/case-studies/issue-90/templates/rust-template-release.yml:537:          disable_dockerhub() {
+docs/case-studies/issue-90/templates/rust-template-release.yml:542:          if [ -z "$DOCKERHUB_IMAGE" ]; then
+docs/case-studies/issue-90/templates/rust-template-release.yml:543:            disable_dockerhub "Docker Hub publishing disabled: DOCKERHUB_IMAGE repository variable is not set"
+docs/case-studies/issue-90/templates/rust-template-release.yml:548:            disable_dockerhub "Docker Hub publishing disabled: Dockerfile was not found at repository root"
+docs/case-studies/issue-90/templates/rust-template-release.yml:552:          if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+docs/case-studies/issue-90/templates/rust-template-release.yml:553:            echo "::error::Docker Hub publishing requires DOCKERHUB_USERNAME and DOCKERHUB_TOKEN"
+docs/case-studies/issue-90/templates/rust-template-release.yml:554:            echo "Set DOCKERHUB_USERNAME as a repository variable or secret, and DOCKERHUB_TOKEN as a secret."
+docs/case-studies/issue-90/templates/rust-template-release.yml:559:          echo "docker_hub_url=https://hub.docker.com/r/${DOCKERHUB_IMAGE}" >> "$GITHUB_OUTPUT"
+docs/case-studies/issue-90/templates/rust-template-release.yml:561:      - name: Log in to Docker Hub
+docs/case-studies/issue-90/templates/rust-template-release.yml:562:        if: steps.dockerhub.outputs.enabled == 'true'
+docs/case-studies/issue-90/templates/rust-template-release.yml:563:        uses: docker/login-action@v4
+docs/case-studies/issue-90/templates/rust-template-release.yml:565:          username: ${{ env.DOCKERHUB_USERNAME }}
+docs/case-studies/issue-90/templates/rust-template-release.yml:566:          password: ${{ env.DOCKERHUB_TOKEN }}
+docs/case-studies/issue-90/templates/rust-template-release.yml:569:        if: steps.dockerhub.outputs.enabled == 'true'
+docs/case-studies/issue-90/templates/rust-template-release.yml:573:        if: steps.dockerhub.outputs.enabled == 'true'
+docs/case-studies/issue-90/templates/rust-template-release.yml:577:          images: ${{ env.DOCKERHUB_IMAGE }}
+docs/case-studies/issue-90/templates/rust-template-release.yml:584:      - name: Publish Docker image to Docker Hub
+docs/case-studies/issue-90/templates/rust-template-release.yml:585:        if: steps.dockerhub.outputs.enabled == 'true'
+docs/case-studies/issue-90/templates/rust-template-release.yml:600:          DOCKER_HUB_URL: ${{ steps.dockerhub.outputs.docker_hub_url }}
+docs/case-studies/issue-90/templates/js-template-release.yml:500:  # Optional Docker Hub publishing for packages that also ship Docker images.
+docs/case-studies/issue-90/templates/js-template-release.yml:501:  # Set vars.DOCKERHUB_IMAGE to enable this path, then configure
+docs/case-studies/issue-90/templates/js-template-release.yml:502:  # vars.DOCKERHUB_USERNAME and secrets.DOCKERHUB_TOKEN.
+docs/case-studies/issue-90/templates/js-template-release.yml:504:    name: Optional Docker Hub Publish
+docs/case-studies/issue-90/templates/js-template-release.yml:519:      DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_IMAGE }}
+docs/case-studies/issue-90/templates/js-template-release.yml:520:      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+docs/case-studies/issue-90/templates/js-template-release.yml:521:      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+docs/case-studies/issue-90/templates/js-template-release.yml:534:      - name: Publish Docker image to Docker Hub
+docs/case-studies/issue-90/templates/js-template-release.yml:536:        uses: ./.github/actions/publish-dockerhub
+docs/case-studies/issue-90/templates/js-template-release.yml:541:          token: ${{ env.DOCKERHUB_TOKEN }}
+docs/case-studies/issue-90/templates/js-template-release.yml:542:          username: ${{ env.DOCKERHUB_USERNAME }}
+docs/case-studies/issue-90/templates/js-template-publish-dockerhub-action.yml:1:name: Publish Docker Hub Image
+docs/case-studies/issue-90/templates/js-template-publish-dockerhub-action.yml:2:description: Publish a Docker image to Docker Hub with npm release tags.
+docs/case-studies/issue-90/templates/js-template-publish-dockerhub-action.yml:14:    description: Docker Hub image name, for example namespace/image.
+docs/case-studies/issue-90/templates/js-template-publish-dockerhub-action.yml:17:    description: Docker Hub access token.
+docs/case-studies/issue-90/templates/js-template-publish-dockerhub-action.yml:20:    description: Docker Hub username.
+docs/case-studies/issue-90/templates/js-template-publish-dockerhub-action.yml:32:    - name: Log in to Docker Hub
+docs/case-studies/issue-90/templates/js-template-publish-dockerhub-action.yml:33:      uses: docker/login-action@v4
+docs/case-studies/issue-90/templates/js-template-publish-dockerhub-action.yml:49:    - name: Publish Docker image to Docker Hub
+.github/workflows/release.yml:50:  # Docker Hub
+.github/workflows/release.yml:51:  DOCKERHUB_REGISTRY: docker.io
+.github/workflows/release.yml:52:  DOCKERHUB_IMAGE_NAME: konard/box
+.github/workflows/release.yml:423:  # pull (which fails on PR forks and on Docker Hub outages). The trade-off is
+.github/workflows/release.yml:991:        uses: docker/login-action@v3
+.github/workflows/release.yml:997:      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+.github/workflows/release.yml:999:      - name: Log in to Docker Hub
+.github/workflows/release.yml:1000:        id: dockerhub-login
+.github/workflows/release.yml:1001:        continue-on-error: true
+.github/workflows/release.yml:1002:        uses: docker/login-action@v3
+.github/workflows/release.yml:1004:          registry: ${{ env.DOCKERHUB_REGISTRY }}
+.github/workflows/release.yml:1005:          username: ${{ secrets.DOCKERHUB_USERNAME }}
+.github/workflows/release.yml:1006:          password: ${{ secrets.DOCKERHUB_TOKEN }}
+.github/workflows/release.yml:1008:      - name: Check Docker Hub login (issue #82)
+.github/workflows/release.yml:1009:        if: steps.dockerhub-login.outcome != 'success'
+.github/workflows/release.yml:1011:          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+.github/workflows/release.yml:1015:        continue-on-error: true
+.github/workflows/release.yml:1025:            ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64
+.github/workflows/release.yml:1026:            ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64
+.github/workflows/release.yml:1043:              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64 \
+.github/workflows/release.yml:1044:              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64 \
+.github/workflows/release.yml:1120:        uses: docker/login-action@v3
+.github/workflows/release.yml:1126:      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+.github/workflows/release.yml:1128:      - name: Log in to Docker Hub
+.github/workflows/release.yml:1129:        id: dockerhub-login
+.github/workflows/release.yml:1130:        continue-on-error: true
+.github/workflows/release.yml:1131:        uses: docker/login-action@v3
+.github/workflows/release.yml:1133:          registry: ${{ env.DOCKERHUB_REGISTRY }}
+.github/workflows/release.yml:1134:          username: ${{ secrets.DOCKERHUB_USERNAME }}
+.github/workflows/release.yml:1135:          password: ${{ secrets.DOCKERHUB_TOKEN }}
+.github/workflows/release.yml:1137:      - name: Check Docker Hub login (issue #82)
+.github/workflows/release.yml:1138:        if: steps.dockerhub-login.outcome != 'success'
+.github/workflows/release.yml:1140:          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+.github/workflows/release.yml:1144:        continue-on-error: true
+.github/workflows/release.yml:1154:            ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64
+.github/workflows/release.yml:1155:            ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64
+.github/workflows/release.yml:1172:              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64 \
+.github/workflows/release.yml:1173:              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64 \
+.github/workflows/release.yml:1221:        uses: docker/login-action@v3
+.github/workflows/release.yml:1227:      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+.github/workflows/release.yml:1229:      - name: Log in to Docker Hub
+.github/workflows/release.yml:1230:        id: dockerhub-login
+.github/workflows/release.yml:1231:        continue-on-error: true
+.github/workflows/release.yml:1232:        uses: docker/login-action@v3
+.github/workflows/release.yml:1234:          registry: ${{ env.DOCKERHUB_REGISTRY }}
+.github/workflows/release.yml:1235:          username: ${{ secrets.DOCKERHUB_USERNAME }}
+.github/workflows/release.yml:1236:          password: ${{ secrets.DOCKERHUB_TOKEN }}
+.github/workflows/release.yml:1238:      - name: Check Docker Hub login (issue #82)
+.github/workflows/release.yml:1239:        if: steps.dockerhub-login.outcome != 'success'
+.github/workflows/release.yml:1241:          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+.github/workflows/release.yml:1248:          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest \
+.github/workflows/release.yml:1251:          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest
+.github/workflows/release.yml:1253:          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION} \
+.github/workflows/release.yml:1256:          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION}
+.github/workflows/release.yml:1258:          # Docker Hub
+.github/workflows/release.yml:1259:          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest \
+.github/workflows/release.yml:1260:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64 \
+.github/workflows/release.yml:1261:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64
+.github/workflows/release.yml:1262:          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest
+.github/workflows/release.yml:1264:          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION} \
+.github/workflows/release.yml:1265:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION}-amd64 \
+.github/workflows/release.yml:1266:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION}-arm64
+.github/workflows/release.yml:1267:          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION}
+.github/workflows/release.yml:1329:        uses: docker/login-action@v3
+.github/workflows/release.yml:1335:      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+.github/workflows/release.yml:1337:      - name: Log in to Docker Hub
+.github/workflows/release.yml:1338:        id: dockerhub-login
+.github/workflows/release.yml:1339:        continue-on-error: true
+.github/workflows/release.yml:1340:        uses: docker/login-action@v3
+.github/workflows/release.yml:1342:          registry: ${{ env.DOCKERHUB_REGISTRY }}
+.github/workflows/release.yml:1343:          username: ${{ secrets.DOCKERHUB_USERNAME }}
+.github/workflows/release.yml:1344:          password: ${{ secrets.DOCKERHUB_TOKEN }}
+.github/workflows/release.yml:1346:      - name: Check Docker Hub login (issue #82)
+.github/workflows/release.yml:1347:        if: steps.dockerhub-login.outcome != 'success'
+.github/workflows/release.yml:1349:          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+.github/workflows/release.yml:1356:            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:1358:            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:1363:        continue-on-error: true
+.github/workflows/release.yml:1375:            ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64
+.github/workflows/release.yml:1376:            ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64
+.github/workflows/release.yml:1394:              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64 \
+.github/workflows/release.yml:1395:              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64 \
+.github/workflows/release.yml:1474:        uses: docker/login-action@v3
+.github/workflows/release.yml:1480:      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+.github/workflows/release.yml:1482:      - name: Log in to Docker Hub
+.github/workflows/release.yml:1483:        id: dockerhub-login
+.github/workflows/release.yml:1484:        continue-on-error: true
+.github/workflows/release.yml:1485:        uses: docker/login-action@v3
+.github/workflows/release.yml:1487:          registry: ${{ env.DOCKERHUB_REGISTRY }}
+.github/workflows/release.yml:1488:          username: ${{ secrets.DOCKERHUB_USERNAME }}
+.github/workflows/release.yml:1489:          password: ${{ secrets.DOCKERHUB_TOKEN }}
+.github/workflows/release.yml:1491:      - name: Check Docker Hub login (issue #82)
+.github/workflows/release.yml:1492:        if: steps.dockerhub-login.outcome != 'success'
+.github/workflows/release.yml:1494:          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+.github/workflows/release.yml:1500:            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:1502:            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:1507:        continue-on-error: true
+.github/workflows/release.yml:1519:            ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64
+.github/workflows/release.yml:1520:            ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64
+.github/workflows/release.yml:1538:              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64 \
+.github/workflows/release.yml:1539:              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64 \
+.github/workflows/release.yml:1587:        uses: docker/login-action@v3
+.github/workflows/release.yml:1593:      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+.github/workflows/release.yml:1595:      - name: Log in to Docker Hub
+.github/workflows/release.yml:1596:        id: dockerhub-login
+.github/workflows/release.yml:1597:        continue-on-error: true
+.github/workflows/release.yml:1598:        uses: docker/login-action@v3
+.github/workflows/release.yml:1600:          registry: ${{ env.DOCKERHUB_REGISTRY }}
+.github/workflows/release.yml:1601:          username: ${{ secrets.DOCKERHUB_USERNAME }}
+.github/workflows/release.yml:1602:          password: ${{ secrets.DOCKERHUB_TOKEN }}
+.github/workflows/release.yml:1604:      - name: Check Docker Hub login (issue #82)
+.github/workflows/release.yml:1605:        if: steps.dockerhub-login.outcome != 'success'
+.github/workflows/release.yml:1607:          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+.github/workflows/release.yml:1614:          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest \
+.github/workflows/release.yml:1617:          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest
+.github/workflows/release.yml:1619:          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION} \
+.github/workflows/release.yml:1622:          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION}
+.github/workflows/release.yml:1624:          # Docker Hub
+.github/workflows/release.yml:1625:          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest \
+.github/workflows/release.yml:1626:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64 \
+.github/workflows/release.yml:1627:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64
+.github/workflows/release.yml:1628:          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest
+.github/workflows/release.yml:1630:          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION} \
+.github/workflows/release.yml:1631:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-amd64 \
+.github/workflows/release.yml:1632:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-arm64
+.github/workflows/release.yml:1633:          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}
+.github/workflows/release.yml:1718:        uses: docker/login-action@v3
+.github/workflows/release.yml:1724:      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+.github/workflows/release.yml:1726:      - name: Log in to Docker Hub
+.github/workflows/release.yml:1727:        id: dockerhub-login
+.github/workflows/release.yml:1729:        continue-on-error: true
+.github/workflows/release.yml:1730:        uses: docker/login-action@v3
+.github/workflows/release.yml:1732:          registry: ${{ env.DOCKERHUB_REGISTRY }}
+.github/workflows/release.yml:1733:          username: ${{ secrets.DOCKERHUB_USERNAME }}
+.github/workflows/release.yml:1734:          password: ${{ secrets.DOCKERHUB_TOKEN }}
+.github/workflows/release.yml:1736:      - name: Check Docker Hub login (issue #82)
+.github/workflows/release.yml:1737:        if: steps.check-lang.outputs.should_build == 'true' && steps.dockerhub-login.outcome != 'success'
+.github/workflows/release.yml:1739:          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+.github/workflows/release.yml:1746:            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:1748:            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:1753:        continue-on-error: true
+.github/workflows/release.yml:1766:            ${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64
+.github/workflows/release.yml:1767:            ${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64
+.github/workflows/release.yml:1780:            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64"
+.github/workflows/release.yml:1781:            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64"
+.github/workflows/release.yml:1816:          docker pull ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64
+.github/workflows/release.yml:1817:          PHP_METHOD=$(docker run --rm ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 cat /home/box/.php-install-method 2>/dev/null || echo "unknown")
+.github/workflows/release.yml:1822:            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
+.github/workflows/release.yml:1823:              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}
+.github/workflows/release.yml:1824:            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
+.github/workflows/release.yml:1825:              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64-${PHP_METHOD}
+.github/workflows/release.yml:1826:            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
+.github/workflows/release.yml:1828:            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
+.github/workflows/release.yml:1831:            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}
+.github/workflows/release.yml:1832:            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64-${PHP_METHOD}
+.github/workflows/release.yml:1919:        uses: docker/login-action@v3
+.github/workflows/release.yml:1925:      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+.github/workflows/release.yml:1927:      - name: Log in to Docker Hub
+.github/workflows/release.yml:1928:        id: dockerhub-login
+.github/workflows/release.yml:1930:        continue-on-error: true
+.github/workflows/release.yml:1931:        uses: docker/login-action@v3
+.github/workflows/release.yml:1933:          registry: ${{ env.DOCKERHUB_REGISTRY }}
+.github/workflows/release.yml:1934:          username: ${{ secrets.DOCKERHUB_USERNAME }}
+.github/workflows/release.yml:1935:          password: ${{ secrets.DOCKERHUB_TOKEN }}
+.github/workflows/release.yml:1937:      - name: Check Docker Hub login (issue #82)
+.github/workflows/release.yml:1938:        if: steps.check-lang.outputs.should_build == 'true' && steps.dockerhub-login.outcome != 'success'
+.github/workflows/release.yml:1940:          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+.github/workflows/release.yml:1947:            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:1949:            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:1954:        continue-on-error: true
+.github/workflows/release.yml:1967:            ${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64
+.github/workflows/release.yml:1968:            ${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64
+.github/workflows/release.yml:1981:            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64"
+.github/workflows/release.yml:1982:            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64"
+.github/workflows/release.yml:2017:          docker pull ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64
+.github/workflows/release.yml:2018:          PHP_METHOD=$(docker run --rm ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 cat /home/box/.php-install-method 2>/dev/null || echo "unknown")
+.github/workflows/release.yml:2023:            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
+.github/workflows/release.yml:2024:              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}
+.github/workflows/release.yml:2025:            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
+.github/workflows/release.yml:2026:              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64-${PHP_METHOD}
+.github/workflows/release.yml:2027:            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
+.github/workflows/release.yml:2029:            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
+.github/workflows/release.yml:2032:            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}
+.github/workflows/release.yml:2033:            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64-${PHP_METHOD}
+.github/workflows/release.yml:2071:        uses: docker/login-action@v3
+.github/workflows/release.yml:2077:      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+.github/workflows/release.yml:2079:      - name: Log in to Docker Hub
+.github/workflows/release.yml:2080:        id: dockerhub-login
+.github/workflows/release.yml:2081:        continue-on-error: true
+.github/workflows/release.yml:2082:        uses: docker/login-action@v3
+.github/workflows/release.yml:2084:          registry: ${{ env.DOCKERHUB_REGISTRY }}
+.github/workflows/release.yml:2085:          username: ${{ secrets.DOCKERHUB_USERNAME }}
+.github/workflows/release.yml:2086:          password: ${{ secrets.DOCKERHUB_TOKEN }}
+.github/workflows/release.yml:2088:      - name: Check Docker Hub login (issue #82)
+.github/workflows/release.yml:2089:        if: steps.dockerhub-login.outcome != 'success'
+.github/workflows/release.yml:2091:          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+.github/workflows/release.yml:2099:          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest \
+.github/workflows/release.yml:2102:          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest
+.github/workflows/release.yml:2104:          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION} \
+.github/workflows/release.yml:2107:          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION}
+.github/workflows/release.yml:2109:          # Docker Hub
+.github/workflows/release.yml:2110:          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:latest \
+.github/workflows/release.yml:2111:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:latest-amd64 \
+.github/workflows/release.yml:2112:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:latest-arm64
+.github/workflows/release.yml:2113:          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:latest
+.github/workflows/release.yml:2115:          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION} \
+.github/workflows/release.yml:2116:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION}-amd64 \
+.github/workflows/release.yml:2117:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION}-arm64
+.github/workflows/release.yml:2118:          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION}
+.github/workflows/release.yml:2176:        uses: docker/login-action@v3
+.github/workflows/release.yml:2182:      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+.github/workflows/release.yml:2184:      - name: Log in to Docker Hub
+.github/workflows/release.yml:2185:        id: dockerhub-login
+.github/workflows/release.yml:2186:        continue-on-error: true
+.github/workflows/release.yml:2187:        uses: docker/login-action@v3
+.github/workflows/release.yml:2189:          registry: ${{ env.DOCKERHUB_REGISTRY }}
+.github/workflows/release.yml:2190:          username: ${{ secrets.DOCKERHUB_USERNAME }}
+.github/workflows/release.yml:2191:          password: ${{ secrets.DOCKERHUB_TOKEN }}
+.github/workflows/release.yml:2193:      - name: Check Docker Hub login (issue #82)
+.github/workflows/release.yml:2194:        if: steps.dockerhub-login.outcome != 'success'
+.github/workflows/release.yml:2196:          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+.github/workflows/release.yml:2205:            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-amd64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:2207:            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:2215:              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:${VERSION}-amd64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:2217:              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:latest-amd64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:2227:            ${{ env.DOCKERHUB_IMAGE_NAME }}
+.github/workflows/release.yml:2240:            ${{ env.DOCKERHUB_IMAGE_NAME }}
+.github/workflows/release.yml:2251:        continue-on-error: true
+.github/workflows/release.yml:2334:          IMAGE="${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION}"
+.github/workflows/release.yml:2444:        uses: docker/login-action@v3
+.github/workflows/release.yml:2450:      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+.github/workflows/release.yml:2452:      - name: Log in to Docker Hub
+.github/workflows/release.yml:2453:        id: dockerhub-login
+.github/workflows/release.yml:2454:        continue-on-error: true
+.github/workflows/release.yml:2455:        uses: docker/login-action@v3
+.github/workflows/release.yml:2457:          registry: ${{ env.DOCKERHUB_REGISTRY }}
+.github/workflows/release.yml:2458:          username: ${{ secrets.DOCKERHUB_USERNAME }}
+.github/workflows/release.yml:2459:          password: ${{ secrets.DOCKERHUB_TOKEN }}
+.github/workflows/release.yml:2461:      - name: Check Docker Hub login (issue #82)
+.github/workflows/release.yml:2462:        if: steps.dockerhub-login.outcome != 'success'
+.github/workflows/release.yml:2464:          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+.github/workflows/release.yml:2473:            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-arm64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:2475:            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:2481:              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:${VERSION}-arm64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:2483:              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:latest-arm64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:2493:            ${{ env.DOCKERHUB_IMAGE_NAME }}
+.github/workflows/release.yml:2504:        continue-on-error: true
+.github/workflows/release.yml:2609:        uses: docker/login-action@v3
+.github/workflows/release.yml:2615:      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+.github/workflows/release.yml:2617:      - name: Log in to Docker Hub
+.github/workflows/release.yml:2618:        id: dockerhub-login
+.github/workflows/release.yml:2619:        continue-on-error: true
+.github/workflows/release.yml:2620:        uses: docker/login-action@v3
+.github/workflows/release.yml:2622:          registry: ${{ env.DOCKERHUB_REGISTRY }}
+.github/workflows/release.yml:2623:          username: ${{ secrets.DOCKERHUB_USERNAME }}
+.github/workflows/release.yml:2624:          password: ${{ secrets.DOCKERHUB_TOKEN }}
+.github/workflows/release.yml:2626:      - name: Check Docker Hub login (issue #82)
+.github/workflows/release.yml:2627:        if: steps.dockerhub-login.outcome != 'success'
+.github/workflows/release.yml:2629:          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+.github/workflows/release.yml:2636:          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:latest \
+.github/workflows/release.yml:2640:          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:latest
+.github/workflows/release.yml:2643:          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION} \
+.github/workflows/release.yml:2647:          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION}
+.github/workflows/release.yml:2649:          echo "GHCR multi-arch manifest created and pushed successfully for latest and ${VERSION}"
+.github/workflows/release.yml:2651:      - name: Create and push multi-arch manifest (Docker Hub)
+.github/workflows/release.yml:2655:          # Create manifest for latest tag on Docker Hub
+.github/workflows/release.yml:2656:          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}:latest \
+.github/workflows/release.yml:2657:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}:latest-amd64 \
+.github/workflows/release.yml:2658:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}:latest-arm64
+.github/workflows/release.yml:2660:          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}:latest
+.github/workflows/release.yml:2662:          # Create manifest for version tag on Docker Hub
+.github/workflows/release.yml:2663:          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION} \
+.github/workflows/release.yml:2664:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION}-amd64 \
+.github/workflows/release.yml:2665:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION}-arm64
+.github/workflows/release.yml:2667:          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION}
+.github/workflows/release.yml:2669:          echo "Docker Hub multi-arch manifest created and pushed successfully for latest and ${VERSION}"
+.github/workflows/release.yml:2739:          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-amd64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:2746:        uses: docker/login-action@v3
+.github/workflows/release.yml:2752:      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+.github/workflows/release.yml:2754:      - name: Log in to Docker Hub
+.github/workflows/release.yml:2755:        id: dockerhub-login
+.github/workflows/release.yml:2756:        continue-on-error: true
+.github/workflows/release.yml:2757:        uses: docker/login-action@v3
+.github/workflows/release.yml:2759:          registry: ${{ env.DOCKERHUB_REGISTRY }}
+.github/workflows/release.yml:2760:          username: ${{ secrets.DOCKERHUB_USERNAME }}
+.github/workflows/release.yml:2761:          password: ${{ secrets.DOCKERHUB_TOKEN }}
+.github/workflows/release.yml:2763:      - name: Check Docker Hub login (issue #82)
+.github/workflows/release.yml:2764:        if: steps.dockerhub-login.outcome != 'success'
+.github/workflows/release.yml:2766:          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+.github/workflows/release.yml:2770:        continue-on-error: true
+.github/workflows/release.yml:2782:            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64
+.github/workflows/release.yml:2783:            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64
+.github/workflows/release.yml:2800:              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64 \
+.github/workflows/release.yml:2801:              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64 \
+.github/workflows/release.yml:2880:          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-arm64" >> $GITHUB_OUTPUT
+.github/workflows/release.yml:2887:        uses: docker/login-action@v3
+.github/workflows/release.yml:2893:      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+.github/workflows/release.yml:2895:      - name: Log in to Docker Hub
+.github/workflows/release.yml:2896:        id: dockerhub-login
+.github/workflows/release.yml:2897:        continue-on-error: true
+.github/workflows/release.yml:2898:        uses: docker/login-action@v3
+.github/workflows/release.yml:2900:          registry: ${{ env.DOCKERHUB_REGISTRY }}
+.github/workflows/release.yml:2901:          username: ${{ secrets.DOCKERHUB_USERNAME }}
+.github/workflows/release.yml:2902:          password: ${{ secrets.DOCKERHUB_TOKEN }}
+.github/workflows/release.yml:2904:      - name: Check Docker Hub login (issue #82)
+.github/workflows/release.yml:2905:        if: steps.dockerhub-login.outcome != 'success'
+.github/workflows/release.yml:2907:          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+.github/workflows/release.yml:2911:        continue-on-error: true
+.github/workflows/release.yml:2923:            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64
+.github/workflows/release.yml:2924:            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64
+.github/workflows/release.yml:2941:              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64 \
+.github/workflows/release.yml:2942:              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64 \
+.github/workflows/release.yml:2990:        uses: docker/login-action@v3
+.github/workflows/release.yml:2996:      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+.github/workflows/release.yml:2998:      - name: Log in to Docker Hub
+.github/workflows/release.yml:2999:        id: dockerhub-login
+.github/workflows/release.yml:3000:        continue-on-error: true
+.github/workflows/release.yml:3001:        uses: docker/login-action@v3
+.github/workflows/release.yml:3003:          registry: ${{ env.DOCKERHUB_REGISTRY }}
+.github/workflows/release.yml:3004:          username: ${{ secrets.DOCKERHUB_USERNAME }}
+.github/workflows/release.yml:3005:          password: ${{ secrets.DOCKERHUB_TOKEN }}
+.github/workflows/release.yml:3007:      - name: Check Docker Hub login (issue #82)
+.github/workflows/release.yml:3008:        if: steps.dockerhub-login.outcome != 'success'
+.github/workflows/release.yml:3010:          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+.github/workflows/release.yml:3028:          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest \
+.github/workflows/release.yml:3031:          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest
+.github/workflows/release.yml:3033:          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION} \
+.github/workflows/release.yml:3036:          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}
+.github/workflows/release.yml:3038:          # Docker Hub
+.github/workflows/release.yml:3039:          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest \
+.github/workflows/release.yml:3040:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest-amd64 \
+.github/workflows/release.yml:3041:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest-arm64
+.github/workflows/release.yml:3042:          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest
+.github/workflows/release.yml:3044:          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION} \
+.github/workflows/release.yml:3045:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION}-amd64 \
+.github/workflows/release.yml:3046:            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION}-arm64
+.github/workflows/release.yml:3047:          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION}
+.github/workflows/release.yml:3049:          echo "Pushed multi-arch manifest for ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF} (latest, ${VERSION})"
+.github/workflows/release.yml:3084:          DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_IMAGE_NAME }}
+.github/workflows/release.yml:3091:          # Issue #39: All tags should have clickable links for both Docker Hub and GHCR
+.github/workflows/release.yml:3095:          ### Docker Hub - Combo Boxes
+.github/workflows/release.yml:3099:          | Full Box | [\`${DOCKERHUB_IMAGE}:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}/tags?name=${VERSION}-arm64) |
+.github/workflows/release.yml:3100:          | Essentials | [\`${DOCKERHUB_IMAGE}-essentials:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-essentials/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-essentials/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-essentials/tags?name=${VERSION}-arm64) |
+.github/workflows/release.yml:3101:          | JS | [\`${DOCKERHUB_IMAGE}-js:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-js/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-js/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-js/tags?name=${VERSION}-arm64) |
+.github/workflows/release.yml:3103:          ### Docker Hub - Language Boxes
+.github/workflows/release.yml:3107:          | Python | [\`${DOCKERHUB_IMAGE}-python:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-python/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-python/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-python/tags?name=${VERSION}-arm64) |
+.github/workflows/release.yml:3108:          | Go | [\`${DOCKERHUB_IMAGE}-go:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-go/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-go/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-go/tags?name=${VERSION}-arm64) |
+.github/workflows/release.yml:3109:          | Rust | [\`${DOCKERHUB_IMAGE}-rust:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rust/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rust/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rust/tags?name=${VERSION}-arm64) |
+.github/workflows/release.yml:3110:          | Java | [\`${DOCKERHUB_IMAGE}-java:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-java/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-java/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-java/tags?name=${VERSION}-arm64) |
+.github/workflows/release.yml:3111:          | Kotlin | [\`${DOCKERHUB_IMAGE}-kotlin:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-kotlin/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-kotlin/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-kotlin/tags?name=${VERSION}-arm64) |
+.github/workflows/release.yml:3112:          | Ruby | [\`${DOCKERHUB_IMAGE}-ruby:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-ruby/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-ruby/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-ruby/tags?name=${VERSION}-arm64) |
+.github/workflows/release.yml:3113:          | PHP | [\`${DOCKERHUB_IMAGE}-php:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-php/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-php/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-php/tags?name=${VERSION}-arm64) |
+.github/workflows/release.yml:3114:          | Perl | [\`${DOCKERHUB_IMAGE}-perl:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-perl/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-perl/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-perl/tags?name=${VERSION}-arm64) |
+.github/workflows/release.yml:3115:          | Swift | [\`${DOCKERHUB_IMAGE}-swift:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-swift/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-swift/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-swift/tags?name=${VERSION}-arm64) |
+.github/workflows/release.yml:3116:          | Lean | [\`${DOCKERHUB_IMAGE}-lean:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-lean/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-lean/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-lean/tags?name=${VERSION}-arm64) |
+.github/workflows/release.yml:3117:          | Rocq | [\`${DOCKERHUB_IMAGE}-rocq:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rocq/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rocq/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rocq/tags?name=${VERSION}-arm64) |
+.github/workflows/release.yml:3159:          docker pull ${DOCKERHUB_IMAGE}:${VERSION}
+.github/workflows/release.yml:3165:          docker pull ${DOCKERHUB_IMAGE}:${VERSION}-amd64
+.github/workflows/release.yml:3168:          docker pull ${DOCKERHUB_IMAGE}:${VERSION}-arm64
+.github/workflows/release.yml:3177:          - [Docker Hub](https://hub.docker.com/r/${DOCKERHUB_IMAGE})
+.github/workflows/release.yml:3189:          DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_IMAGE_NAME }}
+.github/workflows/release.yml:3195:            printf '\n### Docker Hub - dind-box (Docker-in-Docker variants, issue #80)\n\n'
+.github/workflows/release.yml:3202:              dh="${DOCKERHUB_IMAGE}${suffix}-dind"
