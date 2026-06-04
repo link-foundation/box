@@ -25,11 +25,26 @@ if [ ! -f "$WF" ]; then
   exit 1
 fi
 
-LOGIN_COUNT=$(grep -c "name: Log in to Docker Hub" "$WF")
-ID_COUNT=$(grep -c "id: dockerhub-login" "$WF")
-COE_COUNT=$(grep -c -B 0 "continue-on-error: true" "$WF" || true)
-CHECK_COUNT=$(grep -c "name: Check Docker Hub login (issue #82)" "$WF")
-COND_COUNT=$(grep -c "steps.dockerhub-login.outcome != 'success'" "$WF")
+read -r LOGIN_COUNT ID_COUNT CHECK_COUNT COND_COUNT < <(
+  python3 - "$WF" <<'PY'
+import re
+import sys
+
+wf = open(sys.argv[1]).read().splitlines()
+login_count = sum("name: Log in to Docker Hub" in line for line in wf)
+id_count = sum("id: dockerhub-login" in line for line in wf)
+check_indices = [
+    i for i, line in enumerate(wf)
+    if re.search(r'name:\s*"?Check Docker Hub login \(issue #82\)"?', line)
+]
+cond_count = sum(
+    any("steps.dockerhub-login.outcome != 'success'" in line for line in wf[i:i + 4])
+    for i in check_indices
+)
+
+print(login_count, id_count, len(check_indices), cond_count)
+PY
+)
 
 printf '%-60s %s\n' "Login steps:"          "$LOGIN_COUNT"
 printf '%-60s %s\n' "id: dockerhub-login:"  "$ID_COUNT"
