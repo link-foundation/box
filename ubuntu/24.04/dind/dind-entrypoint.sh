@@ -2,11 +2,11 @@
 # Entrypoint for dind-box images.
 #
 # Responsibilities:
-#   1. Start the inner Docker daemon (dockerd) in the background as root,
-#      with a storage driver suitable for "Docker inside a container".
+#   1. Start the inner Docker daemon (dockerd) in the background with root
+#      privileges, using scoped passwordless sudo when the image runs as box.
 #   2. Wait for dockerd to be ready on /var/run/docker.sock.
-#   3. Hand off to the standard /usr/local/bin/entrypoint.sh as the box user
-#      so all language environments load exactly like in the regular box.
+#   3. Hand off to the standard /usr/local/bin/entrypoint.sh so all language
+#      environments load exactly like in the regular box.
 #
 # This is the recommended pattern from docker:dind and cruizba/ubuntu-dind.
 # See docs/case-studies/issue-80/CASE-STUDY.md for the full design rationale.
@@ -33,13 +33,48 @@ DIND_SKIP_DAEMON="${DIND_SKIP_DAEMON:-0}"
 log()  { echo "[dind-entrypoint] $*"; }
 warn() { echo "[dind-entrypoint] WARN: $*" >&2; }
 
+as_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    "$@"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo -n "$@"
+  else
+    return 1
+  fi
+}
+
+prepare_log_file() {
+  log_dir="$(dirname "$DIND_LOG_FILE")"
+  if [ -n "$log_dir" ] && [ "$log_dir" != "." ]; then
+    as_root /usr/bin/mkdir -p "$log_dir" 2>/dev/null || true
+  fi
+
+  if ! (: >>"$DIND_LOG_FILE") 2>/dev/null; then
+    warn "Cannot write dockerd log file at ${DIND_LOG_FILE}; falling back to /tmp/dockerd.log"
+    DIND_LOG_FILE="/tmp/dockerd.log"
+    : >>"$DIND_LOG_FILE"
+  fi
+}
+
+fix_socket_permissions() {
+  if [ -S /var/run/docker.sock ]; then
+    as_root /usr/bin/chgrp docker /var/run/docker.sock 2>/dev/null || true
+    as_root /usr/bin/chmod 660 /var/run/docker.sock 2>/dev/null || true
+  fi
+}
+
 start_dockerd() {
   if pgrep -x dockerd >/dev/null 2>&1; then
     log "dockerd already running (pid $(pgrep -x dockerd | head -n1))"
+    fix_socket_permissions
     return 0
   fi
 
-  mkdir -p "$DIND_DATA_ROOT" /var/log /var/run
+  if ! as_root /usr/bin/mkdir -p "$DIND_DATA_ROOT" /var/log /var/run; then
+    warn "Cannot create dockerd runtime directories; sudo may not be configured for box"
+    return 1
+  fi
+  prepare_log_file
 
   # Pick a storage driver. overlay2 is the modern default; if it fails (the host
   # can't mount overlay-on-overlay without fuse-overlayfs), fall back to vfs.
@@ -55,15 +90,24 @@ start_dockerd() {
   log "Starting dockerd (storage-driver=${DIND_STORAGE_DRIVER}, data-root=${DIND_DATA_ROOT})"
 
   # iptables module may not be available in the outer container; let dockerd handle it.
-  nohup dockerd \
-    --host=unix:///var/run/docker.sock \
-    --data-root="$DIND_DATA_ROOT" \
-    --storage-driver="$DIND_STORAGE_DRIVER" \
-    >>"$DIND_LOG_FILE" 2>&1 &
+  if [ "$(id -u)" -eq 0 ]; then
+    nohup /usr/bin/dockerd \
+      --host=unix:///var/run/docker.sock \
+      --data-root="$DIND_DATA_ROOT" \
+      --storage-driver="$DIND_STORAGE_DRIVER" \
+      >>"$DIND_LOG_FILE" 2>&1 &
+  else
+    nohup sudo -n /usr/bin/dockerd \
+      --host=unix:///var/run/docker.sock \
+      --data-root="$DIND_DATA_ROOT" \
+      --storage-driver="$DIND_STORAGE_DRIVER" \
+      >>"$DIND_LOG_FILE" 2>&1 &
+  fi
 
   # Wait until dockerd answers on /var/run/docker.sock.
   i=0
   while [ "$i" -lt "$DIND_WAIT_SECONDS" ]; do
+    fix_socket_permissions
     if docker info >/dev/null 2>&1; then
       log "dockerd is ready after ${i}s"
       return 0
@@ -80,22 +124,18 @@ start_dockerd() {
 }
 
 if [ "$DIND_SKIP_DAEMON" != "1" ]; then
-  if [ "$(id -u)" -eq 0 ]; then
-    start_dockerd || true
-  else
-    warn "Not running as root; cannot start dockerd. Use --user root or set DIND_SKIP_DAEMON=1 to silence."
+  if ! start_dockerd; then
+    warn "dockerd startup failed. Use --user root, check /etc/sudoers.d/box-dind, or set DIND_SKIP_DAEMON=1 to silence."
   fi
 fi
 
 # Ensure the docker socket is group-readable for the box user.
-if [ -S /var/run/docker.sock ]; then
-  chgrp docker /var/run/docker.sock 2>/dev/null || true
-  chmod 660 /var/run/docker.sock 2>/dev/null || true
-fi
+fix_socket_permissions
 
-# Hand off to the box user via the existing entrypoint, which sources all the
-# language environment managers. If no upstream entrypoint exists (e.g. base
-# image is the bare js box), exec the command directly.
+# Hand off via the existing entrypoint, which sources all the language
+# environment managers. If no upstream entrypoint exists (e.g. base image is
+# the bare js box), exec the command directly. Keep the root fallback for
+# explicit --user root runs.
 if [ "$#" -eq 0 ]; then
   set -- /bin/bash
 fi

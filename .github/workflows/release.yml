@@ -855,7 +855,19 @@ jobs:
         run: |
           set -e
           IMG="box-dind-${{ matrix.variant }}"
-          echo "=== Testing ${IMG} (CLI presence only - no privileged mode in PR CI) ==="
+          echo "=== Testing ${IMG} (no privileged mode in PR CI) ==="
+          # Regression check for issue #88: docker exec and entrypoint-bypassed
+          # shells use the image's configured USER, so dind variants must keep
+          # Config.User aligned with the regular box images.
+          CONFIG_USER=$(docker inspect --format '{{.Config.User}}' "$IMG")
+          if [ "$CONFIG_USER" != "box" ]; then
+            echo "Expected ${IMG} Config.User to be box, got '${CONFIG_USER:-<empty>}'"
+            exit 1
+          fi
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'test "$(whoami)" = box'
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'test "$HOME" = /home/box'
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'sudo -n /usr/bin/dockerd --version'
+
           # Verify Docker CLI, dockerd binary, buildx and compose plugins are present.
           # We do NOT start dockerd here because GitHub-hosted runners disallow --privileged.
           docker run --rm --entrypoint=/bin/bash "$IMG" -c 'docker --version'

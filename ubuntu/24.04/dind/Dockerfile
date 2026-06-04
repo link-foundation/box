@@ -52,7 +52,9 @@ WORKDIR /home/box
 
 SHELL ["/bin/bash", "-c"]
 
-# IMPORTANT: dind-entrypoint.sh starts dockerd as root and then drops to box
-# via runuser/su. Do not switch back to USER box here.
+# Keep docker exec behavior consistent with the non-dind box images. The
+# dind entrypoint uses scoped passwordless sudo only for dockerd setup.
+USER box
+ENV HOME=/home/box
 ENTRYPOINT ["/usr/local/bin/dind-entrypoint.sh"]
 CMD ["/bin/bash"]
