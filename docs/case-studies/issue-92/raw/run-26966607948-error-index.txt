@@ -1,0 +1,2 @@
+199165:dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8277110Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": context deadline exceeded
+199229:dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:33.6017151Z ##[error]Process completed with exit code 1.

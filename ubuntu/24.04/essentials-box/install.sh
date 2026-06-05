@@ -12,6 +12,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$SCRIPT_DIR/../common.sh" ]; then
   source "$SCRIPT_DIR/../common.sh"
+elif [ -f "/tmp/common.sh" ]; then
+  source "/tmp/common.sh"
 else
   # Inline fallback logging
   log_info() { echo "[*] $1"; }
@@ -22,6 +24,7 @@ else
   log_step() { echo "==> $1"; }
   command_exists() { command -v "$1" &>/dev/null; }
   maybe_sudo() { if [ "$EUID" -eq 0 ]; then "$@"; elif command -v sudo &>/dev/null; then sudo "$@"; else "$@"; fi; }
+  apt_update_with_retry() { maybe_sudo apt-get update -y -o Acquire::Retries=3; }
 fi
 
 log_step "Installing Essentials Box (on top of JS box)"
@@ -69,7 +72,7 @@ for pair in "microsoft-edge:microsoft-edge-stable" "google-chrome:google-chrome-
   fi
 done
 
-maybe_sudo apt update -y || true
+apt_update_with_retry
 
 # Core system tools
 maybe_sudo apt install -y \
@@ -103,7 +106,7 @@ if ! command_exists gh; then
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
     | maybe_sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
 
-  maybe_sudo apt update -y
+  apt_update_with_retry
   maybe_sudo apt install -y gh
   log_success "GitHub CLI installed"
 else

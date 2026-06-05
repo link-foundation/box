@@ -14,9 +14,12 @@ else
   log_step() { echo "==> $1"; }
   command_exists() { command -v "$1" &>/dev/null; }
   maybe_sudo() { if [ "$EUID" -eq 0 ]; then "$@"; elif command -v sudo &>/dev/null; then sudo "$@"; else "$@"; fi; }
+  apt_update_with_retry() { maybe_sudo apt-get update -y -o Acquire::Retries=3; }
 fi
 
 log_step "Installing C/C++ Development Tools"
+
+apt_update_with_retry
 
 log_info "Installing build-essential, CMake, Clang/LLVM, LLD..."
 maybe_sudo apt install -y build-essential cmake clang llvm lld

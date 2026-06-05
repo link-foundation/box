@@ -1,0 +1,77 @@
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:05:55.4730931Z env:
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:05:55.4731143Z   GHCR_REGISTRY: ghcr.io
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:05:55.4731425Z   GHCR_IMAGE_NAME: link-foundation/box
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:05:55.4731735Z   DOCKERHUB_REGISTRY: docker.io
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:05:55.4732169Z   DOCKERHUB_IMAGE_NAME: ***/box
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:05:55.4732523Z ##[endgroup]
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:05:55.7943934Z Logging into docker.io...
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8277110Z ##[error]Error response from daemon: Get "https://registry-1.docker.io/v2/": context deadline exceeded
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8606715Z ##[group]Run echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=failure). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8609032Z ^[[36;1mecho "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=failure). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail."^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8636305Z shell: /usr/bin/bash -e {0}
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8636579Z env:
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8636783Z   GHCR_REGISTRY: ghcr.io
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8637079Z   GHCR_IMAGE_NAME: link-foundation/box
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8637384Z   DOCKERHUB_REGISTRY: docker.io
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8637992Z   DOCKERHUB_IMAGE_NAME: ***/box
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8638258Z ##[endgroup]
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8691444Z ##[warning]Docker Hub login failed (outcome=failure). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; pushes to docker.io will be skipped or fail.
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8834602Z ##[group]Run NAME="perl"
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8834927Z ^[[36;1mNAME="perl"^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8835176Z ^[[36;1mif [ "$NAME" = "full" ]; then^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8835493Z ^[[36;1m  echo "dind_suffix=-dind" >> $GITHUB_OUTPUT^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8835822Z ^[[36;1melse^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8836135Z ^[[36;1m  echo "dind_suffix=-${NAME}-dind" >> $GITHUB_OUTPUT^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8836462Z ^[[36;1mfi^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8862183Z shell: /usr/bin/bash -e {0}
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8862618Z env:
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8862824Z   GHCR_REGISTRY: ghcr.io
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8863091Z   GHCR_IMAGE_NAME: link-foundation/box
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8863544Z   DOCKERHUB_REGISTRY: docker.io
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8863921Z   DOCKERHUB_IMAGE_NAME: ***/box
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.8864175Z ##[endgroup]
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9032733Z ##[group]Run VERSION="2.1.2"
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9033092Z ^[[36;1mVERSION="2.1.2"^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9033635Z ^[[36;1mDSUF="-perl-dind"^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9033936Z ^[[36;1m^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9034146Z ^[[36;1m# GHCR^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9034495Z ^[[36;1mdocker manifest create ghcr.io/link-foundation/box${DSUF}:latest \^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9035026Z ^[[36;1m  --amend ghcr.io/link-foundation/box${DSUF}:latest-amd64 \^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9035502Z ^[[36;1m  --amend ghcr.io/link-foundation/box${DSUF}:latest-arm64^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9035973Z ^[[36;1mdocker manifest push ghcr.io/link-foundation/box${DSUF}:latest^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9036386Z ^[[36;1m^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9036723Z ^[[36;1mdocker manifest create ghcr.io/link-foundation/box${DSUF}:${VERSION} \^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9037223Z ^[[36;1m  --amend ghcr.io/link-foundation/box${DSUF}:${VERSION}-amd64 \^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9037709Z ^[[36;1m  --amend ghcr.io/link-foundation/box${DSUF}:${VERSION}-arm64^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9038186Z ^[[36;1mdocker manifest push ghcr.io/link-foundation/box${DSUF}:${VERSION}^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9038572Z ^[[36;1m^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9038774Z ^[[36;1m# Docker Hub^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9039180Z ^[[36;1mdocker manifest create ***/box${DSUF}:latest \^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9039571Z ^[[36;1m  --amend ***/box${DSUF}:latest-amd64 \^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9039933Z ^[[36;1m  --amend ***/box${DSUF}:latest-arm64^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9040296Z ^[[36;1mdocker manifest push ***/box${DSUF}:latest^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9040602Z ^[[36;1m^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9040883Z ^[[36;1mdocker manifest create ***/box${DSUF}:${VERSION} \^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9041287Z ^[[36;1m  --amend ***/box${DSUF}:${VERSION}-amd64 \^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9041636Z ^[[36;1m  --amend ***/box${DSUF}:${VERSION}-arm64^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9042025Z ^[[36;1mdocker manifest push ***/box${DSUF}:${VERSION}^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9042343Z ^[[36;1m^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9042700Z ^[[36;1mecho "Pushed multi-arch manifest for ***/box${DSUF} (latest, ${VERSION})"^[[0m
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9068674Z shell: /usr/bin/bash -e {0}
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9068943Z env:
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9069158Z   GHCR_REGISTRY: ghcr.io
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9069429Z   GHCR_IMAGE_NAME: link-foundation/box
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9069724Z   DOCKERHUB_REGISTRY: docker.io
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9070047Z   DOCKERHUB_IMAGE_NAME: ***/box
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:10.9070308Z ##[endgroup]
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:13.6743725Z Created manifest list ghcr.io/link-foundation/box-perl-dind:latest
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:14.7397869Z sha256:c682aa4fa1a37b2f4ac634e159465882dfc16cb4b90683d2e38f906a9e278353
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:17.5830412Z Created manifest list ghcr.io/link-foundation/box-perl-dind:2.1.2
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:18.5802139Z sha256:c682aa4fa1a37b2f4ac634e159465882dfc16cb4b90683d2e38f906a9e278353
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:33.5997507Z failed to configure transport: error pinging v2 registry: Get "https://registry-1.docker.io/v2/": net/http: request canceled while waiting for connection (Client.Timeout exceeded while awaiting headers)
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:33.6017151Z ##[error]Process completed with exit code 1.
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:33.6278628Z Post job cleanup.
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:33.9425886Z ##[group]Logout from docker.io
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:33.9475854Z [command]/usr/bin/docker logout docker.io
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:33.9610994Z Removing login credentials for docker.io
+dind-manifest (perl)	UNKNOWN STEP	2026-06-04T18:06:33.9650149Z ##[endgroup]

@@ -1,12 +1,16 @@
 ARG ESSENTIALS_IMAGE=konard/box-essentials:latest
 FROM ${ESSENTIALS_IMAGE}
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Build: docker build -f ubuntu/24.04/rocq/Dockerfile --build-arg ESSENTIALS_IMAGE=box-essentials -t box-rocq .
 
 # Rocq/Coq box: Opam + Rocq theorem prover
 # Built on top of essentials-box (inherits JS, git, gh, glab, dev libraries)
 
 USER root
-RUN apt-get update -y && apt-get install -y bubblewrap && \
+COPY ubuntu/24.04/common.sh /tmp/common.sh
+RUN . /tmp/common.sh && \
+    apt_update_with_retry && \
+    apt-get install -y bubblewrap && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 USER box

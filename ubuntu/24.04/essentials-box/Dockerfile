@@ -1,5 +1,6 @@
 ARG JS_IMAGE=konard/box-js:latest
 FROM ${JS_IMAGE}
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Essentials Box Docker image
 # Built on top of the JS box, adds git identity tools (gh, glab)
@@ -23,11 +24,16 @@ COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 RUN chmod +x /tmp/install.sh /tmp/common.sh /usr/local/bin/entrypoint.sh && \
     DOCKER_BUILD=1 bash /tmp/install.sh && \
-    rm -f /tmp/install.sh /tmp/common.sh
+    rm -f /tmp/install.sh
+
+COPY ubuntu/24.04/common.sh /tmp/common.sh
 
 # Install ACL support for shared group permissions on /home/box
-RUN apt-get update -y && apt-get install -y acl && \
+RUN . /tmp/common.sh && \
+    apt_update_with_retry && \
+    apt-get install -y acl && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    rm -f /tmp/common.sh && \
     setfacl -R -m g:box:rwx /home/box && \
     setfacl -d -m g:box:rwx /home/box
 

@@ -63,16 +63,46 @@ maybe_sudo() {
   fi
 }
 
+# Retry apt metadata refreshes. Ubuntu mirrors can briefly serve mismatched
+# Release and Packages files while syncing, which exits as apt code 100.
+apt_update_with_retry() {
+  local max_retries="${APT_UPDATE_MAX_RETRIES:-5}"
+  local initial_delay="${APT_UPDATE_INITIAL_DELAY:-5}"
+  local attempt=1
+  local delay="$initial_delay"
+
+  while [ "$attempt" -le "$max_retries" ]; do
+    log_info "Updating apt sources (attempt ${attempt}/${max_retries})..."
+    if maybe_sudo apt-get update -y \
+      -o Acquire::Retries=3 \
+      -o Acquire::http::Timeout=30 \
+      -o Acquire::https::Timeout=30; then
+      log_success "Apt sources updated"
+      return 0
+    fi
+
+    if [ "$attempt" -eq "$max_retries" ]; then
+      log_error "Apt update failed after ${max_retries} attempts"
+      return 1
+    fi
+
+    log_warning "Apt update failed; clearing apt list state and retrying in ${delay}s"
+    maybe_sudo rm -rf /var/lib/apt/lists/partial /var/lib/apt/lists/*
+    sleep "$delay"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
+}
+
 # Safe apt update
 apt_update_safe() {
-  log_info "Updating apt sources..."
   for f in /etc/apt/sources.list.d/*.list; do
     if [ -f "$f" ] && ! grep -Eq "^deb " "$f"; then
       log_warning "Removing malformed apt source: $f"
       maybe_sudo rm -f "$f"
     fi
   done
-  maybe_sudo apt update -y || true
+  apt_update_with_retry || true
 }
 
 # Cleanup apt cache

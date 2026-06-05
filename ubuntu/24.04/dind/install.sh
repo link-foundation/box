@@ -20,6 +20,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$SCRIPT_DIR/../common.sh" ]; then
   # shellcheck disable=SC1091
   source "$SCRIPT_DIR/../common.sh"
+elif [ -f "/tmp/common.sh" ]; then
+  # shellcheck disable=SC1091
+  source "/tmp/common.sh"
 else
   log_info() { echo "[*] $1"; }
   log_success() { echo "[✓] $1"; }
@@ -28,6 +31,7 @@ else
   log_step() { echo "==> $1"; }
   command_exists() { command -v "$1" &>/dev/null; }
   maybe_sudo() { if [ "$EUID" -eq 0 ]; then "$@"; elif command -v sudo &>/dev/null; then sudo "$@"; else "$@"; fi; }
+  apt_update_with_retry() { maybe_sudo apt-get update -y -o Acquire::Retries=3; }
 fi
 
 log_step "Installing Docker-in-Docker (dind-box) layer"
@@ -46,7 +50,7 @@ log_step "Adding Docker apt repository"
 
 export DEBIAN_FRONTEND=noninteractive
 
-maybe_sudo apt-get update -y
+apt_update_with_retry
 maybe_sudo apt-get install -y \
   ca-certificates curl gnupg lsb-release iptables uidmap
 
@@ -62,7 +66,7 @@ echo "deb [arch=${ARCH} signed-by=/etc/apt/keyrings/docker.gpg] https://download
   | maybe_sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 log_step "Installing docker-ce, docker-ce-cli, containerd.io, buildx, compose"
-maybe_sudo apt-get update -y
+apt_update_with_retry
 maybe_sudo apt-get install -y \
   docker-ce \
   docker-ce-cli \

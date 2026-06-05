@@ -1,5 +1,6 @@
 ARG ESSENTIALS_IMAGE=konard/box-essentials:latest
 FROM ${ESSENTIALS_IMAGE}
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Build: docker build -f ubuntu/24.04/php/Dockerfile --build-arg ESSENTIALS_IMAGE=box-essentials -t box-php .
 
 # PHP box: PHP 8.3 via Homebrew (user-specific/local) with apt fallback (global)
@@ -43,11 +44,12 @@ RUN PHP_HOMEBREW_TIMEOUT=${PHP_HOMEBREW_TIMEOUT} PHP_VERBOSE=${PHP_VERBOSE} bash
 
 # --- Step 3: Handle global fallback (apt install as root if needed) ---
 USER root
-RUN PHP_METHOD=$(cat /home/box/.php-install-method 2>/dev/null || echo "unknown") && \
+RUN . /tmp/common.sh && \
+    PHP_METHOD=$(cat /home/box/.php-install-method 2>/dev/null || echo "unknown") && \
     echo "PHP install method: $PHP_METHOD" && \
     if [ "$PHP_METHOD" = "global" ]; then \
       echo "Installing PHP globally via apt (Homebrew failed/timed out)..." && \
-      apt-get update -y && \
+      apt_update_with_retry && \
       apt-get install -y \
         php8.3-cli php8.3-common php8.3-curl php8.3-mbstring \
         php8.3-xml php8.3-zip php8.3-bcmath php8.3-opcache && \

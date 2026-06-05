@@ -13,6 +13,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$SCRIPT_DIR/../common.sh" ]; then
   source "$SCRIPT_DIR/../common.sh"
+elif [ -f "/tmp/common.sh" ]; then
+  source "/tmp/common.sh"
 else
   # Inline fallback logging
   log_info() { echo "[*] $1"; }
@@ -23,6 +25,7 @@ else
   log_step() { echo "==> $1"; }
   command_exists() { command -v "$1" &>/dev/null; }
   maybe_sudo() { if [ "$EUID" -eq 0 ]; then "$@"; elif command -v sudo &>/dev/null; then sudo "$@"; else "$@"; fi; }
+  apt_update_with_retry() { maybe_sudo apt-get update -y -o Acquire::Retries=3; }
 fi
 
 log_step "Installing Full Box (on top of essentials)"
@@ -30,7 +33,7 @@ log_step "Installing Full Box (on top of essentials)"
 # --- Install additional system packages ---
 log_step "Installing additional system packages"
 
-maybe_sudo apt update -y || true
+apt_update_with_retry
 
 # .NET SDK
 log_info "Installing .NET SDK 8.0..."

@@ -49,14 +49,17 @@ FROM ${ESSENTIALS_IMAGE}
 USER root
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /home/box
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Copy entrypoint script
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY ubuntu/24.04/common.sh /tmp/common.sh
 
 # --- Install system-level packages (cannot be COPY'd from images) ---
 # Note: PHP is NOT installed here unconditionally - it depends on the php-stage method
-RUN apt-get update -y && \
+RUN . /tmp/common.sh && \
+    apt_update_with_retry && \
     apt-get install -y \
       dotnet-sdk-8.0 \
       r-base \
@@ -93,11 +96,12 @@ COPY --from=php-stage --chown=box:box /home/box/.php-install-method /home/box/.p
 RUN mkdir -p /home/linuxbrew/.linuxbrew && \
     chown -R box:box /home/linuxbrew
 COPY --from=php-stage --chown=box:box /home/linuxbrew/.linuxbrew/ /home/linuxbrew/.linuxbrew/
-RUN PHP_METHOD=$(cat /home/box/.php-install-method 2>/dev/null || echo "unknown") && \
+RUN . /tmp/common.sh && \
+    PHP_METHOD=$(cat /home/box/.php-install-method 2>/dev/null || echo "unknown") && \
     echo "PHP install method from php-stage: $PHP_METHOD" && \
     if [ "$PHP_METHOD" = "global" ]; then \
       echo "Installing PHP globally via apt (matching php-stage method)..." && \
-      apt-get update -y && \
+      apt_update_with_retry && \
       apt-get install -y \
         php8.3-cli php8.3-common php8.3-curl php8.3-mbstring \
         php8.3-xml php8.3-zip php8.3-bcmath php8.3-opcache && \
@@ -106,7 +110,8 @@ RUN PHP_METHOD=$(cat /home/box/.php-install-method 2>/dev/null || echo "unknown"
       echo "[✓] PHP installed globally via apt in full-box"; \
     else \
       echo "[✓] PHP available via Homebrew (local/user-specific) from php-stage"; \
-    fi
+    fi && \
+    rm -f /tmp/common.sh
 
 # Perl (Perlbrew)
 COPY --from=perl-stage --chown=box:box /home/box/.perl5 /home/box/.perl5
