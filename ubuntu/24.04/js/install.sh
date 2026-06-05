@@ -6,6 +6,8 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$SCRIPT_DIR/../common.sh" ]; then
   source "$SCRIPT_DIR/../common.sh"
+elif [ -f "/tmp/common.sh" ]; then
+  source "/tmp/common.sh"
 else
   set -euo pipefail
   log_info() { echo "[*] $1"; }

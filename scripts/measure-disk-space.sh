@@ -56,6 +56,35 @@ maybe_sudo() {
   fi
 }
 
+apt_update_with_retry() {
+  local max_retries="${APT_UPDATE_MAX_RETRIES:-5}"
+  local initial_delay="${APT_UPDATE_INITIAL_DELAY:-5}"
+  local attempt=1
+  local delay="$initial_delay"
+
+  while [ "$attempt" -le "$max_retries" ]; do
+    log_info "Updating apt sources (attempt ${attempt}/${max_retries})..."
+    if maybe_sudo apt-get update -y \
+      -o Acquire::Retries=3 \
+      -o Acquire::http::Timeout=30 \
+      -o Acquire::https::Timeout=30; then
+      log_success "Apt sources updated"
+      return 0
+    fi
+
+    if [ "$attempt" -eq "$max_retries" ]; then
+      log_error "Apt update failed after ${max_retries} attempts"
+      return 1
+    fi
+
+    log_warning "Apt update failed; clearing apt list state and retrying in ${delay}s"
+    maybe_sudo rm -rf /var/lib/apt/lists/partial /var/lib/apt/lists/*
+    sleep "$delay"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
+}
+
 # Get current disk usage in bytes
 get_disk_usage_bytes() {
   df / --output=used --block-size=1 | tail -1 | tr -d '[:space:]'
@@ -234,7 +263,7 @@ fi
 
 # --- Prepare APT ---
 log_step "Preparing APT sources"
-maybe_sudo apt update -y || true
+apt_update_with_retry || true
 cleanup_for_measurement
 
 # ============================================================================
@@ -276,7 +305,7 @@ install_gh_cli() {
   maybe_sudo mkdir -p -m 755 /etc/apt/sources.list.d
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
     | maybe_sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-  maybe_sudo apt update -y
+  apt_update_with_retry
   maybe_sudo apt install -y gh
 }
 

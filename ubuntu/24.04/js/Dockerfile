@@ -10,8 +10,11 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /home/box
 
+COPY ubuntu/24.04/common.sh /tmp/common.sh
+
 # Install minimal system prerequisites
-RUN apt update -y && \
+RUN . /tmp/common.sh && \
+    apt_update_with_retry && \
     apt install -y curl git sudo ca-certificates unzip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -20,7 +23,8 @@ RUN apt update -y && \
 # Source: https://playwright.dev/docs/browsers#install-system-dependencies
 #         https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/registry/nativeDeps.ts
 #         https://pptr.dev/troubleshooting
-RUN apt-get update -y && \
+RUN . /tmp/common.sh && \
+    apt_update_with_retry && \
     apt-get install -y \
       libasound2t64 \
       libatk-bridge2.0-0t64 \
@@ -109,7 +113,6 @@ RUN groupadd box && \
     chmod 2775 /home/box
 
 # Copy and run install script
-COPY ubuntu/24.04/common.sh /tmp/common.sh
 COPY ubuntu/24.04/js/install.sh /tmp/install.sh
 RUN chmod +x /tmp/install.sh /tmp/common.sh && \
     su - box -c "bash /tmp/install.sh" && \

@@ -14,12 +14,14 @@ else
   log_step() { echo "==> $1"; }
   command_exists() { command -v "$1" &>/dev/null; }
   maybe_sudo() { if [ "$EUID" -eq 0 ]; then "$@"; elif command -v sudo &>/dev/null; then sudo "$@"; else "$@"; fi; }
+  apt_update_with_retry() { maybe_sudo apt-get update -y -o Acquire::Retries=3; }
 fi
 
 log_step "Installing R"
 
 if ! command_exists R; then
   log_info "Installing R statistical language..."
+  apt_update_with_retry
   maybe_sudo apt install -y r-base
   log_success "R language installed"
 else

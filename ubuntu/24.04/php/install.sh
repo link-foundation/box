@@ -29,6 +29,7 @@ else
   log_step() { echo "==> $1"; }
   command_exists() { command -v "$1" &>/dev/null; }
   maybe_sudo() { if [ "$EUID" -eq 0 ]; then "$@"; elif command -v sudo &>/dev/null; then sudo "$@"; else "$@"; fi; }
+  apt_update_with_retry() { maybe_sudo apt-get update -y -o Acquire::Retries=3; }
 fi
 
 # Timeout for Homebrew PHP installation (default: 30 minutes)
@@ -176,7 +177,7 @@ PHP_PATH_EOF
 install_php_apt() {
   log_info "Installing PHP via apt packages (global fallback)..."
 
-  maybe_sudo apt-get update -y || {
+  apt_update_with_retry || {
     log_warning "apt update failed"
   }
 

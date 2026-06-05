@@ -6,7 +6,10 @@ FROM ${ESSENTIALS_IMAGE}
 # Built on top of essentials-box (inherits JS, git, gh, glab, dev libraries)
 
 USER root
-RUN apt-get update -y && apt-get install -y bubblewrap && \
+COPY ubuntu/24.04/common.sh /tmp/common.sh
+RUN . /tmp/common.sh && \
+    apt_update_with_retry && \
+    apt-get install -y bubblewrap && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 USER box
