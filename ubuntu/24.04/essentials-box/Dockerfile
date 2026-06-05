@@ -26,6 +26,8 @@ RUN chmod +x /tmp/install.sh /tmp/common.sh /usr/local/bin/entrypoint.sh && \
     DOCKER_BUILD=1 bash /tmp/install.sh && \
     rm -f /tmp/install.sh
 
+COPY ubuntu/24.04/common.sh /tmp/common.sh
+
 # Install ACL support for shared group permissions on /home/box
 RUN . /tmp/common.sh && \
     apt_update_with_retry && \

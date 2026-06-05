@@ -89,6 +89,20 @@ end
   end
 end
 
+essentials_dockerfile = File.read("ubuntu/24.04/essentials-box/Dockerfile")
+essentials_install_run = essentials_dockerfile.index("DOCKER_BUILD=1 bash /tmp/install.sh")
+essentials_acl_run = essentials_dockerfile.index("RUN . /tmp/common.sh &&")
+essentials_common_recopy = essentials_dockerfile.rindex(
+  "COPY ubuntu/24.04/common.sh /tmp/common.sh",
+  essentials_acl_run || 0,
+)
+
+unless essentials_install_run && essentials_acl_run && essentials_common_recopy &&
+       essentials_install_run < essentials_common_recopy &&
+       essentials_common_recopy < essentials_acl_run
+  checks << "essentials-box Dockerfile must recopy common.sh before the ACL layer"
+end
+
 unless measure_workflow.include?("apt_update_with_retry")
   checks << "measure-disk-space workflow must use apt_update_with_retry"
 end
