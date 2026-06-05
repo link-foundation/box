@@ -1,0 +1,143 @@
+152482-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:55.5054876Z #11 1.742 Get:27 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]
+152483-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:55.5055975Z #11 1.758 Get:24 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [2525 kB]
+152484-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:55.6573551Z #11 1.758 Err:24 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages
+152485:build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:55.6574690Z #11 1.759   File has unexpected size (2525257 != 2525258). Mirror sync in progress? [IP: 104.20.28.246 80]
+152486-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:55.6575475Z #11 1.759   Hashes of expected file:
+152487-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:55.6576082Z #11 1.759    - Filesize:2525258 [weak]
+152488-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:55.6576831Z #11 1.759    - SHA256:0c4edbf7e4dd09a8ccbcd0c40d014cbc9214cc4c1ace54008d352561f50c2831
+--
+152491-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:55.6579188Z #11 1.760   Release file created at: Thu, 04 Jun 2026 22:48:04 +0000
+152492-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.0659773Z #11 2.318 Fetched 36.1 MB in 2s (16.2 MB/s)
+152493-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.7878629Z #11 2.318 Reading package lists...
+152494:build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8437458Z #11 3.052 E: Failed to fetch http://archive.ubuntu.com/ubuntu/dists/noble-updates/main/binary-amd64/Packages.gz  File has unexpected size (2525257 != 2525258). Mirror sync in progress? [IP: 104.20.28.246 80]
+152495-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8438483Z #11 3.052    Hashes of expected file:
+152496-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8438837Z #11 3.052     - Filesize:2525258 [weak]
+152497-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8439490Z #11 3.052     - SHA256:0c4edbf7e4dd09a8ccbcd0c40d014cbc9214cc4c1ace54008d352561f50c2831
+152498-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8440244Z #11 3.052     - SHA1:840a5c4280d6ae88c9a9627832fc55c5c5538f93 [weak]
+152499-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8440649Z #11 3.052     - MD5Sum:57857eff3cae42a7707b9e0a139276d7 [weak]
+152500-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8441854Z #11 3.052    Release file created at: Thu, 04 Jun 2026 22:48:04 +0000
+152501:build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8442635Z #11 3.052 E: Some index files failed to download. They have been ignored, or old ones used instead.
+152502-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8444043Z #11 ERROR: process "/bin/bash -c chmod +x /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh &&     bash /tmp/install.sh &&     rm -f /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh" did not complete successfully: exit code: 100
+152503-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8445443Z ------
+152504-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8446146Z  > [5/7] RUN chmod +x /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh &&     bash /tmp/install.sh &&     rm -f /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh:
+152505-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8447337Z 1.760   Release file created at: Thu, 04 Jun 2026 22:48:04 +0000
+152506-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8447731Z
+152507:build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8448834Z 3.052 E: Failed to fetch http://archive.ubuntu.com/ubuntu/dists/noble-updates/main/binary-amd64/Packages.gz  File has unexpected size (2525257 != 2525258). Mirror sync in progress? [IP: 104.20.28.246 80]
+152508-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8450022Z 3.052    Hashes of expected file:
+152509-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8450295Z 3.052     - Filesize:2525258 [weak]
+152510-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8450860Z 3.052     - SHA256:0c4edbf7e4dd09a8ccbcd0c40d014cbc9214cc4c1ace54008d352561f50c2831
+152511-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8451737Z 3.052     - SHA1:840a5c4280d6ae88c9a9627832fc55c5c5538f93 [weak]
+152512-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8452314Z 3.052     - MD5Sum:57857eff3cae42a7707b9e0a139276d7 [weak]
+152513-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8452868Z 3.052    Release file created at: Thu, 04 Jun 2026 22:48:04 +0000
+152514:build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8453523Z 3.052 E: Some index files failed to download. They have been ignored, or old ones used instead.
+152515-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8454138Z ------
+152516-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8496030Z Dockerfile:40
+152517-build-dind-amd64 (python)	Build and push python dind-box (amd64)	2026-06-04T23:26:56.8496385Z --------------------
+--
+152628-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:01.1619609Z #9 3.805 Get:27 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [671 B]
+152629-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:01.1620704Z #9 3.812 Get:21 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [2525 kB]
+152630-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:01.1622151Z #9 3.812 Err:21 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages
+152631:build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:01.1623202Z #9 3.812   File has unexpected size (2525257 != 2525258). Mirror sync in progress? [IP: 172.66.152.176 80]
+152632-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:01.1623685Z #9 3.812   Hashes of expected file:
+152633-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:01.1623961Z #9 3.812    - Filesize:2525258 [weak]
+152634-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:01.1624390Z #9 3.812    - SHA256:0c4edbf7e4dd09a8ccbcd0c40d014cbc9214cc4c1ace54008d352561f50c2831
+--
+152637-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:01.1625626Z #9 3.812   Release file created at: Thu, 04 Jun 2026 22:48:04 +0000
+152638-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:01.6166558Z #9 4.418 Fetched 36.1 MB in 4s (8335 kB/s)
+152639-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3242924Z #9 4.418 Reading package lists...
+152640:build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3715139Z #9 5.138 E: Failed to fetch http://archive.ubuntu.com/ubuntu/dists/noble-updates/main/binary-amd64/Packages.gz  File has unexpected size (2525257 != 2525258). Mirror sync in progress? [IP: 172.66.152.176 80]
+152641-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3717052Z #9 5.138    Hashes of expected file:
+152642-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3717495Z #9 5.138     - Filesize:2525258 [weak]
+152643-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3718048Z #9 5.138     - SHA256:0c4edbf7e4dd09a8ccbcd0c40d014cbc9214cc4c1ace54008d352561f50c2831
+152644-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3718633Z #9 5.138     - SHA1:840a5c4280d6ae88c9a9627832fc55c5c5538f93 [weak]
+152645-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3719023Z #9 5.138     - MD5Sum:57857eff3cae42a7707b9e0a139276d7 [weak]
+152646-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3719406Z #9 5.138    Release file created at: Thu, 04 Jun 2026 22:48:04 +0000
+152647:build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3720097Z #9 5.138 E: Some index files failed to download. They have been ignored, or old ones used instead.
+152648-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3722069Z #9 ERROR: process "/bin/bash -c chmod +x /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh &&     bash /tmp/install.sh &&     rm -f /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh" did not complete successfully: exit code: 100
+152649-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3725169Z ------
+152650-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3726472Z  > [5/7] RUN chmod +x /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh &&     bash /tmp/install.sh &&     rm -f /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh:
+152651-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3727631Z 3.812   Release file created at: Thu, 04 Jun 2026 22:48:04 +0000
+152652-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3728005Z
+152653:build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3728964Z 5.138 E: Failed to fetch http://archive.ubuntu.com/ubuntu/dists/noble-updates/main/binary-amd64/Packages.gz  File has unexpected size (2525257 != 2525258). Mirror sync in progress? [IP: 172.66.152.176 80]
+152654-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3730236Z 5.138    Hashes of expected file:
+152655-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3730639Z 5.138     - Filesize:2525258 [weak]
+152656-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3731472Z 5.138     - SHA256:0c4edbf7e4dd09a8ccbcd0c40d014cbc9214cc4c1ace54008d352561f50c2831
+152657-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3732245Z 5.138     - SHA1:840a5c4280d6ae88c9a9627832fc55c5c5538f93 [weak]
+152658-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3732753Z 5.138     - MD5Sum:57857eff3cae42a7707b9e0a139276d7 [weak]
+152659-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3733269Z 5.138    Release file created at: Thu, 04 Jun 2026 22:48:04 +0000
+152660:build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3733982Z 5.138 E: Some index files failed to download. They have been ignored, or old ones used instead.
+152661-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3734642Z ------
+152662-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3734950Z Dockerfile:40
+152663-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:02.3735161Z --------------------
+--
+152729-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:13.6965553Z #9 0.960 Get:23 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [35.9 kB]
+152730-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:13.6966127Z #9 0.965 Get:18 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [2525 kB]
+152731-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:13.6966667Z #9 0.966 Err:18 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages
+152732:build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:13.6967245Z #9 0.966   File has unexpected size (2525257 != 2525258). Mirror sync in progress? [IP: 172.66.152.176 80]
+152733-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:13.6967698Z #9 0.966   Hashes of expected file:
+152734-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:13.6967976Z #9 0.966    - Filesize:2525258 [weak]
+152735-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:13.6968409Z #9 0.966    - SHA256:0c4edbf7e4dd09a8ccbcd0c40d014cbc9214cc4c1ace54008d352561f50c2831
+--
+152742-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:14.0628819Z #9 1.253 Get:27 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [48.4 kB]
+152743-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:14.5260506Z #9 1.866 Fetched 36.1 MB in 2s (20.2 MB/s)
+152744-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2383985Z #9 1.866 Reading package lists...
+152745:build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2787435Z #9 2.591 E: Failed to fetch http://archive.ubuntu.com/ubuntu/dists/noble-updates/main/binary-amd64/Packages.gz  File has unexpected size (2525257 != 2525258). Mirror sync in progress? [IP: 172.66.152.176 80]
+152746-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2789599Z #9 2.591    Hashes of expected file:
+152747-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2790289Z #9 2.591     - Filesize:2525258 [weak]
+152748-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2791003Z #9 2.591     - SHA256:0c4edbf7e4dd09a8ccbcd0c40d014cbc9214cc4c1ace54008d352561f50c2831
+152749-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2792108Z #9 2.591     - SHA1:840a5c4280d6ae88c9a9627832fc55c5c5538f93 [weak]
+152750-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2792798Z #9 2.591     - MD5Sum:57857eff3cae42a7707b9e0a139276d7 [weak]
+152751-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2793385Z #9 2.591    Release file created at: Thu, 04 Jun 2026 22:48:04 +0000
+152752:build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2794248Z #9 2.591 E: Some index files failed to download. They have been ignored, or old ones used instead.
+152753-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2795890Z #9 ERROR: process "/bin/bash -c chmod +x /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh &&     bash /tmp/install.sh &&     rm -f /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh" did not complete successfully: exit code: 100
+152754-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2797132Z ------
+152755-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2798120Z  > [5/7] RUN chmod +x /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh &&     bash /tmp/install.sh &&     rm -f /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh:
+152756-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2799474Z 1.253 Get:27 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [48.4 kB]
+152757-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2800062Z
+152758:build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2801566Z 2.591 E: Failed to fetch http://archive.ubuntu.com/ubuntu/dists/noble-updates/main/binary-amd64/Packages.gz  File has unexpected size (2525257 != 2525258). Mirror sync in progress? [IP: 172.66.152.176 80]
+152759-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2802873Z 2.591    Hashes of expected file:
+152760-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2803232Z 2.591     - Filesize:2525258 [weak]
+152761-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2803789Z 2.591     - SHA256:0c4edbf7e4dd09a8ccbcd0c40d014cbc9214cc4c1ace54008d352561f50c2831
+152762-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2804688Z 2.591     - SHA1:840a5c4280d6ae88c9a9627832fc55c5c5538f93 [weak]
+152763-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2805262Z 2.591     - MD5Sum:57857eff3cae42a7707b9e0a139276d7 [weak]
+152764-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2806284Z 2.591    Release file created at: Thu, 04 Jun 2026 22:48:04 +0000
+152765:build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2807065Z 2.591 E: Some index files failed to download. They have been ignored, or old ones used instead.
+152766-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2807996Z ------
+152767-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2808309Z Dockerfile:40
+152768-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:15.2808605Z --------------------
+--
+152838-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:36.9660576Z #9 1.290 Get:27 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]
+152839-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:36.9661338Z #9 1.299 Get:21 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [2525 kB]
+152840-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:36.9661893Z #9 1.299 Err:21 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages
+152841:build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:36.9662467Z #9 1.299   File has unexpected size (2525257 != 2525258). Mirror sync in progress? [IP: 104.20.28.246 80]
+152842-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:36.9662917Z #9 1.299   Hashes of expected file:
+152843-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:36.9663194Z #9 1.299    - Filesize:2525258 [weak]
+152844-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:36.9663603Z #9 1.299    - SHA256:0c4edbf7e4dd09a8ccbcd0c40d014cbc9214cc4c1ace54008d352561f50c2831
+--
+152847-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:36.9664860Z #9 1.299   Release file created at: Thu, 04 Jun 2026 22:48:04 +0000
+152848-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:37.4199038Z #9 1.904 Fetched 36.1 MB in 2s (19.8 MB/s)
+152849-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1362934Z #9 1.904 Reading package lists...
+152850:build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1831995Z #9 2.632 E: Failed to fetch http://archive.ubuntu.com/ubuntu/dists/noble-updates/main/binary-amd64/Packages.gz  File has unexpected size (2525257 != 2525258). Mirror sync in progress? [IP: 104.20.28.246 80]
+152851-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1833470Z #9 2.632    Hashes of expected file:
+152852-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1833912Z #9 2.632     - Filesize:2525258 [weak]
+152853-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1834581Z #9 2.632     - SHA256:0c4edbf7e4dd09a8ccbcd0c40d014cbc9214cc4c1ace54008d352561f50c2831
+152854-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1835369Z #9 2.632     - SHA1:840a5c4280d6ae88c9a9627832fc55c5c5538f93 [weak]
+152855-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1835994Z #9 2.632     - MD5Sum:57857eff3cae42a7707b9e0a139276d7 [weak]
+152856-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1836948Z #9 2.632    Release file created at: Thu, 04 Jun 2026 22:48:04 +0000
+152857:build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1837761Z #9 2.632 E: Some index files failed to download. They have been ignored, or old ones used instead.
+152858-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1838851Z #9 ERROR: process "/bin/bash -c chmod +x /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh &&     bash /tmp/install.sh &&     rm -f /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh" did not complete successfully: exit code: 100
+152859-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1839753Z ------
+152860-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1840324Z  > [5/7] RUN chmod +x /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh &&     bash /tmp/install.sh &&     rm -f /tmp/install.sh /tmp/common.sh /tmp/dind-entrypoint.sh:
+152861-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1841023Z 1.299   Release file created at: Thu, 04 Jun 2026 22:48:04 +0000
+152862-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1841646Z
+152863:build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1842489Z 2.632 E: Failed to fetch http://archive.ubuntu.com/ubuntu/dists/noble-updates/main/binary-amd64/Packages.gz  File has unexpected size (2525257 != 2525258). Mirror sync in progress? [IP: 104.20.28.246 80]
+152864-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1843674Z 2.632    Hashes of expected file:
+152865-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1844079Z 2.632     - Filesize:2525258 [weak]
+152866-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1844896Z 2.632     - SHA256:0c4edbf7e4dd09a8ccbcd0c40d014cbc9214cc4c1ace54008d352561f50c2831
+152867-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1845700Z 2.632     - SHA1:840a5c4280d6ae88c9a9627832fc55c5c5538f93 [weak]
+152868-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1846272Z 2.632     - MD5Sum:57857eff3cae42a7707b9e0a139276d7 [weak]
+152869-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1846887Z 2.632    Release file created at: Thu, 04 Jun 2026 22:48:04 +0000
+152870:build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1847696Z 2.632 E: Some index files failed to download. They have been ignored, or old ones used instead.
+152871-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1848351Z ------
+152872-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1852536Z Dockerfile:40
+152873-build-dind-amd64 (python)	Retry push python dind-box (amd64) on failure	2026-06-04T23:27:38.1853017Z --------------------

@@ -1,0 +1,7 @@
+repo	sha	workflow_files	root_dockerfile	apt_update_count	acquire_retries_count	dockerhub_guard	dockerhub_login_outcome
+csharp-ai-driven-development-pipeline-template	6872708aa3da13d5a67338cc8350c610c3af2275	.github/workflows/docs.yml,.github/workflows/release.yml	false	0	0	false	false
+go-ai-driven-development-pipeline-template	548a796847a96e52d7b5f41cb8a29a2e6822e637	.github/workflows/release.yml	false	0	0	false	false
+java-ai-driven-development-pipeline-template	450a10ec1f22a7c1c99e4828ad83cfde3b9a0311	.github/workflows/release.yml	false	0	0	false	false
+js-ai-driven-development-pipeline-template	2d77e242d1a1778b6fc7f3ca563b2a36ef555d0e	.github/workflows/example-app.yml,.github/workflows/links.yml,.github/workflows/release.yml	false	0	0	false	false
+python-ai-driven-development-pipeline-template	66abe798182316d568e748bec4b0e89828fac1a6	.github/workflows/docs.yml,.github/workflows/release.yml	false	0	0	false	false
+rust-ai-driven-development-pipeline-template	702ea4036aea61b65652c8137b5480d50e710864	.github/workflows/release.yml	false	0	0	true	false
