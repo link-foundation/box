@@ -304,36 +304,36 @@ The container runs as the `box` user with home directory at `/home/box`. All lan
 <!-- COMPONENT_SIZES_START -->
 ## Component Sizes
 
-_Last updated: 2026-06-04T22:49:24Z_
+_Last updated: 2026-06-05T01:59:41Z_
 
-**Total installation size: 7287.0 MB**
+**Total installation size: 7286.0 MB**
 
 | Component | Category | Size (MB) |
 |-----------|----------|-----------|
-| Swift 6.x | Runtime | 2655.23 |
-| Opam + Rocq/Coq | Runtime | 1016.81 |
+| Swift 6.x | Runtime | 2655.26 |
+| Opam + Rocq/Coq | Runtime | 1016.91 |
 | Rust (via rustup) | Runtime | 664.94 |
-| SDKMAN + Java 21 | Runtime | 578.01 |
-| .NET SDK 8.0 | Runtime | 504.96 |
-| Pyenv + Python (latest) | Runtime | 393.11 |
+| SDKMAN + Java 21 | Runtime | 577.96 |
+| .NET SDK 8.0 | Runtime | 504.95 |
+| Pyenv + Python (latest) | Runtime | 393.26 |
 | Perlbrew + Perl (latest) | Runtime | 364.97 |
 | Go (latest) | Runtime | 281.98 |
 | NVM + Node.js 20 | Runtime | 232.89 |
-| Kotlin (via SDKMAN) | Runtime | 182.11 |
-| rbenv + Ruby (latest) | Runtime | 163.15 |
+| Kotlin (via SDKMAN) | Runtime | 182.1 |
+| rbenv + Ruby (latest) | Runtime | 163.13 |
 | R Language | Runtime | 121.38 |
 | Deno | Runtime | 107.86 |
 | Bun | Runtime | 92.77 |
 | PHP 8.3 (via Homebrew) | Runtime | 58.83 |
 | Lean (via elan) | Runtime | 13.21 |
 | C/C++ Tools (CMake, Clang, LLVM, LLD) | Build Tools | 58.83 |
-| Assembly Tools (NASM, FASM) | Build Tools | 3.91 |
+| Assembly Tools (NASM, FASM) | Build Tools | 3.92 |
 | GitLab CLI | Development Tools | 29.2 |
 | glab-setup-git-identity | Development Tools | 4.36 |
 | gh-setup-git-identity | Development Tools | 4.35 |
-| GitHub CLI | Development Tools | 0.15 |
+| GitHub CLI | Development Tools | 0.16 |
 | Homebrew | Package Manager | 190.27 |
-| Python Build Dependencies | Dependencies | 43.16 |
+| Python Build Dependencies | Dependencies | 43.15 |
 | Bubblewrap | Dependencies | 0.18 |
 | Ruby Build Dependencies | Dependencies | 0.0 |
 | Essential Tools | System | 0.76 |
