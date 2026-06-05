@@ -1,5 +1,6 @@
 ARG ESSENTIALS_IMAGE=konard/box-essentials:latest
 FROM ${ESSENTIALS_IMAGE}
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Build: docker build -f ubuntu/24.04/php/Dockerfile --build-arg ESSENTIALS_IMAGE=box-essentials -t box-php .
 
 # PHP box: PHP 8.3 via Homebrew (user-specific/local) with apt fallback (global)

@@ -1,5 +1,6 @@
 ARG JS_IMAGE=konard/box-js:latest
 FROM ${JS_IMAGE}
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Essentials Box Docker image
 # Built on top of the JS box, adds git identity tools (gh, glab)

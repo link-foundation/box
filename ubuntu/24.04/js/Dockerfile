@@ -1,4 +1,5 @@
 FROM ubuntu:24.04
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # JavaScript/TypeScript box: Node.js (NVM), Bun, Deno
 # Standalone JS image without essentials overhead

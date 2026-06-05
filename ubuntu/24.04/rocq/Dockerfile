@@ -1,5 +1,6 @@
 ARG ESSENTIALS_IMAGE=konard/box-essentials:latest
 FROM ${ESSENTIALS_IMAGE}
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Build: docker build -f ubuntu/24.04/rocq/Dockerfile --build-arg ESSENTIALS_IMAGE=box-essentials -t box-rocq .
 
 # Rocq/Coq box: Opam + Rocq theorem prover

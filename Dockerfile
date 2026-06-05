@@ -49,6 +49,7 @@ FROM ${ESSENTIALS_IMAGE}
 USER root
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /home/box
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Copy entrypoint script
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh

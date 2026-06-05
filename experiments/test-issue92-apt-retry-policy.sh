@@ -77,6 +77,16 @@ end
   if text.match?(/apt(?:-get)? update -y/)
     checks << "#{path} must not call apt update directly"
   end
+
+  first_common_source = text.index(%(RUN . /tmp/common.sh))
+  if first_common_source
+    bash_shell = %(SHELL ["/bin/bash", "-o", "pipefail", "-c"])
+    first_bash_shell = text.index(bash_shell)
+
+    unless first_bash_shell && first_bash_shell < first_common_source
+      checks << "#{path} must switch Docker RUN to bash before sourcing common.sh"
+    end
+  end
 end
 
 unless measure_workflow.include?("apt_update_with_retry")
