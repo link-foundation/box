@@ -27,9 +27,11 @@ register_image "$fixture_image"
 log "building an offline fixture image with docker import (no registry pull)"
 rootfs_dir="$(mktemp -d)"
 register_temp_dir "$rootfs_dir"
+# Keep the rootfs tar out of $tarball_dir so the directory-form preload below
+# only ever sees a real image tarball (image.tar), not this raw filesystem tar.
 echo "issue-94 preload fixture" > "$rootfs_dir/marker.txt"
-tar -C "$rootfs_dir" -cf "$tarball_dir/rootfs.tar" marker.txt
-docker import "$tarball_dir/rootfs.tar" "$fixture_image" >/dev/null
+tar -C "$rootfs_dir" -cf "$rootfs_dir/rootfs.tar" marker.txt
+docker import "$rootfs_dir/rootfs.tar" "$fixture_image" >/dev/null
 
 log "saving the fixture image to a tarball the way a host would seed it"
 docker save "$fixture_image" -o "$tarball_dir/image.tar"
