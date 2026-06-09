@@ -396,6 +396,10 @@ preload_into_daemon() {
   preload_tarballs
   passthrough_host_images
   preload_images
+  # Emit a completion marker once every preload path has finished so consumers
+  # (and tests) can synchronize on "images are seeded" rather than racing the
+  # asynchronous load against mere dockerd readiness. (issue #94)
+  log "image preload/passthrough complete"
 }
 
 # Allow the unit tests to source this file for the function definitions without

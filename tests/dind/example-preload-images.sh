@@ -41,6 +41,27 @@ docker save "$fixture_image" -o "$tarball_dir/image.tar"
 # the load is not blocked by host-side permissions.
 chmod -R a+rX "$tarball_dir"
 
+# The entrypoint loads images *after* dockerd reports ready, so waiting only for
+# the inner daemon (wait_for_inner_docker) can race the asynchronous load. Wait
+# for the entrypoint's completion marker before asserting on the seeded images.
+wait_for_preload_complete() {
+  local container="$1"
+  local limit="${2:-$DIND_WAIT_SECONDS}"
+  local i=0
+
+  while [ "$i" -lt "$limit" ]; do
+    if docker logs "$container" 2>&1 | grep -q "image preload/passthrough complete"; then
+      log "image preload/passthrough completed in ${container} after ${i}s"
+      return 0
+    fi
+    i=$((i + 1))
+    sleep 1
+  done
+
+  docker logs "$container" >&2 || true
+  fail "image preload/passthrough did not complete in ${container} within ${limit}s"
+}
+
 assert_inner_has_image() {
   local container="$1"
   if ! docker exec "$container" docker image inspect "$fixture_image" >/dev/null 2>&1; then
@@ -55,6 +76,7 @@ run_dind_container "$file_container" \
   -e DIND_PRELOAD_TARBALL=/preload/image.tar \
   -v "$tarball_dir:/preload:ro"
 wait_for_inner_docker "$file_container"
+wait_for_preload_complete "$file_container"
 assert_inner_has_image "$file_container"
 log "single-tarball preload made ${fixture_image} available without a pull"
 
@@ -67,6 +89,7 @@ run_dind_container "$dir_container" \
   -e "DIND_PRELOAD_IMAGES=$fixture_image" \
   -v "$tarball_dir:/preload:ro"
 wait_for_inner_docker "$dir_container"
+wait_for_preload_complete "$dir_container"
 assert_inner_has_image "$dir_container"
 
 if ! docker logs "$dir_container" 2>&1 | grep -q "preload image already present, skipping pull"; then
@@ -129,6 +152,7 @@ run_dind_container "$all_container" \
   -e DIND_HOST_DOCKER_SOCK=/host-sock/docker.sock \
   -v "$host_sock_dir:/host-sock:ro"
 wait_for_inner_docker "$all_container"
+wait_for_preload_complete "$all_container"
 assert_inner_has_image "$all_container"
 log "all-mode passthrough copied the host fixture into the inner daemon (no pull)"
 
@@ -140,6 +164,7 @@ run_dind_container "$public_container" \
   -e DIND_HOST_DOCKER_SOCK=/host-sock/docker.sock \
   -v "$host_sock_dir:/host-sock:ro"
 wait_for_inner_docker "$public_container"
+wait_for_preload_complete "$public_container"
 
 if docker exec "$public_container" docker image inspect "$fixture_image" >/dev/null 2>&1; then
   docker logs "$public_container" >&2 || true
