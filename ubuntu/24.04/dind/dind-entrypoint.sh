@@ -21,6 +21,16 @@
 #   DIND_LOG_FILE        Where to write dockerd logs (default: /var/log/dockerd.log)
 #   DIND_WAIT_SECONDS    How long to wait for dockerd to come up (default: 30)
 #   DIND_SKIP_DAEMON     If set to "1", do not start dockerd (use for DooD/Sysbox-only mode)
+#   DIND_PRELOAD_TARBALL Space-separated list of image tarball files and/or
+#                        directories to `docker load` into the nested daemon
+#                        once it is ready. Directories load every *.tar inside.
+#                        This is how you reuse host images without re-downloading
+#                        them: `docker save img | ... ` on the host, mount the
+#                        tarball, and point this at it. (issue #94)
+#   DIND_PRELOAD_IMAGES  Space-separated list of image references to `docker pull`
+#                        into the nested daemon once it is ready, but only when
+#                        the image is not already present. Useful to warm the
+#                        cache from a registry or pull-through mirror. (issue #94)
 
 set -eu
 
@@ -29,6 +39,8 @@ DIND_DATA_ROOT="${DIND_DATA_ROOT:-/var/lib/docker}"
 DIND_LOG_FILE="${DIND_LOG_FILE:-/var/log/dockerd.log}"
 DIND_WAIT_SECONDS="${DIND_WAIT_SECONDS:-30}"
 DIND_SKIP_DAEMON="${DIND_SKIP_DAEMON:-0}"
+DIND_PRELOAD_TARBALL="${DIND_PRELOAD_TARBALL:-}"
+DIND_PRELOAD_IMAGES="${DIND_PRELOAD_IMAGES:-}"
 
 log()  { echo "[dind-entrypoint] $*"; }
 warn() { echo "[dind-entrypoint] WARN: $*" >&2; }
@@ -183,10 +195,76 @@ start_dockerd() {
   return 0
 }
 
+load_one_tarball() {
+  tarball="$1"
+  if [ ! -r "$tarball" ]; then
+    warn "preload tarball is not readable: ${tarball}"
+    return 1
+  fi
+  log "Loading images from tarball ${tarball}"
+  if docker load -i "$tarball"; then
+    return 0
+  fi
+  warn "docker load failed for tarball ${tarball}"
+  return 1
+}
+
+preload_tarballs() {
+  [ -n "$DIND_PRELOAD_TARBALL" ] || return 0
+
+  for entry in $DIND_PRELOAD_TARBALL; do
+    if [ -d "$entry" ]; then
+      loaded_any=0
+      for tarball in "$entry"/*.tar; do
+        [ -e "$tarball" ] || continue
+        loaded_any=1
+        load_one_tarball "$tarball" || true
+      done
+      if [ "$loaded_any" -eq 0 ]; then
+        warn "preload directory has no *.tar files: ${entry}"
+      fi
+    elif [ -e "$entry" ]; then
+      load_one_tarball "$entry" || true
+    else
+      warn "preload tarball path does not exist: ${entry}"
+    fi
+  done
+}
+
+preload_images() {
+  [ -n "$DIND_PRELOAD_IMAGES" ] || return 0
+
+  for image in $DIND_PRELOAD_IMAGES; do
+    if docker image inspect "$image" >/dev/null 2>&1; then
+      log "preload image already present, skipping pull: ${image}"
+      continue
+    fi
+    log "Pulling preload image ${image}"
+    if ! docker pull "$image"; then
+      warn "docker pull failed for preload image ${image}"
+    fi
+  done
+}
+
+preload_into_daemon() {
+  [ -n "$DIND_PRELOAD_TARBALL" ] || [ -n "$DIND_PRELOAD_IMAGES" ] || return 0
+
+  if ! docker info >/dev/null 2>&1; then
+    warn "Skipping image preload because the nested dockerd is not ready"
+    return 0
+  fi
+
+  preload_tarballs
+  preload_images
+}
+
 if [ "$DIND_SKIP_DAEMON" != "1" ]; then
   if ! start_dockerd; then
     warn "dockerd startup failed. Use --user root, check /etc/sudoers.d/box-dind, or set DIND_SKIP_DAEMON=1 to silence."
   fi
+  preload_into_daemon
+elif [ -n "$DIND_PRELOAD_TARBALL" ] || [ -n "$DIND_PRELOAD_IMAGES" ]; then
+  warn "DIND_PRELOAD_* is set but DIND_SKIP_DAEMON=1; nothing will be preloaded"
 fi
 
 # Ensure the docker socket is group-readable for the box user.

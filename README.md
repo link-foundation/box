@@ -218,6 +218,7 @@ Each row below has the same toolchain as its non-dind sibling **plus** a working
 > - **Recommended secure invocation:** [`docker run --runtime=sysbox-runc konard/box-dind`](https://github.com/nestybox/sysbox) — Sysbox is a drop-in OCI runtime that runs system containers without `--privileged` and without exposing host devices.
 > - **Do NOT bind-mount `/var/run/docker.sock`.** That gives the container root on the host ([Quarkslab](https://blog.quarkslab.com/why-is-exposing-the-docker-socket-a-really-bad-idea.html), [OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html)) and breaks the per-box `docker ps` scoping property.
 > - **Storage:** the inner daemon writes to `/var/lib/docker` inside the container by default. For persistence, mount a volume: `-v box-dind-data:/var/lib/docker`.
+> - **Reusing host images:** the nested daemon starts with an empty image store, so a fresh container re-downloads images the host already has. Seed it at startup with `DIND_PRELOAD_TARBALL` (mount `docker save` tarballs) or `DIND_PRELOAD_IMAGES` (pull from a registry/mirror). See [Reusing Host Images](docs/dind/USAGE.md#reusing-host-images-preload).
 > - **Usage examples:** see [`docs/dind/USAGE.md`](docs/dind/USAGE.md). Its examples are backed by executable tests under `tests/dind/`.
 
 See [docs/case-studies/issue-80/CASE-STUDY.md](docs/case-studies/issue-80/CASE-STUDY.md) for the full design and threat model.
