@@ -71,6 +71,9 @@ The entrypoint supports these environment variables:
 | `DIND_SKIP_DAEMON` | `0` | Set to `1` to skip dockerd startup. |
 | `DIND_PRELOAD_TARBALL` | _(empty)_ | Space-separated `docker save` tarballs and/or directories of `*.tar` to `docker load` into the nested daemon once it is ready. |
 | `DIND_PRELOAD_IMAGES` | _(empty)_ | Space-separated image references to `docker pull` into the nested daemon once it is ready, skipping any that are already present. |
+| `DIND_HOST_PASSTHROUGH` | `public` | Copy images already present on the host into the nested daemon at startup when a host socket is mounted (see below). `public` only passes images with a RepoDigest from an allowlisted public registry; `all` passes every tagged image; `off` disables it. A quiet no-op when no host socket is mounted. |
+| `DIND_HOST_DOCKER_SOCK` | `/var/run/host-docker.sock` | Path inside the container to the mounted *host* Docker socket used for passthrough. Deliberately **not** `/var/run/docker.sock`, so the inner daemon keeps its own isolated socket. |
+| `DIND_HOST_PASSTHROUGH_REGISTRIES` | common public registries | Space-separated allowlist of registries treated as "public" in `DIND_HOST_PASSTHROUGH=public` mode (default: `docker.io ghcr.io quay.io gcr.io registry.k8s.io public.ecr.aws mcr.microsoft.com`). |
 
 Use a named volume when the inner Docker state should survive container removal:
 
@@ -163,6 +166,65 @@ DIND_IMAGE=box-dind-js tests/dind/example-preload-images.sh
 ```
 
 [jpetazzo]: https://jpetazzo.github.io/2015/09/03/do-not-use-docker-in-docker-for-ci/
+
+## Host-Image Passthrough (`DIND_HOST_PASSTHROUGH`)
+
+`DIND_PRELOAD_*` above are explicit: you name the tarballs or references to seed.
+Passthrough is the **automatic** counterpart — when you mount the host Docker
+socket into the container, the entrypoint copies images the host *already has*
+into the nested daemon at startup, so the inner `docker run` does not re-pull
+them. It is on by default (`public` mode) but a quiet no-op until a host socket
+is mounted, so the standard `--privileged` run is unchanged.
+
+Mount the host socket at `DIND_HOST_DOCKER_SOCK` (default
+`/var/run/host-docker.sock`), read-only:
+
+```bash
+docker run -d --privileged \
+  -v /var/run/docker.sock:/var/run/host-docker.sock:ro \
+  --name box-dind \
+  konard/box-dind sleep infinity
+
+until docker exec box-dind docker info >/dev/null 2>&1; do sleep 1; done
+
+# Public host images were copied into the inner daemon — no re-pull:
+docker exec box-dind docker images
+```
+
+The mount path is deliberately **not** `/var/run/docker.sock`. The host socket is
+read only at startup to *seed* images; the inner daemon keeps its own isolated
+socket and remains the container's runtime. This preserves the per-container
+Docker view from issue #80 — mounting the host socket at the default path would
+switch the model to Docker-outside-of-Docker and expose host Docker control
+(see [Host Prerequisites](#host-prerequisites)).
+
+### Modes — and why `public` is the default
+
+| Mode | What it copies |
+| --- | --- |
+| `public` _(default)_ | Only host images carrying a `RepoDigest` from an allowlisted public registry (`DIND_HOST_PASSTHROUGH_REGISTRIES`). A RepoDigest proves the image was pulled from that registry and is freely re-pullable, so copying it leaks **no** local build secrets and needs **no** registry credential. Locally-built images (no RepoDigest) and private-registry images are skipped. |
+| `all` | Every tagged host image, including locally-built and private-registry images. Use only when you trust the inner workload with those images. |
+| `off` (also `0`/`false`/`no`) | Disable passthrough entirely. |
+
+```bash
+# Pass through everything the host has, including local builds:
+docker run -d --privileged \
+  -v /var/run/docker.sock:/var/run/host-docker.sock:ro \
+  -e DIND_HOST_PASSTHROUGH=all \
+  --name box-dind \
+  konard/box-dind sleep infinity
+
+# Opt out completely:
+docker run -d --privileged \
+  -e DIND_HOST_PASSTHROUGH=off \
+  --name box-dind \
+  konard/box-dind sleep infinity
+```
+
+Passthrough is idempotent and additive: an image already present in the inner
+daemon (from a volume, tarball, or earlier run) is skipped, and any single
+image that fails to copy logs a warning and continues. Like preload, it is
+skipped entirely when `DIND_SKIP_DAEMON=1`.
 
 ## Commit Cycles
 
