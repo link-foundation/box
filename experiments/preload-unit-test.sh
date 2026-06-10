@@ -200,6 +200,91 @@ DIND_HOST_PASSTHROUGH=off DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
 check "off mode made no docker calls" bash -c '! test -s "$DOCKER_CALLS"'
 rm -f "$HOST_SOCK"
 
+echo "== Case 14: DIND_HOST_PASSTHROUGH_IMAGES allowlist scopes passthrough to named repos =="
+reset_state
+# Three Docker Hub images, all with a public RepoDigest so the mode gate passes;
+# the allowlist must narrow to only the two hive-mind repos.
+printf '%s\n%s\n%s\n' "konard/hive-mind:latest" "konard/hive-mind-dind:latest" "alpine:3.20" > "$HOST_IMAGES"
+{
+  echo "konard/hive-mind:latest|konard/hive-mind@sha256:aaa "
+  echo "konard/hive-mind-dind:latest|konard/hive-mind-dind@sha256:bbb "
+  echo "alpine:3.20|alpine@sha256:ccc "
+} > "$HOST_DIGESTS"
+make_sock "$HOST_SOCK"
+DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
+  DIND_HOST_PASSTHROUGH_IMAGES="konard/hive-mind konard/hive-mind-dind" \
+  DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=1 \
+  preload_into_daemon
+check "allowlisted hive-mind image saved"       grep -qx "konard/hive-mind:latest" "$DOCKER_SAVED"
+check "allowlisted hive-mind-dind image saved"  grep -qx "konard/hive-mind-dind:latest" "$DOCKER_SAVED"
+check "non-allowlisted alpine NOT saved"         bash -c '! grep -qx "alpine:3.20" "$DOCKER_SAVED"'
+rm -f "$HOST_SOCK"
+
+echo "== Case 15: allowlist composes with mode (public still drops a local image even if allowlisted) =="
+reset_state
+printf '%s\n%s\n' "konard/hive-mind:latest" "konard/hive-mind-dev:latest" > "$HOST_IMAGES"
+# hive-mind has a public digest; hive-mind-dev is locally built (no digest line).
+echo "konard/hive-mind:latest|konard/hive-mind@sha256:aaa " > "$HOST_DIGESTS"
+make_sock "$HOST_SOCK"
+DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
+  DIND_HOST_PASSTHROUGH_IMAGES="konard/hive-mind*" \
+  DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=1 \
+  preload_into_daemon
+check "allowlisted public image saved"          grep -qx "konard/hive-mind:latest" "$DOCKER_SAVED"
+check "allowlisted local image dropped by mode"  bash -c '! grep -qx "konard/hive-mind-dev:latest" "$DOCKER_SAVED"'
+rm -f "$HOST_SOCK"
+
+echo "== Case 16: globs and docker.io-qualified / tagged patterns all match =="
+reset_state
+printf '%s\n%s\n' "konard/hive-mind:latest" "ghcr.io/owner/tool:v1" > "$HOST_IMAGES"
+{
+  echo "konard/hive-mind:latest|konard/hive-mind@sha256:aaa "
+  echo "ghcr.io/owner/tool:v1|ghcr.io/owner/tool@sha256:ddd "
+} > "$HOST_DIGESTS"
+make_sock "$HOST_SOCK"
+# A docker.io-qualified glob for the hub image and an exact tagged ghcr ref.
+DIND_HOST_PASSTHROUGH=all DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
+  DIND_HOST_PASSTHROUGH_IMAGES="docker.io/konard/hive-mind* ghcr.io/owner/tool:v1" \
+  DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=1 \
+  preload_into_daemon
+check "docker.io-qualified glob matched the hub image" grep -qx "konard/hive-mind:latest" "$DOCKER_SAVED"
+check "exact tagged ghcr ref matched"                  grep -qx "ghcr.io/owner/tool:v1" "$DOCKER_SAVED"
+rm -f "$HOST_SOCK"
+
+echo "== Case 17: empty allowlist preserves prior behavior (all eligible images pass) =="
+reset_state
+printf '%s\n%s\n' "konard/hive-mind:latest" "alpine:3.20" > "$HOST_IMAGES"
+{
+  echo "konard/hive-mind:latest|konard/hive-mind@sha256:aaa "
+  echo "alpine:3.20|alpine@sha256:ccc "
+} > "$HOST_DIGESTS"
+make_sock "$HOST_SOCK"
+DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
+  DIND_HOST_PASSTHROUGH_IMAGES="" \
+  DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=1 \
+  preload_into_daemon
+check "empty allowlist still saves hive-mind" grep -qx "konard/hive-mind:latest" "$DOCKER_SAVED"
+check "empty allowlist still saves alpine"    grep -qx "alpine:3.20" "$DOCKER_SAVED"
+rm -f "$HOST_SOCK"
+
+echo "== Case 18: image-matching helper normalization (direct calls) =="
+reset_state
+# Like Case 13, drive the sourced helper in the current shell via `eval` so the
+# function stays in scope (a `bash -c` subshell would not have it). Each check
+# sets DIND_HOST_PASSTHROUGH_IMAGES inline so the case is self-contained.
+check "bare repo matches tagged hub ref" \
+  eval 'DIND_HOST_PASSTHROUGH_IMAGES="konard/hive-mind" host_image_matches_images_filter "konard/hive-mind:latest"'
+check "docker.io-qualified pattern matches hub ref" \
+  eval 'DIND_HOST_PASSTHROUGH_IMAGES="docker.io/konard/hive-mind" host_image_matches_images_filter "konard/hive-mind:latest"'
+check "glob matches hub ref" \
+  eval 'DIND_HOST_PASSTHROUGH_IMAGES="konard/hive-mind*" host_image_matches_images_filter "konard/hive-mind-dind:latest"'
+check "unrelated pattern does not match" \
+  eval '! DIND_HOST_PASSTHROUGH_IMAGES="konard/other" host_image_matches_images_filter "konard/hive-mind:latest"'
+check "empty allowlist matches anything" \
+  eval 'DIND_HOST_PASSTHROUGH_IMAGES="" host_image_matches_images_filter "anything:latest"'
+check "ghcr exact ref matches" \
+  eval 'DIND_HOST_PASSTHROUGH_IMAGES="ghcr.io/owner/tool:v1" host_image_matches_images_filter "ghcr.io/owner/tool:v1"'
+
 echo "== Case 13: registry classification helpers =="
 reset_state
 # These call the sourced functions in the current shell (command substitution

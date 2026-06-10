@@ -200,4 +200,32 @@ if ! docker logs "$public_container" 2>&1 | grep -q "passthrough loading host im
 fi
 log "public-mode passthrough copied the public image and skipped the local fixture (security filter held)"
 
+# --- Per-repository allowlist (issue #97) -----------------------------------
+# DIND_HOST_PASSTHROUGH_IMAGES scopes passthrough to specific image names,
+# composed with the mode gate. The throwaway host daemon currently holds two
+# images: the local fixture (no RepoDigest) and the public alpine. Running in
+# `all` mode (both would otherwise be eligible) with the allowlist pointed at
+# only the fixture's repository must copy the fixture and skip alpine, proving
+# the allowlist — not the mode — is what narrows the set.
+images_container="${DIND_EXAMPLE_ID}-passthrough-images"
+fixture_repo="${fixture_image%:*}"
+log "starting consumer with DIND_HOST_PASSTHROUGH=all + DIND_HOST_PASSTHROUGH_IMAGES=${fixture_repo}"
+run_dind_container "$images_container" \
+  -e DIND_HOST_PASSTHROUGH=all \
+  -e "DIND_HOST_PASSTHROUGH_IMAGES=$fixture_repo" \
+  -e DIND_HOST_DOCKER_SOCK=/host-sock/docker.sock \
+  -v "$host_sock_dir:/host-sock:ro"
+wait_for_inner_docker "$images_container"
+wait_for_preload_complete "$images_container"
+assert_inner_has_image "$images_container"
+if docker exec "$images_container" docker image inspect "$public_image" >/dev/null 2>&1; then
+  docker logs "$images_container" >&2 || true
+  fail "DIND_HOST_PASSTHROUGH_IMAGES must exclude ${public_image} (not in the allowlist)"
+fi
+if ! docker logs "$images_container" 2>&1 | grep -q "images=${fixture_repo}"; then
+  docker logs "$images_container" >&2 || true
+  fail "expected the consumer to log the active DIND_HOST_PASSTHROUGH_IMAGES allowlist"
+fi
+log "images-allowlist passthrough copied only the named repo and skipped the rest"
+
 log "preload example passed"
