@@ -69,6 +69,11 @@ The entrypoint supports these environment variables:
 | `DIND_LOG_FILE` | `/var/log/dockerd.log` | Write dockerd logs to this path. |
 | `DIND_WAIT_SECONDS` | `30` | Wait this many seconds for dockerd readiness. |
 | `DIND_SKIP_DAEMON` | `0` | Set to `1` to skip dockerd startup. |
+| `DIND_PRELOAD_TARBALL` | _(empty)_ | Space-separated `docker save` tarballs and/or directories of `*.tar` to `docker load` into the nested daemon once it is ready. |
+| `DIND_PRELOAD_IMAGES` | _(empty)_ | Space-separated image references to `docker pull` into the nested daemon once it is ready, skipping any that are already present. |
+| `DIND_HOST_PASSTHROUGH` | `public` | Copy images already present on the host into the nested daemon at startup when a host socket is mounted (see below). `public` only passes images with a RepoDigest from an allowlisted public registry; `all` passes every tagged image; `off` disables it. A quiet no-op when no host socket is mounted. |
+| `DIND_HOST_DOCKER_SOCK` | `/var/run/host-docker.sock` | Path inside the container to the mounted *host* Docker socket used for passthrough. Deliberately **not** `/var/run/docker.sock`, so the inner daemon keeps its own isolated socket. |
+| `DIND_HOST_PASSTHROUGH_REGISTRIES` | common public registries | Space-separated allowlist of registries treated as "public" in `DIND_HOST_PASSTHROUGH=public` mode (default: `docker.io ghcr.io quay.io gcr.io registry.k8s.io public.ecr.aws mcr.microsoft.com`). |
 
 Use a named volume when the inner Docker state should survive container removal:
 
@@ -79,6 +84,147 @@ docker run -d --privileged \
   --name box-dind \
   konard/box-dind sleep infinity
 ```
+
+## Reusing Host Images (Preload)
+
+The nested daemon starts with an **empty image store**. By default a
+`docker run <image>` *inside* the container reports
+`Unable to find image '<image>' locally` and pulls a fresh copy from the
+registry — even when the host daemon already has that exact image (issue #94).
+This is the well-known [Docker-in-Docker image-cache pitfall][jpetazzo].
+
+The entrypoint can seed the nested daemon at startup so no re-download happens.
+
+### `DIND_PRELOAD_TARBALL` — load `docker save` tarballs (reuse host images)
+
+On the host, save the image you already have to a tarball, mount it into the
+container, and point `DIND_PRELOAD_TARBALL` at it. The entrypoint loads it with
+`docker load` as soon as the inner daemon is ready, before your workload runs:
+
+```bash
+# Host already has the image; export it without a registry round-trip:
+docker pull alpine:3.20
+docker save alpine:3.20 -o /tmp/preload/alpine.tar
+
+docker run -d --privileged \
+  -v /tmp/preload:/preload:ro \
+  -e DIND_PRELOAD_TARBALL=/preload/alpine.tar \
+  --name box-dind \
+  konard/box-dind sleep infinity
+
+until docker exec box-dind docker info >/dev/null 2>&1; do sleep 1; done
+
+# No "Unable to find image locally" — it was preloaded, not pulled:
+docker exec box-dind docker run --rm alpine:3.20 echo hi
+```
+
+`DIND_PRELOAD_TARBALL` accepts a space-separated list. Any entry that is a
+directory loads every `*.tar` file inside it, so you can mount a whole folder of
+saved images:
+
+```bash
+docker run -d --privileged \
+  -v /tmp/preload:/preload:ro \
+  -e DIND_PRELOAD_TARBALL=/preload \
+  --name box-dind \
+  konard/box-dind sleep infinity
+```
+
+You can also bake a tarball into a derived image so every container starts warm:
+
+```dockerfile
+FROM konard/box-dind
+USER root
+COPY images.tar /opt/preload/images.tar
+ENV DIND_PRELOAD_TARBALL=/opt/preload/images.tar
+USER box
+ENV HOME=/home/box
+```
+
+### `DIND_PRELOAD_IMAGES` — warm the cache from a registry
+
+When the source is a registry or pull-through mirror rather than a tarball, list
+the references in `DIND_PRELOAD_IMAGES`. The entrypoint pulls each one after the
+daemon is ready, but skips any image that is already present (for example one a
+mounted `/var/lib/docker` volume or a `DIND_PRELOAD_TARBALL` already provided):
+
+```bash
+docker run -d --privileged \
+  -e DIND_PRELOAD_IMAGES="alpine:3.20 busybox:1.36" \
+  --name box-dind \
+  konard/box-dind sleep infinity
+```
+
+Preload failures are non-fatal: the entrypoint logs a warning and continues so
+the container shell still starts. Preload is skipped entirely when
+`DIND_SKIP_DAEMON=1`, since there is no inner daemon to load into.
+
+CI covers this behavior here:
+
+```bash
+DIND_IMAGE=box-dind-js tests/dind/example-preload-images.sh
+```
+
+[jpetazzo]: https://jpetazzo.github.io/2015/09/03/do-not-use-docker-in-docker-for-ci/
+
+## Host-Image Passthrough (`DIND_HOST_PASSTHROUGH`)
+
+`DIND_PRELOAD_*` above are explicit: you name the tarballs or references to seed.
+Passthrough is the **automatic** counterpart — when you mount the host Docker
+socket into the container, the entrypoint copies images the host *already has*
+into the nested daemon at startup, so the inner `docker run` does not re-pull
+them. It is on by default (`public` mode) but a quiet no-op until a host socket
+is mounted, so the standard `--privileged` run is unchanged.
+
+Mount the host socket at `DIND_HOST_DOCKER_SOCK` (default
+`/var/run/host-docker.sock`), read-only:
+
+```bash
+docker run -d --privileged \
+  -v /var/run/docker.sock:/var/run/host-docker.sock:ro \
+  --name box-dind \
+  konard/box-dind sleep infinity
+
+until docker exec box-dind docker info >/dev/null 2>&1; do sleep 1; done
+
+# Public host images were copied into the inner daemon — no re-pull:
+docker exec box-dind docker images
+```
+
+The mount path is deliberately **not** `/var/run/docker.sock`. The host socket is
+read only at startup to *seed* images; the inner daemon keeps its own isolated
+socket and remains the container's runtime. This preserves the per-container
+Docker view from issue #80 — mounting the host socket at the default path would
+switch the model to Docker-outside-of-Docker and expose host Docker control
+(see [Host Prerequisites](#host-prerequisites)).
+
+### Modes — and why `public` is the default
+
+| Mode | What it copies |
+| --- | --- |
+| `public` _(default)_ | Only host images carrying a `RepoDigest` from an allowlisted public registry (`DIND_HOST_PASSTHROUGH_REGISTRIES`). A RepoDigest proves the image was pulled from that registry and is freely re-pullable, so copying it leaks **no** local build secrets and needs **no** registry credential. Locally-built images (no RepoDigest) and private-registry images are skipped. |
+| `all` | Every tagged host image, including locally-built and private-registry images. Use only when you trust the inner workload with those images. |
+| `off` (also `0`/`false`/`no`) | Disable passthrough entirely. |
+
+```bash
+# Pass through everything the host has, including local builds:
+docker run -d --privileged \
+  -v /var/run/docker.sock:/var/run/host-docker.sock:ro \
+  -e DIND_HOST_PASSTHROUGH=all \
+  --name box-dind \
+  konard/box-dind sleep infinity
+
+# Opt out completely:
+docker run -d --privileged \
+  -e DIND_HOST_PASSTHROUGH=off \
+  --name box-dind \
+  konard/box-dind sleep infinity
+```
+
+Passthrough is idempotent and additive: an image already present in the inner
+daemon (from a volume, tarball, or earlier run) is skipped, and any single
+image that fails to copy logs a warning and continues. Like preload, it is
+skipped entirely when `DIND_SKIP_DAEMON=1`.
 
 ## Commit Cycles
 
@@ -195,6 +341,7 @@ DIND_IMAGE=box-dind-js tests/dind/example-basic-docker-ps.sh
 DIND_IMAGE=box-dind-js tests/dind/example-commit-cycle.sh
 DIND_IMAGE=box-dind-js tests/dind/example-sudoers-extension.sh
 DIND_IMAGE=box-dind-js tests/dind/example-storage-driver-vfs.sh
+DIND_IMAGE=box-dind-js tests/dind/example-preload-images.sh
 ```
 
 Set `DIND_KEEP_CONTAINERS=1` while debugging to keep the temporary containers
