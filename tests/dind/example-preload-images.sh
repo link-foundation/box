@@ -145,6 +145,17 @@ log "throwaway host daemon is ready"
 docker exec -i "$host_daemon_container" \
   docker -H unix:///sockets/docker.sock load < "$tarball_dir/image.tar"
 
+# Also seed it with a genuinely public image. Pulling it from a public registry
+# is what records a RepoDigest (docker save/load does NOT preserve one), so this
+# is the "freely re-pullable" case the default public mode MUST pass through.
+# This is the positive counterpart to the fixture: without it, public mode has no
+# eligible image and a "public copies nothing" regression would ship green.
+public_image="alpine:3.20"
+log "pulling a real public image (${public_image}) into the throwaway host daemon"
+if ! $host_docker pull "$public_image" >/dev/null; then
+  fail "could not pull ${public_image} into the throwaway host daemon (network required)"
+fi
+
 # all mode: every tagged host image is copied, including this local fixture.
 log "starting consumer with DIND_HOST_PASSTHROUGH=all"
 run_dind_container "$all_container" \
@@ -174,6 +185,19 @@ if ! docker logs "$public_container" 2>&1 | grep -q "host-image passthrough (mod
   docker logs "$public_container" >&2 || true
   fail "expected the consumer to run host-image passthrough in public mode"
 fi
-log "public-mode passthrough correctly skipped the local fixture (security filter held)"
+# Positive assertion: a host image carrying a RepoDigest from an allowlisted
+# public registry MUST land in the inner daemon. This is the behavior downstream
+# relies on (link-assistant/hive-mind#1879) and the path the suite previously
+# left structurally untested, so a "public copies nothing" regression now fails.
+if ! docker exec "$public_container" docker image inspect "$public_image" >/dev/null 2>&1; then
+  docker logs "$public_container" >&2 || true
+  docker exec "$public_container" docker images >&2 || true
+  fail "public mode must pass through a host image that has a public RepoDigest (${public_image})"
+fi
+if ! docker logs "$public_container" 2>&1 | grep -q "passthrough loading host image: ${public_image}"; then
+  docker logs "$public_container" >&2 || true
+  fail "expected public mode to log loading the public host image (${public_image})"
+fi
+log "public-mode passthrough copied the public image and skipped the local fixture (security filter held)"
 
 log "preload example passed"
