@@ -74,6 +74,7 @@ The entrypoint supports these environment variables:
 | `DIND_HOST_PASSTHROUGH` | `public` | Copy images already present on the host into the nested daemon at startup when a host socket is mounted (see below). `public` only passes images with a RepoDigest from an allowlisted public registry; `all` passes every tagged image; `off` disables it. A quiet no-op when no host socket is mounted. |
 | `DIND_HOST_DOCKER_SOCK` | `/var/run/host-docker.sock` | Path inside the container to the mounted *host* Docker socket used for passthrough. Deliberately **not** `/var/run/docker.sock`, so the inner daemon keeps its own isolated socket. |
 | `DIND_HOST_PASSTHROUGH_REGISTRIES` | common public registries | Space-separated allowlist of registries treated as "public" in `DIND_HOST_PASSTHROUGH=public` mode (default: `docker.io ghcr.io quay.io gcr.io registry.k8s.io public.ecr.aws mcr.microsoft.com`). |
+| `DIND_HOST_PASSTHROUGH_IMAGES` | _(empty)_ | Space-separated allowlist of image references / globs. When non-empty, only host images matching at least one entry are passed through, composed with the mode filter (so `public` still requires a public RepoDigest). Empty keeps the mode + registry filter only. One level finer than `DIND_HOST_PASSTHROUGH_REGISTRIES` — scope to specific repositories / image names. |
 
 Use a named volume when the inner Docker state should survive container removal:
 
@@ -225,6 +226,42 @@ Passthrough is idempotent and additive: an image already present in the inner
 daemon (from a volume, tarball, or earlier run) is skipped, and any single
 image that fails to copy logs a warning and continues. Like preload, it is
 skipped entirely when `DIND_SKIP_DAEMON=1`.
+
+### Scoping to specific images (`DIND_HOST_PASSTHROUGH_IMAGES`)
+
+The mode gate decides *whether* an image is safe to pass; the registry allowlist
+narrows it *by registry host*. `DIND_HOST_PASSTHROUGH_IMAGES` is one level finer
+— it scopes passthrough to **specific repositories / image names**. When it is
+non-empty, a host image must match the mode filter **and** at least one
+space-separated pattern; empty (the default) keeps the mode + registry behavior.
+
+This is the precise fit for "seed the inner daemon with only the images I own"
+rather than every public host image:
+
+```bash
+# Pass through only hive-mind's own images, nothing else on the host:
+docker run -d --privileged \
+  -v /var/run/docker.sock:/var/run/host-docker.sock:ro \
+  -e DIND_HOST_PASSTHROUGH=public \
+  -e DIND_HOST_PASSTHROUGH_IMAGES="konard/hive-mind konard/hive-mind-dind" \
+  --name box-dind \
+  konard/box-dind sleep infinity
+
+# Globs and explicit tags / registry-qualified refs also work:
+docker run -d --privileged \
+  -v /var/run/docker.sock:/var/run/host-docker.sock:ro \
+  -e DIND_HOST_PASSTHROUGH_IMAGES="docker.io/konard/hive-mind* konard/hive-mind-dind:latest" \
+  --name box-dind \
+  konard/box-dind sleep infinity
+```
+
+Patterns are matched against several normalized forms of each host image
+reference, so a bare repository like `konard/hive-mind` matches the tagged
+`konard/hive-mind:latest` and the registry-qualified
+`docker.io/konard/hive-mind:latest` alike. Because it composes with the mode
+gate, `public` mode still refuses a locally-built or private image even when it
+matches a pattern — the allowlist only ever *narrows* the eligible set, it never
+widens it past the security filter.
 
 ## Commit Cycles
 

@@ -63,6 +63,19 @@
 #                        the common public registries: docker.io ghcr.io quay.io
 #                        gcr.io registry.k8s.io public.ecr.aws mcr.microsoft.com).
 #                        (issue #94)
+#   DIND_HOST_PASSTHROUGH_IMAGES
+#                        Space-separated allowlist of image references / globs.
+#                        When non-empty, only host images whose reference matches
+#                        at least one entry are passed through, composed with the
+#                        mode filter (so "public" still gates on a public
+#                        RepoDigest). Empty/unset keeps the current behavior
+#                        (mode + registry filter only). Patterns are matched
+#                        against several normalized forms of the reference, so
+#                        "konard/hive-mind" matches "konard/hive-mind:latest" and
+#                        "docker.io/konard/hive-mind:latest" alike, and globs work
+#                        (e.g. "docker.io/konard/hive-mind*"). This narrows
+#                        passthrough one level finer than the registry allowlist
+#                        — to specific repositories / image names. (issue #97)
 
 set -eu
 
@@ -76,6 +89,7 @@ DIND_PRELOAD_IMAGES="${DIND_PRELOAD_IMAGES:-}"
 DIND_HOST_PASSTHROUGH="${DIND_HOST_PASSTHROUGH:-public}"
 DIND_HOST_DOCKER_SOCK="${DIND_HOST_DOCKER_SOCK:-/var/run/host-docker.sock}"
 DIND_HOST_PASSTHROUGH_REGISTRIES="${DIND_HOST_PASSTHROUGH_REGISTRIES:-docker.io ghcr.io quay.io gcr.io registry.k8s.io public.ecr.aws mcr.microsoft.com}"
+DIND_HOST_PASSTHROUGH_IMAGES="${DIND_HOST_PASSTHROUGH_IMAGES:-}"
 
 log()  { echo "[dind-entrypoint] $*"; }
 warn() { echo "[dind-entrypoint] WARN: $*" >&2; }
@@ -317,6 +331,42 @@ registry_is_public() {
   return 1
 }
 
+# When DIND_HOST_PASSTHROUGH_IMAGES is non-empty, a host image is eligible only
+# if its reference matches at least one space-separated pattern (shell glob).
+# Patterns are matched against several normalized forms of the reference so that
+# an entry like "konard/hive-mind" matches "konard/hive-mind:latest" and the
+# docker.io-qualified "docker.io/konard/hive-mind[:latest]" alike, keeping the
+# allowlist ergonomic. An empty list always passes (filter disabled). (issue #97)
+host_image_matches_images_filter() {
+  ref="$1"
+  [ -n "$DIND_HOST_PASSTHROUGH_IMAGES" ] || return 0
+
+  repo="${ref%:*}"   # strip the :tag -> repository (handles host:port/path too)
+
+  # Candidate forms to test patterns against: the tagged ref, the bare repo, and
+  # — for Docker Hub refs — the same two with an explicit docker.io/ prefix (or,
+  # if already docker.io-qualified, with that prefix stripped).
+  set -- "$ref" "$repo"
+  case "$ref" in
+    docker.io/*)
+      set -- "$@" "${ref#docker.io/}" "${repo#docker.io/}" ;;
+    *)
+      if [ "$(image_registry "$ref")" = "docker.io" ]; then
+        set -- "$@" "docker.io/$ref" "docker.io/$repo"
+      fi ;;
+  esac
+
+  for pattern in $DIND_HOST_PASSTHROUGH_IMAGES; do
+    for cand in "$@"; do
+      # shellcheck disable=SC2254  # intentional glob match against the pattern
+      case "$cand" in
+        $pattern) return 0 ;;
+      esac
+    done
+  done
+  return 1
+}
+
 # Decide whether a host image should be passed through under the current mode.
 # "all"    -> every tagged image qualifies.
 # "public" -> the image must carry a RepoDigest from an allowlisted public
@@ -326,6 +376,11 @@ registry_is_public() {
 #             local build secrets or images that required a credential.
 host_image_passes_filter() {
   ref="$1"; repo_digests="$2"
+
+  # Repository/name allowlist, composed with the mode gate below: when set, the
+  # image must additionally match at least one pattern. (issue #97)
+  host_image_matches_images_filter "$ref" || return 1
+
   case "$DIND_HOST_PASSTHROUGH" in
     all) return 0 ;;
     public)
@@ -353,7 +408,11 @@ passthrough_host_images() {
   fi
 
   hostdocker="docker -H unix://$DIND_HOST_DOCKER_SOCK"
-  log "host-image passthrough (mode=${DIND_HOST_PASSTHROUGH}) from ${DIND_HOST_DOCKER_SOCK}"
+  if [ -n "$DIND_HOST_PASSTHROUGH_IMAGES" ]; then
+    log "host-image passthrough (mode=${DIND_HOST_PASSTHROUGH}, images=${DIND_HOST_PASSTHROUGH_IMAGES}) from ${DIND_HOST_DOCKER_SOCK}"
+  else
+    log "host-image passthrough (mode=${DIND_HOST_PASSTHROUGH}) from ${DIND_HOST_DOCKER_SOCK}"
+  fi
 
   $hostdocker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | sort -u \
     | while IFS= read -r ref; do

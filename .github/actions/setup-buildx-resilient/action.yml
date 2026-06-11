@@ -1,0 +1,47 @@
+name: 'Set up Docker Buildx (resilient)'
+description: >
+  Wrapper around docker/setup-buildx-action that first pre-pulls the pinned
+  BuildKit image with retries and exponential backoff. Booting the
+  docker-container driver otherwise pulls moby/buildkit straight from Docker
+  Hub, and a transient registry timeout there fails the whole job (and, for
+  the amd64 essentials build, cascades into "box-essentials:<ver>-amd64: not
+  found" across every dependent dind build). Seeding the image locally first
+  means the boot reuses the cached image instead of hitting the registry.
+  See the CI investigation in issue #97.
+inputs:
+  buildkit-image:
+    description: 'Pinned BuildKit image used by the docker-container driver.'
+    required: false
+    default: 'moby/buildkit:buildx-stable-1'
+runs:
+  using: 'composite'
+  steps:
+    - name: Pre-pull BuildKit image (retry on transient registry errors)
+      shell: bash
+      env:
+        BUILDKIT_IMAGE: ${{ inputs.buildkit-image }}
+      run: |
+        set -u
+        attempts=5
+        delay=5
+        for attempt in $(seq 1 "$attempts"); do
+          echo "==> Pulling ${BUILDKIT_IMAGE} (attempt ${attempt}/${attempts})..."
+          if docker pull "${BUILDKIT_IMAGE}"; then
+            echo "==> BuildKit image cached locally; boot will not need a registry pull"
+            exit 0
+          fi
+          if [ "$attempt" -lt "$attempts" ]; then
+            echo "==> Pull failed, waiting ${delay}s before next attempt..."
+            sleep "$delay"
+            delay=$((delay * 2))
+          fi
+        done
+        # Non-fatal: fall through to setup-buildx, which will attempt its own
+        # pull during boot. This preserves the previous behaviour in the worst
+        # case while making the common transient-failure case recover.
+        echo "==> WARNING: could not pre-pull ${BUILDKIT_IMAGE} after ${attempts} attempts; letting setup-buildx try its own boot pull"
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v4
+      with:
+        driver-opts: image=${{ inputs.buildkit-image }}
