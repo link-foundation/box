@@ -399,11 +399,17 @@ passthrough_host_images() {
   host_passthrough_enabled || return 0
 
   if ! host_docker_available; then
-    # A socket file exists but is unreachable: surface it. Otherwise the common
-    # "no host socket mounted" case stays silent so the default mode is free.
     if [ -n "$DIND_HOST_DOCKER_SOCK" ] && [ -e "$DIND_HOST_DOCKER_SOCK" ]; then
+      # A socket file exists but is unreachable: surface it.
       warn "host docker socket at ${DIND_HOST_DOCKER_SOCK} is not accessible; skipping passthrough"
+    elif [ -n "$DIND_HOST_PASSTHROUGH_IMAGES" ]; then
+      # Operator opted in via an allowlist but no host socket is mounted: the
+      # nested daemon will NOT be seeded and the first nested 'docker run' will
+      # re-pull from the registry. Surface it instead of failing silently. (issue #102)
+      warn "host-image passthrough is enabled and DIND_HOST_PASSTHROUGH_IMAGES is set, but no host docker socket is mounted at ${DIND_HOST_DOCKER_SOCK}; the nested daemon will NOT be seeded from the host (first 'docker run' will pull from the registry). Mount it with: -v /var/run/docker.sock:${DIND_HOST_DOCKER_SOCK}:ro"
     fi
+    # Otherwise (no opt-in signal) the common "no host socket mounted" case stays
+    # silent so plain box-dind containers are not spammed.
     return 0
   fi
 

@@ -150,6 +150,33 @@ DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$WORK/absent.sock" \
 check "no host save attempted without a socket" bash -c '! test -s "$DOCKER_SAVED"'
 check "no warning emitted when socket simply absent" bash -c '! test -s "$WORK/err.log"'
 
+echo "== Case 8b: explicit allowlist + absent socket warns about the missing mount (issue #102) =="
+reset_state
+# The operator named the images they expect passed through, but forgot the
+# host-socket mount. That opt-in signal turns the otherwise-silent no-op into a
+# single actionable warning.
+DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$WORK/absent.sock" \
+  DIND_HOST_PASSTHROUGH_IMAGES="hello-world" \
+  DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 \
+  preload_into_daemon 2>"$WORK/err.log"
+check "no host save attempted without a socket" bash -c '! test -s "$DOCKER_SAVED"'
+check "warning names DIND_HOST_PASSTHROUGH_IMAGES" grep -q "DIND_HOST_PASSTHROUGH_IMAGES is set" "$WORK/err.log"
+check "warning suggests the -v mount remediation" grep -q -- "-v /var/run/docker.sock:" "$WORK/err.log"
+
+echo "== Case 8c: present-but-unreachable socket still wins over the allowlist warning =="
+reset_state
+# When a socket file exists but is unreachable, the original (more specific)
+# "not accessible" warning fires — even with an allowlist set — and the generic
+# missing-mount hint does not.
+touch "$WORK/dead.sock"
+DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$WORK/dead.sock" \
+  DIND_HOST_PASSTHROUGH_IMAGES="hello-world" \
+  DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=0 \
+  preload_into_daemon 2>"$WORK/err.log"
+check "unreachable-socket warning fires" grep -q "is not accessible; skipping passthrough" "$WORK/err.log"
+check "missing-mount hint suppressed when a socket file exists" bash -c '! grep -q "DIND_HOST_PASSTHROUGH_IMAGES is set" "$WORK/err.log"'
+rm -f "$WORK/dead.sock"
+
 echo "== Case 9: public mode copies a Docker Hub image, skips a local one =="
 reset_state
 # A hub image (has a docker.io RepoDigest) and a locally-built one (no digest):

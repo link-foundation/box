@@ -228,4 +228,23 @@ if ! docker logs "$images_container" 2>&1 | grep -q "images=${fixture_repo}"; th
 fi
 log "images-allowlist passthrough copied only the named repo and skipped the rest"
 
+# --- Opt-in allowlist but no host socket mounted (issue #102) ---------------
+# Setting DIND_HOST_PASSTHROUGH_IMAGES is an unambiguous "pass these through"
+# signal. If the operator forgets the `-v` socket mount, passthrough used to be
+# a silent no-op and the first nested `docker run` re-pulled from the registry
+# with no hint why. The entrypoint must now surface a single actionable warning
+# naming the missing mount. Note: NO -v host-sock mount here, on purpose.
+no_sock_container="${DIND_EXAMPLE_ID}-passthrough-no-sock"
+log "starting consumer with DIND_HOST_PASSTHROUGH_IMAGES set but NO host socket mounted"
+run_dind_container "$no_sock_container" \
+  -e DIND_HOST_PASSTHROUGH=public \
+  -e "DIND_HOST_PASSTHROUGH_IMAGES=$fixture_repo"
+wait_for_inner_docker "$no_sock_container"
+wait_for_preload_complete "$no_sock_container"
+if ! docker logs "$no_sock_container" 2>&1 | grep -q "DIND_HOST_PASSTHROUGH_IMAGES is set, but no host docker socket is mounted"; then
+  docker logs "$no_sock_container" >&2 || true
+  fail "expected a warning when DIND_HOST_PASSTHROUGH_IMAGES is set but no host socket is mounted"
+fi
+log "missing-socket warning surfaced the forgotten -v mount instead of failing silently"
+
 log "preload example passed"
