@@ -263,6 +263,14 @@ gate, `public` mode still refuses a locally-built or private image even when it
 matches a pattern — the allowlist only ever *narrows* the eligible set, it never
 widens it past the security filter.
 
+Setting `DIND_HOST_PASSTHROUGH_IMAGES` is an unambiguous "I expect these images
+passed through" signal. So if it is set but **no host socket is mounted**, the
+entrypoint no longer stays silent — it emits a single warning naming the
+missing `-v /var/run/docker.sock:/var/run/host-docker.sock:ro` mount, because
+the nested daemon will otherwise re-pull from the registry on the first
+`docker run` with no hint as to why (issue #102). Plain `box-dind` containers
+that never set an allowlist still see no extra noise when no socket is mounted.
+
 ## Commit Cycles
 
 `DIND_SKIP_DAEMON=1` is useful for setup containers where you want to install or
