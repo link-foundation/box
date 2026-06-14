@@ -17,6 +17,33 @@ else
   command_exists() { command -v "$1" &>/dev/null; }
 fi
 
+# npm registry operations are network-bound and occasionally fail transiently in
+# CI (ECONNRESET, 429, registry 5xx), which used to fail the whole image build on
+# a single blip. Retry a command a few times with exponential backoff before
+# giving up. Mirrors apt_update_with_retry() in ../common.sh, including the
+# overridable retry budget so it can be unit-tested with a zero delay.
+run_with_retry() {
+  local max_retries="${NPM_RETRY_MAX_RETRIES:-5}"
+  local delay="${NPM_RETRY_INITIAL_DELAY:-5}"
+  local attempt=1
+
+  while [ "$attempt" -le "$max_retries" ]; do
+    if "$@"; then
+      return 0
+    fi
+
+    if [ "$attempt" -eq "$max_retries" ]; then
+      log_warning "command still failing after ${max_retries} attempts: $*"
+      return 1
+    fi
+
+    log_warning "attempt ${attempt}/${max_retries} failed: $* — retrying in ${delay}s"
+    sleep "$delay"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
+}
+
 log_step "Installing JavaScript/TypeScript runtimes"
 
 # --- Bun ---
@@ -75,14 +102,14 @@ fi
 nvm use 20
 
 log_info "Updating npm to latest version..."
-npm install -g npm@latest --no-fund --silent
+run_with_retry npm install -g npm@latest --no-fund --silent
 log_success "npm updated to latest version"
 
 # --- Playwright CLI + @playwright/test + @puppeteer/browsers ---
 log_step "Installing Playwright, @playwright/test, and @puppeteer/browsers CLIs"
 
 log_info "Installing playwright, @playwright/test, and @puppeteer/browsers globally via npm..."
-npm install -g playwright @playwright/test @puppeteer/browsers --no-fund --force
+run_with_retry npm install -g playwright @playwright/test @puppeteer/browsers --no-fund --force
 log_success "playwright, @playwright/test, and @puppeteer/browsers CLIs installed"
 
 # Verify installations

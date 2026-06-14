@@ -50,7 +50,7 @@ wait_for_preload_complete() {
   local i=0
 
   while [ "$i" -lt "$limit" ]; do
-    if docker logs "$container" 2>&1 | grep -q "image preload/passthrough complete"; then
+    if logs_contain "$container" "image preload/passthrough complete"; then
       log "image preload/passthrough completed in ${container} after ${i}s"
       return 0
     fi
@@ -92,7 +92,7 @@ wait_for_inner_docker "$dir_container"
 wait_for_preload_complete "$dir_container"
 assert_inner_has_image "$dir_container"
 
-if ! docker logs "$dir_container" 2>&1 | grep -q "preload image already present, skipping pull"; then
+if ! logs_contain "$dir_container" "preload image already present, skipping pull"; then
   docker logs "$dir_container" >&2 || true
   fail "expected DIND_PRELOAD_IMAGES to skip the pull for an already-loaded image"
 fi
@@ -181,7 +181,7 @@ if docker exec "$public_container" docker image inspect "$fixture_image" >/dev/n
   docker logs "$public_container" >&2 || true
   fail "public mode must NOT pass through the local fixture image (no RepoDigest)"
 fi
-if ! docker logs "$public_container" 2>&1 | grep -q "host-image passthrough (mode=public)"; then
+if ! logs_contain "$public_container" "host-image passthrough (mode=public)"; then
   docker logs "$public_container" >&2 || true
   fail "expected the consumer to run host-image passthrough in public mode"
 fi
@@ -194,7 +194,7 @@ if ! docker exec "$public_container" docker image inspect "$public_image" >/dev/
   docker exec "$public_container" docker images >&2 || true
   fail "public mode must pass through a host image that has a public RepoDigest (${public_image})"
 fi
-if ! docker logs "$public_container" 2>&1 | grep -q "passthrough loading host image: ${public_image}"; then
+if ! logs_contain "$public_container" "passthrough loading host image: ${public_image}"; then
   docker logs "$public_container" >&2 || true
   fail "expected public mode to log loading the public host image (${public_image})"
 fi
@@ -222,7 +222,7 @@ if docker exec "$images_container" docker image inspect "$public_image" >/dev/nu
   docker logs "$images_container" >&2 || true
   fail "DIND_HOST_PASSTHROUGH_IMAGES must exclude ${public_image} (not in the allowlist)"
 fi
-if ! docker logs "$images_container" 2>&1 | grep -q "images=${fixture_repo}"; then
+if ! logs_contain "$images_container" "images=${fixture_repo}"; then
   docker logs "$images_container" >&2 || true
   fail "expected the consumer to log the active DIND_HOST_PASSTHROUGH_IMAGES allowlist"
 fi
@@ -241,7 +241,7 @@ run_dind_container "$no_sock_container" \
   -e "DIND_HOST_PASSTHROUGH_IMAGES=$fixture_repo"
 wait_for_inner_docker "$no_sock_container"
 wait_for_preload_complete "$no_sock_container"
-if ! docker logs "$no_sock_container" 2>&1 | grep -q "DIND_HOST_PASSTHROUGH_IMAGES is set, but no host docker socket is mounted"; then
+if ! logs_contain "$no_sock_container" "DIND_HOST_PASSTHROUGH_IMAGES is set, but no host docker socket is mounted"; then
   docker logs "$no_sock_container" >&2 || true
   fail "expected a warning when DIND_HOST_PASSTHROUGH_IMAGES is set but no host socket is mounted"
 fi
