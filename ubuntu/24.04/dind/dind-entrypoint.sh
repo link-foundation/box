@@ -16,7 +16,14 @@
 #   - Sysbox :  docker run --runtime=sysbox-runc konard/<base>-dind   (no --privileged)
 #
 # Environment overrides:
-#   DIND_STORAGE_DRIVER  Override storage driver (default: auto-detected: overlay2, fuse-overlayfs, vfs)
+#   DIND_STORAGE_DRIVER  Override storage driver (default: auto-detected: overlay2,
+#                        fuse-overlayfs, vfs). Note: vfs has NO copy-on-write — it
+#                        stores every image layer as a full, independent copy, so
+#                        large (multi-GB) images consume many times their size on
+#                        disk and 'docker pull'/'docker run' can fail with 'no
+#                        space left on device'. When the active driver ends up
+#                        being vfs the entrypoint emits a one-time warning naming
+#                        the fuse-overlayfs (copy-on-write) remediation. (issue #104)
 #   DIND_DATA_ROOT       Override --data-root for dockerd (default: /var/lib/docker)
 #   DIND_LOG_FILE        Where to write dockerd logs (default: /var/log/dockerd.log)
 #   DIND_WAIT_SECONDS    How long to wait for dockerd to come up (default: 30)
@@ -189,6 +196,40 @@ wait_for_dockerd_ready() {
   return 2
 }
 
+# Device node fuse-overlayfs needs for copy-on-write. Overridable so the unit
+# test can exercise both the "present" and "missing" remediation branches without
+# a real device node; in production it is always /dev/fuse.
+DIND_FUSE_DEVICE="${DIND_FUSE_DEVICE:-/dev/fuse}"
+
+# When the active storage driver is vfs, emit a one-time warning explaining the
+# copy-on-write footgun. vfs is a safe last-resort fallback (and a legitimate
+# explicit pin for overlay-on-overlay compatibility), so this is observability,
+# not a default change: it stores every image layer as a full, independent copy,
+# so a multi-GB image's on-disk footprint becomes the SUM of all cumulative layer
+# sizes — many times the image size — and 'docker pull'/'docker run' can fail with
+# 'failed to register layer: no space left on device' on a disk far larger than
+# the image. Without this breadcrumb the generic disk error is easily misdiagnosed
+# as "not enough disk" instead of "wrong driver wastes the disk"
+# (link-assistant/hive-mind#1914). The remediation depends on whether the
+# copy-on-write fuse-overlayfs driver's device node is available. (issue #104)
+warn_if_vfs_storage_driver() {
+  [ "$1" = "vfs" ] || return 0
+
+  warn "dockerd is using the 'vfs' storage driver, which has NO copy-on-write:"
+  warn "every image layer is stored as a full copy, so a multi-GB image's on-disk"
+  warn "footprint becomes the SUM of all cumulative layer sizes (many times the"
+  warn "image size). 'docker pull'/'docker run' can then fail with 'failed to"
+  warn "register layer: no space left on device' on a disk far larger than the image."
+  if [ -e "$DIND_FUSE_DEVICE" ]; then
+    warn "For copy-on-write here, set DIND_STORAGE_DRIVER=fuse-overlayfs (works"
+    warn "overlay-on-overlay; ${DIND_FUSE_DEVICE} is present)."
+  else
+    warn "fuse-overlayfs (copy-on-write, works overlay-on-overlay) is unavailable"
+    warn "because ${DIND_FUSE_DEVICE} is missing; run with --privileged or"
+    warn "--device /dev/fuse, then set DIND_STORAGE_DRIVER=fuse-overlayfs."
+  fi
+}
+
 start_dockerd() {
   if pgrep -x dockerd >/dev/null 2>&1; then
     log "dockerd already running (pid $(pgrep -x dockerd | head -n1))"
@@ -215,6 +256,7 @@ start_dockerd() {
     launch_dockerd "$DIND_STORAGE_DRIVER"
 
     if wait_for_dockerd_ready "$DIND_DOCKERD_PID" "$DIND_STORAGE_DRIVER"; then
+      warn_if_vfs_storage_driver "$DIND_STORAGE_DRIVER"
       return 0
     else
       result="$?"

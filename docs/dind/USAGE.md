@@ -352,6 +352,29 @@ docker run -d --privileged \
   konard/box-dind sleep infinity
 ```
 
+Because that trade-off is easy to hit by accident, the entrypoint emits a
+one-time warning whenever the **active** driver ends up being `vfs` — whether
+pinned explicitly or reached as the last-resort fallback (issue #104). `vfs`
+stores every image layer as a full, independent copy, so a multi-GB image's
+on-disk footprint becomes the *sum* of all cumulative layer sizes — many times
+the image size — and `docker pull`/`docker run` can fail with `failed to register
+layer: no space left on device` on a disk far larger than the image. The warning
+makes that failure traceable instead of looking like a generic "out of disk".
+
+If your host supports it, prefer `DIND_STORAGE_DRIVER=fuse-overlayfs`: it is
+copy-on-write **and** works overlay-on-overlay (the compatibility reason `vfs` is
+sometimes chosen), is already shipped in the image, and needs `/dev/fuse`
+(provided by `--privileged`). The warning's remediation line adapts to whether
+`/dev/fuse` is present, so when it is missing it tells you to add `--privileged`
+or `--device /dev/fuse` before switching.
+
+```bash
+docker run -d --privileged \
+  -e DIND_STORAGE_DRIVER=fuse-overlayfs \
+  --name box-dind-cow \
+  konard/box-dind sleep infinity
+```
+
 CI verifies the forced `vfs` path:
 
 ```bash

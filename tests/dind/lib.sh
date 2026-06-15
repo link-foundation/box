@@ -66,6 +66,24 @@ require_docker() {
   fi
 }
 
+# logs_contain CONTAINER NEEDLE
+# Succeeds when CONTAINER's combined stdout+stderr logs contain the literal
+# NEEDLE substring. The logs are captured into a variable and matched with a
+# bash `case` glob instead of being piped into `grep -q`. Under `set -o pipefail`
+# `grep -q` closes the pipe the instant it matches, which can deliver SIGPIPE
+# (exit 141) to `docker logs` while it is still streaming; pipefail then
+# propagates that 141 and a genuine match reads as a false "not found". Capturing
+# first removes the pipe entirely. The quoted needle in the case pattern is
+# matched literally, so any glob/regex metacharacters in it are not special.
+logs_contain() {
+  local container="$1" needle="$2" logs
+  logs="$(docker logs "$container" 2>&1 || true)"
+  case "$logs" in
+    *"$needle"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 run_container_from_image() {
   local name="$1"
   local image="$2"

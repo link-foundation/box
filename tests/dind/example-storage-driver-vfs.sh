@@ -19,3 +19,15 @@ if [ "$driver" != "vfs" ]; then
 fi
 
 log "inner dockerd is using the vfs storage driver"
+
+# issue #104: landing on vfs must not be silent. The entrypoint (PID 1) emits a
+# copy-on-write warning to stderr, which docker captures in the container logs.
+log "verifying the vfs copy-on-write warning was emitted (issue #104)"
+for needle in "'vfs' storage driver" "no space left on device" "DIND_STORAGE_DRIVER=fuse-overlayfs"; do
+  if ! logs_contain "$container" "$needle"; then
+    docker logs "$container" >&2 || true
+    fail "expected the vfs warning to mention \"${needle}\", but it was absent from the container logs"
+  fi
+done
+
+log "vfs copy-on-write warning is present in the container logs"
