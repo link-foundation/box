@@ -17,14 +17,17 @@ else
   command_exists() { command -v "$1" &>/dev/null; }
 fi
 
-# npm registry operations are network-bound and occasionally fail transiently in
-# CI (ECONNRESET, 429, registry 5xx), which used to fail the whole image build on
-# a single blip. Retry a command a few times with exponential backoff before
-# giving up. Mirrors apt_update_with_retry() in ../common.sh, including the
-# overridable retry budget so it can be unit-tested with a zero delay.
+# Network-bound build steps — npm registry installs and Playwright browser
+# downloads — occasionally fail transiently in CI (ECONNRESET, 429, registry 5xx,
+# or a flaky third-party repo such as packages.microsoft.com serving an invalid
+# GPG key body when Playwright installs the 'msedge' browser), which used to fail
+# the whole image build on a single blip. Retry a command a few times with
+# exponential backoff before giving up. Mirrors apt_update_with_retry() in
+# ../common.sh, including the overridable retry budget so it can be unit-tested
+# with a zero delay.
 run_with_retry() {
-  local max_retries="${NPM_RETRY_MAX_RETRIES:-5}"
-  local delay="${NPM_RETRY_INITIAL_DELAY:-5}"
+  local max_retries="${BUILD_RETRY_MAX_RETRIES:-5}"
+  local delay="${BUILD_RETRY_INITIAL_DELAY:-5}"
   local attempt=1
 
   while [ "$attempt" -le "$max_retries" ]; do
@@ -119,13 +122,20 @@ log_success "playwright CLI verified"
 # --- Download Playwright browser binaries ---
 log_step "Downloading Playwright browser binaries"
 
+# 'playwright install' downloads browser binaries: chromium/firefox/webkit/
+# chromium-headless-shell come from Playwright's CDN, but msedge and chrome are
+# fetched from third-party apt repos (packages.microsoft.com / Google) that
+# occasionally return a transient error — e.g. an invalid GPG key body that makes
+# the install abort with "gpg: no valid OpenPGP data found" / "Failed to install
+# msedge". Retry the whole step; Playwright skips already-installed browsers, so a
+# retry only re-attempts the one that blipped.
 ARCH=$(uname -m)
 if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; then
   log_info "x86_64 detected: installing all browsers (chromium, firefox, webkit, msedge, chromium-headless-shell, chrome)"
-  playwright install chromium firefox webkit msedge chromium-headless-shell chrome
+  run_with_retry playwright install chromium firefox webkit msedge chromium-headless-shell chrome
 else
   log_info "$ARCH detected: installing compatible browsers (chromium, firefox, webkit, chromium-headless-shell)"
-  playwright install chromium firefox webkit chromium-headless-shell
+  run_with_retry playwright install chromium firefox webkit chromium-headless-shell
 fi
 log_success "Playwright browser binaries downloaded"
 
