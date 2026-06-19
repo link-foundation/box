@@ -83,6 +83,14 @@
 #                        (e.g. "docker.io/konard/hive-mind*"). This narrows
 #                        passthrough one level finer than the registry allowlist
 #                        — to specific repositories / image names. (issue #97)
+#                        After passthrough runs, every *concrete* entry here (an
+#                        explicit tag or digest, no glob) is verified to actually
+#                        be present in the nested daemon; a missing one triggers a
+#                        loud warning instead of a false "complete", because the
+#                        first nested 'docker run' would otherwise silently re-pull
+#                        the multi-GB image from the registry (the lingering
+#                        symptom of issues #94 / #102, still seen downstream in
+#                        link-assistant/hive-mind#1914/#1946). (issue #106)
 
 set -eu
 
@@ -487,6 +495,62 @@ passthrough_host_images() {
       done
 }
 
+# True when a reference is concrete enough to verify by name: it carries an
+# explicit tag or digest and contains no glob metacharacters. A bare repository
+# ("konard/hive-mind") or a glob ("konard/hive-mind*") is NOT concrete — it has
+# no single deterministic ref to inspect in the nested daemon (the host may hold
+# it under any tag), so verification skips it rather than risk a false alarm.
+# Note: a ':' is only a tag separator in the LAST path segment; "host:5000/repo"
+# is a registry port, not a tag, and is correctly treated as non-concrete.
+ref_is_concrete() {
+  case "$1" in
+    *'*'*|*'?'*|*'['*) return 1 ;;   # glob pattern
+  esac
+  case "$1" in
+    *@*) return 0 ;;                 # explicit digest (…@sha256:…)
+  esac
+  case "${1##*/}" in
+    *:*) return 0 ;;                 # explicit tag in the final segment
+  esac
+  return 1
+}
+
+# Assert that every concrete DIND_HOST_PASSTHROUGH_IMAGES entry actually landed
+# in the nested daemon after passthrough ran. Setting the allowlist is an
+# unambiguous "seed these" request; if a named image is still absent, the first
+# nested 'docker run' will silently re-pull it (multi-GB, ~1h downstream — the
+# exact #94/#102 symptom). Rather than print a misleading "complete", surface a
+# loud, actionable warning naming the missing image(s) and the likely cause.
+# Returns 0 when everything expected is present (or there is nothing concrete to
+# check), non-zero when at least one named image is missing. (issue #106)
+verify_passthrough_images() {
+  host_passthrough_enabled || return 0
+  [ -n "$DIND_HOST_PASSTHROUGH_IMAGES" ] || return 0
+
+  missing=""
+  for entry in $DIND_HOST_PASSTHROUGH_IMAGES; do
+    ref_is_concrete "$entry" || continue
+    if ! docker image inspect "$entry" >/dev/null 2>&1; then
+      missing="${missing:+$missing }$entry"
+    fi
+  done
+
+  [ -n "$missing" ] || return 0
+
+  warn "host-image passthrough did NOT seed expected image(s) into the nested daemon: ${missing}"
+  warn "the first nested 'docker run' will re-pull each from its registry (multi-GB, slow)."
+  if host_docker_available; then
+    warn "the host socket at ${DIND_HOST_DOCKER_SOCK} is reachable, so the host most likely does not"
+    warn "have the image under that exact reference, or mode=${DIND_HOST_PASSTHROUGH} filtered it out"
+    warn "(public passes only images with a public RepoDigest; use DIND_HOST_PASSTHROUGH=all for"
+    warn "locally-built or private images)."
+  else
+    warn "no usable host docker socket at ${DIND_HOST_DOCKER_SOCK}; mount it read-only with"
+    warn "-v /var/run/docker.sock:${DIND_HOST_DOCKER_SOCK}:ro so passthrough can copy the image."
+  fi
+  return 1
+}
+
 preload_into_daemon() {
   # Tarball/registry preload only run when their vars are set; host passthrough
   # is on by default, so we still proceed to give it a chance to find a socket.
@@ -503,10 +567,17 @@ preload_into_daemon() {
   preload_tarballs
   passthrough_host_images
   preload_images
-  # Emit a completion marker once every preload path has finished so consumers
+  # Emit a terminal marker once every preload path has finished so consumers
   # (and tests) can synchronize on "images are seeded" rather than racing the
-  # asynchronous load against mere dockerd readiness. (issue #94)
-  log "image preload/passthrough complete"
+  # asynchronous load against mere dockerd readiness. (issue #94) The wording is
+  # honest about the outcome: only claim "complete" when every concrete
+  # allowlisted image is actually present; otherwise say so loudly instead of
+  # papering over a silent re-pull. (issue #106)
+  if verify_passthrough_images; then
+    log "image preload/passthrough complete"
+  else
+    warn "image preload/passthrough finished WITH WARNINGS: expected host image(s) were not seeded (see above)"
+  fi
 }
 
 # Allow the unit tests to source this file for the function definitions without

@@ -41,11 +41,24 @@ case "$1" in
     [ "$host" = "1" ] && cat "$HOST_IMAGES" 2>/dev/null
     exit 0 ;;
   load)
-    cat >/dev/null 2>&1 || true   # drain the piped tar stream like real `docker load`
-    echo "loaded" >> "$DOCKER_LOADED"; exit 0 ;;
+    echo "loaded" >> "$DOCKER_LOADED"
+    if [ "${2:-}" = "-i" ]; then
+      # Tarball load (`docker load -i file`): nothing is piped and the mock has
+      # no way to know which refs the tarball carried, so just record the load.
+      exit 0
+    fi
+    # Piped load (`docker -H .. save <ref> | docker load`): our mock `save`
+    # encodes the ref as a "REF:<ref>" line, so the loaded image becomes present
+    # in the inner daemon — mirroring real `docker load` so post-load
+    # verification (issue #106) sees what was actually seeded.
+    while IFS= read -r line; do
+      case "$line" in REF:*) printf '%s\n' "${line#REF:}" >> "$DOCKER_PRESENT" ;; esac
+    done
+    exit 0 ;;
   save)
-    # `docker -H .. save <ref>` streams a tarball; mark it saved.
-    echo "$2" >> "$DOCKER_SAVED"; echo "fake-tar-stream"; exit 0 ;;
+    # `docker -H .. save <ref>` streams a tarball; mark it saved and encode the
+    # ref so the piped `docker load` can mark it present (see above).
+    echo "$2" >> "$DOCKER_SAVED"; printf 'REF:%s\n' "$2"; exit 0 ;;
   pull)
     echo "$2" >> "$DOCKER_PULLED"; echo "$2" >> "$DOCKER_PRESENT"; exit 0 ;;
   *) exit 0 ;;
@@ -61,6 +74,11 @@ export DOCKER_PRESENT="$WORK/present.log"
 export DOCKER_SAVED="$WORK/saved.log"
 export HOST_IMAGES="$WORK/host-images.log"
 export HOST_DIGESTS="$WORK/host-digests.log"
+# Captured entrypoint stdout/stderr for the issue #106 verification cases.
+# Exported so the `bash -c '! grep ...'` negative checks resolve the path inside
+# their subshell (an unexported $WORK would silently miss the file).
+export OUT_LOG="$WORK/out.log"
+export ERR_LOG="$WORK/err.log"
 
 # --- Source the real entrypoint for its functions only ---
 # shellcheck disable=SC1090
@@ -138,17 +156,17 @@ check "no docker calls at all" bash -c '! test -s "$DOCKER_CALLS"'
 echo "== Case 7: missing tarball path warns, no load =="
 reset_state
 DIND_HOST_PASSTHROUGH=off DIND_PRELOAD_TARBALL="$WORK/does-not-exist.tar" DIND_PRELOAD_IMAGES="" \
-  DOCKER_INFO_OK=1 preload_into_daemon 2>"$WORK/err.log"
+  DOCKER_INFO_OK=1 preload_into_daemon 2>"$ERR_LOG"
 check "no load for missing path" bash -c '! grep -q "load -i" "$DOCKER_CALLS"'
-check "warning emitted for missing path" grep -q "does not exist" "$WORK/err.log"
+check "warning emitted for missing path" grep -q "does not exist" "$ERR_LOG"
 
 echo "== Case 8: passthrough is a quiet no-op when no host socket is mounted =="
 reset_state
 DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$WORK/absent.sock" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 \
-  preload_into_daemon 2>"$WORK/err.log"
+  preload_into_daemon 2>"$ERR_LOG"
 check "no host save attempted without a socket" bash -c '! test -s "$DOCKER_SAVED"'
-check "no warning emitted when socket simply absent" bash -c '! test -s "$WORK/err.log"'
+check "no warning emitted when socket simply absent" bash -c '! test -s "$ERR_LOG"'
 
 echo "== Case 8b: explicit allowlist + absent socket warns about the missing mount (issue #102) =="
 reset_state
@@ -158,10 +176,10 @@ reset_state
 DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$WORK/absent.sock" \
   DIND_HOST_PASSTHROUGH_IMAGES="hello-world" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 \
-  preload_into_daemon 2>"$WORK/err.log"
+  preload_into_daemon 2>"$ERR_LOG"
 check "no host save attempted without a socket" bash -c '! test -s "$DOCKER_SAVED"'
-check "warning names DIND_HOST_PASSTHROUGH_IMAGES" grep -q "DIND_HOST_PASSTHROUGH_IMAGES is set" "$WORK/err.log"
-check "warning suggests the -v mount remediation" grep -q -- "-v /var/run/docker.sock:" "$WORK/err.log"
+check "warning names DIND_HOST_PASSTHROUGH_IMAGES" grep -q "DIND_HOST_PASSTHROUGH_IMAGES is set" "$ERR_LOG"
+check "warning suggests the -v mount remediation" grep -q -- "-v /var/run/docker.sock:" "$ERR_LOG"
 
 echo "== Case 8c: present-but-unreachable socket still wins over the allowlist warning =="
 reset_state
@@ -172,9 +190,9 @@ touch "$WORK/dead.sock"
 DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$WORK/dead.sock" \
   DIND_HOST_PASSTHROUGH_IMAGES="hello-world" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=0 \
-  preload_into_daemon 2>"$WORK/err.log"
-check "unreachable-socket warning fires" grep -q "is not accessible; skipping passthrough" "$WORK/err.log"
-check "missing-mount hint suppressed when a socket file exists" bash -c '! grep -q "DIND_HOST_PASSTHROUGH_IMAGES is set" "$WORK/err.log"'
+  preload_into_daemon 2>"$ERR_LOG"
+check "unreachable-socket warning fires" grep -q "is not accessible; skipping passthrough" "$ERR_LOG"
+check "missing-mount hint suppressed when a socket file exists" bash -c '! grep -q "DIND_HOST_PASSTHROUGH_IMAGES is set" "$ERR_LOG"'
 rm -f "$WORK/dead.sock"
 
 echo "== Case 9: public mode copies a Docker Hub image, skips a local one =="
@@ -293,6 +311,56 @@ DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
 check "empty allowlist still saves hive-mind" grep -qx "konard/hive-mind:latest" "$DOCKER_SAVED"
 check "empty allowlist still saves alpine"    grep -qx "alpine:3.20" "$DOCKER_SAVED"
 rm -f "$HOST_SOCK"
+
+echo "== Case 19: concrete allowlisted image present after passthrough -> honest 'complete' (issue #106) =="
+reset_state
+# Host has the named image with a public RepoDigest; the socket is mounted, so
+# passthrough copies it and the mock `load` marks it present in the inner daemon.
+printf '%s\n' "konard/hive-mind-dind:2.0.6" > "$HOST_IMAGES"
+echo "konard/hive-mind-dind:2.0.6|konard/hive-mind-dind@sha256:aaa " > "$HOST_DIGESTS"
+make_sock "$HOST_SOCK"
+DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
+  DIND_HOST_PASSTHROUGH_IMAGES="konard/hive-mind-dind:2.0.6" \
+  DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=1 \
+  preload_into_daemon >"$OUT_LOG" 2>"$ERR_LOG"
+check "seeded concrete image was saved from host" grep -qx "konard/hive-mind-dind:2.0.6" "$DOCKER_SAVED"
+check "honest 'complete' marker printed"          grep -q "image preload/passthrough complete" "$OUT_LOG"
+check "no verification warning when present"       bash -c '! grep -q "did NOT seed" "$ERR_LOG"'
+check "no 'WITH WARNINGS' marker when present"     bash -c '! grep -q "finished WITH WARNINGS" "$OUT_LOG" "$ERR_LOG"'
+rm -f "$HOST_SOCK"
+
+echo "== Case 20: concrete allowlisted image absent -> loud warning, no false 'complete' (issue #106) =="
+reset_state
+# No host socket mounted, so nothing can be copied. The named concrete image is
+# absent from the inner daemon: verification must catch it and suppress 'complete'.
+DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$WORK/absent.sock" \
+  DIND_HOST_PASSTHROUGH_IMAGES="konard/hive-mind-dind:2.0.6" \
+  DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 \
+  preload_into_daemon >"$OUT_LOG" 2>"$ERR_LOG"
+check "verification warns it did NOT seed the image" grep -q "did NOT seed expected image(s) into the nested daemon: konard/hive-mind-dind:2.0.6" "$ERR_LOG"
+check "warning points at the missing -v mount"        grep -q -- "-v /var/run/docker.sock:" "$ERR_LOG"
+check "terminal marker is 'finished WITH WARNINGS'"   grep -q "image preload/passthrough finished WITH WARNINGS" "$ERR_LOG"
+check "misleading 'complete' is NOT printed"          bash -c '! grep -q "image preload/passthrough complete" "$OUT_LOG" "$ERR_LOG"'
+
+echo "== Case 21: glob / bare-repo allowlist entries never raise a false verification alarm (issue #106) =="
+reset_state
+# Neither a glob nor a bare repository is concrete, so verification must skip
+# them (the host could hold any tag) and still report an honest 'complete'.
+DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$WORK/absent.sock" \
+  DIND_HOST_PASSTHROUGH_IMAGES="konard/hive-mind* konard/other" \
+  DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 \
+  preload_into_daemon >"$OUT_LOG" 2>"$ERR_LOG"
+check "no verification warning for non-concrete entries" bash -c '! grep -q "did NOT seed" "$ERR_LOG"'
+check "honest 'complete' still printed"                  grep -q "image preload/passthrough complete" "$OUT_LOG"
+
+echo "== Case 22: ref_is_concrete classification (direct calls) =="
+reset_state
+check "explicit tag is concrete"        eval 'ref_is_concrete "konard/hive-mind-dind:2.0.6"'
+check "explicit digest is concrete"     eval 'ref_is_concrete "konard/hive-mind-dind@sha256:abc"'
+check "bare repo is NOT concrete"       eval '! ref_is_concrete "konard/hive-mind"'
+check "glob is NOT concrete"            eval '! ref_is_concrete "konard/hive-mind*"'
+check "registry port w/o tag NOT concrete" eval '! ref_is_concrete "registry.example.com:5000/repo"'
+check "registry port WITH tag is concrete" eval 'ref_is_concrete "registry.example.com:5000/repo:v1"'
 
 echo "== Case 18: image-matching helper normalization (direct calls) =="
 reset_state

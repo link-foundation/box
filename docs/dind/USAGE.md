@@ -74,7 +74,7 @@ The entrypoint supports these environment variables:
 | `DIND_HOST_PASSTHROUGH` | `public` | Copy images already present on the host into the nested daemon at startup when a host socket is mounted (see below). `public` only passes images with a RepoDigest from an allowlisted public registry; `all` passes every tagged image; `off` disables it. A quiet no-op when no host socket is mounted. |
 | `DIND_HOST_DOCKER_SOCK` | `/var/run/host-docker.sock` | Path inside the container to the mounted *host* Docker socket used for passthrough. Deliberately **not** `/var/run/docker.sock`, so the inner daemon keeps its own isolated socket. |
 | `DIND_HOST_PASSTHROUGH_REGISTRIES` | common public registries | Space-separated allowlist of registries treated as "public" in `DIND_HOST_PASSTHROUGH=public` mode (default: `docker.io ghcr.io quay.io gcr.io registry.k8s.io public.ecr.aws mcr.microsoft.com`). |
-| `DIND_HOST_PASSTHROUGH_IMAGES` | _(empty)_ | Space-separated allowlist of image references / globs. When non-empty, only host images matching at least one entry are passed through, composed with the mode filter (so `public` still requires a public RepoDigest). Empty keeps the mode + registry filter only. One level finer than `DIND_HOST_PASSTHROUGH_REGISTRIES` — scope to specific repositories / image names. |
+| `DIND_HOST_PASSTHROUGH_IMAGES` | _(empty)_ | Space-separated allowlist of image references / globs. When non-empty, only host images matching at least one entry are passed through, composed with the mode filter (so `public` still requires a public RepoDigest). Empty keeps the mode + registry filter only. One level finer than `DIND_HOST_PASSTHROUGH_REGISTRIES` — scope to specific repositories / image names. Each concrete entry (explicit tag/digest) is verified present in the nested daemon after passthrough; a missing one warns loudly instead of falsely reporting "complete" (issue #106). |
 
 Use a named volume when the inner Docker state should survive container removal:
 
@@ -270,6 +270,35 @@ missing `-v /var/run/docker.sock:/var/run/host-docker.sock:ro` mount, because
 the nested daemon will otherwise re-pull from the registry on the first
 `docker run` with no hint as to why (issue #102). Plain `box-dind` containers
 that never set an allowlist still see no extra noise when no socket is mounted.
+
+### Verifying the copy actually happened (`issue #106`)
+
+A warning about a forgotten mount only covers one failure mode. Passthrough can
+also quietly seed *nothing* for other reasons — the host does not have the image
+under that exact reference, the socket is present but unreachable, or `public`
+mode filtered out a locally-built image (no RepoDigest). In every case the
+entrypoint used to print `image preload/passthrough complete` regardless, and
+the first nested `docker run` then silently re-pulled the multi-GB image from the
+registry (~30 GB, ~1 h downstream — `link-assistant/hive-mind#1914`/`#1946`).
+
+So after passthrough runs, each **concrete** `DIND_HOST_PASSTHROUGH_IMAGES`
+entry — one with an explicit tag or digest, no glob — is verified to actually be
+present in the nested daemon (`docker image inspect <ref>`). When one is
+missing, the entrypoint:
+
+- emits a loud, actionable warning naming the un-seeded image(s) and the likely
+  cause (missing/unreachable socket, host lacks that exact ref, or the mode
+  filter dropped it — with the `DIND_HOST_PASSTHROUGH=all` remedy for
+  locally-built/private images), and
+- ends the phase with `image preload/passthrough finished WITH WARNINGS`
+  instead of the misleading `...complete`, so logs never claim success when
+  nothing was copied.
+
+Bare repositories (`konard/hive-mind`) and globs (`konard/hive-mind*`) are not
+concrete — the host may hold them under any tag — so they are not individually
+verified and never trigger a false alarm. To get this assertion for a specific
+image, pin it in the allowlist with an explicit tag or digest, e.g.
+`DIND_HOST_PASSTHROUGH_IMAGES=konard/hive-mind-dind:2.0.6`.
 
 ## Commit Cycles
 
