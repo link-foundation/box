@@ -211,39 +211,41 @@ jobs:
     if: always() && (needs.apply-changesets.result == 'success' || needs.apply-changesets.result == 'skipped') && (needs.version-bump.result == 'success' || needs.version-bump.result == 'skipped')
     outputs:
       # Legacy change detection
-      docker-changed: ${{ steps.changes.outputs.docker }}
-      scripts-changed: ${{ steps.changes.outputs.scripts }}
-      ubuntu-changed: ${{ steps.changes.outputs.ubuntu }}
-      workflow-changed: ${{ steps.changes.outputs.workflow }}
-      version-changed: ${{ steps.changes.outputs.version }}
-      should-build: ${{ steps.should-build.outputs.result }}
+      docker-changed: ${{ steps.detect.outputs.docker }}
+      scripts-changed: ${{ steps.detect.outputs.scripts }}
+      ubuntu-changed: ${{ steps.detect.outputs.ubuntu }}
+      workflow-changed: ${{ steps.detect.outputs.workflow }}
+      version-changed: ${{ steps.detect.outputs.version }}
+      should-build: ${{ steps.detect.outputs.should-build }}
       version: ${{ steps.version.outputs.version }}
       # Per-image change detection
-      js-changed: ${{ steps.image-changes.outputs.js }}
-      essentials-changed: ${{ steps.image-changes.outputs.essentials }}
-      full-changed: ${{ steps.image-changes.outputs.full }}
-      common-changed: ${{ steps.image-changes.outputs.common }}
+      js-changed: ${{ steps.detect.outputs.js }}
+      essentials-changed: ${{ steps.detect.outputs.essentials }}
+      full-changed: ${{ steps.detect.outputs.full }}
+      common-changed: ${{ steps.detect.outputs.common }}
       # Per-language change detection
-      python-changed: ${{ steps.language-changes.outputs.python }}
-      go-changed: ${{ steps.language-changes.outputs.go }}
-      rust-changed: ${{ steps.language-changes.outputs.rust }}
-      java-changed: ${{ steps.language-changes.outputs.java }}
-      kotlin-changed: ${{ steps.language-changes.outputs.kotlin }}
-      ruby-changed: ${{ steps.language-changes.outputs.ruby }}
-      php-changed: ${{ steps.language-changes.outputs.php }}
-      perl-changed: ${{ steps.language-changes.outputs.perl }}
-      swift-changed: ${{ steps.language-changes.outputs.swift }}
-      lean-changed: ${{ steps.language-changes.outputs.lean }}
-      rocq-changed: ${{ steps.language-changes.outputs.rocq }}
-      cpp-changed: ${{ steps.language-changes.outputs.cpp }}
-      assembly-changed: ${{ steps.language-changes.outputs.assembly }}
+      python-changed: ${{ steps.detect.outputs.python }}
+      go-changed: ${{ steps.detect.outputs.go }}
+      rust-changed: ${{ steps.detect.outputs.rust }}
+      java-changed: ${{ steps.detect.outputs.java }}
+      kotlin-changed: ${{ steps.detect.outputs.kotlin }}
+      ruby-changed: ${{ steps.detect.outputs.ruby }}
+      php-changed: ${{ steps.detect.outputs.php }}
+      perl-changed: ${{ steps.detect.outputs.perl }}
+      swift-changed: ${{ steps.detect.outputs.swift }}
+      lean-changed: ${{ steps.detect.outputs.lean }}
+      rocq-changed: ${{ steps.detect.outputs.rocq }}
+      cpp-changed: ${{ steps.detect.outputs.cpp }}
+      assembly-changed: ${{ steps.detect.outputs.assembly }}
       # dind-box change detection (issue #80)
-      dind-changed: ${{ steps.image-changes.outputs.dind }}
+      dind-changed: ${{ steps.detect.outputs.dind }}
 
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 2
+          # Full history so detect-changes.sh can resolve the synthetic merge
+          # commit's parents (HEAD^2^..HEAD^2 per-commit PR diff — issue #108).
+          fetch-depth: 0
           ref: ${{ github.ref }}
 
       # Re-fetch if version was bumped to get latest commit
@@ -261,146 +263,25 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Detected version: $VERSION"
 
+      # Single source of truth for change detection (issue #108).
+      #
+      # The crux of the fix: for pull_request events this script diffs only the
+      # PR head's latest commit (HEAD^2^..HEAD^2 against the synthetic merge
+      # commit), not the whole-PR diff against the base SHA. A trivial
+      # synchronize commit (.gitkeep, docs, Markdown) therefore skips the
+      # expensive build/test matrix even when earlier commits on the same PR
+      # changed image source — those were already tested when pushed. For push
+      # events it diffs the full pushed range (github.event.before..HEAD) so the
+      # release build is never skipped. The classification logic lives in
+      # scripts/ci/detect-changes.sh and is unit-tested by
+      # experiments/test-issue108-detect-changes.sh.
       - name: Detect changes
-        id: changes
-        run: |
-          # For push events, compare with previous commit
-          # For PR events, compare with base branch
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          else
-            BASE_SHA="${{ github.event.before }}"
-          fi
-
-          # Get changed files
-          CHANGED_FILES=$(git diff --name-only "$BASE_SHA" HEAD 2>/dev/null || git diff --name-only HEAD~1 HEAD)
-          echo "Changed files:"
-          echo "$CHANGED_FILES"
-
-          # Check for Docker-related changes
-          if echo "$CHANGED_FILES" | grep -qE '^Dockerfile$'; then
-            echo "docker=true" >> $GITHUB_OUTPUT
-          else
-            echo "docker=false" >> $GITHUB_OUTPUT
-          fi
-
-          # Check for scripts changes
-          if echo "$CHANGED_FILES" | grep -qE '^scripts/'; then
-            echo "scripts=true" >> $GITHUB_OUTPUT
-          else
-            echo "scripts=false" >> $GITHUB_OUTPUT
-          fi
-
-          # Check for ubuntu/ modular scripts changes
-          if echo "$CHANGED_FILES" | grep -qE '^ubuntu/'; then
-            echo "ubuntu=true" >> $GITHUB_OUTPUT
-          else
-            echo "ubuntu=false" >> $GITHUB_OUTPUT
-          fi
-
-          # Check for workflow changes
-          if echo "$CHANGED_FILES" | grep -qE '^\.github/workflows/'; then
-            echo "workflow=true" >> $GITHUB_OUTPUT
-          else
-            echo "workflow=false" >> $GITHUB_OUTPUT
-          fi
-
-          # Check for VERSION file changes
-          if echo "$CHANGED_FILES" | grep -qE '^VERSION$'; then
-            echo "version=true" >> $GITHUB_OUTPUT
-          else
-            echo "version=false" >> $GITHUB_OUTPUT
-          fi
-
-          # Save changed files for per-image detection
-          echo "$CHANGED_FILES" > /tmp/changed-files.txt
-
-      - name: Detect per-image changes
-        id: image-changes
-        run: |
-          CHANGED_FILES=$(cat /tmp/changed-files.txt)
-
-          # JS box changes
-          if echo "$CHANGED_FILES" | grep -qE '^ubuntu/24\.04/js/'; then
-            echo "js=true" >> $GITHUB_OUTPUT
-          else
-            echo "js=false" >> $GITHUB_OUTPUT
-          fi
-
-          # Essentials box changes
-          if echo "$CHANGED_FILES" | grep -qE '^ubuntu/24\.04/essentials-box/'; then
-            echo "essentials=true" >> $GITHUB_OUTPUT
-          else
-            echo "essentials=false" >> $GITHUB_OUTPUT
-          fi
-
-          # Full box changes (full-box dir, root Dockerfile, or scripts)
-          if echo "$CHANGED_FILES" | grep -qE '^(ubuntu/24\.04/full-box/|Dockerfile$|scripts/)'; then
-            echo "full=true" >> $GITHUB_OUTPUT
-          else
-            echo "full=false" >> $GITHUB_OUTPUT
-          fi
-
-          # Common.sh changes (affects all images)
-          if echo "$CHANGED_FILES" | grep -qE '^ubuntu/24\.04/common\.sh$'; then
-            echo "common=true" >> $GITHUB_OUTPUT
-          else
-            echo "common=false" >> $GITHUB_OUTPUT
-          fi
-
-          # dind-box changes (issue #80)
-          if echo "$CHANGED_FILES" | grep -qE '^(ubuntu/24\.04/dind/|docs/dind/|tests/dind/)'; then
-            echo "dind=true" >> $GITHUB_OUTPUT
-          else
-            echo "dind=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Detect per-language changes
-        id: language-changes
-        run: |
-          CHANGED_FILES=$(cat /tmp/changed-files.txt)
-
-          for lang in python go rust java kotlin ruby php perl swift lean rocq cpp assembly; do
-            if echo "$CHANGED_FILES" | grep -qE "^ubuntu/24\.04/${lang}/"; then
-              echo "${lang}=true" >> $GITHUB_OUTPUT
-            else
-              echo "${lang}=false" >> $GITHUB_OUTPUT
-            fi
-          done
-
-      - name: Determine if build is needed
-        id: should-build
-        run: |
-          # For workflow_dispatch, always build (regardless of mode)
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "result=true" >> $GITHUB_OUTPUT
-            echo "Build triggered by: manual dispatch (mode: ${{ github.event.inputs.release_mode }})"
-            exit 0
-          fi
-
-          # Trigger build on any relevant changes
-          if [ "${{ steps.changes.outputs.docker }}" = "true" ]; then
-            echo "result=true" >> $GITHUB_OUTPUT
-            echo "Build triggered by: Dockerfile changes"
-          elif [ "${{ steps.changes.outputs.scripts }}" = "true" ]; then
-            echo "result=true" >> $GITHUB_OUTPUT
-            echo "Build triggered by: scripts changes"
-          elif [ "${{ steps.changes.outputs.ubuntu }}" = "true" ]; then
-            echo "result=true" >> $GITHUB_OUTPUT
-            echo "Build triggered by: ubuntu modular scripts changes"
-          elif [ "${{ steps.changes.outputs.workflow }}" = "true" ]; then
-            echo "result=true" >> $GITHUB_OUTPUT
-            echo "Build triggered by: workflow changes"
-          elif [ "${{ steps.changes.outputs.version }}" = "true" ]; then
-            echo "result=true" >> $GITHUB_OUTPUT
-            echo "Build triggered by: VERSION file changes"
-          elif [ "${{ steps.image-changes.outputs.dind }}" = "true" ]; then
-            echo "result=true" >> $GITHUB_OUTPUT
-            echo "Build triggered by: dind docs/tests changes"
-          else
-            echo "result=false" >> $GITHUB_OUTPUT
-            echo "No build needed: no relevant changes detected"
-          fi
+        id: detect
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: bash scripts/ci/detect-changes.sh
 
   # === BUILD AND TEST DOCKER IMAGES (PR) — issue #82 ===
   #
