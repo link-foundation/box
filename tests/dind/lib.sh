@@ -84,6 +84,26 @@ logs_contain() {
   esac
 }
 
+# wait_for_logs CONTAINER NEEDLE [LIMIT]
+# Polls CONTAINER's logs until NEEDLE appears or LIMIT seconds elapse. Returns 0
+# as soon as it is found, non-zero on timeout. Several entrypoint breadcrumbs
+# (the vfs storage-driver warning, the preload/passthrough markers) are emitted
+# by PID 1 *after* the inner dockerd becomes ready, so a test that grabbed the
+# logs the instant wait_for_inner_docker returned could race ahead of them and
+# read a present line as absent. Wait for the line itself rather than racing
+# mere daemon readiness.
+wait_for_logs() {
+  local container="$1" needle="$2" limit="${3:-$DIND_WAIT_SECONDS}" i=0
+  while [ "$i" -lt "$limit" ]; do
+    if logs_contain "$container" "$needle"; then
+      return 0
+    fi
+    i=$((i + 1))
+    sleep 1
+  done
+  return 1
+}
+
 run_container_from_image() {
   local name="$1"
   local image="$2"

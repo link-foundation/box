@@ -50,8 +50,13 @@ wait_for_preload_complete() {
   local i=0
 
   while [ "$i" -lt "$limit" ]; do
-    if logs_contain "$container" "image preload/passthrough complete"; then
-      log "image preload/passthrough completed in ${container} after ${i}s"
+    # The entrypoint ends the preload phase with one of two terminal markers:
+    # "...complete" on success or "...finished WITH WARNINGS" when a named image
+    # was not seeded (issue #106). Sync on either so the wait never hangs on the
+    # warning path.
+    if logs_contain "$container" "image preload/passthrough complete" \
+       || logs_contain "$container" "image preload/passthrough finished WITH WARNINGS"; then
+      log "image preload/passthrough finished in ${container} after ${i}s"
       return 0
     fi
     i=$((i + 1))
@@ -227,6 +232,58 @@ if ! logs_contain "$images_container" "images=${fixture_repo}"; then
   fail "expected the consumer to log the active DIND_HOST_PASSTHROUGH_IMAGES allowlist"
 fi
 log "images-allowlist passthrough copied only the named repo and skipped the rest"
+
+# --- Post-passthrough verification of a concrete allowlist entry (issue #106) --
+# A concrete (explicitly tagged) allowlist entry is verified to actually be
+# present in the nested daemon after passthrough. When the host has it and the
+# socket is mounted, verification passes and the entrypoint logs the honest
+# "complete" marker with no warning.
+verify_ok_container="${DIND_EXAMPLE_ID}-passthrough-verify-ok"
+log "starting consumer with a concrete DIND_HOST_PASSTHROUGH_IMAGES=${fixture_image} (socket mounted)"
+run_dind_container "$verify_ok_container" \
+  -e DIND_HOST_PASSTHROUGH=all \
+  -e "DIND_HOST_PASSTHROUGH_IMAGES=$fixture_image" \
+  -e DIND_HOST_DOCKER_SOCK=/host-sock/docker.sock \
+  -v "$host_sock_dir:/host-sock:ro"
+wait_for_inner_docker "$verify_ok_container"
+wait_for_preload_complete "$verify_ok_container"
+assert_inner_has_image "$verify_ok_container"
+if ! logs_contain "$verify_ok_container" "image preload/passthrough complete"; then
+  docker logs "$verify_ok_container" >&2 || true
+  fail "expected the honest 'complete' marker when the concrete allowlisted image was seeded"
+fi
+if logs_contain "$verify_ok_container" "host-image passthrough did NOT seed"; then
+  docker logs "$verify_ok_container" >&2 || true
+  fail "verification must not warn when the concrete allowlisted image is present"
+fi
+log "verification confirmed the seeded image and logged the honest completion marker"
+
+# --- Verification flags a concrete allowlist entry that was NOT seeded (#106) --
+# Same concrete entry, but NO host socket mounted: the image cannot be copied, so
+# verification must catch the absence, warn loudly naming the image, and the
+# entrypoint must NOT print a misleading "complete" — it ends with the explicit
+# "finished WITH WARNINGS" marker instead. This is the core regression guard for
+# the "claims complete yet re-pulls ~30 GB" symptom.
+verify_miss_container="${DIND_EXAMPLE_ID}-passthrough-verify-miss"
+log "starting consumer with a concrete DIND_HOST_PASSTHROUGH_IMAGES=${fixture_image} but NO socket"
+run_dind_container "$verify_miss_container" \
+  -e DIND_HOST_PASSTHROUGH=public \
+  -e "DIND_HOST_PASSTHROUGH_IMAGES=$fixture_image"
+wait_for_inner_docker "$verify_miss_container"
+wait_for_preload_complete "$verify_miss_container"
+if ! logs_contain "$verify_miss_container" "host-image passthrough did NOT seed expected image(s) into the nested daemon: ${fixture_image}"; then
+  docker logs "$verify_miss_container" >&2 || true
+  fail "expected verification to warn naming the missing concrete image (${fixture_image})"
+fi
+if ! logs_contain "$verify_miss_container" "image preload/passthrough finished WITH WARNINGS"; then
+  docker logs "$verify_miss_container" >&2 || true
+  fail "expected the 'finished WITH WARNINGS' terminal marker when a named image was not seeded"
+fi
+if logs_contain "$verify_miss_container" "image preload/passthrough complete"; then
+  docker logs "$verify_miss_container" >&2 || true
+  fail "must NOT print 'image preload/passthrough complete' when a named image was not seeded"
+fi
+log "verification surfaced the un-seeded image and suppressed the misleading 'complete' marker"
 
 # --- Opt-in allowlist but no host socket mounted (issue #102) ---------------
 # Setting DIND_HOST_PASSTHROUGH_IMAGES is an unambiguous "pass these through"
