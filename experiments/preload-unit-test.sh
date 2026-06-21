@@ -393,6 +393,114 @@ check "private registry host kept"  test "$(image_registry registry.example.com:
 check "docker.io is public"         eval 'registry_is_public docker.io'
 check "private host not public"     eval '! registry_is_public registry.example.com:5000'
 
+# ---------------------------------------------------------------------------
+# issue #110: socket group access (#1), readiness signal (#2), DooD framing (#4)
+# ---------------------------------------------------------------------------
+
+echo "== Case 23: socket_gid / current_user_in_gid helpers (direct calls) (issue #110) =="
+reset_state
+make_sock "$HOST_SOCK"
+sock_gid="$(socket_gid "$HOST_SOCK")"
+self_gid="$(id -g)"
+check "socket_gid reports the socket's owning GID" test "$sock_gid" = "$self_gid"
+check "socket_gid on a non-socket fails"           eval '! socket_gid "$WORK/not-a-socket"'
+check "current_user_in_gid true for own GID"       eval 'current_user_in_gid "$self_gid"'
+check "current_user_in_gid false for foreign GID"  eval '! current_user_in_gid 4000001'
+check "current_user_in_gid false for empty GID"    eval '! current_user_in_gid ""'
+rm -f "$HOST_SOCK"
+
+echo "== Case 24: mounted-but-unreachable host socket -> --group-add hint + WITH WARNINGS, not 'complete' (issue #110 #1/#2) =="
+reset_state
+# A real socket exists but the host daemon is unreachable (HOST_DOCKER_OK=0),
+# exactly the finding #1 symptom: box is not in the host socket's GID. Force the
+# membership check false so the actionable --group-add hint always fires, and
+# assert the terminal marker is honest (WITH WARNINGS, never a false 'complete').
+make_sock "$HOST_SOCK"
+forced_gid="$(socket_gid "$HOST_SOCK")"
+orig_current_user_in_gid="$(declare -f current_user_in_gid)"
+current_user_in_gid() { return 1; }
+DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
+  DIND_HOST_PASSTHROUGH_IMAGES="" \
+  DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=0 \
+  preload_into_daemon >"$OUT_LOG" 2>"$ERR_LOG"
+eval "$orig_current_user_in_gid"
+check "unreachable-socket warning fires"            grep -q "is not accessible; skipping passthrough" "$ERR_LOG"
+check "warning names the socket's GID"              grep -q "owned by GID ${forced_gid}" "$ERR_LOG"
+check "warning prints the exact --group-add remedy" grep -q -- "--group-add ${forced_gid}" "$ERR_LOG"
+check "terminal marker is 'finished WITH WARNINGS'" grep -q "image preload/passthrough finished WITH WARNINGS" "$ERR_LOG"
+check "misleading 'complete' is NOT printed"        bash -c '! grep -q "image preload/passthrough complete" "$OUT_LOG" "$ERR_LOG"'
+rm -f "$HOST_SOCK"
+
+echo "== Case 25: DIND_READY_FILE records 'complete' on success and 'warnings' on failure (issue #110 #2) =="
+reset_state
+READY="$WORK/ready"
+rm -f "$READY"
+# Success: a concrete allowlisted image is present after passthrough.
+printf '%s\n' "konard/hive-mind-dind:2.0.6" > "$HOST_IMAGES"
+echo "konard/hive-mind-dind:2.0.6|konard/hive-mind-dind@sha256:aaa " > "$HOST_DIGESTS"
+make_sock "$HOST_SOCK"
+DIND_READY_FILE="$READY" DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
+  DIND_HOST_PASSTHROUGH_IMAGES="konard/hive-mind-dind:2.0.6" \
+  DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=1 \
+  preload_into_daemon >"$OUT_LOG" 2>"$ERR_LOG"
+check "ready file written on success"    test -f "$READY"
+check "ready file says 'complete'"        grep -qx "complete" "$READY"
+rm -f "$HOST_SOCK"
+# Failure: a concrete allowlisted image is missing (no socket mounted).
+reset_state
+rm -f "$READY"
+DIND_READY_FILE="$READY" DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$WORK/absent.sock" \
+  DIND_HOST_PASSTHROUGH_IMAGES="konard/hive-mind-dind:2.0.6" \
+  DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 \
+  preload_into_daemon >"$OUT_LOG" 2>"$ERR_LOG"
+check "ready file written on failure"    test -f "$READY"
+check "ready file says 'warnings'"        grep -qx "warnings" "$READY"
+
+echo "== Case 26: grant_socket_access warns with --group-add when it cannot fix a socket (issue #110 #1) =="
+reset_state
+make_sock "$HOST_SOCK"
+ga_gid="$(socket_gid "$HOST_SOCK")"
+# Simulate a read-only mount the box user is not a member of: no privilege to
+# chgrp (as_root fails) and not in the owning group.
+orig_as_root="$(declare -f as_root)"
+orig_cuig="$(declare -f current_user_in_gid)"
+as_root() { return 1; }
+current_user_in_gid() { return 1; }
+grant_socket_access "$HOST_SOCK" >"$OUT_LOG" 2>"$ERR_LOG" && ga_rc=0 || ga_rc=$?
+eval "$orig_as_root"
+eval "$orig_cuig"
+check "grant_socket_access returns non-zero when unfixable" test "$ga_rc" -ne 0
+check "grant_socket_access names the GID"                    grep -q "owned by GID ${ga_gid}" "$ERR_LOG"
+check "grant_socket_access prints --group-add remedy"        grep -q -- "--group-add ${ga_gid}" "$ERR_LOG"
+check "grant_socket_access on a missing socket is a no-op"   eval 'grant_socket_access "$WORK/nope.sock"'
+rm -f "$HOST_SOCK"
+
+echo "== Case 27: 'keep' mode never chgrp's a shared socket (host socket safety, issue #110 #4) =="
+reset_state
+make_sock "$HOST_SOCK"
+kg_gid="$(socket_gid "$HOST_SOCK")"
+# Box is not a member of the socket's group, and chgrp WOULD succeed (writable
+# mount): the dangerous case. 'keep' mode must refuse to mutate the shared host
+# socket and fall through to the --group-add guidance instead.
+chgrp_marker="$WORK/chgrp-was-called"
+rm -f "$chgrp_marker"
+orig_as_root="$(declare -f as_root)"
+orig_cuig="$(declare -f current_user_in_gid)"
+as_root() { if [ "$1" = "/usr/bin/chgrp" ]; then : >"$chgrp_marker"; fi; return 0; }
+current_user_in_gid() { return 1; }
+grant_socket_access "$HOST_SOCK" keep >"$OUT_LOG" 2>"$ERR_LOG" && keep_rc=0 || keep_rc=$?
+check "keep mode never invokes chgrp on the shared socket" test ! -f "$chgrp_marker"
+check "keep mode returns non-zero (box still cannot reach it)" test "$keep_rc" -ne 0
+check "keep mode still prints the --group-add remedy"          grep -q -- "--group-add ${kg_gid}" "$ERR_LOG"
+# Contrast: 'adopt' mode (private DinD inner socket) DOES chgrp when box lacks access.
+rm -f "$chgrp_marker"
+grant_socket_access "$HOST_SOCK" adopt >"$OUT_LOG" 2>"$ERR_LOG" && adopt_rc=0 || adopt_rc=$?
+check "adopt mode does invoke chgrp on a private socket"       test -f "$chgrp_marker"
+check "adopt mode returns success once adopted"               test "$adopt_rc" -eq 0
+eval "$orig_as_root"
+eval "$orig_cuig"
+rm -f "$HOST_SOCK"
+
 echo
 echo "RESULT: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

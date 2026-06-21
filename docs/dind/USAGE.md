@@ -8,6 +8,27 @@ passwordless sudo rule, then hands off to the normal box entrypoint.
 The runnable examples in this document live under `tests/dind/` and are executed
 by pull request CI against the locally built `box-dind-js` image.
 
+## Two Modes: DinD and DooD
+
+One image, two runtimes — the mode is chosen entirely by the **run flags**, not
+by a different build:
+
+| | **Docker-in-Docker (DinD)** _(default)_ | **Docker-outside-of-Docker (DooD)** |
+| --- | --- | --- |
+| How to select | `--privileged` (or `--runtime=sysbox-runc`) | `-e DIND_SKIP_DAEMON=1` + `-v /var/run/docker.sock:/var/run/docker.sock` |
+| Docker daemon | A **nested** `dockerd` started inside the container | The **host** daemon, reached through the mounted socket |
+| Container view (`docker ps`) | Only containers this box created — isolated (issue #80) | The host's full container/image list — shared |
+| Image cache | Empty at start; seed it with preload / passthrough (a **copy**) | The host's images are already there — **zero copy, zero extra disk** |
+| Isolation | Strong: inner daemon can't see or touch host containers | Weak: in-container Docker can control the host daemon |
+| Disk cost of reusing a host image | A full `docker save \| docker load` (doubles that image on disk) | None — same image store |
+| Best for | Untrusted workloads, true nesting, per-box isolation | Trusted workloads that need the host's images/build cache with no duplication |
+
+Rule of thumb: **DinD when you need isolation, DooD when you need the host's
+images without copying them.** DooD is the only mode that adds **zero** disk for
+image reuse — host-image passthrough in DinD is a deliberate copy (see
+[Host-Image Passthrough](#host-image-passthrough-dind_host_passthrough) and
+[Docker-outside-of-Docker (DooD)](#docker-outside-of-docker-dood) below).
+
 ## Runtime Flags
 
 Use one of these host-side runtime modes when you need the inner Docker daemon:
@@ -68,7 +89,8 @@ The entrypoint supports these environment variables:
 | `DIND_DATA_ROOT` | `/var/lib/docker` | Override the inner dockerd data root. |
 | `DIND_LOG_FILE` | `/var/log/dockerd.log` | Write dockerd logs to this path. |
 | `DIND_WAIT_SECONDS` | `30` | Wait this many seconds for dockerd readiness. |
-| `DIND_SKIP_DAEMON` | `0` | Set to `1` to skip dockerd startup. |
+| `DIND_SKIP_DAEMON` | `0` | Set to `1` to skip starting the nested dockerd. This is the supported Docker-outside-of-Docker (DooD) switch: mount the host socket at `/var/run/docker.sock` and the in-container CLI talks to the host daemon directly (see [Docker-outside-of-Docker (DooD)](#docker-outside-of-docker-dood)). Also used for setup/commit containers and Sysbox. |
+| `DIND_READY_FILE` | `/tmp/box-dind-ready` | Path the entrypoint writes once the inner-daemon image preload/passthrough phase finishes (DinD only). Contains `complete` when every requested image seeded, or `warnings` when some did not. Lets a host poll readiness deterministically instead of racing `docker info` (see [Knowing When the Image Cache Is Ready](#knowing-when-the-image-cache-is-ready)). |
 | `DIND_PRELOAD_TARBALL` | _(empty)_ | Space-separated `docker save` tarballs and/or directories of `*.tar` to `docker load` into the nested daemon once it is ready. |
 | `DIND_PRELOAD_IMAGES` | _(empty)_ | Space-separated image references to `docker pull` into the nested daemon once it is ready, skipping any that are already present. |
 | `DIND_HOST_PASSTHROUGH` | `public` | Copy images already present on the host into the nested daemon at startup when a host socket is mounted (see below). `public` only passes images with a RepoDigest from an allowlisted public registry; `all` passes every tagged image; `off` disables it. A quiet no-op when no host socket is mounted. |
@@ -300,6 +322,116 @@ verified and never trigger a false alarm. To get this assertion for a specific
 image, pin it in the allowlist with an explicit tag or digest, e.g.
 `DIND_HOST_PASSTHROUGH_IMAGES=konard/hive-mind-dind:2.0.6`.
 
+## Knowing When the Image Cache Is Ready
+
+`docker info` (or `docker exec ... docker info`) starts succeeding the moment the
+inner daemon's socket is up — which is **long before** a multi-GB host-image
+passthrough or tarball preload has finished loading. A host that waits only on
+`docker info` and then immediately runs a workload can therefore still hit a
+re-pull, because the seeding copy was not done yet (issue #110, finding #2).
+
+Passthrough/preload already runs **synchronously before the container hands off
+to your workload**, so by the time your `CMD` runs the cache is seeded. The
+`DIND_READY_FILE` sentinel exposes that same completion to the *host*, so an
+external orchestrator can block on it deterministically:
+
+```bash
+docker run -d --privileged \
+  -v /var/run/docker.sock:/var/run/host-docker.sock:ro \
+  -e DIND_HOST_PASSTHROUGH_IMAGES=alpine:3.20 \
+  --name box-dind \
+  konard/box-dind sleep infinity
+
+# Block until the preload/passthrough phase actually finished (not just dockerd):
+until docker exec box-dind test -f /tmp/box-dind-ready; do sleep 1; done
+
+# 'complete' = every requested image seeded; 'warnings' = some did not (see logs):
+status="$(docker exec box-dind cat /tmp/box-dind-ready)"
+echo "preload status: $status"
+```
+
+The file is written once, at the end of the preload phase, with `complete` when
+every concrete requested image is present in the inner daemon, or `warnings` when
+one or more were not seeded (the entrypoint logs the specifics, including the
+inaccessible-socket and `--group-add` cases below). Point `DIND_READY_FILE` at a
+different path, or at a mounted volume, to surface it wherever your tooling
+expects. It is DinD-only — in DooD there is no nested daemon to seed, so nothing
+is written.
+
+## Docker-outside-of-Docker (DooD)
+
+DooD is a **first-class, supported mode** of the same image: instead of starting
+a nested daemon, the in-container Docker CLI talks to the **host** daemon through
+its mounted socket. Reuse of host images is then automatic and free — there is no
+copy and no extra disk, because there is only one image store (issue #110,
+findings #3 and #4).
+
+Select it with two run flags — set `DIND_SKIP_DAEMON=1` and mount the host socket
+at the **real runtime path** `/var/run/docker.sock` (note: this is *not* the
+passthrough path `/var/run/host-docker.sock`):
+
+```bash
+docker run -d \
+  -e DIND_SKIP_DAEMON=1 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  --group-add "$(stat -c '%g' /var/run/docker.sock)" \
+  --name box-dood \
+  konard/box-dind sleep infinity
+
+# Talks to the HOST daemon — its images are already here, no copy, no re-pull:
+docker exec box-dood docker images
+docker exec box-dood docker ps        # shows the host's containers (shared view)
+```
+
+No `--privileged` is required for DooD: the container is not running its own
+daemon, so it needs no extra kernel privileges — only access to the socket.
+
+### The `--group-add` requirement
+
+The host socket is owned by the host's `docker` group (for example GID `988`).
+Inside the container, the box user is a member of the *image's* `docker` group
+(a different GID, for example `995`), so by default it **cannot read the mounted
+host socket** and every `docker` command fails with a permission error. A
+supplementary group cannot be granted to an already-running process, so this must
+be fixed at `docker run` time:
+
+```bash
+--group-add "$(stat -c '%g' /var/run/docker.sock)"
+```
+
+`stat -c '%g' /var/run/docker.sock` reads the host socket's owning GID on the
+host; `--group-add` makes the box user a member of exactly that GID inside the
+container. This is the correct fix — it grants access **without mutating the
+shared host socket's group**.
+
+The entrypoint **never `chgrp`s the host socket**, even when it is mounted
+read-write. The host's `/var/run/docker.sock` is shared with every other process
+on the host, so changing its group from inside the container would silently lock
+other host users out of Docker. So when box is not already a member of the
+socket's owning GID, the entrypoint does not try to "fix" the socket — it emits a
+**loud error naming the exact GID and the `--group-add` value to use**, e.g.:
+
+```text
+[dind-entrypoint] WARN: the Docker socket at /var/run/docker.sock is owned by GID 988, which the in-container box user is not a member of, so box cannot access it.
+[dind-entrypoint] WARN: re-run the container with --group-add 988 so box can read the socket, e.g.: docker run ... --group-add 988 ... (issue #110)
+```
+
+### Isolation trade-off (DooD vs DinD)
+
+DooD deliberately gives up the per-container isolation that DinD provides. The
+in-container Docker controls the **host** daemon: `docker ps` lists the host's
+containers, and a `docker rm`/`docker run` from inside affects the host. Use DooD
+only for workloads you trust with host Docker control. When you need a workload to
+be unable to see or touch host containers, use DinD (the `--privileged` default)
+and seed images with [passthrough](#host-image-passthrough-dind_host_passthrough)
+or [preload](#reusing-host-images-preload) instead.
+
+CI covers the DooD flow as an executable example:
+
+```bash
+DIND_IMAGE=box-dind-js tests/dind/example-dood-host-socket.sh
+```
+
 ## Commit Cycles
 
 `DIND_SKIP_DAEMON=1` is useful for setup containers where you want to install or
@@ -418,9 +550,16 @@ In practice:
 
 - Use `--privileged` for the standard nested Docker mode, or install and use
   `sysbox-runc` for the Sysbox mode.
-- Do not bind-mount `/var/run/docker.sock` from the host. That switches the
-  model to Docker-outside-of-Docker, exposes host Docker control, and breaks the
-  per-container Docker view.
+- For **DinD** (the isolated default), do not bind-mount `/var/run/docker.sock`
+  from the host: that switches the model to Docker-outside-of-Docker, exposes
+  host Docker control, and breaks the per-container Docker view. To *reuse* host
+  images while staying isolated, mount the socket read-only at the **passthrough**
+  path `/var/run/host-docker.sock` instead (see
+  [Host-Image Passthrough](#host-image-passthrough-dind_host_passthrough)).
+- For **DooD** (a supported, opt-in mode), bind-mounting `/var/run/docker.sock`
+  at the real runtime path is exactly the point — set `DIND_SKIP_DAEMON=1` and add
+  `--group-add "$(stat -c '%g' /var/run/docker.sock)"`. See
+  [Docker-outside-of-Docker (DooD)](#docker-outside-of-docker-dood) for the trade-off.
 - Ensure enough disk is available for `/var/lib/docker`, or mount a volume there.
 - If dockerd does not become ready, inspect `docker logs <container>` and the
   configured `DIND_LOG_FILE` inside the container before changing timeouts.
@@ -439,6 +578,7 @@ DIND_IMAGE=box-dind-js tests/dind/example-commit-cycle.sh
 DIND_IMAGE=box-dind-js tests/dind/example-sudoers-extension.sh
 DIND_IMAGE=box-dind-js tests/dind/example-storage-driver-vfs.sh
 DIND_IMAGE=box-dind-js tests/dind/example-preload-images.sh
+DIND_IMAGE=box-dind-js tests/dind/example-dood-host-socket.sh
 ```
 
 Set `DIND_KEEP_CONTAINERS=1` while debugging to keep the temporary containers

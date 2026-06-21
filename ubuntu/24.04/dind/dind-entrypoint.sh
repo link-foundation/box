@@ -27,7 +27,26 @@
 #   DIND_DATA_ROOT       Override --data-root for dockerd (default: /var/lib/docker)
 #   DIND_LOG_FILE        Where to write dockerd logs (default: /var/log/dockerd.log)
 #   DIND_WAIT_SECONDS    How long to wait for dockerd to come up (default: 30)
-#   DIND_SKIP_DAEMON     If set to "1", do not start dockerd (use for DooD/Sysbox-only mode)
+#   DIND_SKIP_DAEMON     If set to "1", do not start the nested dockerd. This is
+#                        the supported Docker-outside-of-Docker (DooD) switch:
+#                        mount the host daemon's socket as the *real* runtime
+#                        (`-v /var/run/docker.sock:/var/run/docker.sock`) and the
+#                        in-container docker CLI talks to the host daemon, so
+#                        isolated tasks `docker run` on the host with ZERO image
+#                        copy and ZERO extra disk (the only no-copy option on a
+#                        disk-constrained host). One image, two modes, chosen by
+#                        run flags. The box user must be able to read that socket;
+#                        the entrypoint chgrp's a writable socket into the image
+#                        docker group, and otherwise prints the exact
+#                        `--group-add <host-docker-gid>` to add. See the
+#                        "DinD vs DooD" section in docs/dind/USAGE.md. (issue #110)
+#   DIND_READY_FILE      Path written once the nested-daemon image preload/
+#                        passthrough phase finishes, so consumers can wait for
+#                        "images are seeded" deterministically instead of racing
+#                        the asynchronous load against mere `docker info`
+#                        readiness. The file contains `complete` on success or
+#                        `warnings` when something was not seeded (default:
+#                        /tmp/box-dind-ready; set empty to disable). (issue #110)
 #   DIND_PRELOAD_TARBALL Space-separated list of image tarball files and/or
 #                        directories to `docker load` into the nested daemon
 #                        once it is ready. Directories load every *.tar inside.
@@ -99,6 +118,7 @@ DIND_DATA_ROOT="${DIND_DATA_ROOT:-/var/lib/docker}"
 DIND_LOG_FILE="${DIND_LOG_FILE:-/var/log/dockerd.log}"
 DIND_WAIT_SECONDS="${DIND_WAIT_SECONDS:-30}"
 DIND_SKIP_DAEMON="${DIND_SKIP_DAEMON:-0}"
+DIND_READY_FILE="${DIND_READY_FILE:-/tmp/box-dind-ready}"
 DIND_PRELOAD_TARBALL="${DIND_PRELOAD_TARBALL:-}"
 DIND_PRELOAD_IMAGES="${DIND_PRELOAD_IMAGES:-}"
 DIND_HOST_PASSTHROUGH="${DIND_HOST_PASSTHROUGH:-public}"
@@ -135,10 +155,85 @@ prepare_log_file() {
   fi
 }
 
+# Numeric GID that owns a unix socket, or empty when it is not a socket.
+socket_gid() {
+  [ -S "$1" ] || return 1
+  stat -c '%g' "$1" 2>/dev/null
+}
+
+# True when the current process already belongs to GID $1 (primary or
+# supplementary). `id -G` lists every group of the running process, which is what
+# actually governs whether box can open a group-readable socket — checking the
+# socket's GID against this set tells us whether a `--group-add` is still needed.
+current_user_in_gid() {
+  gid="$1"
+  [ -n "$gid" ] || return 1
+  for g in $(id -G 2>/dev/null); do
+    [ "$g" = "$gid" ] && return 0
+  done
+  return 1
+}
+
+# Make the box user able to talk to a Docker socket. (issue #110)
+#
+#   grant_socket_access <sock> <adopt>
+#
+# When box already belongs to the socket's owning GID (e.g. a `--group-add` was
+# supplied) or runs as root, the socket is left completely untouched. Otherwise:
+#
+#   * adopt="adopt" — the socket is *private to this container* (the DinD inner
+#     socket dockerd just created). chgrp it into the image `docker` group and
+#     chmod 660 so box can use it. This is the long-standing inner-socket fix.
+#   * adopt="keep"  — the socket is *shared* (the DooD host socket, or a `:ro`
+#     passthrough mount). It must NEVER be chgrp'd: mutating the host's
+#     /var/run/docker.sock changes host state and can lock other host users out
+#     of Docker entirely. The only safe remedy is a host-side `--group-add
+#     <gid>`, so emit that exact GID instead of touching the socket (finding #1).
+#     A `:ro` mount could not be chgrp'd anyway (EROFS).
+#
+# Returns 0 when box can (now) reach the socket, non-zero when the operator must
+# intervene with --group-add.
+grant_socket_access() {
+  sock="$1"
+  adopt="${2:-adopt}"
+  [ -S "$sock" ] || return 0   # nothing mounted at this path: nothing to do
+
+  gid="$(socket_gid "$sock" || true)"
+
+  # Already reachable (root, or a member of the owning group)? Leave it untouched
+  # — never warn, and crucially never chgrp it. In DooD the runtime socket is the
+  # *host's* shared /var/run/docker.sock; mutating its group when box can already
+  # reach it (e.g. via --group-add) would needlessly change host state.
+  if [ "$(id -u)" -eq 0 ] || current_user_in_gid "$gid"; then
+    return 0
+  fi
+
+  # Adopt only a private socket into the image docker group. Refused for shared
+  # sockets so the host's /var/run/docker.sock is never mutated under DooD.
+  if [ "$adopt" = "adopt" ] \
+     && as_root /usr/bin/chgrp docker "$sock" 2>/dev/null \
+     && as_root /usr/bin/chmod 660 "$sock" 2>/dev/null; then
+    log "adjusted ${sock} into the docker group so the box user can access it"
+    return 0
+  fi
+
+  warn "the Docker socket at ${sock} is owned by GID ${gid:-unknown}, which the in-container box user is not a member of, so box cannot access it."
+  if [ -n "$gid" ]; then
+    warn "re-run the container with --group-add ${gid} so box can read the socket, e.g.: docker run ... --group-add ${gid} ... (issue #110)"
+  fi
+  return 1
+}
+
+# Make the runtime socket at /var/run/docker.sock usable by box. The safe action
+# depends on the mode: in DinD that path is the *private* inner socket dockerd
+# created (adopt it), while in DooD it is the *shared* host socket mounted there
+# (never chgrp it — only guide with --group-add). Suppress the return value so
+# the hot DinD readiness loop never trips `set -e` when the socket is not up yet.
 fix_socket_permissions() {
-  if [ -S /var/run/docker.sock ]; then
-    as_root /usr/bin/chgrp docker /var/run/docker.sock 2>/dev/null || true
-    as_root /usr/bin/chmod 660 /var/run/docker.sock 2>/dev/null || true
+  if [ "$DIND_SKIP_DAEMON" = "1" ]; then
+    grant_socket_access /var/run/docker.sock keep || true
+  else
+    grant_socket_access /var/run/docker.sock adopt || true
   fi
 }
 
@@ -450,13 +545,33 @@ passthrough_host_images() {
 
   if ! host_docker_available; then
     if [ -n "$DIND_HOST_DOCKER_SOCK" ] && [ -e "$DIND_HOST_DOCKER_SOCK" ]; then
-      # A socket file exists but is unreachable: surface it.
+      # A socket file exists but is unreachable: surface it. The most common
+      # cause on a real host is a socket owned by the *host's* docker GID that
+      # the in-container box user is not a member of (finding #1), so when it is
+      # a genuine socket detect that GID and print the exact --group-add to add
+      # rather than leaving the operator to reverse-engineer it.
       warn "host docker socket at ${DIND_HOST_DOCKER_SOCK} is not accessible; skipping passthrough"
+      sock_gid=""
+      if [ -S "$DIND_HOST_DOCKER_SOCK" ]; then
+        sock_gid="$(socket_gid "$DIND_HOST_DOCKER_SOCK" || true)"
+      fi
+      if [ -n "$sock_gid" ] && ! current_user_in_gid "$sock_gid"; then
+        warn "the socket is owned by GID ${sock_gid}, which the in-container box user is not a member of; re-run the container with --group-add ${sock_gid} so box can read it (issue #110)"
+      fi
+      # A mounted-but-unreachable socket is a real error, not a quiet no-op:
+      # return non-zero so the terminal marker is honest ("WITH WARNINGS")
+      # instead of falsely printing "complete" over a skipped passthrough. (#2)
+      return 1
     elif [ -n "$DIND_HOST_PASSTHROUGH_IMAGES" ]; then
       # Operator opted in via an allowlist but no host socket is mounted: the
       # nested daemon will NOT be seeded and the first nested 'docker run' will
       # re-pull from the registry. Surface it instead of failing silently. (issue #102)
       warn "host-image passthrough is enabled and DIND_HOST_PASSTHROUGH_IMAGES is set, but no host docker socket is mounted at ${DIND_HOST_DOCKER_SOCK}; the nested daemon will NOT be seeded from the host (first 'docker run' will pull from the registry). Mount it with: -v /var/run/docker.sock:${DIND_HOST_DOCKER_SOCK}:ro"
+      # No socket mounted at all: the marker is still governed by the per-image
+      # concrete verification below (issue #106), so a concrete allowlist entry
+      # that is missing still flips it to "WITH WARNINGS" while a non-concrete
+      # glob/bare repo does not — keep returning 0 here so we do not double-warn.
+      return 0
     fi
     # Otherwise (no opt-in signal) the common "no host socket mounted" case stays
     # silent so plain box-dind containers are not spammed.
@@ -493,6 +608,13 @@ passthrough_host_images() {
           warn "passthrough failed for ${ref}"
         fi
       done
+
+  # The save|load above runs synchronously, so by the time this returns every
+  # eligible host image has finished streaming into the nested daemon — the
+  # handoff to the workload only happens after preload_into_daemon completes, so
+  # the load can never still be running in the background when the workload
+  # starts (finding #2). A reachable socket means passthrough ran: success.
+  return 0
 }
 
 # True when a reference is concrete enough to verify by name: it carries an
@@ -565,19 +687,38 @@ preload_into_daemon() {
   fi
 
   preload_tarballs
-  passthrough_host_images
+  passthrough_status=0
+  passthrough_host_images || passthrough_status=1
   preload_images
   # Emit a terminal marker once every preload path has finished so consumers
   # (and tests) can synchronize on "images are seeded" rather than racing the
   # asynchronous load against mere dockerd readiness. (issue #94) The wording is
   # honest about the outcome: only claim "complete" when every concrete
-  # allowlisted image is actually present; otherwise say so loudly instead of
-  # papering over a silent re-pull. (issue #106)
-  if verify_passthrough_images; then
+  # allowlisted image is actually present AND passthrough itself was able to run
+  # (a mounted-but-unreachable socket is a failure, not a success); otherwise say
+  # so loudly instead of papering over a silent re-pull. (issues #106, #110)
+  if verify_passthrough_images && [ "$passthrough_status" -eq 0 ]; then
     log "image preload/passthrough complete"
+    write_ready_file complete
   else
     warn "image preload/passthrough finished WITH WARNINGS: expected host image(s) were not seeded (see above)"
+    write_ready_file warnings
   fi
+}
+
+# Write the readiness sentinel so external consumers can block on "images are
+# seeded" deterministically (e.g. `until grep -q complete /tmp/box-dind-ready`)
+# instead of racing the asynchronous passthrough load against `docker info`,
+# which returns ready long before a multi-GB load finishes (finding #2). Best
+# effort: never fail the entrypoint over a sentinel write. (issue #110)
+write_ready_file() {
+  status="$1"
+  [ -n "$DIND_READY_FILE" ] || return 0
+  ready_dir="$(dirname "$DIND_READY_FILE")"
+  if [ -n "$ready_dir" ] && [ ! -d "$ready_dir" ]; then
+    mkdir -p "$ready_dir" 2>/dev/null || as_root /usr/bin/mkdir -p "$ready_dir" 2>/dev/null || true
+  fi
+  printf '%s\n' "$status" >"$DIND_READY_FILE" 2>/dev/null || true
 }
 
 # Allow the unit tests to source this file for the function definitions without
@@ -591,12 +732,28 @@ if [ "$DIND_SKIP_DAEMON" != "1" ]; then
     warn "dockerd startup failed. Use --user root, check /etc/sudoers.d/box-dind, or set DIND_SKIP_DAEMON=1 to silence."
   fi
   preload_into_daemon
-elif [ -n "$DIND_PRELOAD_TARBALL" ] || [ -n "$DIND_PRELOAD_IMAGES" ] \
+else
+  # Docker-outside-of-Docker (DooD) / daemon-skipped mode. When the host daemon's
+  # socket is mounted as the real runtime, the in-container docker CLI talks to
+  # the host daemon directly — zero image copy, zero extra disk — instead of a
+  # nested daemon. This is a supported mode, not just a Sysbox setup hook;
+  # announce it so logs make the active model obvious. (issue #110)
+  if [ -S /var/run/docker.sock ]; then
+    log "DIND_SKIP_DAEMON=1: not starting a nested dockerd; using the Docker socket mounted at /var/run/docker.sock (Docker-outside-of-Docker / DooD)"
+  else
+    log "DIND_SKIP_DAEMON=1: not starting a nested dockerd"
+  fi
+  if [ -n "$DIND_PRELOAD_TARBALL" ] || [ -n "$DIND_PRELOAD_IMAGES" ] \
      || { host_passthrough_enabled && [ -n "$DIND_HOST_DOCKER_SOCK" ] && [ -e "$DIND_HOST_DOCKER_SOCK" ]; }; then
-  warn "DIND_PRELOAD_*/host passthrough requested but DIND_SKIP_DAEMON=1; nothing will be preloaded"
+    warn "DIND_PRELOAD_*/host passthrough requested but DIND_SKIP_DAEMON=1; nothing will be preloaded (DooD reuses the host daemon's images directly, so no seeding is needed)"
+  fi
 fi
 
-# Ensure the docker socket is group-readable for the box user.
+# Ensure the runtime docker socket is usable by the box user. In DinD this is the
+# private inner socket dockerd just created (safe to adopt into the docker group);
+# in DooD it is the *shared* host socket mounted at /var/run/docker.sock, which is
+# never mutated — if box is not already in its group the entrypoint prints the
+# exact --group-add to re-run with (findings #1 and #4).
 fix_socket_permissions
 
 # Hand off via the existing entrypoint, which sources all the language
