@@ -401,16 +401,15 @@ be fixed at `docker run` time:
 
 `stat -c '%g' /var/run/docker.sock` reads the host socket's owning GID on the
 host; `--group-add` makes the box user a member of exactly that GID inside the
-container. This is the cleanest fix — it grants access **without mutating the
+container. This is the correct fix — it grants access **without mutating the
 shared host socket's group**.
 
-If you mount the socket **read-write** and omit `--group-add`, the entrypoint
-falls back to adopting the socket into the image's `docker` group (a `chgrp` it
-is allowed to perform via the scoped sudoers contract) so box can use it; it logs
-that it did so. If the socket is mounted **read-only** (or the `chgrp` is
-otherwise refused) and box is not already in its group, the entrypoint cannot fix
-it from inside the container — so instead of a silent failure it emits a **loud
-error naming the exact GID and the `--group-add` value to use**, e.g.:
+The entrypoint **never `chgrp`s the host socket**, even when it is mounted
+read-write. The host's `/var/run/docker.sock` is shared with every other process
+on the host, so changing its group from inside the container would silently lock
+other host users out of Docker. So when box is not already a member of the
+socket's owning GID, the entrypoint does not try to "fix" the socket — it emits a
+**loud error naming the exact GID and the `--group-add` value to use**, e.g.:
 
 ```text
 [dind-entrypoint] WARN: the Docker socket at /var/run/docker.sock is owned by GID 988, which the in-container box user is not a member of, so box cannot access it.

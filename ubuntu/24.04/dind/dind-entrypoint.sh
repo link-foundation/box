@@ -174,23 +174,28 @@ current_user_in_gid() {
   return 1
 }
 
-# Make the box user able to talk to a mounted Docker socket. (issue #110)
+# Make the box user able to talk to a Docker socket. (issue #110)
 #
-#   * Writable socket (the DinD inner socket, or a DooD host socket mounted
-#     read-write): chgrp it into the image's `docker` group and chmod 660 so box
-#     — already a member of `docker` — can use it. This is the long-standing
-#     behavior, now generalized to any socket path so the DooD real-runtime
-#     socket is covered too (finding #4).
-#   * Read-only mounted socket (the passthrough socket mounted `:ro`): a chgrp on
-#     a read-only bind mount fails, so it cannot be fixed in-container. If box is
-#     not already a member of the socket's owning GID, the only remedy is a
-#     host-side `--group-add <gid>`; emit that exact GID instead of a vague
-#     "not accessible" (finding #1).
+#   grant_socket_access <sock> <adopt>
+#
+# When box already belongs to the socket's owning GID (e.g. a `--group-add` was
+# supplied) or runs as root, the socket is left completely untouched. Otherwise:
+#
+#   * adopt="adopt" — the socket is *private to this container* (the DinD inner
+#     socket dockerd just created). chgrp it into the image `docker` group and
+#     chmod 660 so box can use it. This is the long-standing inner-socket fix.
+#   * adopt="keep"  — the socket is *shared* (the DooD host socket, or a `:ro`
+#     passthrough mount). It must NEVER be chgrp'd: mutating the host's
+#     /var/run/docker.sock changes host state and can lock other host users out
+#     of Docker entirely. The only safe remedy is a host-side `--group-add
+#     <gid>`, so emit that exact GID instead of touching the socket (finding #1).
+#     A `:ro` mount could not be chgrp'd anyway (EROFS).
 #
 # Returns 0 when box can (now) reach the socket, non-zero when the operator must
 # intervene with --group-add.
 grant_socket_access() {
   sock="$1"
+  adopt="${2:-adopt}"
   [ -S "$sock" ] || return 0   # nothing mounted at this path: nothing to do
 
   gid="$(socket_gid "$sock" || true)"
@@ -203,9 +208,10 @@ grant_socket_access() {
     return 0
   fi
 
-  # Try to adopt the socket into the image docker group. Works for a writable
-  # mount (DooD socket, inner socket); fails (EROFS) on a `:ro` passthrough mount.
-  if as_root /usr/bin/chgrp docker "$sock" 2>/dev/null \
+  # Adopt only a private socket into the image docker group. Refused for shared
+  # sockets so the host's /var/run/docker.sock is never mutated under DooD.
+  if [ "$adopt" = "adopt" ] \
+     && as_root /usr/bin/chgrp docker "$sock" 2>/dev/null \
      && as_root /usr/bin/chmod 660 "$sock" 2>/dev/null; then
     log "adjusted ${sock} into the docker group so the box user can access it"
     return 0
@@ -218,11 +224,17 @@ grant_socket_access() {
   return 1
 }
 
-# Backwards-compatible wrapper: keep fixing the inner/real runtime socket at
-# /var/run/docker.sock on every readiness poll. Suppress the return value so the
-# hot wait loop never trips `set -e` when the socket is not up yet.
+# Make the runtime socket at /var/run/docker.sock usable by box. The safe action
+# depends on the mode: in DinD that path is the *private* inner socket dockerd
+# created (adopt it), while in DooD it is the *shared* host socket mounted there
+# (never chgrp it — only guide with --group-add). Suppress the return value so
+# the hot DinD readiness loop never trips `set -e` when the socket is not up yet.
 fix_socket_permissions() {
-  grant_socket_access /var/run/docker.sock || true
+  if [ "$DIND_SKIP_DAEMON" = "1" ]; then
+    grant_socket_access /var/run/docker.sock keep || true
+  else
+    grant_socket_access /var/run/docker.sock adopt || true
+  fi
 }
 
 storage_driver_candidates() {
@@ -737,11 +749,11 @@ else
   fi
 fi
 
-# Ensure the runtime docker socket is group-readable for the box user. In DinD
-# this is the inner socket dockerd just created; in DooD it is the host socket
-# mounted at /var/run/docker.sock, which box must be able to read for the CLI to
-# reach the host daemon (finding #4). For a writable mount this chgrp's it into
-# the docker group; for a read-only mount it prints the exact --group-add to use.
+# Ensure the runtime docker socket is usable by the box user. In DinD this is the
+# private inner socket dockerd just created (safe to adopt into the docker group);
+# in DooD it is the *shared* host socket mounted at /var/run/docker.sock, which is
+# never mutated — if box is not already in its group the entrypoint prints the
+# exact --group-add to re-run with (findings #1 and #4).
 fix_socket_permissions
 
 # Hand off via the existing entrypoint, which sources all the language

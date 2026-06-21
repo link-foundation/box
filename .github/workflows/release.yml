@@ -774,6 +774,7 @@ jobs:
           tests/dind/example-sudoers-extension.sh
           tests/dind/example-storage-driver-vfs.sh
           tests/dind/example-preload-images.sh
+          tests/dind/example-dood-host-socket.sh
           echo "=== Documented dind examples passed ==="
 
   # --- Aggregator: single status check for branch protection ---

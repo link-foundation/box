@@ -475,6 +475,32 @@ check "grant_socket_access prints --group-add remedy"        grep -q -- "--group
 check "grant_socket_access on a missing socket is a no-op"   eval 'grant_socket_access "$WORK/nope.sock"'
 rm -f "$HOST_SOCK"
 
+echo "== Case 27: 'keep' mode never chgrp's a shared socket (host socket safety, issue #110 #4) =="
+reset_state
+make_sock "$HOST_SOCK"
+kg_gid="$(socket_gid "$HOST_SOCK")"
+# Box is not a member of the socket's group, and chgrp WOULD succeed (writable
+# mount): the dangerous case. 'keep' mode must refuse to mutate the shared host
+# socket and fall through to the --group-add guidance instead.
+chgrp_marker="$WORK/chgrp-was-called"
+rm -f "$chgrp_marker"
+orig_as_root="$(declare -f as_root)"
+orig_cuig="$(declare -f current_user_in_gid)"
+as_root() { if [ "$1" = "/usr/bin/chgrp" ]; then : >"$chgrp_marker"; fi; return 0; }
+current_user_in_gid() { return 1; }
+grant_socket_access "$HOST_SOCK" keep >"$OUT_LOG" 2>"$ERR_LOG" && keep_rc=0 || keep_rc=$?
+check "keep mode never invokes chgrp on the shared socket" test ! -f "$chgrp_marker"
+check "keep mode returns non-zero (box still cannot reach it)" test "$keep_rc" -ne 0
+check "keep mode still prints the --group-add remedy"          grep -q -- "--group-add ${kg_gid}" "$ERR_LOG"
+# Contrast: 'adopt' mode (private DinD inner socket) DOES chgrp when box lacks access.
+rm -f "$chgrp_marker"
+grant_socket_access "$HOST_SOCK" adopt >"$OUT_LOG" 2>"$ERR_LOG" && adopt_rc=0 || adopt_rc=$?
+check "adopt mode does invoke chgrp on a private socket"       test -f "$chgrp_marker"
+check "adopt mode returns success once adopted"               test "$adopt_rc" -eq 0
+eval "$orig_as_root"
+eval "$orig_cuig"
+rm -f "$HOST_SOCK"
+
 echo
 echo "RESULT: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
