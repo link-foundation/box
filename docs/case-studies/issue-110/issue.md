@@ -1,0 +1,41 @@
+## Summary
+
+The `konard/hive-mind-dind` / `box-dind` image can technically run in both **DinD** (nested daemon + host-image passthrough) and **DooD** (Docker-outside-of-Docker; share the host daemon) modes, but only DinD is documented and supported end-to-end. While wiring a production deploy we hit several gaps that made DinD passthrough unusable on a disk-constrained host and made DooD work only after reverse-engineering the entrypoint. This issue asks box to **fully support and document both DooD and DinD workflows at all levels** (docs + code).
+
+Everything below is confirmed against `konard/box-dind:2.3.5` on a real host (Docker Engine 29.5 with the containerd snapshotter, `Storage Driver: overlayfs`).
+
+## Findings (all reproduced)
+
+### 1. Host-image passthrough requires the box user to be in the socket's group — undocumented
+When the host socket is mounted (`-v /var/run/docker.sock:/var/run/host-docker.sock:ro`), it appears inside the container owned by the **host's** numeric docker GID (e.g. `988`), but the in-container `box` user is only in the image's own docker group (e.g. `995`). So `box` cannot read the socket and the entrypoint logs:
+
+```
+[dind-entrypoint] WARN: host docker socket at /var/run/host-docker.sock is not accessible; skipping passthrough
+[dind-entrypoint] image preload/passthrough complete
+```
+
+…leaving the nested daemon empty while still printing `complete`. The docs ("mount the socket read-only") never mention that the deployer must also add box to the host socket's GID. **Fix request:** document `--group-add <host-docker-gid>`, OR have the entrypoint detect the socket's GID at startup and add box to it (it already runs `fix_socket_permissions` for the inner socket — extend it to the host socket), OR at least make the "not accessible" path a loud error rather than continuing to `complete`.
+
+### 2. Passthrough does not block startup and isn't verified before "ready"
+The entrypoint logs `passthrough loading host image: <ref>` and then proceeds to start the workload while the `docker save | docker load` of a ~28 GB image is **still streaming in the background** (observed: a `docker load` PID running for many minutes after the bot had started). `docker info` returns success ("dockerd ready") long before the image is actually present, so a `--isolation docker` task launched in that window still re-pulls. The #106 concrete-tag verification did not emit a `complete`/`WITH WARNINGS` line in this window — it appears to run before the load finishes. **Fix request:** either block startup until passthrough's load completes (or expose a clear completion signal/`docker load` lifecycle), and run the concrete-tag verification *after* the load, so consumers can reliably wait for "image present".
+
+### 3. Passthrough is a full COPY (save|load), which doubles disk — no zero-copy/share mode
+`DIND_HOST_PASSTHROUGH` copies the image byte-for-byte into the nested daemon's separate store. On our host the 27.7 GB image became an extra **19.5 GB** inside the container's overlay. With only ~41 GB free, this does not fit, and a persistent `-v box-dind-data:/var/lib/docker` volume would make the duplicate permanent. The host's **containerd-snapshotter** store also cannot be shared zero-copy into a classic nested `overlay2`/`fuse-overlayfs` daemon, so there is **no** zero-copy option for DinD today. **Fix request:** a share/mount passthrough mode — bind-mount the host's image layers read-only as an additional/lower image store for the nested daemon (Docker supports read-only additional image stores), so the nested daemon sees host images with **zero copy and zero extra disk**. This is the single most impactful improvement.
+
+### 4. DooD mode works but is undocumented and unsupported "out of the box"
+The image already supports DooD: run with `-e DIND_SKIP_DAEMON=1` and mount the host socket as the **real** runtime (`-v /var/run/docker.sock:/var/run/docker.sock`), and the entrypoint cleanly skips the nested dockerd (`if [ "$DIND_SKIP_DAEMON" != "1" ]`) and hands off so the docker CLI talks to the host daemon. This is the **only no-copy option** on disk-constrained hosts: isolated tasks `docker run` on the host daemon, reusing the host image with **zero copy / zero extra disk**, while each task still runs in its own container. But:
+- It's not documented as a supported mode (only mentioned as "use for DooD/Sysbox-only mode" next to `DIND_SKIP_DAEMON`).
+- The same `--group-add <host-docker-gid>` requirement from finding #1 applies (box must read `/var/run/docker.sock`), and is undocumented.
+- There's no guidance that one image supports both modes, chosen purely by run flags.
+
+**Fix request:** document DooD as a first-class supported mode (env + run-flag recipe, the `--group-add` requirement, the isolation tradeoff vs DinD), and confirm `fix_socket_permissions` covers the real-runtime socket too.
+
+## What "fully support both" should mean
+
+- **Docs:** a "DinD vs DooD" section with copy-paste run recipes for each, the socket-group requirement, the disk/copy tradeoff, and "one image, mode chosen by run flags".
+- **Code:** auto-handle the host-socket group (#1); block/verify passthrough completion (#2); add a zero-copy share mode (#3); make DooD a documented, tested path (#4).
+
+## Reproduction / evidence
+
+Confirmed on `konard/box-dind:2.3.5`, host Docker 29.5 (containerd snapshotter, overlayfs). Happy to share the full deploy script, entrypoint logs, and `df`/`du` output. Related downstream: link-assistant/hive-mind#1914, #1946.
+
