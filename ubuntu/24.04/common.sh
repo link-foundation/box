@@ -370,6 +370,57 @@ resolve_opam_version() {
   fi
 }
 
+# Ubuntu's own archive freezes R at whatever was current when the release was
+# cut (4.3.3 on noble), so a box built today ships an R that is years behind.
+# CRAN publishes a maintained r-base for every supported Ubuntu codename; add
+# that repository when it is reachable and let the caller fall back to the
+# distro package when it is not (offline builds must still succeed).
+# Returns 0 when the CRAN repository is configured, 1 otherwise.
+add_cran_repo() {
+  local codename="${CRAN_UBUNTU_CODENAME:-}"
+  local keyring="/etc/apt/keyrings/cran_ubuntu_key.asc"
+  local list="/etc/apt/sources.list.d/cran.list"
+  local base="https://cloud.r-project.org/bin/linux/ubuntu"
+
+  if [ -z "$codename" ]; then
+    if [ -f /etc/os-release ]; then
+      codename=$(. /etc/os-release && echo "${VERSION_CODENAME:-}")
+    fi
+  fi
+  [ -n "$codename" ] || codename=$(lsb_release -cs 2>/dev/null || echo "")
+  if [ -z "$codename" ]; then
+    log_warning "Could not determine Ubuntu codename; skipping CRAN repository"
+    return 1
+  fi
+
+  if [ -f "$list" ] && grep -q "cran40" "$list" 2>/dev/null; then
+    log_info "CRAN repository already configured"
+    return 0
+  fi
+
+  # Probe before touching apt configuration: a half-added repository whose
+  # Release file 404s breaks every later `apt-get update` in the build.
+  if ! curl -fsSI --max-time "${VERSION_FETCH_TIMEOUT}" \
+       "${base}/${codename}-cran40/Release" >/dev/null 2>&1; then
+    log_warning "CRAN has no ${codename}-cran40 suite (or it is unreachable); using the distro R"
+    return 1
+  fi
+
+  maybe_sudo mkdir -p /etc/apt/keyrings
+  if ! curl -fsSL --max-time "${VERSION_FETCH_TIMEOUT}" "${base}/marutter_pubkey.asc" \
+       | maybe_sudo tee "$keyring" >/dev/null; then
+    log_warning "Could not fetch the CRAN signing key; using the distro R"
+    maybe_sudo rm -f "$keyring"
+    return 1
+  fi
+  maybe_sudo chmod a+r "$keyring"
+
+  echo "deb [signed-by=${keyring}] ${base} ${codename}-cran40/" \
+    | maybe_sudo tee "$list" >/dev/null
+  log_success "CRAN repository configured for ${codename}"
+  return 0
+}
+
 # =============================================================================
 # One-version-per-language-root invariant (issue #112)
 # =============================================================================

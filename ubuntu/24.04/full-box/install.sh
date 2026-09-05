@@ -299,17 +299,17 @@ if command_exists brew; then
     if brew tap | grep -q "shivammathur/php"; then
       export HOMEBREW_NO_ANALYTICS=1
       export HOMEBREW_NO_AUTO_UPDATE=1
-      brew install shivammathur/php/php@8.3 || true
-      if brew list --formula 2>/dev/null | grep -q "^php@8.3$"; then
-        brew link --overwrite --force shivammathur/php/php@8.3 2>&1 | grep -v "Warning" || true
+      brew install php || true
+      if brew list --formula 2>/dev/null | grep -E "^php(@[0-9.]+)?$" >/dev/null; then
+        brew link --overwrite --force php 2>&1 | grep -v "Warning" || true
         BREW_PREFIX=$(brew --prefix 2>/dev/null || echo "")
-        if [[ -n "$BREW_PREFIX" && -d "$BREW_PREFIX/opt/php@8.3" ]]; then
-          export PATH="$BREW_PREFIX/opt/php@8.3/bin:$BREW_PREFIX/opt/php@8.3/sbin:$PATH"
-          if ! grep -q "php@8.3/bin" "$HOME/.bashrc" 2>/dev/null; then
+        if [[ -n "$BREW_PREFIX" && -d "$BREW_PREFIX/opt/php" ]]; then
+          export PATH="$BREW_PREFIX/opt/php/bin:$BREW_PREFIX/opt/php/sbin:$PATH"
+          if ! grep -q "opt/php/bin" "$HOME/.bashrc" 2>/dev/null; then
             cat >> "$HOME/.bashrc" << 'PHP_PATH_EOF'
 
-# PHP 8.3 PATH configuration
-export PATH="$(brew --prefix)/opt/php@8.3/bin:$(brew --prefix)/opt/php@8.3/sbin:$PATH"
+# PHP PATH configuration
+export PATH="$(brew --prefix)/opt/php/bin:$(brew --prefix)/opt/php/sbin:$PATH"
 PHP_PATH_EOF
           fi
         fi

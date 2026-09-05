@@ -655,11 +655,11 @@ install_php() {
     brew tap shivammathur/php || true
     export HOMEBREW_NO_ANALYTICS=1
     export HOMEBREW_NO_AUTO_UPDATE=1
-    brew install shivammathur/php/php@8.3 || true
-    brew link --overwrite --force shivammathur/php/php@8.3 2>&1 | grep -v "Warning" || true
+    brew install php || true
+    brew link --overwrite --force php 2>&1 | grep -v "Warning" || true
   fi
 }
-measure_install "PHP 8.3 (via Homebrew)" "Runtime" install_php
+measure_install "PHP (via Homebrew)" "Runtime" install_php
 
 # --- Perlbrew + Perl ---
 install_perlbrew_perl() {

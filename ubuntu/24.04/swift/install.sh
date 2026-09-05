@@ -39,10 +39,35 @@ if ! command_exists swift; then
   esac
 
   if [ -n "$SWIFT_DIR" ]; then
-    SWIFT_VERSION="6.0.3"
+    # swift.org's release feed is walked newest-first and each candidate's
+    # tarball is probed, because not every release publishes a build for every
+    # Ubuntu/arch combination. A hardcoded version (6.0.3) silently ages —
+    # issue #112. Pin with SWIFT_VERSION for a reproducible build.
+    if ! command -v resolve_swift_versions >/dev/null 2>&1; then
+      resolve_swift_versions() { echo "${SWIFT_VERSION:-6.3.3}"; }
+    fi
+
     SWIFT_RELEASE="RELEASE"
-    SWIFT_PACKAGE="swift-${SWIFT_VERSION}-${SWIFT_RELEASE}-${SWIFT_FILE_SUFFIX}"
-    SWIFT_URL="https://download.swift.org/swift-${SWIFT_VERSION}-release/${SWIFT_DIR}/swift-${SWIFT_VERSION}-${SWIFT_RELEASE}/${SWIFT_PACKAGE}.tar.gz"
+    # Resolve before clearing SWIFT_VERSION: the resolver reads it as the pin.
+    SWIFT_CANDIDATES="$(resolve_swift_versions)"
+    SWIFT_VERSION=""
+    SWIFT_URL=""
+    for candidate in $SWIFT_CANDIDATES; do
+      candidate_package="swift-${candidate}-${SWIFT_RELEASE}-${SWIFT_FILE_SUFFIX}"
+      candidate_url="https://download.swift.org/swift-${candidate}-release/${SWIFT_DIR}/swift-${candidate}-${SWIFT_RELEASE}/${candidate_package}.tar.gz"
+      if curl -fsSI --max-time 20 "$candidate_url" >/dev/null 2>&1; then
+        SWIFT_VERSION="$candidate"
+        SWIFT_PACKAGE="$candidate_package"
+        SWIFT_URL="$candidate_url"
+        break
+      fi
+      log_info "No Swift $candidate build for ${SWIFT_FILE_SUFFIX}, trying the previous release..."
+    done
+
+    if [ -z "$SWIFT_URL" ]; then
+      log_error "No Swift release with a ${SWIFT_FILE_SUFFIX} toolchain was found"
+      exit 1
+    fi
 
     log_info "Downloading Swift $SWIFT_VERSION for $ARCH..."
     TEMP_DIR=$(mktemp -d)

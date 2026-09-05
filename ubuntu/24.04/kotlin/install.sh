@@ -2,8 +2,8 @@
 # Kotlin installation via SDKMAN
 # Usage: curl -fsSL <url> | bash  OR  bash install.sh
 # Kotlin requires a JVM at runtime (kotlinc is a shell wrapper around `java`),
-# so this script also installs Java 21 LTS via SDKMAN if it is not already
-# present. The standalone box-kotlin image must be runnable on its own.
+# so this script also installs the current Java LTS via SDKMAN if it is not
+# already present. The standalone box-kotlin image must be runnable on its own.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$SCRIPT_DIR/../common.sh" ]; then
@@ -18,6 +18,12 @@ else
   log_step() { echo "==> $1"; }
   command_exists() { command -v "$1" &>/dev/null; }
 fi
+
+# Same build-time LTS resolution as the java box (see ../common.sh).
+if ! command -v resolve_java_lts_major >/dev/null 2>&1; then
+  resolve_java_lts_major() { echo "${JAVA_VERSION:-25}"; }
+fi
+JAVA_MAJOR="$(resolve_java_lts_major)"
 
 log_step "Installing Kotlin via SDKMAN"
 
@@ -43,11 +49,11 @@ if [ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
 
   # Kotlin runtime needs Java; install it first if missing.
   if ! command_exists java; then
-    log_info "Installing Java 21 LTS (Temurin) via SDKMAN (required by Kotlin)..."
+    log_info "Installing Java ${JAVA_MAJOR} LTS (Temurin) via SDKMAN (required by Kotlin)..."
     set +u
-    sdk install java 21-tem < /dev/null || {
+    sdk install java "${JAVA_MAJOR}-tem" < /dev/null || {
       log_warning "Eclipse Temurin installation failed, trying default OpenJDK..."
-      sdk install java 21-open < /dev/null || true
+      sdk install java "${JAVA_MAJOR}-open" < /dev/null || true
     }
     set -u
 
@@ -72,6 +78,11 @@ if [ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
   else
     log_info "Kotlin already installed."
   fi
+fi
+
+# Build-time invariant: one version per SDKMAN candidate (issue #112).
+if command -v assert_single_runtime_versions >/dev/null 2>&1; then
+  assert_single_runtime_versions
 fi
 
 log_success "Kotlin installation complete"

@@ -68,6 +68,7 @@ COPY ubuntu/24.04/common.sh /tmp/common.sh
 # --- Install system-level packages (cannot be COPY'd from images) ---
 # Note: PHP is NOT installed here unconditionally - it depends on the php-stage method
 RUN . /tmp/common.sh && \
+    (add_cran_repo || true) && \
     apt_update_with_retry && \
     apt-get install -y \
       "dotnet-sdk-$(resolve_dotnet_apt_channel)" \
