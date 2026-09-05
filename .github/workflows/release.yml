@@ -40,7 +40,20 @@ on:
         type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Push/dispatch runs keep the classic one-run-per-ref group.
+  #
+  # Pull request runs deliberately get a group of their own (issue #112 follow-up).
+  # A shared group did not do what it promises here: on PR #113 four commits were
+  # pushed inside twelve minutes and GitHub kept the run for the OLDEST one alive
+  # — run 33959630651 started its `pr-test / full` job at 10:29, twenty-two
+  # minutes after that commit had been superseded — while every newer run sat in
+  # the `pending` state behind the group and was cancelled by the next one
+  # without ever executing a step. A `pending` run cannot cancel its predecessor,
+  # because it cannot run anything at all, so the group is the deadlock rather
+  # than the cure. Supersession is handled explicitly instead, by the
+  # `cancel-superseded` job below plus the per-job guard in every expensive job
+  # (scripts/ci/supersede.sh).
+  group: ${{ github.event_name == 'pull_request' && format('{0}-pr-{1}-run-{2}', github.workflow, github.event.pull_request.number, github.run_id) || format('{0}-{1}', github.workflow, github.ref) }}
   cancel-in-progress: true
 
 env:
@@ -57,6 +70,38 @@ env:
   DOCKERHUB_IMAGE_NAME: konard/box
 
 jobs:
+  # === CANCEL SUPERSEDED RUNS (PRs only) — issue #112 follow-up ===
+  #
+  # "We must fix our CI/CD, so previous commits skip execution in pull requests,
+  #  if multiple are committed in the order. So we only execute on last commit,
+  #  and reduce resource waste on all previous commits."
+  #
+  # This is the first job of every pull request run and it takes seconds: it asks
+  # the API which runs of this workflow are still live for an earlier commit of
+  # this PR and cancels them. Doing it from inside the run — rather than leaving
+  # it to `concurrency` — is what makes it work, because the per-run concurrency
+  # group above guarantees this job can actually start (see the note there).
+  # Covered by experiments/test-issue112-supersede.sh.
+  cancel-superseded:
+    name: Cancel superseded runs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cancel runs for superseded commits of this pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_HEAD_REPO_ID: ${{ github.event.pull_request.head.repo.id }}
+        run: bash scripts/ci/supersede.sh cancel-older
+
   # === VERSION CHECK (PRs only) ===
   # Prohibit manual version changes in VERSION file - versions should only be changed by CI/CD
   version-check:
@@ -333,15 +378,33 @@ jobs:
       (needs.version-check.result == 'success' || needs.version-check.result == 'skipped') &&
       (needs.changeset-check.result == 'success' || needs.changeset-check.result == 'skipped') &&
       github.event_name == 'pull_request'
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash scripts/ci/supersede.sh stop-if-superseded
 
       - name: Version resolvers and one-version-per-language invariant
         run: bash experiments/version-policy-unit-test.sh
 
       - name: Layer semantics behind the rustup refresh
         run: bash experiments/rust-refresh-layer-test.sh
+
+      - name: Superseded-commit guard (stubbed API) and its workflow wiring
+        run: bash experiments/test-issue112-supersede.sh
 
       - name: Resolvers agree with the live upstream feeds
         # Not an assertion on a specific version — it fails only if a feed
@@ -369,9 +432,24 @@ jobs:
       (needs.changeset-check.result == 'success' || needs.changeset-check.result == 'skipped') &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.should-build == 'true'
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash scripts/ci/supersede.sh stop-if-superseded
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -433,9 +511,24 @@ jobs:
       needs.pr-test-js.result == 'success' &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.should-build == 'true'
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash scripts/ci/supersede.sh stop-if-superseded
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -484,9 +577,24 @@ jobs:
       fail-fast: false
       matrix:
         language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq]
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash scripts/ci/supersede.sh stop-if-superseded
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -577,9 +685,24 @@ jobs:
       needs.pr-test-language.result == 'success' &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.should-build == 'true'
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash scripts/ci/supersede.sh stop-if-superseded
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -746,9 +869,24 @@ jobs:
         # variant -> base box flavour. Special value "full" rebuilds the entire chain;
         # everything else needs only JS+essentials+<lang>.
         variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash scripts/ci/supersede.sh stop-if-superseded
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
