@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Full Box environment Docker image
 # Contains all language runtimes and development tools.
 # This is the "full-box" image (konard/box or konard/box-full).

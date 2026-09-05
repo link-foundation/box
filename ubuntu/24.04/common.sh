@@ -378,8 +378,11 @@ resolve_opam_version() {
 # Returns 0 when the CRAN repository is configured, 1 otherwise.
 add_cran_repo() {
   local codename="${CRAN_UBUNTU_CODENAME:-}"
-  local keyring="/etc/apt/keyrings/cran_ubuntu_key.asc"
-  local list="/etc/apt/sources.list.d/cran.list"
+  # CRAN_APT_ROOT is only ever set by the unit test, so the apt configuration
+  # can be written into a temporary tree instead of the real /etc.
+  local etc="${CRAN_APT_ROOT:-}/etc/apt"
+  local keyring="${etc}/keyrings/cran_ubuntu_key.asc"
+  local list="${etc}/sources.list.d/cran.list"
   local base="https://cloud.r-project.org/bin/linux/ubuntu"
 
   if [ -z "$codename" ]; then
@@ -406,7 +409,7 @@ add_cran_repo() {
     return 1
   fi
 
-  maybe_sudo mkdir -p /etc/apt/keyrings
+  maybe_sudo mkdir -p "${etc}/keyrings" "${etc}/sources.list.d"
   if ! curl -fsSL --max-time "${VERSION_FETCH_TIMEOUT}" "${base}/marutter_pubkey.asc" \
        | maybe_sudo tee "$keyring" >/dev/null; then
     log_warning "Could not fetch the CRAN signing key; using the distro R"

@@ -44,6 +44,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  # The full-box Dockerfiles use `RUN --mount=type=bind,from=<stage>` to refresh
+  # the copied rustup toolchains inside the same layer (issue #112). buildx
+  # enables BuildKit implicitly; the plain `docker build` steps below need it
+  # switched on explicitly or that syntax is a parse error.
+  DOCKER_BUILDKIT: "1"
   # GitHub Container Registry
   GHCR_REGISTRY: ghcr.io
   GHCR_IMAGE_NAME: ${{ github.repository }}
@@ -312,12 +317,51 @@ jobs:
   #
   # See: docs/case-studies/issue-82/CASE-STUDY.md
 
+  # --- Tier 0: version policy (no image build, runs in seconds) ---
+  # The resolvers in ubuntu/24.04/common.sh are the only thing keeping a rebuild
+  # from shipping last year's runtimes (issue #112), and refresh-rust.sh depends
+  # on a layer property (a delete after COPY --from reclaims nothing) that is
+  # easy to regress. Both are covered without building an image, so this job
+  # gates the expensive tiers below.
+  pr-test-version-policy:
+    name: pr-test / version-policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: [version-check, changeset-check]
+    if: |
+      always() &&
+      (needs.version-check.result == 'success' || needs.version-check.result == 'skipped') &&
+      (needs.changeset-check.result == 'success' || needs.changeset-check.result == 'skipped') &&
+      github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Version resolvers and one-version-per-language invariant
+        run: bash experiments/version-policy-unit-test.sh
+
+      - name: Layer semantics behind the rustup refresh
+        run: bash experiments/rust-refresh-layer-test.sh
+
+      - name: Resolvers agree with the live upstream feeds
+        # Not an assertion on a specific version — it fails only if a feed
+        # changed shape and every resolver silently fell back to its pin.
+        run: |
+          set -e
+          . ubuntu/24.04/common.sh
+          for fn in resolve_node_lts_major resolve_nvm_version resolve_java_lts_major \
+                    resolve_dotnet_lts_channel resolve_swift_versions resolve_opam_version; do
+            value="$("$fn" | head -n1)"
+            echo "$fn -> $value"
+            [ -n "$value" ] || { echo "::error::$fn returned nothing"; exit 1; }
+          done
+
   # --- Tier 1: JS box ---
   pr-test-js:
     name: pr-test / js
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    needs: [detect-changes, version-check, changeset-check]
+    needs: [detect-changes, version-check, changeset-check, pr-test-version-policy]
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
@@ -353,6 +397,29 @@ jobs:
           docker run --rm box-js bash -c '. $HOME/.nvm/nvm.sh && node --version'
           docker run --rm box-js bash -c 'export PATH=$HOME/.bun/bin:$PATH && bun --version'
           docker run --rm box-js bash -c 'export PATH=$HOME/.deno/bin:$PATH && deno --version'
+
+          # Issue #112: the image must ship the Node LTS that was current when it
+          # was built, exactly one of them, and a login shell must agree.
+          echo "=== Node freshness and one-version invariant ==="
+          . ubuntu/24.04/common.sh
+          EXPECTED_NODE="$(resolve_node_lts_major)"
+          echo "expected Node major: $EXPECTED_NODE"
+          docker run --rm -e EXPECTED_NODE="$EXPECTED_NODE" box-js bash -c '
+            set -e
+            . "$HOME/.nvm/nvm.sh"
+            actual="$(node --version)"
+            echo "image ships $actual, nvm default alias -> $(nvm version default)"
+            case "$actual" in
+              v"$EXPECTED_NODE".*) ;;
+              *) echo "::error::image ships $actual, expected Node $EXPECTED_NODE"; exit 1 ;;
+            esac
+            # Without an explicit default alias the image could ship one Node
+            # and activate another (issue #112).
+            [ "$(nvm version default)" = "$actual" ] \
+              || { echo "::error::nvm default alias is $(nvm version default), active is $actual"; exit 1; }
+            count="$(ls -1 "$HOME/.nvm/versions/node" | wc -l)"
+            [ "$count" -eq 1 ] || { echo "::error::$count Node versions in the image"; exit 1; }
+          '
           echo "=== JS box tests passed ==="
 
   # --- Tier 2: essentials box ---
@@ -407,7 +474,7 @@ jobs:
     name: pr-test / ${{ matrix.language }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    needs: [detect-changes, version-check, changeset-check, pr-test-essentials]
+    needs: [detect-changes, version-check, changeset-check, pr-test-version-policy, pr-test-essentials]
     if: |
       always() &&
       needs.pr-test-essentials.result == 'success' &&
@@ -625,6 +692,32 @@ jobs:
           docker run --rm box-test expect -v
 
           echo ""
+          echo "=== Runtime freshness and one-version-per-language invariant (issue #112) ==="
+          . ubuntu/24.04/common.sh
+          EXPECTED_NODE="$(resolve_node_lts_major)"
+          ACTUAL_NODE="$(docker run --rm box-test node --version)"
+          echo "full box ships Node $ACTUAL_NODE, expected major $EXPECTED_NODE"
+          case "$ACTUAL_NODE" in
+            v"$EXPECTED_NODE".*) ;;
+            *) echo "::error::full box ships $ACTUAL_NODE, expected Node $EXPECTED_NODE"; exit 1 ;;
+          esac
+
+          # The stale `stable` next to a pinned toolchain is the 2.2 GB ~/.rustup
+          # from issue #112: assert one toolchain, and that it is the one rustup
+          # itself considers current. `rustup check` also reports updates for the
+          # rustup binary, which is not what this asserts — toolchain lines only.
+          docker run --rm box-test rustup toolchain list
+          TOOLCHAINS="$(docker run --rm box-test rustup toolchain list | grep -c .)"
+          [ "$TOOLCHAINS" -eq 1 ] \
+            || { echo "::error::$TOOLCHAINS rustup toolchains in the full box, expected 1"; exit 1; }
+          if docker run --rm box-test rustup check | grep -v "^rustup " | grep "Update available"; then
+            echo "::error::the shipped Rust stable is not the current release"; exit 1
+          fi
+
+          docker run --rm -v "$PWD/ubuntu/24.04/common.sh:/tmp/common.sh:ro" \
+            box-test bash -c '. /tmp/common.sh && assert_single_runtime_versions'
+
+          echo ""
           echo "=== PHP install method check ==="
           docker run --rm box-php cat /home/box/.php-install-method
           docker run --rm box-test cat /home/box/.php-install-method
@@ -641,7 +734,7 @@ jobs:
     name: pr-test / dind-${{ matrix.variant }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    needs: [detect-changes, version-check, changeset-check, pr-test-essentials]
+    needs: [detect-changes, version-check, changeset-check, pr-test-version-policy, pr-test-essentials]
     if: |
       always() &&
       needs.pr-test-essentials.result == 'success' &&
@@ -783,7 +876,7 @@ jobs:
   docker-build-test:
     name: docker-build-test
     runs-on: ubuntu-24.04
-    needs: [detect-changes, version-check, changeset-check, pr-test-js, pr-test-essentials, pr-test-language, pr-test-full, pr-test-dind]
+    needs: [detect-changes, version-check, changeset-check, pr-test-version-policy, pr-test-js, pr-test-essentials, pr-test-language, pr-test-full, pr-test-dind]
     if: |
       always() &&
       github.event_name == 'pull_request' &&
@@ -792,6 +885,7 @@ jobs:
       - name: Aggregate pr-test results
         run: |
           set -e
+          echo "pr-test-version-policy: ${{ needs.pr-test-version-policy.result }}"
           echo "pr-test-js:         ${{ needs.pr-test-js.result }}"
           echo "pr-test-essentials: ${{ needs.pr-test-essentials.result }}"
           echo "pr-test-language:   ${{ needs.pr-test-language.result }}"
@@ -800,6 +894,7 @@ jobs:
 
           fail=0
           for r in \
+            "${{ needs.pr-test-version-policy.result }}" \
             "${{ needs.pr-test-js.result }}" \
             "${{ needs.pr-test-essentials.result }}" \
             "${{ needs.pr-test-language.result }}" \

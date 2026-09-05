@@ -89,10 +89,29 @@ case "$url" in
     printf '%s' "https://github.com/nvm-sh/nvm/releases/tag/${MOCK_NVM_TAG:-v0.40.7}" ;;
   *github.com/ocaml/opam/releases/latest)
     printf '%s' "https://github.com/ocaml/opam/releases/tag/${MOCK_OPAM_TAG:-2.5.2}" ;;
+  # CRAN publishes one suite per supported codename; MOCK_CRAN_SUITE says which
+  # one exists, so the "unsupported codename" path can be exercised too.
+  *cloud.r-project.org/bin/linux/ubuntu/*-cran40/Release)
+    suite="${url##*/ubuntu/}"; suite="${suite%/Release}"
+    [ "$suite" = "${MOCK_CRAN_SUITE:-noble-cran40}" ] || exit 22
+    printf 'Origin: CRAN\nSuite: %s\n' "$suite" ;;
+  *cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc)
+    [ "${MOCK_CRAN_KEY_FAIL:-0}" = "1" ] && exit 22
+    printf -- '-----BEGIN PGP PUBLIC KEY BLOCK-----\nmock\n-----END PGP PUBLIC KEY BLOCK-----\n' ;;
   *) exit 22 ;;
 esac
 MOCK
 chmod +x "$WORK/bin/curl"
+
+# Mock sudo: the functions under test write apt configuration through
+# maybe_sudo. Running the real sudo here would create root-owned files in the
+# temporary tree (which the test could then neither inspect nor clean up), so
+# the mock simply runs the command as the test user.
+cat > "$WORK/bin/sudo" <<'MOCK'
+#!/usr/bin/env bash
+exec "$@"
+MOCK
+chmod +x "$WORK/bin/sudo"
 export PATH="$WORK/bin:$PATH"
 
 # shellcheck disable=SC1090
@@ -225,6 +244,44 @@ check "apt_has_package survives pipefail (no SIGPIPE 141)" \
   bash -c 'set -euo pipefail; . "'"$COMMON"'"; APT_CHANNELS="10.0" apt_has_package dotnet-sdk-10.0'
 check "apt_has_package is false for a missing package" \
   bash -c 'set -euo pipefail; . "'"$COMMON"'"; APT_CHANNELS="10.0" apt_has_package dotnet-sdk-99.0 && exit 1; exit 0'
+
+echo "== Case 9: the CRAN repository is added before installing R =="
+# Ubuntu freezes r-base at whatever shipped with the release (4.3.3 on 24.04);
+# CRAN carries the current R for the same codename. add_cran_repo() is what
+# makes `apt install r-base` deliver the fresh one (issue #112).
+export CRAN_APT_ROOT="$WORK/cran-root"
+CRAN_LIST="$CRAN_APT_ROOT/etc/apt/sources.list.d/cran.list"
+CRAN_KEY="$CRAN_APT_ROOT/etc/apt/keyrings/cran_ubuntu_key.asc"
+
+check "add_cran_repo succeeds for a supported codename" \
+  bash -c 'set -euo pipefail; . "'"$COMMON"'"; CRAN_APT_ROOT="'"$CRAN_APT_ROOT"'" CRAN_UBUNTU_CODENAME=noble add_cran_repo >/dev/null'
+check "it writes a signed-by sources entry for that codename" \
+  bash -c 'grep -q "signed-by=.*cran_ubuntu_key.asc.*noble-cran40/" "'"$CRAN_LIST"'"'
+check "it stores the CRAN signing key" \
+  bash -c 'grep -q "BEGIN PGP PUBLIC KEY BLOCK" "'"$CRAN_KEY"'"'
+check "a second call is a no-op instead of duplicating the entry" \
+  bash -c 'set -euo pipefail; . "'"$COMMON"'"; CRAN_APT_ROOT="'"$CRAN_APT_ROOT"'" CRAN_UBUNTU_CODENAME=noble add_cran_repo >/dev/null; [ "$(wc -l < "'"$CRAN_LIST"'")" -eq 1 ]'
+
+# The failure modes must leave apt exactly as it was: a sources entry pointing at
+# a suite whose Release file 404s breaks every later apt-get update in the build.
+rm -rf "$WORK/cran-unsupported"
+check "an unsupported codename is reported, not configured" \
+  bash -c 'set -euo pipefail; . "'"$COMMON"'"; CRAN_APT_ROOT="'"$WORK"'/cran-unsupported" CRAN_UBUNTU_CODENAME=questing add_cran_repo >/dev/null 2>&1 && exit 1; exit 0'
+check "no sources entry is left behind for an unsupported codename" \
+  bash -c '[ ! -e "'"$WORK"'/cran-unsupported/etc/apt/sources.list.d/cran.list" ]'
+
+rm -rf "$WORK/cran-nokey"
+check "a failed key download aborts the repository setup" \
+  bash -c 'set -euo pipefail; . "'"$COMMON"'"; MOCK_CRAN_KEY_FAIL=1 CRAN_APT_ROOT="'"$WORK"'/cran-nokey" CRAN_UBUNTU_CODENAME=noble add_cran_repo >/dev/null 2>&1 && exit 1; exit 0'
+check "no sources entry is left behind when the key download fails" \
+  bash -c '[ ! -e "'"$WORK"'/cran-nokey/etc/apt/sources.list.d/cran.list" ]'
+check "no empty keyring is left behind when the key download fails" \
+  bash -c '[ ! -e "'"$WORK"'/cran-nokey/etc/apt/keyrings/cran_ubuntu_key.asc" ]'
+
+rm -rf "$WORK/cran-offline"
+check "an unreachable CRAN degrades to the distro R instead of failing" \
+  bash -c 'set -euo pipefail; . "'"$COMMON"'"; CURL_FAIL=1 CRAN_APT_ROOT="'"$WORK"'/cran-offline" CRAN_UBUNTU_CODENAME=noble add_cran_repo >/dev/null 2>&1 && exit 1; exit 0'
+unset CRAN_APT_ROOT
 
 echo
 echo "RESULT: $pass passed, $fail failed"

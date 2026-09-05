@@ -1,0 +1,8 @@
+# syntax=docker/dockerfile:1
+# What refresh-rust.sh does: bind the stage and copy only what is kept, so the
+# stale toolchain is never committed to a layer in the first place.
+FROM whiteout-stage AS rust-stage
+FROM ubuntu:24.04
+RUN --mount=type=bind,from=rust-stage,source=/opt/toolchains,target=/mnt/toolchains \
+    mkdir -p /opt/toolchains && \
+    cp -a /mnt/toolchains/keep /opt/toolchains/keep

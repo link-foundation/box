@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Full Box Docker image - Multi-stage assembly
 # Copies pre-built language runtimes from individual language images
 # Published as: konard/box (or konard/box-full)
