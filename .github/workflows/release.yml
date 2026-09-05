@@ -1197,10 +1197,7 @@ jobs:
       - name: Retry push JS box (amd64) on failure
         if: steps.build-push.outcome == 'failure'
         run: |
-          echo "First push attempt failed, retrying with backoff..."
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
+          bash scripts/release/buildx-retry.sh \
               --file ubuntu/24.04/js/Dockerfile \
               --platform linux/amd64 \
               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-amd64 \
@@ -1210,18 +1207,7 @@ jobs:
               --provenance=false \
               --cache-from type=gha,scope=js-amd64 \
               --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
+              .
 
       - name: Mark as built
         id: result
@@ -1326,10 +1312,7 @@ jobs:
       - name: Retry push JS box (arm64) on failure
         if: steps.build-push.outcome == 'failure'
         run: |
-          echo "First push attempt failed, retrying with backoff..."
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
+          bash scripts/release/buildx-retry.sh \
               --file ubuntu/24.04/js/Dockerfile \
               --platform linux/arm64 \
               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-arm64 \
@@ -1339,18 +1322,7 @@ jobs:
               --provenance=false \
               --cache-from type=gha,scope=js-arm64 \
               --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
+              .
 
       - name: Mark as built
         id: result
@@ -1557,10 +1529,7 @@ jobs:
       - name: Retry push essentials box (amd64) on failure
         if: steps.build-push.outcome == 'failure'
         run: |
-          echo "First push attempt failed, retrying with backoff..."
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
+          bash scripts/release/buildx-retry.sh \
               --file ubuntu/24.04/essentials-box/Dockerfile \
               --platform linux/amd64 \
               --build-arg JS_IMAGE=${{ steps.js-base.outputs.image }} \
@@ -1571,18 +1540,7 @@ jobs:
               --provenance=false \
               --cache-from type=gha,scope=essentials-amd64 \
               --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
+              .
 
       - name: Mark as built
         id: result
@@ -1701,10 +1659,7 @@ jobs:
       - name: Retry push essentials box (arm64) on failure
         if: steps.build-push.outcome == 'failure'
         run: |
-          echo "First push attempt failed, retrying with backoff..."
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
+          bash scripts/release/buildx-retry.sh \
               --file ubuntu/24.04/essentials-box/Dockerfile \
               --platform linux/arm64 \
               --build-arg JS_IMAGE=${{ steps.js-base.outputs.image }} \
@@ -1715,18 +1670,7 @@ jobs:
               --provenance=false \
               --cache-from type=gha,scope=essentials-arm64 \
               --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
+              .
 
       - name: Mark as built
         id: result
@@ -1958,7 +1902,6 @@ jobs:
       - name: Retry push ${{ matrix.language }} box (amd64) on failure
         if: steps.check-lang.outputs.should_build == 'true' && steps.build-push.outcome == 'failure'
         run: |
-          echo "First push attempt failed, retrying with backoff..."
           TAGS=(
             "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64"
             "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64"
@@ -1969,9 +1912,7 @@ jobs:
           for tag in "${TAGS[@]}"; do
             TAG_ARGS+=(--tag "$tag")
           done
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
+          bash scripts/release/buildx-retry.sh \
               --file ubuntu/24.04/${{ matrix.language }}/Dockerfile \
               --platform linux/amd64 \
               --build-arg ESSENTIALS_IMAGE=${{ steps.essentials-base.outputs.image }} \
@@ -1979,18 +1920,7 @@ jobs:
               --provenance=false \
               --cache-from type=gha,scope=${{ matrix.language }}-amd64 \
               --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
+              .
 
       # PHP-specific: Add local/global suffix tags based on install method (Issue #44)
       - name: Tag PHP image with install method suffix (amd64)
@@ -2159,7 +2089,6 @@ jobs:
       - name: Retry push ${{ matrix.language }} box (arm64) on failure
         if: steps.check-lang.outputs.should_build == 'true' && steps.build-push.outcome == 'failure'
         run: |
-          echo "First push attempt failed, retrying with backoff..."
           TAGS=(
             "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64"
             "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64"
@@ -2170,9 +2099,7 @@ jobs:
           for tag in "${TAGS[@]}"; do
             TAG_ARGS+=(--tag "$tag")
           done
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
+          bash scripts/release/buildx-retry.sh \
               --file ubuntu/24.04/${{ matrix.language }}/Dockerfile \
               --platform linux/arm64 \
               --build-arg ESSENTIALS_IMAGE=${{ steps.essentials-base.outputs.image }} \
@@ -2180,18 +2107,7 @@ jobs:
               --provenance=false \
               --cache-from type=gha,scope=${{ matrix.language }}-arm64 \
               --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
+              .
 
       # PHP-specific: Add local/global suffix tags based on install method (Issue #44)
       - name: Tag PHP image with install method suffix (arm64)
@@ -2479,16 +2395,13 @@ jobs:
             ${{ steps.meta.outputs.tags }}
             ${{ steps.meta-amd64.outputs.tags }}
         run: |
-          echo "First push attempt failed, retrying with backoff..."
           TAG_ARGS=()
           while IFS= read -r tag; do
             tag=$(echo "$tag" | xargs)
             [ -z "$tag" ] && continue
             TAG_ARGS+=(--tag "$tag")
           done <<< "$ALL_TAGS"
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
+          bash scripts/release/buildx-retry.sh \
               --file ubuntu/24.04/full-box/Dockerfile \
               --platform linux/amd64 \
               --build-arg ESSENTIALS_IMAGE=${{ steps.base-images.outputs.essentials }} \
@@ -2507,18 +2420,7 @@ jobs:
               --provenance=false \
               --cache-from type=gha \
               --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
+              .
 
       # Smoke test the published image to verify all toolchains work (issue #62)
       # Tests each toolchain command to catch cases where tools are missing/broken
@@ -2728,16 +2630,13 @@ jobs:
         env:
           ALL_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          echo "First push attempt failed, retrying with backoff..."
           TAG_ARGS=()
           while IFS= read -r tag; do
             tag=$(echo "$tag" | xargs)
             [ -z "$tag" ] && continue
             TAG_ARGS+=(--tag "$tag")
           done <<< "$ALL_TAGS"
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
+          bash scripts/release/buildx-retry.sh \
               --file ubuntu/24.04/full-box/Dockerfile \
               --platform linux/arm64 \
               --build-arg ESSENTIALS_IMAGE=${{ steps.base-images.outputs.essentials }} \
@@ -2756,18 +2655,7 @@ jobs:
               --provenance=false \
               --cache-from type=gha \
               --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
+              .
 
   # === CREATE MULTI-ARCH MANIFEST ===
   docker-manifest:
@@ -2989,10 +2877,7 @@ jobs:
       - name: Retry push ${{ matrix.variant }} dind-box (amd64) on failure
         if: steps.build-push.outcome == 'failure'
         run: |
-          echo "First push attempt failed, retrying with backoff..."
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
+          bash scripts/release/buildx-retry.sh \
               --file ubuntu/24.04/dind/Dockerfile \
               --platform linux/amd64 \
               --build-arg BASE_IMAGE=${{ steps.names.outputs.base_image }} \
@@ -3003,18 +2888,7 @@ jobs:
               --provenance=false \
               --cache-from type=gha,scope=dind-${{ matrix.variant }}-amd64 \
               --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
+              .
 
   # === BUILD DIND-BOX VARIANTS (arm64) - issue #80 ===
   build-dind-arm64:
@@ -3130,10 +3004,7 @@ jobs:
       - name: Retry push ${{ matrix.variant }} dind-box (arm64) on failure
         if: steps.build-push.outcome == 'failure'
         run: |
-          echo "First push attempt failed, retrying with backoff..."
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
+          bash scripts/release/buildx-retry.sh \
               --file ubuntu/24.04/dind/Dockerfile \
               --platform linux/arm64 \
               --build-arg BASE_IMAGE=${{ steps.names.outputs.base_image }} \
@@ -3144,18 +3015,7 @@ jobs:
               --provenance=false \
               --cache-from type=gha,scope=dind-${{ matrix.variant }}-arm64 \
               --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
+              .
 
   # === CREATE DIND-BOX MULTI-ARCH MANIFESTS - issue #80 ===
   dind-manifest:
