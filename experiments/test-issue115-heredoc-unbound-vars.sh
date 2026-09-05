@@ -64,6 +64,7 @@ echo "=== Part 1: the failure mode, reproduced from scratch ==="
 # parent's variables. `env -i` is the reproducible stand-in for `su - box`,
 # which likewise starts from a fresh environment.
 
+# heredoc-vars: ignore — this generator is the bug, reproduced on purpose.
 cat > "$TMP/broken-generator.sh" <<'GEN'
 set -euo pipefail
 NODE_MAJOR="24"
@@ -92,6 +93,7 @@ else
 fi
 
 # The fix: pass the value in across the environment boundary, and assert it.
+# heredoc-vars: ignore — a fixture; its own inner heredoc is the fixed form.
 cat > "$TMP/fixed-generator.sh" <<'GEN'
 set -euo pipefail
 NODE_MAJOR="24"
@@ -135,6 +137,8 @@ run_check() { # run_check FIXTURE -> prints findings, sets $rc
 }
 
 # --- must be caught ----------------------------------------------------------
+# heredoc-vars: ignore — this fixture has to contain the bug to prove the
+# checker finds it; the assertions below are what verify it.
 cat > "$TMP/case-broken.sh" <<'FIX'
 cat > /tmp/out.sh << 'EOF'
 echo "${NODE_MAJOR}"
@@ -147,6 +151,7 @@ check "flags a leaked \$JAVA_MAJOR"   "1" "$(grep -c 'JAVA_MAJOR is expanded' <<
 check "and exits non-zero"            "1" "$([ "$rc" -ne 0 ] && echo 1 || echo 0)"
 
 # --- must NOT be caught (false positives are the subject of this issue) ------
+# heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
 cat > "$TMP/case-clean.sh" <<'FIX'
 cat > /tmp/out.sh << 'EOF'
 # assigned in the body
@@ -179,7 +184,38 @@ for name in PERLBREW_LIB outsep NOT_A_REFERENCE ALSO_NOT_A_REFERENCE MAYBE HOME;
   check "  never flags $name" "0" "$(grep -c "$name is expanded" <<<"$check_out" || true)"
 done
 
+# An exported variable DOES survive into a plain child process, so the stub-script
+# pattern used by experiments/test-issue112-supersede.sh is legitimate.
+# heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
+cat > "$TMP/case-exported.sh" <<'FIX'
+export STUB_CALLS="/tmp/calls.txt"
+cat > /tmp/out.sh << 'EOF'
+echo "$STUB_CALLS"
+EOF
+bash /tmp/out.sh
+FIX
+run_check "$TMP/case-exported.sh"
+check "an exported variable read by a plain child process is not a leak" "0" "$rc"
+
+# ...but it does NOT survive su -/sudo -i/env -i/ssh, which is the RC-1 shape.
+# heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
+cat > "$TMP/case-exported-barrier.sh" <<'FIX'
+export STUB_CALLS="/tmp/calls.txt"
+cat > /tmp/out.sh << 'EOF'
+echo "$STUB_CALLS"
+EOF
+su - box -c "bash /tmp/out.sh"
+FIX
+run_check "$TMP/case-exported-barrier.sh"
+check "but exporting is not enough across su - (the environment is reset)" "1" "$([ "$rc" -ne 0 ] && echo 1 || echo 0)"
+if grep -q 'environment barrier' <<<"$check_out"; then
+  ok "and the message names the barrier rather than blaming the export"
+else
+  bad "expected the finding to mention the environment barrier, got: $check_out"
+fi
+
 # A quoted heredoc that is not a script may contain anything.
+# heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
 cat > "$TMP/case-prose.sh" <<'FIX'
 cat > /tmp/README.md << 'EOF'
 Set $NODE_MAJOR before running.
@@ -192,6 +228,7 @@ run_check "$TMP/case-prose.sh"
 check "does not police prose or JSON heredocs" "0" "$rc"
 
 # An UNquoted heredoc expands in the parent, which is the working pattern.
+# heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
 cat > "$TMP/case-unquoted.sh" <<'FIX'
 NODE_MAJOR=24
 cat > /tmp/out.sh << EOF

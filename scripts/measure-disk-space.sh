@@ -396,6 +396,17 @@ set -euo pipefail
 
 JSON_OUTPUT_FILE="${1:-/tmp/disk-space-measurements.json}"
 
+# This script is written from a QUOTED heredoc (<< 'EOF_BOX'), so nothing below
+# was expanded when the file was created, and it runs under `su - box` /
+# `sudo -i -u box` — a login shell that starts from a clean environment. Every
+# version the parent resolved therefore has to be handed in explicitly at the
+# call site. Assert them here so an omission fails by name instead of as
+# "line 128: NODE_MAJOR: unbound variable", which is how run 33972074753 failed
+# on main (issue #115).
+: "${NODE_MAJOR:?must be passed in by scripts/measure-disk-space.sh}"
+: "${NVM_INSTALL_VERSION:?must be passed in by scripts/measure-disk-space.sh}"
+: "${JAVA_MAJOR:?must be passed in by scripts/measure-disk-space.sh}"
+
 # Logging
 log_info() { echo -e "\033[0;34m[*]\033[0m $1"; }
 log_success() { echo -e "\033[0;32m[✓]\033[0m $1"; }
@@ -820,11 +831,15 @@ JSON_TMP_COPY="$(mktemp /tmp/disk-space-measurements-XXXXXX.json)"
 cp "$JSON_OUTPUT_FILE_ABS" "$JSON_TMP_COPY"
 chmod o+rw "$JSON_TMP_COPY"
 
-# Execute box user measurements against the /tmp copy
+# Execute box user measurements against the /tmp copy.
+# `su -` and `sudo -i` both start a login shell with a fresh environment, so the
+# versions resolved above are passed explicitly; /tmp/box-measure.sh asserts
+# each one (issue #115). `env` is used rather than a bare VAR=value prefix
+# because sudo's env_reset policy rejects unlisted variables.
 if [ "$EUID" -eq 0 ]; then
-  su - box -c "bash /tmp/box-measure.sh '$JSON_TMP_COPY'"
+  su - box -c "env NODE_MAJOR='$NODE_MAJOR' NVM_INSTALL_VERSION='$NVM_INSTALL_VERSION' JAVA_MAJOR='$JAVA_MAJOR' bash /tmp/box-measure.sh '$JSON_TMP_COPY'"
 else
-  sudo -i -u box bash /tmp/box-measure.sh "$JSON_TMP_COPY"
+  sudo -i -u box env "NODE_MAJOR=$NODE_MAJOR" "NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION" "JAVA_MAJOR=$JAVA_MAJOR" bash /tmp/box-measure.sh "$JSON_TMP_COPY"
 fi
 
 # Copy the updated measurements back to the original location

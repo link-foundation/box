@@ -1,0 +1,56 @@
+name: Scripts
+
+# Static checks over the shell scripts that build and measure the boxes.
+#
+# Why this workflow exists (issue #115): the two scripts that generate a second
+# script from a quoted heredoc both referenced parent-shell variables that the
+# generated script could never see. One of them broke `Measure Disk Space and
+# Update README` on main (run 33972074753); the other, scripts/ubuntu-24-server-install.sh,
+# had the identical defect and no job that would ever have run it. Checks that
+# only ever run on a developer's laptop are not checks, so they run here.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.sh'
+      - '.github/workflows/scripts.yml'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**.sh'
+      - '.github/workflows/scripts.yml'
+  workflow_dispatch:
+
+# Least-privilege default; these jobs only read the checked-out tree.
+permissions:
+  contents: read
+
+jobs:
+  heredoc-vars:
+    name: scripts / heredoc variables
+    runs-on: ubuntu-24.04
+    # Typical run: a few seconds. The limit is here so a pathological regex
+    # cannot hold a runner for six hours.
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-heredoc-vars
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
+
+      # Fails the job on any expansion inside a quoted heredoc that the
+      # generated script cannot resolve, with a file/line annotation.
+      - name: No variable leaks out of a quoted heredoc
+        run: bash scripts/ci/check-heredoc-vars.sh
+
+      # The checker is only worth trusting if its own false-positive and
+      # false-negative fixtures still hold.
+      - name: Checker fixtures and the run 33972074753 reproduction
+        run: bash experiments/test-issue115-heredoc-unbound-vars.sh

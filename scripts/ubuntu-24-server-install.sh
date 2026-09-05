@@ -407,6 +407,18 @@ cat > /tmp/box-user-setup.sh <<'EOF_BOX_SCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
 
+# This script is written from a QUOTED heredoc (<<'EOF_BOX_SCRIPT'), so nothing
+# below was expanded when the file was created, and it runs under `su - box` /
+# `sudo -i -u box` — a login shell that starts from a clean environment. Every
+# version the parent resolved therefore has to be handed in explicitly at the
+# call site. Assert them here so an omission fails by name rather than as a bare
+# "unbound variable" line number. The identical bug in the sibling script
+# scripts/measure-disk-space.sh is what failed run 33972074753 on main; here it
+# was invisible because no CI job runs this script (issue #115).
+: "${NODE_MAJOR:?must be passed in by scripts/ubuntu-24-server-install.sh}"
+: "${NVM_INSTALL_VERSION:?must be passed in by scripts/ubuntu-24-server-install.sh}"
+: "${JAVA_MAJOR:?must be passed in by scripts/ubuntu-24-server-install.sh}"
+
 # Define logging functions for box user session
 if [ -t 1 ]; then
   RED='\033[0;31m'
@@ -1145,11 +1157,15 @@ EOF_BOX_SCRIPT
 # Make the script executable
 chmod +x /tmp/box-user-setup.sh
 
-# Execute as box user
+# Execute as box user.
+# `su -` and `sudo -i` both start a login shell with a fresh environment, so the
+# versions resolved above are passed explicitly; /tmp/box-user-setup.sh asserts
+# each one (issue #115). `env` is used rather than a bare VAR=value prefix
+# because sudo's env_reset policy rejects unlisted variables.
 if [ "$EUID" -eq 0 ]; then
-  su - box -c "bash /tmp/box-user-setup.sh"
+  su - box -c "env NODE_MAJOR='$NODE_MAJOR' NVM_INSTALL_VERSION='$NVM_INSTALL_VERSION' JAVA_MAJOR='$JAVA_MAJOR' bash /tmp/box-user-setup.sh"
 else
-  sudo -i -u box bash /tmp/box-user-setup.sh
+  sudo -i -u box env "NODE_MAJOR=$NODE_MAJOR" "NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION" "JAVA_MAJOR=$JAVA_MAJOR" bash /tmp/box-user-setup.sh
 fi
 
 # Clean up the temporary script
