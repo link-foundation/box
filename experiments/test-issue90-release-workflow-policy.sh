@@ -11,8 +11,8 @@ release_workflow_path = ".github/workflows/release.yml"
 measure_workflow_path = ".github/workflows/measure-disk-space.yml"
 
 release_workflow = YAML.load_file(release_workflow_path)
-release_text = File.read(release_workflow_path)
-measure_text = File.read(measure_workflow_path)
+release_text = File.read(release_workflow_path, encoding: "UTF-8")
+measure_text = File.read(measure_workflow_path, encoding: "UTF-8")
 
 errors = []
 

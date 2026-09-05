@@ -6,14 +6,14 @@ cd "$(dirname "$0")/.."
 ruby <<'RUBY'
 checks = []
 
-common = File.read("ubuntu/24.04/common.sh")
-dind_install = File.read("ubuntu/24.04/dind/install.sh")
-essentials_install = File.read("ubuntu/24.04/essentials-box/install.sh")
-full_install = File.read("ubuntu/24.04/full-box/install.sh")
-php_install = File.read("ubuntu/24.04/php/install.sh")
-measure_script = File.read("scripts/measure-disk-space.sh")
-server_install = File.read("scripts/ubuntu-24-server-install.sh")
-measure_workflow = File.read(".github/workflows/measure-disk-space.yml")
+common = File.read("ubuntu/24.04/common.sh", encoding: "UTF-8")
+dind_install = File.read("ubuntu/24.04/dind/install.sh", encoding: "UTF-8")
+essentials_install = File.read("ubuntu/24.04/essentials-box/install.sh", encoding: "UTF-8")
+full_install = File.read("ubuntu/24.04/full-box/install.sh", encoding: "UTF-8")
+php_install = File.read("ubuntu/24.04/php/install.sh", encoding: "UTF-8")
+measure_script = File.read("scripts/measure-disk-space.sh", encoding: "UTF-8")
+server_install = File.read("scripts/ubuntu-24-server-install.sh", encoding: "UTF-8")
+measure_workflow = File.read(".github/workflows/measure-disk-space.yml", encoding: "UTF-8")
 
 unless common.include?("apt_update_with_retry()")
   checks << "common.sh must define apt_update_with_retry"
@@ -32,7 +32,7 @@ unless dind_install.include?('elif [ -f "/tmp/common.sh" ]; then')
 end
 
 Dir["ubuntu/24.04/*/install.sh"].sort.each do |path|
-  text = File.read(path)
+  text = File.read(path, encoding: "UTF-8")
   next unless text.include?("SCRIPT_DIR=") && text.include?("common.sh")
 
   unless text.include?('"/tmp/common.sh"')
@@ -69,7 +69,7 @@ end
   "ubuntu/24.04/php/Dockerfile",
   "ubuntu/24.04/rocq/Dockerfile",
 ].each do |path|
-  text = File.read(path)
+  text = File.read(path, encoding: "UTF-8")
   unless text.include?("apt_update_with_retry")
     checks << "#{path} must use apt_update_with_retry for apt metadata refreshes"
   end
@@ -89,7 +89,7 @@ end
   end
 end
 
-essentials_dockerfile = File.read("ubuntu/24.04/essentials-box/Dockerfile")
+essentials_dockerfile = File.read("ubuntu/24.04/essentials-box/Dockerfile", encoding: "UTF-8")
 essentials_install_run = essentials_dockerfile.index("DOCKER_BUILD=1 bash /tmp/install.sh")
 essentials_acl_run = essentials_dockerfile.index("RUN . /tmp/common.sh &&")
 essentials_common_recopy = essentials_dockerfile.rindex(

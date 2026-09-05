@@ -35,9 +35,19 @@ else
   pass "no docker-logs|grep pipelines remain"
 fi
 
-echo "== Case 3: example scripts assert via logs_contain =="
+echo "== Case 3: example scripts assert via the pipe-free log helpers =="
+# wait_for_logs is a polling wrapper around logs_contain (see lib.sh), so an
+# example that waits for a line still gets the SIGPIPE-immune capture+case
+# assertion. Accept either helper: asserting the literal `logs_contain` made
+# this check fail the moment example-storage-driver-vfs.sh switched to
+# wait_for_logs in 6c3d582, even though the invariant still held (issue #115).
 for f in tests/dind/example-preload-images.sh tests/dind/example-storage-driver-vfs.sh; do
-  if grep -q 'logs_contain' "$f"; then pass "$(basename "$f") uses logs_contain"; else miss "$(basename "$f") uses logs_contain"; fi
+  [ -f "$f" ] || { miss "$f exists"; continue; }
+  if grep -qE 'logs_contain|wait_for_logs' "$f"; then
+    pass "$(basename "$f") asserts logs via logs_contain/wait_for_logs"
+  else
+    miss "$(basename "$f") asserts logs via logs_contain/wait_for_logs"
+  fi
 done
 
 echo "== Case 4: capture+case is correct and SIGPIPE-immune =="
