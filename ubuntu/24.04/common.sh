@@ -413,9 +413,10 @@ add_cran_repo() {
   fi
 
   # Probe before touching apt configuration: a half-added repository whose
-  # Release file 404s breaks every later `apt-get update` in the build.
-  if ! curl -fsSI --max-time "${VERSION_FETCH_TIMEOUT}" \
-       "${base}/${codename}-cran40/Release" >/dev/null 2>&1; then
+  # Release file 404s breaks every later `apt-get update` in the build. CRAN
+  # answers an unsupported codename with a real 404 (unlike download.swift.org),
+  # but the probe goes through the same redirect-following helper anyway.
+  if ! remote_file_exists "${base}/${codename}-cran40/Release"; then
     log_warning "CRAN has no ${codename}-cran40 suite (or it is unreachable); using the distro R"
     return 1
   fi
