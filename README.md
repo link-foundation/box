@@ -18,10 +18,16 @@ This box provides a pre-configured development environment with common language 
 - **PHP** (latest stable via Homebrew)
 - **Perl** (latest stable via Perlbrew)
 - **Ruby** (latest stable via rbenv)
-- **Swift 6.x** (latest stable)
+- **Swift** (latest release with an Ubuntu 24.04 toolchain)
 - **R** (latest stable, from CRAN)
 - **.NET SDK** (newest LTS channel available in the archive)
 - **Assembly** (GNU Assembler, NASM, LLVM-MC, FASM)
+
+No runtime version is hardcoded: each one is resolved from its upstream release
+feed while the image is built (override with `NODE_VERSION`, `JAVA_VERSION`,
+`DOTNET_CHANNEL`, `SWIFT_VERSION`, … for a reproducible build), and every image
+carries exactly one version per language. See
+[`docs/case-studies/issue-112/CASE-STUDY.md`](docs/case-studies/issue-112/CASE-STUDY.md).
 
 ### Theorem Provers
 - **Lean** (via elan)
