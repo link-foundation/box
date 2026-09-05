@@ -2854,6 +2854,17 @@ jobs:
         run: |
           echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
+      # Issue #115 (RC-4): a manifest job that was skipped because its build
+      # failed is indistinguishable, in an `if:` expression, from one skipped
+      # because the flavour was not rebuilt. Assert the postcondition the gate
+      # stands in for, so a missing base image is reported once, here, instead
+      # of 28 matrix legs failing 8.5 minutes later blaming the dind Dockerfile.
+      - name: Verify base image was published (issue #115)
+        run: |
+          bash scripts/release/assert-base-image.sh \
+            "${{ steps.names.outputs.base_image }}" \
+            "the ${{ matrix.variant }} dind-box (amd64) image"
+
       - name: Build and push ${{ matrix.variant }} dind-box (amd64)
         id: build-push
         continue-on-error: true
@@ -2980,6 +2991,17 @@ jobs:
         if: steps.dockerhub-login.outcome != 'success'
         run: |
           echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
+
+      # Issue #115 (RC-4): a manifest job that was skipped because its build
+      # failed is indistinguishable, in an `if:` expression, from one skipped
+      # because the flavour was not rebuilt. Assert the postcondition the gate
+      # stands in for, so a missing base image is reported once, here, instead
+      # of 28 matrix legs failing 8.5 minutes later blaming the dind Dockerfile.
+      - name: Verify base image was published (issue #115)
+        run: |
+          bash scripts/release/assert-base-image.sh \
+            "${{ steps.names.outputs.base_image }}" \
+            "the ${{ matrix.variant }} dind-box (arm64) image"
 
       - name: Build and push ${{ matrix.variant }} dind-box (arm64)
         id: build-push

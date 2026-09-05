@@ -17,7 +17,7 @@
 # Runs offline: docker push is stubbed on PATH, nothing is pushed anywhere.
 
 set -uo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
 pass=0; fail=0
 ok()   { echo "  PASS: $1"; pass=$((pass + 1)); }
