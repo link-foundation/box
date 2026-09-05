@@ -67,6 +67,8 @@ fi
 [ "${STUB_GET_EXIT:-0}" = "0" ] || exit "$STUB_GET_EXIT"
 case "$1" in
   *"/actions/workflows/"*"/runs"*) cat "$STUB_RUNS_JSON" ;;
+  # A single run: STUB_RUN_STATUS decides whether the graceful cancel "worked".
+  *"/actions/runs/"*)              printf '{"status": "%s"}\n' "${STUB_RUN_STATUS:-completed}" ;;
   *"/pulls/"*)                     cat "$STUB_PULL_JSON" ;;
   *) echo "stub: unexpected path $1" >&2; exit 1 ;;
 esac
@@ -74,6 +76,7 @@ STUB
 
 export SUPERSEDE_API="bash $TMP/api-stub.sh"
 export SUPERSEDE_WAIT_SECONDS=0
+export SUPERSEDE_FORCE_AFTER_SECONDS=0
 export STUB_RUNS_JSON="$TMP/runs.json"
 export STUB_PULL_JSON="$TMP/pull.json"
 
@@ -118,11 +121,20 @@ pr_env() {
   export STUB_CALLS="$TMP/calls.txt"
   export STUB_CANCEL_EXIT=0
   export STUB_GET_EXIT=0
+  export STUB_RUN_STATUS=completed
+  # Reset the fixtures too: `VAR=x out="$(...)"` in the assertions below is two
+  # assignments, not a command prefix, so the override would otherwise stick.
+  export STUB_RUNS_JSON="$TMP/runs.json"
+  export STUB_PULL_JSON="$TMP/pull.json"
   : > "$STUB_CALLS"
 }
 
 cancelled_ids() {
-  sed -n 's#.*/actions/runs/\([0-9]*\)/cancel#\1#p' "$STUB_CALLS" | sort | tr '\n' ' ' | sed 's/ $//'
+  sed -n 's#.*/actions/runs/\([0-9]*\)/cancel$#\1#p' "$STUB_CALLS" | sort | tr '\n' ' ' | sed 's/ $//'
+}
+
+forced_ids() {
+  sed -n 's#.*/actions/runs/\([0-9]*\)/force-cancel$#\1#p' "$STUB_CALLS" | sort | tr '\n' ' ' | sed 's/ $//'
 }
 
 echo "=== Part 1: scripts/ci/supersede.sh against a stubbed GitHub API ==="
@@ -173,6 +185,24 @@ STUB_CANCEL_EXIT=1 bash "$SCRIPT" cancel-older >/dev/null 2>&1 \
   && ok "a read-only fork token is not fatal (fails open)" \
   || bad "cancel-older must exit 0 when the cancel is refused"
 
+# The reason force-cancel exists here: on 2026-09-05 run 33959630651 accepted a
+# graceful cancel at 10:40:57 and its dind-full job still finished green at
+# 10:49:25; POST .../force-cancel stopped the same run within seconds.
+pr_env
+check "a run that stops on its own is not force-cancelled" "" "$(forced_ids)"
+out="$(bash "$SCRIPT" cancel-older 2>&1)"
+check "a graceful cancel that works needs no force" "" "$(forced_ids)"
+
+pr_env
+STUB_RUN_STATUS=in_progress
+out="$(bash "$SCRIPT" cancel-older 2>&1)"
+check "a run that ignores the cancel is force-cancelled" "1001 1002" "$(forced_ids)"
+check "the graceful cancel is still tried first" "1001 1002" "$(cancelled_ids)"
+case "$out" in
+  *"force-cancelled"*) ok "logs the escalation to force-cancel" ;;
+  *) bad "expected a 'force-cancelled' line: $out" ;;
+esac
+
 echo "--- stop-if-superseded ---"
 pr_env
 out="$(bash "$SCRIPT" stop-if-superseded 2>&1)" || bad "stop-if-superseded exited non-zero"
@@ -190,6 +220,12 @@ case "$out" in
   *"has moved on: aaaaaaa -> ddddddd"*) ok "logs the commit it was superseded by" ;;
   *) bad "expected the 'has moved on' line: $out" ;;
 esac
+
+pr_env
+PR_HEAD_SHA=aaaaaaaaaaaa
+STUB_RUN_STATUS=in_progress
+out="$(bash "$SCRIPT" stop-if-superseded 2>&1)"
+check "force-cancels its own run when the cancel is ignored" "1004" "$(forced_ids)"
 
 pr_env
 PR_HEAD_SHA=aaaaaaaaaaaa

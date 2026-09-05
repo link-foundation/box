@@ -90,15 +90,57 @@ api_get() {
   printf '%s' "$out"
 }
 
-# Cancel a run. Never fatal: a read-only token (fork PR) cannot cancel, and a run
-# that finished on its own answers 409.
-api_cancel() {
+# Ask a run to stop. Never fatal: a read-only token (fork PR) cannot cancel, and
+# a run that finished on its own answers 409.
+request_cancel() {
   local run_id="$1"
   # shellcheck disable=SC2086
   if $API_CMD --method POST "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/cancel" >/dev/null 2>&1; then
-    log "cancelled run ${run_id}"
+    log "cancel requested for run ${run_id}"
   else
-    warn "could not cancel run ${run_id} (read-only token, or the run already finished)"
+    warn "could not request a cancel for run ${run_id} (read-only token, or the run already finished)"
+  fi
+}
+
+# The status of a run ('queued' / 'in_progress' / 'completed' / ...).
+run_status() {
+  local run_id="$1" payload
+  payload="$(api_get "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}")" || return 1
+  printf '%s' "$payload" | python3 -c '
+import json, sys
+try:
+    print(json.load(sys.stdin).get("status") or "")
+except Exception:
+    sys.exit(1)
+'
+}
+
+# Make sure a cancel actually happened.
+#
+# A graceful cancel is a request, not a guarantee, and on this repository it is
+# routinely ignored: run 33959630651 accepted `POST /actions/runs/{id}/cancel` at
+# 10:40:57 and its `pr-test / dind-full` job still ran to a green finish at
+# 10:49:25, with `pr-test / full` building on past that. (Same platform
+# behaviour that made `concurrency: cancel-in-progress` a no-op here — the
+# original bug.) `POST .../force-cancel` ended the very same run within seconds,
+# so that is the fallback once the polite request has had its grace period.
+ensure_cancelled() {
+  local run_id="$1" waited=0 grace="${SUPERSEDE_FORCE_AFTER_SECONDS:-45}" status
+  while :; do
+    status="$(run_status "$run_id")" || return 0   # cannot tell: leave it alone
+    if [ "$status" = "completed" ]; then
+      log "run ${run_id} has stopped"
+      return 0
+    fi
+    [ "$waited" -ge "$grace" ] && break
+    sleep 5
+    waited=$((waited + 5))
+  done
+  # shellcheck disable=SC2086
+  if $API_CMD --method POST "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/force-cancel" >/dev/null 2>&1; then
+    log "run ${run_id} was still ${status} ${grace}s after the cancel: force-cancelled"
+  else
+    warn "could not force-cancel run ${run_id}"
   fi
 }
 
@@ -203,12 +245,20 @@ cancel_older() {
     return 0
   fi
 
+  # Ask them all to stop first, then verify one by one: the grace period before a
+  # force-cancel is then paid once, not once per run.
+  local ids=""
   while read -r id sha status; do
     [ -n "$id" ] || continue
     log "run ${id} (commit ${sha}, ${status}) is behind ${PR_HEAD_SHA:0:7}: cancelling"
-    api_cancel "$id"
+    request_cancel "$id"
+    ids="${ids}${id} "
     count=$((count + 1))
   done <<< "$targets"
+
+  for id in $ids; do
+    ensure_cancelled "$id"
+  done
 
   log "cancelled ${count} superseded run(s)"
 }
@@ -234,7 +284,11 @@ stop_if_superseded() {
 
   log "PR #${PR_NUMBER} has moved on: ${PR_HEAD_SHA:0:7} -> ${head:0:7}"
   log "cancelling run ${GITHUB_RUN_ID} instead of building a superseded commit"
-  api_cancel "${GITHUB_RUN_ID}"
+  request_cancel "${GITHUB_RUN_ID}"
+  # Our own run cannot report 'completed' while this job is alive, so this call
+  # ends one of two ways: the graceful cancel works and the runner kills us
+  # mid-poll, or it does not and we force-cancel ourselves after the grace period.
+  ensure_cancelled "${GITHUB_RUN_ID}"
 
   # The cancel is asynchronous: the runner tears this job down within seconds.
   # Wait for it rather than starting a build we know is pointless; if the
