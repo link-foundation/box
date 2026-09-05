@@ -1405,36 +1405,20 @@ jobs:
 
       - name: Create and push JS multi-arch manifests (GHCR)
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION} \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION}-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION}-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION}
-
-          echo "JS box GHCR multi-arch manifests pushed for latest and ${VERSION}"
+          bash scripts/release/create-multiarch-manifest.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js" \
+            latest "${{ steps.version.outputs.version }}"
 
       - name: Create and push JS multi-arch manifests (Docker Hub)
         if: steps.dockerhub-login.outcome == 'success'
+        env:
+          # A Docker Hub manifest failure must not fail a release whose GHCR
+          # manifest is already published (issue #115, RC-3).
+          MANIFEST_REQUIRED: '0'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION} \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION}-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION}-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION}
-
-          echo "JS box Docker Hub multi-arch manifests pushed for latest and ${VERSION}"
+          bash scripts/release/create-multiarch-manifest.sh \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-js" \
+            latest "${{ steps.version.outputs.version }}"
 
       - name: Skip JS Docker Hub multi-arch manifests
         if: steps.dockerhub-login.outcome != 'success'
@@ -1773,36 +1757,20 @@ jobs:
 
       - name: Create and push essentials multi-arch manifests (GHCR)
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION} \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION}-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION}-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION}
-
-          echo "Essentials box GHCR multi-arch manifests pushed for latest and ${VERSION}"
+          bash scripts/release/create-multiarch-manifest.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials" \
+            latest "${{ steps.version.outputs.version }}"
 
       - name: Create and push essentials multi-arch manifests (Docker Hub)
         if: steps.dockerhub-login.outcome == 'success'
+        env:
+          # A Docker Hub manifest failure must not fail a release whose GHCR
+          # manifest is already published (issue #115, RC-3).
+          MANIFEST_REQUIRED: '0'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION} \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}
-
-          echo "Essentials box Docker Hub multi-arch manifests pushed for latest and ${VERSION}"
+          bash scripts/release/create-multiarch-manifest.sh \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-essentials" \
+            latest "${{ steps.version.outputs.version }}"
 
       - name: Skip essentials Docker Hub multi-arch manifests
         if: steps.dockerhub-login.outcome != 'success'
@@ -2284,38 +2252,20 @@ jobs:
 
       - name: Create and push ${{ matrix.language }} multi-arch manifests (GHCR)
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          LANG="${{ matrix.language }}"
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION} \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION}-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION}-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION}
-
-          echo "${LANG} box GHCR multi-arch manifests pushed for latest and ${VERSION}"
+          bash scripts/release/create-multiarch-manifest.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}" \
+            latest "${{ steps.version.outputs.version }}"
 
       - name: Create and push ${{ matrix.language }} multi-arch manifests (Docker Hub)
         if: steps.dockerhub-login.outcome == 'success'
+        env:
+          # A Docker Hub manifest failure must not fail a release whose GHCR
+          # manifest is already published (issue #115, RC-3).
+          MANIFEST_REQUIRED: '0'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          LANG="${{ matrix.language }}"
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:latest \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:latest-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:latest-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:latest
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION} \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION}-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION}-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION}
-
-          echo "${LANG} box Docker Hub multi-arch manifests pushed for latest and ${VERSION}"
+          bash scripts/release/create-multiarch-manifest.sh \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}" \
+            latest "${{ steps.version.outputs.version }}"
 
       - name: Skip ${{ matrix.language }} Docker Hub multi-arch manifests
         if: steps.dockerhub-login.outcome != 'success'
@@ -2856,44 +2806,20 @@ jobs:
 
       - name: Create and push multi-arch manifest (GHCR)
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          # Create manifest for latest tag on GHCR
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:latest \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:latest-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:latest-arm64
-
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:latest
-
-          # Create manifest for version tag on GHCR
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION} \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION}-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION}-arm64
-
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION}
-
-          echo "GHCR multi-arch manifest created and pushed successfully for latest and ${VERSION}"
+          bash scripts/release/create-multiarch-manifest.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}" \
+            latest "${{ steps.version.outputs.version }}"
 
       - name: Create and push multi-arch manifest (Docker Hub)
         if: steps.dockerhub-login.outcome == 'success'
+        env:
+          # A Docker Hub manifest failure must not fail a release whose GHCR
+          # manifest is already published (issue #115, RC-3).
+          MANIFEST_REQUIRED: '0'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          # Create manifest for latest tag on Docker Hub
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}:latest \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}:latest-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}:latest-arm64
-
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}:latest
-
-          # Create manifest for version tag on Docker Hub
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION} \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION}-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION}-arm64
-
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION}
-
-          echo "Docker Hub multi-arch manifest created and pushed successfully for latest and ${VERSION}"
+          bash scripts/release/create-multiarch-manifest.sh \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}" \
+            latest "${{ steps.version.outputs.version }}"
 
       - name: Skip Docker Hub multi-arch manifest
         if: steps.dockerhub-login.outcome != 'success'
@@ -3266,38 +3192,20 @@ jobs:
 
       - name: Create and push ${{ matrix.variant }} dind multi-arch manifests (GHCR)
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          DSUF="${{ steps.names.outputs.dind_suffix }}"
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION} \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}
-
-          echo "Pushed GHCR multi-arch manifest for ${{ env.GHCR_IMAGE_NAME }}${DSUF} (latest, ${VERSION})"
+          bash scripts/release/create-multiarch-manifest.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}" \
+            latest "${{ steps.version.outputs.version }}"
 
       - name: Create and push ${{ matrix.variant }} dind multi-arch manifests (Docker Hub)
         if: steps.dockerhub-login.outcome == 'success'
+        env:
+          # A Docker Hub manifest failure must not fail a release whose GHCR
+          # manifest is already published (issue #115, RC-3).
+          MANIFEST_REQUIRED: '0'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          DSUF="${{ steps.names.outputs.dind_suffix }}"
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION} \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION}-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION}-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION}
-
-          echo "Pushed multi-arch manifest for ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF} (latest, ${VERSION})"
+          bash scripts/release/create-multiarch-manifest.sh \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}" \
+            latest "${{ steps.version.outputs.version }}"
 
       - name: Skip ${{ matrix.variant }} dind Docker Hub multi-arch manifests
         if: steps.dockerhub-login.outcome != 'success'
