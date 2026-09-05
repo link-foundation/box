@@ -115,6 +115,7 @@ jobs:
   version-check:
     name: Check for Manual Version Changes
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v6
@@ -134,6 +135,7 @@ jobs:
   changeset-check:
     name: Check for Changesets
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v6
@@ -171,6 +173,7 @@ jobs:
   apply-changesets:
     name: Apply Changesets
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
@@ -199,6 +202,7 @@ jobs:
   # === MANUAL VERSION BUMP (workflow_dispatch with bump-and-release) ===
   version-bump:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_mode == 'bump-and-release'
     permissions:
       contents: write
@@ -269,9 +273,10 @@ jobs:
   # === DETECT CHANGES (per-image granularity) ===
   detect-changes:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     needs: [apply-changesets, version-bump]
     # Always run, but wait for version jobs if they're running
-    if: always() && (needs.apply-changesets.result == 'success' || needs.apply-changesets.result == 'skipped') && (needs.version-bump.result == 'success' || needs.version-bump.result == 'skipped')
+    if: ${{ !cancelled() && (needs.apply-changesets.result == 'success' || needs.apply-changesets.result == 'skipped') && (needs.version-bump.result == 'success' || needs.version-bump.result == 'skipped') }}
     outputs:
       # Legacy change detection
       docker-changed: ${{ steps.detect.outputs.docker }}
@@ -387,7 +392,7 @@ jobs:
     timeout-minutes: 15
     needs: [version-check, changeset-check]
     if: |
-      always() &&
+      !cancelled() &&
       (needs.version-check.result == 'success' || needs.version-check.result == 'skipped') &&
       (needs.changeset-check.result == 'success' || needs.changeset-check.result == 'skipped') &&
       github.event_name == 'pull_request'
@@ -445,7 +450,7 @@ jobs:
     timeout-minutes: 30
     needs: [detect-changes, version-check, changeset-check, pr-test-version-policy]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       (needs.version-check.result == 'success' || needs.version-check.result == 'skipped') &&
       (needs.changeset-check.result == 'success' || needs.changeset-check.result == 'skipped') &&
@@ -532,7 +537,7 @@ jobs:
     timeout-minutes: 30
     needs: [detect-changes, version-check, changeset-check, pr-test-js]
     if: |
-      always() &&
+      !cancelled() &&
       needs.pr-test-js.result == 'success' &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.should-build == 'true'
@@ -600,7 +605,7 @@ jobs:
     timeout-minutes: 45
     needs: [detect-changes, version-check, changeset-check, pr-test-version-policy, pr-test-essentials]
     if: |
-      always() &&
+      !cancelled() &&
       needs.pr-test-essentials.result == 'success' &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.should-build == 'true'
@@ -718,7 +723,7 @@ jobs:
     timeout-minutes: 90
     needs: [detect-changes, version-check, changeset-check, pr-test-language]
     if: |
-      always() &&
+      !cancelled() &&
       needs.pr-test-language.result == 'success' &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.should-build == 'true'
@@ -902,7 +907,7 @@ jobs:
     timeout-minutes: 60
     needs: [detect-changes, version-check, changeset-check, pr-test-version-policy, pr-test-essentials]
     if: |
-      always() &&
+      !cancelled() &&
       needs.pr-test-essentials.result == 'success' &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.should-build == 'true'
@@ -1063,9 +1068,10 @@ jobs:
   docker-build-test:
     name: docker-build-test
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     needs: [detect-changes, version-check, changeset-check, pr-test-version-policy, pr-test-js, pr-test-essentials, pr-test-language, pr-test-full, pr-test-dind]
     if: |
-      always() &&
+      !cancelled() &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.should-build == 'true'
     steps:
@@ -1102,9 +1108,10 @@ jobs:
   # JS box is the base layer - built first, other images depend on it
   build-js-amd64:
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
     needs: [detect-changes]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
@@ -1219,7 +1226,7 @@ jobs:
     timeout-minutes: 120
     needs: [detect-changes]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
@@ -1331,9 +1338,10 @@ jobs:
   # === CREATE JS MULTI-ARCH MANIFEST ===
   js-manifest:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     needs: [detect-changes, build-js-amd64, build-js-arm64]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       needs.build-js-amd64.result == 'success' &&
       needs.build-js-arm64.result == 'success'
@@ -1419,9 +1427,10 @@ jobs:
   # Built on top of JS box - waits for JS to complete (if JS was rebuilt)
   build-essentials-amd64:
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
     needs: [detect-changes, build-js-amd64]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       (needs.build-js-amd64.result == 'success' || needs.build-js-amd64.result == 'skipped') &&
       (
@@ -1552,7 +1561,7 @@ jobs:
     timeout-minutes: 120
     needs: [detect-changes, build-js-arm64]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       (needs.build-js-arm64.result == 'success' || needs.build-js-arm64.result == 'skipped') &&
       (
@@ -1679,9 +1688,10 @@ jobs:
   # === CREATE ESSENTIALS MULTI-ARCH MANIFEST ===
   essentials-manifest:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     needs: [detect-changes, build-essentials-amd64, build-essentials-arm64]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       needs.build-essentials-amd64.result == 'success' &&
       needs.build-essentials-arm64.result == 'success'
@@ -1774,7 +1784,7 @@ jobs:
       matrix:
         language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       (needs.build-essentials-amd64.result == 'success' || needs.build-essentials-amd64.result == 'skipped') &&
       (
@@ -1961,7 +1971,7 @@ jobs:
       matrix:
         language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       (needs.build-essentials-arm64.result == 'success' || needs.build-essentials-arm64.result == 'skipped') &&
       (
@@ -2141,13 +2151,14 @@ jobs:
   # === CREATE LANGUAGE MULTI-ARCH MANIFESTS ===
   languages-manifest:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     needs: [detect-changes, build-languages-amd64, build-languages-arm64]
     strategy:
       fail-fast: false
       matrix:
         language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       needs.build-languages-amd64.result == 'success' &&
       needs.build-languages-arm64.result == 'success'
@@ -2234,10 +2245,11 @@ jobs:
   # === BUILD AND PUSH FULL BOX (MAIN - amd64) ===
   docker-build-push:
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
     needs: [detect-changes, build-languages-amd64, build-essentials-amd64]
     # Run on push to main with changes, OR on workflow_dispatch
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       (needs.build-essentials-amd64.result == 'success' || needs.build-essentials-amd64.result == 'skipped') &&
       (needs.build-languages-amd64.result == 'success' || needs.build-languages-amd64.result == 'skipped') &&
@@ -2490,7 +2502,7 @@ jobs:
     timeout-minutes: 120       # Safety timeout to prevent runaway builds
     needs: [detect-changes, build-languages-arm64, build-essentials-arm64, docker-build-push]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       (needs.build-essentials-arm64.result == 'success' || needs.build-essentials-arm64.result == 'skipped') &&
       (needs.build-languages-arm64.result == 'success' || needs.build-languages-arm64.result == 'skipped') &&
@@ -2660,9 +2672,10 @@ jobs:
   # === CREATE MULTI-ARCH MANIFEST ===
   docker-manifest:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     needs: [detect-changes, docker-build-push, docker-build-push-arm64]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       needs.docker-build-push.result == 'success' &&
       needs.docker-build-push-arm64.result == 'success' &&
@@ -2771,7 +2784,7 @@ jobs:
         # Everything else maps to konard/box-<variant>.
         variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       (needs.js-manifest.result == 'success' || needs.js-manifest.result == 'skipped') &&
       (needs.essentials-manifest.result == 'success' || needs.essentials-manifest.result == 'skipped') &&
@@ -2911,7 +2924,7 @@ jobs:
       matrix:
         variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       (needs.js-manifest.result == 'success' || needs.js-manifest.result == 'skipped') &&
       (needs.essentials-manifest.result == 'success' || needs.essentials-manifest.result == 'skipped') &&
@@ -3042,13 +3055,14 @@ jobs:
   # === CREATE DIND-BOX MULTI-ARCH MANIFESTS - issue #80 ===
   dind-manifest:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     needs: [detect-changes, build-dind-amd64, build-dind-arm64]
     strategy:
       fail-fast: false
       matrix:
         variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       needs.build-dind-amd64.result == 'success' &&
       needs.build-dind-arm64.result == 'success'
@@ -3145,9 +3159,10 @@ jobs:
   # === CREATE GITHUB RELEASE ===
   create-release:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     needs: [detect-changes, docker-manifest, js-manifest, essentials-manifest, languages-manifest, dind-manifest]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       needs.docker-manifest.result == 'success' &&
       (

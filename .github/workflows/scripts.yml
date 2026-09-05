@@ -15,12 +15,16 @@ on:
       - main
     paths:
       - '**.sh'
-      - '.github/workflows/scripts.yml'
+      - '.github/workflows/**'
+      - 'ubuntu/**'
+      - 'tests/**'
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
       - '**.sh'
-      - '.github/workflows/scripts.yml'
+      - '.github/workflows/**'
+      - 'ubuntu/**'
+      - 'tests/**'
   workflow_dispatch:
 
 # Least-privilege default; these jobs only read the checked-out tree.
@@ -54,3 +58,38 @@ jobs:
       # false-negative fixtures still hold.
       - name: Checker fixtures and the run 33972074753 reproduction
         run: bash experiments/test-issue115-heredoc-unbound-vars.sh
+
+  # Issue #115 (RC-9). The repository had 27 regression suites under
+  # experiments/ and the workflows referenced 5 of them. The remaining 22 ran
+  # only when someone remembered to — so two of them had been crashing on any
+  # machine without a UTF-8 locale, unnoticed, because nothing ran them.
+  #
+  # The runner discovers suites instead of listing them, so a suite added in a
+  # later PR is gated from the moment it lands.
+  experiments:
+    name: scripts / regression suites
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-experiments
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: List the suites that will run
+        run: bash scripts/ci/run-experiments.sh --list
+
+      - name: Run every experiment suite
+        run: bash scripts/ci/run-experiments.sh
+
+      - name: Upload suite logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: experiment-logs
+          path: /tmp/experiment-logs/
+          if-no-files-found: warn
+          retention-days: 7
