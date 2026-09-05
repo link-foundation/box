@@ -38,3 +38,16 @@ Resolve every runtime version at build time instead of hardcoding it (issue #112
   tier that also checks the resolvers against the live feeds, and freshness
   assertions in the js and full-box smoke tests. Full rationale in
   `docs/case-studies/issue-112/`.
+- **CI only runs the pull request's latest commit.** `concurrency:
+  cancel-in-progress` was deadlocking pull requests: a run blocked on the shared
+  group is `pending`, so it executes no step and cannot cancel the predecessor
+  holding it — measured on this PR, the oldest commit's run was still starting
+  jobs 22 minutes after being superseded while three newer runs sat pending.
+  Pull-request runs now get a unique concurrency group (they never block each
+  other) and `scripts/ci/supersede.sh` supersedes explicitly: a `cancel-superseded`
+  job cancels every still-live run of an earlier commit, and every expensive PR
+  job re-checks the pull request head before it spends anything and keeps
+  watching in the background (the canceller needs a runner, and a superseded run
+  holding every slot is why there is none). Cancels are verified and escalated to
+  `force-cancel`, because a graceful cancel is routinely ignored here. Covered by
+  `experiments/test-issue112-supersede.sh` (69 assertions).

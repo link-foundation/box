@@ -15,6 +15,7 @@ layers work.
 | 2 | The full image carried a 2.2 GB `~/.rustup` with a stale `stable` (1.96.0) *next to* a newer pinned toolchain (1.98.0). | `COPY --from=rust-stage` bakes whatever the (often cached) `konard/box-rust:latest` was built with. Updating after the `COPY` cannot help: the stale bytes are already committed and a later `rm -rf` only writes a whiteout. | `full-box/refresh-rust.sh` binds the stage with `RUN --mount=type=bind,from=rust-stage` and does copy + `rustup update` + prune **inside one layer**. |
 | 3 | Nothing stopped an image from shipping two runtimes of the same language. | No invariant existed. | `assert_single_runtime_versions()` fails the build if a second version appears under any language root; every language install script calls it and CI asserts it on the built image. |
 | 4 | *(maintainer follow-up on the issue)* "all boxes must deliver the most fresh latest LTS versions of all dependencies". | Java 21, .NET 8.0, PHP 8.3, Swift 6.0.3, opam 2.3.0, Ruby restricted to `3.x`, nvm v0.40.3 were all hardcoded. | A single version policy in `ubuntu/24.04/common.sh`, used by every box, the standalone installer and the disk-space measurement script. |
+| 5 | *(maintainer follow-up on the issue)* CI spent the whole expensive matrix on commits the pull request had already moved past — while the newest commit never ran. | `concurrency: { group: <workflow>-<ref>, cancel-in-progress: true }` is a deadlock for pull requests: a run blocked on the group is `pending`, executes no step, and therefore cannot cancel the predecessor that is holding it. | Pull-request runs get a **unique** concurrency group so they always start, and supersession is explicit — `scripts/ci/supersede.sh`, with the cancel verified and escalated to `force-cancel` (§7). |
 
 Measured, not asserted: the layer behaviour behind finding #2 is reproduced by
 `experiments/rust-refresh-layer-test.sh`, which builds both variants with a
@@ -31,6 +32,7 @@ Measured, not asserted: the layer behaviour behind finding #2 is reproduced by
 | R2 | Refresh rustup `stable` **in the layer that creates it**, since a later `rm -rf` only writes a whiteout. | ✅ `full-box/refresh-rust.sh` under `RUN --mount=type=bind,from=rust-stage`; the layer arithmetic is measured by an experiment. |
 | R3 | Keep one version per language root (`~/.nvm/versions/node`, `~/.rustup/toolchains`, `~/.pyenv/versions`, `~/.sdkman/candidates/*`) as a build-time invariant. | ✅ `assert_single_runtime_versions()`, called by every install script and re-checked on the built image in CI. |
 | R4 | (Issue comment) Every box delivers the freshest LTS of every dependency, and of the OS. | ✅ Every box, plus the standalone installers (§5); Ubuntu stays 24.04 LTS — see §6. |
+| R5 | (Issue comment) "previous commits skip execution in pull requests, if multiple are committed in the order. So we only execute on last commit, and reduce resource waste on all previous commits." | ✅ Unique per-run concurrency group + explicit supersession (`scripts/ci/supersede.sh`) — see §7. |
 
 ---
 
@@ -224,7 +226,121 @@ publishes a newer Ubuntu build, moving the base is a one-directory change.
 
 ---
 
-## 7. Tests
+## 7. Only the pull request's latest commit runs
+
+The maintainer's second comment on the issue asked for this directly: *"We must
+fix our CI/CD, so previous commits skip execution in pull requests, if multiple
+are committed in the order. So we only execute on last commit, and reduce
+resource waste on all previous commits."*
+
+### 7.1 The workflow already had `cancel-in-progress`, and it made things worse
+
+`release.yml` declared the usual stanza, and every commit below carried an
+identical copy of it:
+
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+```
+
+Four consecutive pushes to this very pull request produced:
+
+| run | commit | created | outcome |
+|---|---|---|---|
+| 33959630651 | 53c4258 | 10:03 | **still starting jobs at 10:29:39** (`pr-test / full`) |
+| 33959814682 | 4f06a6c | 10:07 | `pending` → cancelled 10:12 |
+| 33960020799 | 981b61e | 10:12 | `pending` → cancelled 10:15 |
+| 33960152379 | f07e411 | 10:15 | `pending` |
+
+The exact opposite of the requirement: the whole expensive matrix ran for the
+*oldest* commit, twenty-two minutes after it had been superseded, while the
+commit everyone was waiting for never started.
+
+The mechanism is a deadlock inherent to the shared group. A newer run that lands
+on an occupied concurrency group is `pending` — it holds no runner and executes
+**no step**, so it cannot cancel its predecessor; it can only be cancelled by
+the run after it. `cancel-in-progress` is evaluated by the platform, and here the
+platform kept the in-progress run alive. A `pending` run cannot fix that from
+the inside, because being `pending` is precisely the state of not running.
+
+### 7.2 The fix: never let PR runs block each other, supersede explicitly
+
+Pull-request runs now get a **unique** group, so they always start:
+
+```yaml
+group: ${{ github.event_name == 'pull_request'
+          && format('{0}-pr-{1}-run-{2}', github.workflow, github.event.pull_request.number, github.run_id)
+          || format('{0}-{1}', github.workflow, github.ref) }}
+```
+
+(Push/tag runs keep the per-ref group — releases must still serialise.)
+
+Supersession is then done by a step that actually executes, `scripts/ci/supersede.sh`,
+in two modes:
+
+| Mode | Where it runs | What it does |
+|---|---|---|
+| `cancel-older` | the new `cancel-superseded` job — first job of the run, no `needs:` | Lists this workflow's `pull_request` runs on the PR's head branch and cancels every still-live one with a **lower run number** and a **different head SHA**. |
+| `stop-if-superseded` | first step after checkout in all six expensive PR jobs | Re-reads the pull request's head SHA and cancels **its own run** if the commit has moved on. |
+| `watch` | started in the background by that same step | Polls the head SHA every 5 minutes for the life of the job and cancels the run the moment it stops being current. |
+
+All three are needed, because each covers a window the others cannot.
+
+`cancel-older` catches the runs that already exist when a new commit lands, but
+it needs a runner like any other job — and a superseded run is usually the
+reason none is free. Measured while developing this: run 33962058501 sat
+`queued` for **more than ten minutes** because its predecessor was holding
+~25 job slots; its `cancel-superseded` job was queued behind the very jobs it
+existed to stop, and only cancelled them at 11:05:39.
+
+`stop-if-superseded` covers the opposite direction: a matrix job can sit queued
+for half an hour before a runner frees up (`pr-test / full` above started 26
+minutes after its run was created), so by the time it starts, its commit may be
+long gone and no newer run has been able to reach it. It is the first step after
+checkout, so the check is paid before any image is built.
+
+`watch` covers the gap between those two — the job that was *already running*
+when the new commit landed. It runs inside a job that already holds a runner, so
+it never queues, and one cancelled run frees every slot that run was holding at
+once. A poll every 5 minutes (`SUPERSEDE_WATCH_INTERVAL_SECONDS`) keeps the
+whole ~28-job matrix well inside `GITHUB_TOKEN`'s REST budget while still
+reclaiming most of a 40-minute build.
+
+### 7.3 A graceful cancel is a request, not a guarantee
+
+Measured on the first live run of the new job: it requested
+`POST /actions/runs/33959630651/cancel` at 10:40:57, the API accepted it, and
+that run's `pr-test / dind-full` still ran to a **green finish at 10:49:25**,
+with `pr-test / full` building on past it. This is the same platform behaviour
+that made `cancel-in-progress` a no-op above. `POST .../force-cancel` on the
+identical run ended it within seconds.
+
+So every cancel is verified: `ensure_cancelled()` polls the run's status and,
+if it is still live after `SUPERSEDE_FORCE_AFTER_SECONDS` (45 s by default),
+escalates to `force-cancel`. The grace period is what makes the polite request
+worth trying first — a graceful cancel lets a job upload its logs.
+
+### 7.4 Failing open is deliberate
+
+Every lookup and every cancel that does not work — API error, unparseable
+payload, or the read-only `GITHUB_TOKEN` a fork pull request gets, which cannot
+cancel anything — logs a warning and lets CI continue. Losing a cancellation
+wastes runner minutes; a false cancellation would silently lose test coverage on
+a commit that is about to be merged.
+
+### 7.5 Limits
+
+A cancel is still asynchronous, so a superseded job can do a few more seconds of
+work before the runner tears it down, and the `watch` cadence means up to five
+minutes of a build can be spent on a commit that has just been superseded.
+Fork pull requests get a read-only token and cannot cancel at all — they behave
+exactly as they do today. Push and tag runs are untouched: they keep the per-ref
+concurrency group, because releases must still serialise.
+
+---
+
+## 8. Tests
 
 | Test | What it proves |
 |---|---|
@@ -234,6 +350,7 @@ publishes a newer Ubuntu build, moving the base is a one-directory change.
 | `pr-test / version-policy` (new CI job) | Runs the two experiment suites and then calls each resolver against the **live** upstream feeds, failing if any returns empty. It gates all three existing PR test tiers and the `docker-build-test` aggregator. |
 | `pr-test / js` | On the built image: `node --version` matches the resolver's answer, `nvm version default` equals it, and there is exactly one Node in the image. |
 | `pr-test / full` | The same Node check, plus `rustup toolchain list` has exactly one entry, `rustup check` reports no update available for the toolchain, and `assert_single_runtime_versions` passes inside the image. |
+| `experiments/test-issue112-supersede.sh` — **69 assertions** | The supersession logic against a stubbed `gh api` (`SUPERSEDE_API`): which runs are selected and which are left alone (self, newer, completed, same commit, another fork), the force-cancel escalation when a run ignores the graceful cancel, the self-cancel when the PR head moved on, the background watcher (polling, cancelling, giving up at its ceiling, surviving a transient API failure), and failing open on every API error. It then reads `release.yml` back and asserts the wiring: the per-run PR concurrency group, the `cancel-superseded` job with no `needs:`, and — for all six expensive PR jobs — the guard, the watcher, the `actions: write` permission and the guard's position as the first step after checkout. Run by `pr-test / version-policy`. |
 
 The Node assertions source `$HOME/.nvm/nvm.sh` explicitly rather than relying on
 `bash -lc`: Ubuntu's `/etc/skel/.bashrc` returns early for non-interactive
@@ -243,7 +360,7 @@ for the rustup binary itself and would otherwise fail spuriously.
 
 ---
 
-## 8. Files changed
+## 9. Files changed
 
 | File | Change |
 |---|---|
@@ -255,6 +372,7 @@ for the rustup binary itself and would otherwise fail spuriously.
 | `java`, `kotlin`, `dotnet`, `php`, `swift`, `ruby`, `python`, `r`, `rocq` install scripts (+ `php/Dockerfile`) | Build-time versions, pruning, assertions. |
 | `ubuntu/24.04/full-box/install.sh` | The same resolutions for the single-script path. |
 | `scripts/ubuntu-24-server-install.sh`, `scripts/measure-disk-space.sh` | `common.sh` bridge + resolved versions. |
-| `.github/workflows/release.yml` | `DOCKER_BUILDKIT=1`, new `pr-test / version-policy` tier, freshness assertions in the js and full smoke tests. |
+| `.github/workflows/release.yml` | `DOCKER_BUILDKIT=1`, new `pr-test / version-policy` tier, freshness assertions in the js and full smoke tests; per-run PR concurrency group, `cancel-superseded` job, and the superseded-commit guard plus background watcher in every expensive PR job (§7). |
+| `scripts/ci/supersede.sh` | New: `cancel-older` / `stop-if-superseded` / `watch`, with verified (force-)cancellation. |
 | `README.md`, `ARCHITECTURE.md` | Version claims replaced with the policy; new "Build-Time Version Resolution" design decision. |
 | `experiments/…` | The three suites above + `experiments/layer-whiteout/`. |

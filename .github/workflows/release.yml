@@ -395,7 +395,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: bash scripts/ci/supersede.sh stop-if-superseded
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Version resolvers and one-version-per-language invariant
         run: bash experiments/version-policy-unit-test.sh
@@ -449,7 +455,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: bash scripts/ci/supersede.sh stop-if-superseded
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -528,7 +540,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: bash scripts/ci/supersede.sh stop-if-superseded
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -594,7 +612,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: bash scripts/ci/supersede.sh stop-if-superseded
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -702,7 +726,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: bash scripts/ci/supersede.sh stop-if-superseded
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -886,7 +916,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: bash scripts/ci/supersede.sh stop-if-superseded
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main

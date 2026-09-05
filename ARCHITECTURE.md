@@ -332,6 +332,37 @@ publishes a Linux toolchain; swift.org's release feed carries `ubuntu2404`
 builds and nothing newer. Everything installed *on top of* 24.04 tracks its own
 upstream, so the base LTS being one cycle behind does not hold any runtime back.
 
+### 6. Pull-Request Runs Are Superseded Explicitly (Issue #112)
+
+`release.yml` gives **pull-request** runs a concurrency group that is unique per
+run (`<workflow>-pr-<number>-run-<run_id>`); only push/tag runs keep the per-ref
+group that serialises releases. This is deliberate and the opposite of the usual
+advice, because the usual advice deadlocks: a run blocked on a shared group is
+`pending`, executes no step, and therefore cannot cancel the predecessor holding
+it — the predecessor kept running, the newest commit never started, and each
+pending run was cancelled by the next one.
+
+Supersession is instead done by code that actually runs, `scripts/ci/supersede.sh`:
+
+- **`cancel-older`** — the `cancel-superseded` job, first in the run with no
+  `needs:`, cancels every still-live run of this workflow that belongs to an
+  earlier commit of the same pull request.
+- **`stop-if-superseded`** — the first step after checkout in every expensive PR
+  job re-reads the pull request head and cancels its own run if the commit has
+  moved on. Necessary because a matrix job can sit queued long enough for its
+  commit to become stale.
+- **`watch`** — started in the background by that same step, it polls every five
+  minutes for the rest of the job. `cancel-superseded` needs a runner of its own,
+  and a superseded run holding the account's job concurrency is exactly why none
+  is free; a job that is already running can cancel the run from the inside, and
+  one cancelled run frees every slot it holds at once.
+
+A cancel is a request, not a guarantee (the platform ignored one here while the
+job it targeted ran to a green finish), so every cancel is verified and escalated
+to `force-cancel` after a grace period. Everything fails open: a fork pull
+request's read-only token cannot cancel anything, and losing a cancellation only
+wastes runner minutes, while a false one would lose test coverage.
+
 ## Performance Considerations
 
 ### Build Time Optimization

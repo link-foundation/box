@@ -33,6 +33,11 @@
 #                         frees up (see `pr-test / full` above), so by the time
 #                         it starts its commit may be long gone. It re-checks the
 #                         pull request head and cancels its own run if so.
+
+#     watch               Started in the background by those same jobs. Cancelling
+#                         from the outside needs a free runner, and a superseded
+#                         run is usually the reason there is none; a job that is
+#                         already running can cancel the run from the inside.
 #
 #   Both modes fail open: a lookup or cancel that does not work (a fork PR gets a
 #   read-only token and cannot cancel anything) logs a warning and lets CI
@@ -53,6 +58,8 @@
 # Testability (experiments/test-issue112-supersede.sh):
 #   SUPERSEDE_API            - command used instead of `gh api` (raw JSON on stdout)
 #   SUPERSEDE_WAIT_SECONDS   - how long to wait to be terminated after self-cancel
+#   SUPERSEDE_FORCE_AFTER_SECONDS - grace period before escalating to force-cancel
+#   SUPERSEDE_WATCH_INTERVAL_SECONDS / SUPERSEDE_WATCH_MAX_SECONDS - watch cadence
 #
 # JSON is parsed with python3 (as scripts/measure-disk-space.sh and
 # scripts/update-readme-sizes.sh already do) rather than jq, so the filter itself
@@ -263,17 +270,38 @@ cancel_older() {
   log "cancelled ${count} superseded run(s)"
 }
 
-# --- Mode: cancel THIS run if the pull request has moved on --------------------
-stop_if_superseded() {
-  local head payload
+# The pull request's head commit right now, or "" when it cannot be determined
+# (which every caller treats as "carry on").
+current_head() {
+  local payload head
   payload="$(api_get "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}")" || return 0
   head="$(printf '%s' "$payload" | pull_head_sha)" || {
-    warn "could not read the pull request head: continuing"
+    warn "could not read the pull request head"
     return 0
   }
+  [ -n "$head" ] || warn "pull request head is empty"
+  printf '%s' "$head"
+}
+
+# Cancel this run, verifying it actually stops.
+cancel_self() {
+  local head="$1"
+  log "PR #${PR_NUMBER} has moved on: ${PR_HEAD_SHA:0:7} -> ${head:0:7}"
+  log "cancelling run ${GITHUB_RUN_ID} instead of building a superseded commit"
+  request_cancel "${GITHUB_RUN_ID}"
+  # Our own run cannot report 'completed' while this job is alive, so this call
+  # ends one of two ways: the graceful cancel works and the runner kills us
+  # mid-poll, or it does not and we force-cancel ourselves after the grace period.
+  ensure_cancelled "${GITHUB_RUN_ID}"
+}
+
+# --- Mode: cancel THIS run if the pull request has moved on --------------------
+stop_if_superseded() {
+  local head
+  head="$(current_head)"
 
   if [ -z "$head" ]; then
-    warn "pull request head is empty: continuing"
+    log "continuing"
     return 0
   fi
 
@@ -282,14 +310,7 @@ stop_if_superseded() {
     return 0
   fi
 
-  log "PR #${PR_NUMBER} has moved on: ${PR_HEAD_SHA:0:7} -> ${head:0:7}"
-  log "cancelling run ${GITHUB_RUN_ID} instead of building a superseded commit"
-  request_cancel "${GITHUB_RUN_ID}"
-  # Our own run cannot report 'completed' while this job is alive, so this call
-  # ends one of two ways: the graceful cancel works and the runner kills us
-  # mid-poll, or it does not and we force-cancel ourselves after the grace period.
-  ensure_cancelled "${GITHUB_RUN_ID}"
-
+  cancel_self "$head"
   # The cancel is asynchronous: the runner tears this job down within seconds.
   # Wait for it rather than starting a build we know is pointless; if the
   # cancellation somehow never lands, fall through and let the job run.
@@ -302,6 +323,36 @@ stop_if_superseded() {
   return 0
 }
 
+# --- Mode: keep watching, from inside a job that is already holding a runner ---
+#
+# `cancel-older` needs a runner of its own, and a superseded run is usually the
+# reason none is free: when it filled the account's job concurrency, the new
+# run's `cancel-superseded` job queues behind the very jobs it exists to stop.
+# (Measured on PR #113: run 33962058501 sat queued for over ten minutes while its
+# predecessor held ~25 slots.) A job that is already running does not have that
+# problem, so each expensive job also polls in the background and cancels the
+# whole run the moment its commit stops being the pull request head. One
+# cancelled run frees every slot it holds at once.
+watch_superseded() {
+  local interval="${SUPERSEDE_WATCH_INTERVAL_SECONDS:-300}"
+  local limit="${SUPERSEDE_WATCH_MAX_SECONDS:-21600}"   # a job cannot outlive 6h
+  local waited=0 head
+
+  # One poll per job every few minutes keeps well inside GITHUB_TOKEN's REST
+  # budget even with the full ~28-job pull request matrix running.
+  log "watching PR #${PR_NUMBER} every ${interval}s for commits after ${PR_HEAD_SHA:0:7}"
+  while [ "$waited" -lt "$limit" ]; do
+    sleep "$interval"
+    waited=$((waited + interval))
+    head="$(current_head)"
+    [ -n "$head" ] || continue                 # transient failure: try again
+    [ "$head" = "${PR_HEAD_SHA:-}" ] && continue
+    cancel_self "$head"
+    return 0
+  done
+  log "stopped watching after ${waited}s"
+}
+
 case "$MODE" in
   cancel-older)
     require_pull_request || exit 0
@@ -311,8 +362,12 @@ case "$MODE" in
     require_pull_request || exit 0
     stop_if_superseded
     ;;
+  watch)
+    require_pull_request || exit 0
+    watch_superseded
+    ;;
   *)
-    echo "usage: $0 {cancel-older|stop-if-superseded}" >&2
+    echo "usage: $0 {cancel-older|stop-if-superseded|watch}" >&2
     exit 2
     ;;
 esac

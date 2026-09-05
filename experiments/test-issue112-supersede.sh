@@ -126,6 +126,10 @@ pr_env() {
   # assignments, not a command prefix, so the override would otherwise stick.
   export STUB_RUNS_JSON="$TMP/runs.json"
   export STUB_PULL_JSON="$TMP/pull.json"
+  # Exported here so the `VAR=... out="$(...)"` overrides below reach the script
+  # (a plain assignment only inherits the export flag a variable already has).
+  export SUPERSEDE_WATCH_INTERVAL_SECONDS=1
+  export SUPERSEDE_WATCH_MAX_SECONDS=4
   : > "$STUB_CALLS"
 }
 
@@ -242,8 +246,45 @@ PR_HEAD_SHA=aaaaaaaaaaaa STUB_PULL_JSON="$TMP/nohead.json" \
   || bad "stop-if-superseded must exit 0 on an unparseable payload"
 check "a payload without a head cancels nothing" "" "$(cancelled_ids)"
 
+echo "--- watch ---"
+# `cancel-older` needs a runner, and a superseded run holding the account's job
+# concurrency is exactly why none is free (run 33962058501 queued >10 min behind
+# its predecessor). The watcher cancels the run from inside a job that already
+# holds a slot, so one cancel frees them all.
+
+pr_env
+out="$(bash "$SCRIPT" watch 2>&1)" || bad "watch exited non-zero"
+check "polls without cancelling while the commit is still the head" "" "$(cancelled_ids)"
+case "$out" in
+  *"stopped watching after"*) ok "watch gives up at SUPERSEDE_WATCH_MAX_SECONDS" ;;
+  *) bad "expected a 'stopped watching' line: $out" ;;
+esac
+
+pr_env
+PR_HEAD_SHA=aaaaaaaaaaaa
+out="$(bash "$SCRIPT" watch 2>&1)"
+check "cancels the whole run as soon as the head moves on" "1004" "$(cancelled_ids)"
+case "$out" in
+  *"has moved on: aaaaaaa -> ddddddd"*) ok "watch logs the superseding commit" ;;
+  *) bad "expected the 'has moved on' line: $out" ;;
+esac
+
+pr_env
+PR_HEAD_SHA=aaaaaaaaaaaa
+STUB_RUN_STATUS=in_progress
+out="$(bash "$SCRIPT" watch 2>&1)"
+check "watch escalates to force-cancel too" "1004" "$(forced_ids)"
+
+# A transient API failure must not end the watch: it has to survive to see the
+# commit that supersedes this one.
+pr_env
+STUB_GET_EXIT=1 bash "$SCRIPT" watch >/dev/null 2>&1 \
+  && ok "an unreachable API keeps the job running (fails open)" \
+  || bad "watch must exit 0 when the API is unreachable"
+check "an unreachable API cancels nothing" "" "$(cancelled_ids)"
+
 echo "--- events other than pull_request ---"
-for mode in cancel-older stop-if-superseded; do
+for mode in cancel-older stop-if-superseded watch; do
   pr_env
   GITHUB_EVENT_NAME=push bash "$SCRIPT" "$mode" >/dev/null 2>&1 \
     && ok "$mode is a no-op on push" \
@@ -291,6 +332,13 @@ for job in pr-test-version-policy pr-test-js pr-test-essentials pr-test-language
     ok "$job may cancel its run (actions: write)"
   else
     bad "$job lacks the actions: write permission the guard needs"
+  fi
+  # The one-shot guard only covers the moment the job starts; the watcher covers
+  # the hour after it, which is when the run is holding the runners.
+  if grep -q 'supersede.sh watch' <<<"$body"; then
+    ok "$job keeps watching for superseding commits"
+  else
+    bad "$job does not start the background watcher"
   fi
   # The guard is worthless after the runner has already done the work, so it has
   # to be the very first step after the checkout it needs.
