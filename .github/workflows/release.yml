@@ -3242,146 +3242,21 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Creating release for version: $VERSION"
 
-      - name: Create GitHub Release
+      # The notes are generated from one image list by
+      # scripts/release/build-release-notes.sh. They used to be 106 lines of
+      # inline heredoc with a hand-written row per image, split across two steps
+      # only to stay under GitHub's 21000-character per-step expression limit
+      # (issue #80) - a limit a script does not have (issue #115).
+      - name: Build release notes
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+          REPO: ${{ github.repository }}
           GHCR_IMAGE: ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
           DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_IMAGE_NAME }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          DATE=$(date +%Y-%m-%d)
-          REPO="${{ github.repository }}"
-
-          # Create release notes file with comprehensive clickable links
-          # Issue #39: All tags should have clickable links for both Docker Hub and GHCR
-          cat > /tmp/release-notes.md << ENDOFNOTES
-          ## Docker Images
-
-          ### Docker Hub - Combo Boxes
-
-          | Image | Multi-arch | AMD64 | ARM64 |
-          |-------|------------|-------|-------|
-          | Full Box | [\`${DOCKERHUB_IMAGE}:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}/tags?name=${VERSION}-arm64) |
-          | Essentials | [\`${DOCKERHUB_IMAGE}-essentials:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-essentials/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-essentials/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-essentials/tags?name=${VERSION}-arm64) |
-          | JS | [\`${DOCKERHUB_IMAGE}-js:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-js/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-js/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-js/tags?name=${VERSION}-arm64) |
-
-          ### Docker Hub - Language Boxes
-
-          | Language | Multi-arch | AMD64 | ARM64 |
-          |----------|------------|-------|-------|
-          | Python | [\`${DOCKERHUB_IMAGE}-python:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-python/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-python/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-python/tags?name=${VERSION}-arm64) |
-          | Go | [\`${DOCKERHUB_IMAGE}-go:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-go/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-go/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-go/tags?name=${VERSION}-arm64) |
-          | Rust | [\`${DOCKERHUB_IMAGE}-rust:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rust/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rust/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rust/tags?name=${VERSION}-arm64) |
-          | Java | [\`${DOCKERHUB_IMAGE}-java:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-java/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-java/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-java/tags?name=${VERSION}-arm64) |
-          | Kotlin | [\`${DOCKERHUB_IMAGE}-kotlin:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-kotlin/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-kotlin/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-kotlin/tags?name=${VERSION}-arm64) |
-          | Ruby | [\`${DOCKERHUB_IMAGE}-ruby:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-ruby/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-ruby/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-ruby/tags?name=${VERSION}-arm64) |
-          | PHP | [\`${DOCKERHUB_IMAGE}-php:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-php/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-php/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-php/tags?name=${VERSION}-arm64) |
-          | Perl | [\`${DOCKERHUB_IMAGE}-perl:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-perl/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-perl/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-perl/tags?name=${VERSION}-arm64) |
-          | Swift | [\`${DOCKERHUB_IMAGE}-swift:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-swift/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-swift/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-swift/tags?name=${VERSION}-arm64) |
-          | Lean | [\`${DOCKERHUB_IMAGE}-lean:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-lean/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-lean/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-lean/tags?name=${VERSION}-arm64) |
-          | Rocq | [\`${DOCKERHUB_IMAGE}-rocq:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rocq/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rocq/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rocq/tags?name=${VERSION}-arm64) |
-
-          ### GitHub Container Registry - Combo Boxes
-
-          | Image | Multi-arch | AMD64 | ARM64 |
-          |-------|------------|-------|-------|
-          | Full Box | [\`${GHCR_IMAGE}:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box?tag=${VERSION}-arm64) |
-          | Essentials | [\`${GHCR_IMAGE}-essentials:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-essentials?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-essentials?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-essentials?tag=${VERSION}-arm64) |
-          | JS | [\`${GHCR_IMAGE}-js:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-js?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-js?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-js?tag=${VERSION}-arm64) |
-
-          ### GitHub Container Registry - Language Boxes
-
-          | Language | Multi-arch | AMD64 | ARM64 |
-          |----------|------------|-------|-------|
-          | Python | [\`${GHCR_IMAGE}-python:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-python?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-python?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-python?tag=${VERSION}-arm64) |
-          | Go | [\`${GHCR_IMAGE}-go:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-go?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-go?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-go?tag=${VERSION}-arm64) |
-          | Rust | [\`${GHCR_IMAGE}-rust:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-rust?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-rust?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-rust?tag=${VERSION}-arm64) |
-          | Java | [\`${GHCR_IMAGE}-java:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-java?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-java?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-java?tag=${VERSION}-arm64) |
-          | Kotlin | [\`${GHCR_IMAGE}-kotlin:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-kotlin?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-kotlin?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-kotlin?tag=${VERSION}-arm64) |
-          | Ruby | [\`${GHCR_IMAGE}-ruby:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-ruby?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-ruby?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-ruby?tag=${VERSION}-arm64) |
-          | PHP | [\`${GHCR_IMAGE}-php:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-php?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-php?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-php?tag=${VERSION}-arm64) |
-          | Perl | [\`${GHCR_IMAGE}-perl:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-perl?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-perl?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-perl?tag=${VERSION}-arm64) |
-          | Swift | [\`${GHCR_IMAGE}-swift:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-swift?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-swift?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-swift?tag=${VERSION}-arm64) |
-          | Lean | [\`${GHCR_IMAGE}-lean:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-lean?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-lean?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-lean?tag=${VERSION}-arm64) |
-          | Rocq | [\`${GHCR_IMAGE}-rocq:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-rocq?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-rocq?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-rocq?tag=${VERSION}-arm64) |
-
-          ## Architecture
-
-          \`\`\`
-          JS box (konard/box-js)
-            → Essentials box (konard/box-essentials)
-              ├─ box-python  ├─ box-go    ├─ box-rust
-              ├─ box-java    ├─ box-kotlin ├─ box-ruby
-              ├─ box-php     ├─ box-perl   ├─ box-swift
-              ├─ box-lean    └─ box-rocq
-              → Full box (konard/box) [merges all language images]
-          \`\`\`
-
-          ## Quick Start
-
-          Pull multi-arch (auto-selects your platform):
-          \`\`\`sh
-          docker pull ${DOCKERHUB_IMAGE}:${VERSION}
-          \`\`\`
-
-          Pull specific architecture:
-          \`\`\`sh
-          # AMD64
-          docker pull ${DOCKERHUB_IMAGE}:${VERSION}-amd64
-
-          # ARM64 (Apple Silicon, Raspberry Pi, etc.)
-          docker pull ${DOCKERHUB_IMAGE}:${VERSION}-arm64
-          \`\`\`
-
-          Pull from GHCR:
-          \`\`\`sh
-          docker pull ${GHCR_IMAGE}:${VERSION}
-          \`\`\`
-
-          ## Links
-          - [Docker Hub](https://hub.docker.com/r/${DOCKERHUB_IMAGE})
-          - [GHCR Package](https://github.com/${REPO}/pkgs/container/box)
-
-          Released on ${DATE}
-          ENDOFNOTES
-
-      # Append dind-box tables in a separate step to stay under GitHub's
-      # 21000-char per-step expression limit (issue #80).
-      - name: Append dind-box tables to release notes
-        env:
-          GHCR_REG: ${{ env.GHCR_REGISTRY }}
-          GHCR_NAME: ${{ env.GHCR_IMAGE_NAME }}
-          DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_IMAGE_NAME }}
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          REPO="${{ github.repository }}"
-
-          # shellcheck disable=SC2016  # the backticks are Markdown code spans
-          # inside printf format strings, not command substitutions; the values
-          # arrive as %s arguments, so single quotes are what is wanted here.
-          {
-            printf '\n### Docker Hub - dind-box (Docker-in-Docker variants, issue #80)\n\n'
-            printf 'Each variant runs an inner Docker daemon. Run with `docker run --privileged` (default) or `docker run --runtime=sysbox-runc` (recommended for shared hosts). `docker ps -a` inside the container only lists containers created by that container - see [docs/case-studies/issue-80](https://github.com/%s/blob/v%s/docs/case-studies/issue-80/CASE-STUDY.md).\n\n' "$REPO" "$VERSION"
-            printf '| Image | Multi-arch | AMD64 | ARM64 |\n'
-            printf '|-------|------------|-------|-------|\n'
-            for variant in "Full|" "Essentials|-essentials" "JS|-js" "Python|-python" "Go|-go" "Rust|-rust" "Java|-java" "Kotlin|-kotlin" "Ruby|-ruby" "PHP|-php" "Perl|-perl" "Swift|-swift" "Lean|-lean" "Rocq|-rocq"; do
-              label="${variant%%|*}"
-              suffix="${variant#*|}"
-              dh="${DOCKERHUB_IMAGE}${suffix}-dind"
-              printf '| %s + dind | [`%s:%s`](https://hub.docker.com/r/%s/tags?name=%s) | [`%s-amd64`](https://hub.docker.com/r/%s/tags?name=%s-amd64) | [`%s-arm64`](https://hub.docker.com/r/%s/tags?name=%s-arm64) |\n' \
-                "$label" "$dh" "$VERSION" "$dh" "$VERSION" "$VERSION" "$dh" "$VERSION" "$VERSION" "$dh" "$VERSION"
-            done
-            printf '\n### GitHub Container Registry - dind-box (Docker-in-Docker variants, issue #80)\n\n'
-            printf '| Image | Multi-arch | AMD64 | ARM64 |\n'
-            printf '|-------|------------|-------|-------|\n'
-            for variant in "Full|box" "Essentials|box-essentials" "JS|box-js" "Python|box-python" "Go|box-go" "Rust|box-rust" "Java|box-java" "Kotlin|box-kotlin" "Ruby|box-ruby" "PHP|box-php" "Perl|box-perl" "Swift|box-swift" "Lean|box-lean" "Rocq|box-rocq"; do
-              label="${variant%%|*}"
-              pkg="${variant#*|}-dind"
-              gh_image="${GHCR_REG}/${GHCR_NAME%/*}/${pkg}"
-              printf '| %s + dind | [`%s:%s`](https://github.com/%s/pkgs/container/%s?tag=%s) | [`%s-amd64`](https://github.com/%s/pkgs/container/%s?tag=%s-amd64) | [`%s-arm64`](https://github.com/%s/pkgs/container/%s?tag=%s-arm64) |\n' \
-                "$label" "$gh_image" "$VERSION" "$REPO" "$pkg" "$VERSION" "$VERSION" "$REPO" "$pkg" "$VERSION" "$VERSION" "$REPO" "$pkg" "$VERSION"
-            done
-          } >> /tmp/release-notes.md
+          bash scripts/release/build-release-notes.sh > /tmp/release-notes.md
+          echo "=== release notes ($(wc -l < /tmp/release-notes.md) lines) ==="
+          cat /tmp/release-notes.md
 
       - name: Publish GitHub Release
         env:
