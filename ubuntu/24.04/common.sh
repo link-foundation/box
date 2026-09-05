@@ -306,6 +306,33 @@ resolve_dotnet_lts_channel() {
   fi
 }
 
+# True when apt can actually install a package (it is in the enabled archives).
+apt_has_package() {
+  # No `grep -q` here: it exits at the first match and SIGPIPEs apt-cache,
+  # which `set -o pipefail` then reports as a failure (exit 141).
+  apt-cache policy "$1" 2>/dev/null | grep -E '^[[:space:]]*Candidate: [0-9]' >/dev/null
+}
+
+# The .NET SDK is installed from Ubuntu's own archive, which carries only some
+# channels. Print the newest channel that is both an active LTS and actually
+# installable here, so a build never asks apt for a package that does not
+# exist. Prints nothing but the channel: it is used inside a package name.
+resolve_dotnet_apt_channel() {
+  local preferred available
+  preferred="$(resolve_dotnet_lts_channel)"
+  if apt_has_package "dotnet-sdk-${preferred}"; then
+    echo "$preferred"
+    return 0
+  fi
+  available=$(apt-cache search --names-only '^dotnet-sdk-[0-9]+\.[0-9]+$' 2>/dev/null \
+    | awk '{print $1}' | sed 's/^dotnet-sdk-//' | sort -V | tail -n1) || true
+  if [ -n "$available" ]; then
+    echo "$available"
+  else
+    echo "$DOTNET_CHANNEL_FALLBACK"
+  fi
+}
+
 # Newest Swift release tag, e.g. "6.3.3". Callers must still verify that a
 # tarball exists for the image's Ubuntu release: Swift does not publish a build
 # for every Ubuntu version (26.04 has none as of this change), so the download

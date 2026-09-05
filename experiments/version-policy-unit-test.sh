@@ -186,6 +186,46 @@ mkdir -p "$BOX_HOME/.nvm/versions/node/v20.19.5"
 check "two node versions fail the invariant" \
   bash -c '. "'"$COMMON"'"; BOX_HOME="'"$BOX_HOME"'" assert_single_runtime_versions >/dev/null 2>&1 && exit 1; exit 0'
 
+echo "== Case 8: the .NET channel is intersected with what apt can actually install =="
+# Mock apt-cache: APT_CHANNELS lists the dotnet-sdk channels this archive has.
+cat > "$WORK/bin/apt-cache" <<'MOCK'
+#!/usr/bin/env bash
+case "$1" in
+  policy)
+    pkg="$2"
+    case "$pkg" in
+      dotnet-sdk-*)
+        channel="${pkg#dotnet-sdk-}"
+        for available in ${APT_CHANNELS:-}; do
+          if [ "$available" = "$channel" ]; then
+            printf '%s:\n  Installed: (none)\n  Candidate: %s.100-1\n' "$pkg" "$channel"
+            exit 0
+          fi
+        done
+        ;;
+    esac
+    exit 0 ;;
+  search)
+    for available in ${APT_CHANNELS:-}; do
+      echo "dotnet-sdk-$available - .NET $available Software Development Kit"
+    done
+    exit 0 ;;
+esac
+exit 0
+MOCK
+chmod +x "$WORK/bin/apt-cache"
+
+eq "prefers the active LTS channel when apt has it" "10.0" \
+  "$(APT_CHANNELS='8.0 9.0 10.0' resolve_dotnet_apt_channel)"
+eq "falls back to the newest channel apt actually offers" "8.0" \
+  "$(APT_CHANNELS='8.0' resolve_dotnet_apt_channel)"
+eq "falls back to the pin when apt offers no dotnet at all" "$DOTNET_CHANNEL_FALLBACK" \
+  "$(APT_CHANNELS='' resolve_dotnet_apt_channel)"
+check "apt_has_package survives pipefail (no SIGPIPE 141)" \
+  bash -c 'set -euo pipefail; . "'"$COMMON"'"; APT_CHANNELS="10.0" apt_has_package dotnet-sdk-10.0'
+check "apt_has_package is false for a missing package" \
+  bash -c 'set -euo pipefail; . "'"$COMMON"'"; APT_CHANNELS="10.0" apt_has_package dotnet-sdk-99.0 && exit 1; exit 0'
+
 echo
 echo "RESULT: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

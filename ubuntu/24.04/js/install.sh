@@ -47,6 +47,15 @@ run_with_retry() {
   done
 }
 
+# The build-time version policy lives in ../common.sh. When this script is run
+# standalone (curl | bash) without it, fall back to the same pinned versions.
+if ! command -v resolve_nvm_version >/dev/null 2>&1; then
+  resolve_nvm_version() { echo "${NVM_VERSION:-v0.40.7}"; }
+fi
+if ! command -v resolve_node_lts_major >/dev/null 2>&1; then
+  resolve_node_lts_major() { echo "${NODE_VERSION:-24}"; }
+fi
+
 log_step "Installing JavaScript/TypeScript runtimes"
 
 # --- Bun ---
@@ -83,10 +92,15 @@ else
 fi
 
 # --- NVM + Node.js ---
+# The nvm installer tag and the Node.js major are both resolved at build time
+# (see the version policy in ../common.sh): a hardcoded major silently ages out
+# of LTS support between releases, which is exactly what issue #112 reports.
+# Override for a reproducible or pinned build with NVM_VERSION / NODE_VERSION.
+NVM_INSTALL_VERSION="$(resolve_nvm_version)"
 if [ ! -d "$HOME/.nvm" ]; then
-  log_info "Installing NVM..."
-  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
-  log_success "NVM installed"
+  log_info "Installing NVM ${NVM_INSTALL_VERSION}..."
+  curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_INSTALL_VERSION}/install.sh" | bash
+  log_success "NVM ${NVM_INSTALL_VERSION} installed"
 else
   log_info "NVM already installed."
 fi
@@ -95,14 +109,35 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
-if ! nvm ls 20 2>/dev/null | grep -q 'v20'; then
-  log_info "Installing Node.js 20..."
-  nvm install 20
-  log_success "Node.js 20 installed"
+NODE_MAJOR="$(resolve_node_lts_major)"
+log_info "Node.js LTS resolved for this build: ${NODE_MAJOR}"
+
+if ! nvm ls "$NODE_MAJOR" 2>/dev/null | grep "v${NODE_MAJOR}\." >/dev/null; then
+  log_info "Installing Node.js ${NODE_MAJOR}..."
+  nvm install "$NODE_MAJOR"
+  log_success "Node.js ${NODE_MAJOR} installed"
 else
-  log_info "Node.js 20 already installed"
+  log_info "Node.js ${NODE_MAJOR} already installed"
 fi
-nvm use 20
+
+# `nvm use` only affects this shell. Without an explicit default alias, a login
+# shell (and therefore the image's effective PATH) keeps whatever nvm aliased
+# first, so the box could ship one Node and run another.
+nvm use "$NODE_MAJOR"
+nvm alias default "$NODE_MAJOR"
+
+# Keep one version per language root (issue #112): drop any other Node that a
+# previous layer or an earlier build of this image left behind, so the image
+# never carries two runtimes worth of bytes.
+NODE_KEEP="$(nvm current)"
+for installed in $(ls -1 "$NVM_DIR/versions/node" 2>/dev/null); do
+  if [ "$installed" != "$NODE_KEEP" ]; then
+    log_info "Removing extra Node.js $installed (keeping $NODE_KEEP)"
+    nvm uninstall "$installed" || log_warning "Could not uninstall Node.js $installed"
+  fi
+done
+
+log_success "Node.js $(node --version) active, nvm default alias set to ${NODE_MAJOR}"
 
 log_info "Updating npm to latest version..."
 run_with_retry npm install -g npm@latest --no-fund --silent
@@ -145,6 +180,11 @@ if [ -d "$HOME/.cache/ms-playwright" ]; then
 else
   echo "ERROR: Playwright browser cache not found at $HOME/.cache/ms-playwright"
   exit 1
+fi
+
+# Build-time invariant: exactly one Node.js under ~/.nvm/versions/node.
+if command -v assert_single_runtime_versions >/dev/null 2>&1; then
+  assert_single_runtime_versions
 fi
 
 log_success "JavaScript/TypeScript runtimes installation complete"
