@@ -1194,8 +1194,6 @@ jobs:
           tags: |
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-amd64
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64
           provenance: false
           cache-from: type=gha,scope=js-amd64
           cache-to: type=gha,scope=js-amd64,mode=max
@@ -1209,12 +1207,23 @@ jobs:
               --platform linux/amd64 \
               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-amd64 \
               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64 \
               --provenance=false \
               --cache-from type=gha,scope=js-amd64 \
               --push \
               .
+
+      # Issue #115 (RC-3): GHCR is the registry of record - it is written with
+      # the per-run GITHUB_TOKEN, which cannot expire - and Docker Hub is a
+      # mirror of it. Pushing both registries in one `docker buildx build --push`
+      # meant a single expired DOCKERHUB_TOKEN destroyed the GHCR tags and the
+      # `cache-to: type=gha` export as collateral (run 33972074755).
+      - name: Mirror JS box (amd64) to Docker Hub
+        if: steps.dockerhub-login.outcome == 'success'
+        run: |
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64"
 
       - name: Mark as built
         id: result
@@ -1309,8 +1318,6 @@ jobs:
           tags: |
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-arm64
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64
           provenance: false
           cache-from: type=gha,scope=js-arm64
           cache-to: type=gha,scope=js-arm64,mode=max
@@ -1324,12 +1331,23 @@ jobs:
               --platform linux/arm64 \
               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-arm64 \
               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64 \
               --provenance=false \
               --cache-from type=gha,scope=js-arm64 \
               --push \
               .
+
+      # Issue #115 (RC-3): GHCR is the registry of record - it is written with
+      # the per-run GITHUB_TOKEN, which cannot expire - and Docker Hub is a
+      # mirror of it. Pushing both registries in one `docker buildx build --push`
+      # meant a single expired DOCKERHUB_TOKEN destroyed the GHCR tags and the
+      # `cache-to: type=gha` export as collateral (run 33972074755).
+      - name: Mirror JS box (arm64) to Docker Hub
+        if: steps.dockerhub-login.outcome == 'success'
+        run: |
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64"
 
       - name: Mark as built
         id: result
@@ -1509,9 +1527,9 @@ jobs:
         run: |
           # Use freshly built JS image if JS was rebuilt, otherwise use latest
           if [ "${{ needs.build-js-amd64.outputs.built }}" = "true" ]; then
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64" >> "$GITHUB_OUTPUT"
+            echo "image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64" >> "$GITHUB_OUTPUT"
           else
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64" >> "$GITHUB_OUTPUT"
+            echo "image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-amd64" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build and push essentials box (amd64)
@@ -1528,8 +1546,6 @@ jobs:
           tags: |
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-amd64
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64
           provenance: false
           cache-from: type=gha,scope=essentials-amd64
           cache-to: type=gha,scope=essentials-amd64,mode=max
@@ -1544,12 +1560,23 @@ jobs:
               --build-arg JS_IMAGE=${{ steps.js-base.outputs.image }} \
               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-amd64 \
               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64 \
               --provenance=false \
               --cache-from type=gha,scope=essentials-amd64 \
               --push \
               .
+
+      # Issue #115 (RC-3): GHCR is the registry of record - it is written with
+      # the per-run GITHUB_TOKEN, which cannot expire - and Docker Hub is a
+      # mirror of it. Pushing both registries in one `docker buildx build --push`
+      # meant a single expired DOCKERHUB_TOKEN destroyed the GHCR tags and the
+      # `cache-to: type=gha` export as collateral (run 33972074755).
+      - name: Mirror essentials box (amd64) to Docker Hub
+        if: steps.dockerhub-login.outcome == 'success'
+        run: |
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64"
 
       - name: Mark as built
         id: result
@@ -1639,9 +1666,9 @@ jobs:
         id: js-base
         run: |
           if [ "${{ needs.build-js-arm64.outputs.built }}" = "true" ]; then
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64" >> "$GITHUB_OUTPUT"
+            echo "image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64" >> "$GITHUB_OUTPUT"
           else
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64" >> "$GITHUB_OUTPUT"
+            echo "image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-arm64" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build and push essentials box (arm64)
@@ -1658,8 +1685,6 @@ jobs:
           tags: |
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-arm64
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64
           provenance: false
           cache-from: type=gha,scope=essentials-arm64
           cache-to: type=gha,scope=essentials-arm64,mode=max
@@ -1674,12 +1699,23 @@ jobs:
               --build-arg JS_IMAGE=${{ steps.js-base.outputs.image }} \
               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-arm64 \
               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64 \
               --provenance=false \
               --cache-from type=gha,scope=essentials-arm64 \
               --push \
               .
+
+      # Issue #115 (RC-3): GHCR is the registry of record - it is written with
+      # the per-run GITHUB_TOKEN, which cannot expire - and Docker Hub is a
+      # mirror of it. Pushing both registries in one `docker buildx build --push`
+      # meant a single expired DOCKERHUB_TOKEN destroyed the GHCR tags and the
+      # `cache-to: type=gha` export as collateral (run 33972074755).
+      - name: Mirror essentials box (arm64) to Docker Hub
+        if: steps.dockerhub-login.outcome == 'success'
+        run: |
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64"
 
       - name: Mark as built
         id: result
@@ -1882,9 +1918,9 @@ jobs:
         id: essentials-base
         run: |
           if [ "${{ needs.build-essentials-amd64.outputs.built }}" = "true" ]; then
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64" >> "$GITHUB_OUTPUT"
+            echo "image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64" >> "$GITHUB_OUTPUT"
           else
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64" >> "$GITHUB_OUTPUT"
+            echo "image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-amd64" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build and push ${{ matrix.language }} box (amd64)
@@ -1902,8 +1938,6 @@ jobs:
           tags: |
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64
           provenance: false
           cache-from: type=gha,scope=${{ matrix.language }}-amd64
           cache-to: type=gha,scope=${{ matrix.language }}-amd64,mode=max
@@ -1915,8 +1949,6 @@ jobs:
           TAGS=(
             "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64"
             "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64"
-            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64"
-            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64"
           )
           TAG_ARGS=()
           for tag in "${TAGS[@]}"; do
@@ -1932,34 +1964,60 @@ jobs:
               --push \
               .
 
+      # Issue #115 (RC-3): GHCR is the registry of record - it is written with
+      # the per-run GITHUB_TOKEN, which cannot expire - and Docker Hub is a
+      # mirror of it. Pushing both registries in one `docker buildx build --push`
+      # meant a single expired DOCKERHUB_TOKEN destroyed the GHCR tags and the
+      # `cache-to: type=gha` export as collateral (run 33972074755).
+      - name: Mirror ${{ matrix.language }} box (amd64) to Docker Hub
+        if: |
+          steps.check-lang.outputs.should_build == 'true' &&
+          steps.dockerhub-login.outcome == 'success'
+        run: |
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64"
+
       # PHP-specific: Add local/global suffix tags based on install method (Issue #44)
       - name: Tag PHP image with install method suffix (amd64)
+        id: php-method
         if: steps.check-lang.outputs.should_build == 'true' && matrix.language == 'php'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          # Pull the image and inspect the marker file
-          docker pull ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64
-          PHP_METHOD=$(docker run --rm ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 cat /home/box/.php-install-method 2>/dev/null || echo "unknown")
+          SRC="${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64"
+
+          # Pull the image just published to GHCR and inspect the marker file.
+          docker pull "$SRC"
+          PHP_METHOD=$(docker run --rm "$SRC" cat /home/box/.php-install-method 2>/dev/null || echo "unknown")
           echo "PHP install method (amd64): $PHP_METHOD"
+          echo "method=${PHP_METHOD}" >> "$GITHUB_OUTPUT"
 
           if [ "$PHP_METHOD" = "local" ] || [ "$PHP_METHOD" = "global" ]; then
-            # Tag with method suffix on both registries
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
-              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-amd64-"${PHP_METHOD}"
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
-              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64-"${PHP_METHOD}"
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
-              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-amd64-"${PHP_METHOD}"
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
-              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64-"${PHP_METHOD}"
-
-            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-amd64-"${PHP_METHOD}"
-            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64-"${PHP_METHOD}"
-            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-amd64-"${PHP_METHOD}"
-            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64-"${PHP_METHOD}"
-
+            docker tag "$SRC" "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}"
+            docker tag "$SRC" "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64-${PHP_METHOD}"
+            docker push "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}"
+            docker push "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64-${PHP_METHOD}"
             echo "Tagged PHP image with -${PHP_METHOD} suffix"
           fi
+
+      # Issue #115: the Docker Hub copies of the suffixed PHP tags are a mirror
+      # of the GHCR tags above. Pushing both registries from one step meant an
+      # expired DOCKERHUB_TOKEN failed a job whose real output (the GHCR image)
+      # had already been published successfully.
+      - name: Mirror suffixed PHP tags to Docker Hub (amd64)
+        if: |
+          steps.check-lang.outputs.should_build == 'true' &&
+          matrix.language == 'php' &&
+          steps.dockerhub-login.outcome == 'success' &&
+          (steps.php-method.outputs.method == 'local' || steps.php-method.outputs.method == 'global')
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          METHOD="${{ steps.php-method.outputs.method }}"
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64-${METHOD}" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-amd64-${METHOD}" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64-${METHOD}"
 
   # === BUILD LANGUAGE IMAGES (arm64) ===
   build-languages-arm64:
@@ -2069,9 +2127,9 @@ jobs:
         id: essentials-base
         run: |
           if [ "${{ needs.build-essentials-arm64.outputs.built }}" = "true" ]; then
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64" >> "$GITHUB_OUTPUT"
+            echo "image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64" >> "$GITHUB_OUTPUT"
           else
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64" >> "$GITHUB_OUTPUT"
+            echo "image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-arm64" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build and push ${{ matrix.language }} box (arm64)
@@ -2089,8 +2147,6 @@ jobs:
           tags: |
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64
           provenance: false
           cache-from: type=gha,scope=${{ matrix.language }}-arm64
           cache-to: type=gha,scope=${{ matrix.language }}-arm64,mode=max
@@ -2102,8 +2158,6 @@ jobs:
           TAGS=(
             "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64"
             "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64"
-            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64"
-            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64"
           )
           TAG_ARGS=()
           for tag in "${TAGS[@]}"; do
@@ -2119,34 +2173,60 @@ jobs:
               --push \
               .
 
+      # Issue #115 (RC-3): GHCR is the registry of record - it is written with
+      # the per-run GITHUB_TOKEN, which cannot expire - and Docker Hub is a
+      # mirror of it. Pushing both registries in one `docker buildx build --push`
+      # meant a single expired DOCKERHUB_TOKEN destroyed the GHCR tags and the
+      # `cache-to: type=gha` export as collateral (run 33972074755).
+      - name: Mirror ${{ matrix.language }} box (arm64) to Docker Hub
+        if: |
+          steps.check-lang.outputs.should_build == 'true' &&
+          steps.dockerhub-login.outcome == 'success'
+        run: |
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64"
+
       # PHP-specific: Add local/global suffix tags based on install method (Issue #44)
       - name: Tag PHP image with install method suffix (arm64)
+        id: php-method
         if: steps.check-lang.outputs.should_build == 'true' && matrix.language == 'php'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          # Pull the image and inspect the marker file
-          docker pull ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64
-          PHP_METHOD=$(docker run --rm ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 cat /home/box/.php-install-method 2>/dev/null || echo "unknown")
+          SRC="${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64"
+
+          # Pull the image just published to GHCR and inspect the marker file.
+          docker pull "$SRC"
+          PHP_METHOD=$(docker run --rm "$SRC" cat /home/box/.php-install-method 2>/dev/null || echo "unknown")
           echo "PHP install method (arm64): $PHP_METHOD"
+          echo "method=${PHP_METHOD}" >> "$GITHUB_OUTPUT"
 
           if [ "$PHP_METHOD" = "local" ] || [ "$PHP_METHOD" = "global" ]; then
-            # Tag with method suffix on both registries
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
-              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-arm64-"${PHP_METHOD}"
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
-              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64-"${PHP_METHOD}"
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
-              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-arm64-"${PHP_METHOD}"
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
-              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64-"${PHP_METHOD}"
-
-            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-arm64-"${PHP_METHOD}"
-            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64-"${PHP_METHOD}"
-            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-arm64-"${PHP_METHOD}"
-            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64-"${PHP_METHOD}"
-
+            docker tag "$SRC" "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}"
+            docker tag "$SRC" "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64-${PHP_METHOD}"
+            docker push "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}"
+            docker push "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64-${PHP_METHOD}"
             echo "Tagged PHP image with -${PHP_METHOD} suffix"
           fi
+
+      # Issue #115: the Docker Hub copies of the suffixed PHP tags are a mirror
+      # of the GHCR tags above. Pushing both registries from one step meant an
+      # expired DOCKERHUB_TOKEN failed a job whose real output (the GHCR image)
+      # had already been published successfully.
+      - name: Mirror suffixed PHP tags to Docker Hub (arm64)
+        if: |
+          steps.check-lang.outputs.should_build == 'true' &&
+          matrix.language == 'php' &&
+          steps.dockerhub-login.outcome == 'success' &&
+          (steps.php-method.outputs.method == 'local' || steps.php-method.outputs.method == 'global')
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          METHOD="${{ steps.php-method.outputs.method }}"
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64-${METHOD}" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-arm64-${METHOD}" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64-${METHOD}"
 
   # === CREATE LANGUAGE MULTI-ARCH MANIFESTS ===
   languages-manifest:
@@ -2326,18 +2406,18 @@ jobs:
 
           # Essentials base image
           if [ "${{ needs.build-essentials-amd64.outputs.built }}" = "true" ]; then
-            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-amd64" >> "$GITHUB_OUTPUT"
+            echo "essentials=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION}-amd64" >> "$GITHUB_OUTPUT"
           else
-            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64" >> "$GITHUB_OUTPUT"
+            echo "essentials=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-amd64" >> "$GITHUB_OUTPUT"
           fi
 
           # Language images - use version tag if languages were built, otherwise latest
           for lang in python go rust java kotlin ruby php perl swift lean rocq; do
             # If the language matrix ran successfully, use versioned tag
             if [ "${{ needs.build-languages-amd64.result }}" = "success" ]; then
-              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:${VERSION}-amd64" >> "$GITHUB_OUTPUT"
+              echo "${lang}=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${lang}:${VERSION}-amd64" >> "$GITHUB_OUTPUT"
             else
-              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:latest-amd64" >> "$GITHUB_OUTPUT"
+              echo "${lang}=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${lang}:latest-amd64" >> "$GITHUB_OUTPUT"
             fi
           done
 
@@ -2347,7 +2427,6 @@ jobs:
         with:
           images: |
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
-            ${{ env.DOCKERHUB_IMAGE_NAME }}
           tags: |
             type=raw,value=latest
             type=raw,value=${{ steps.version.outputs.version }}
@@ -2360,7 +2439,6 @@ jobs:
         with:
           images: |
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
-            ${{ env.DOCKERHUB_IMAGE_NAME }}
           flavor: |
             suffix=-amd64
           tags: |
@@ -2436,11 +2514,38 @@ jobs:
 
       # Smoke test the published image to verify all toolchains work (issue #62)
       # Tests each toolchain command to catch cases where tools are missing/broken
+      # Issue #115 (RC-3): GHCR is the registry of record - it is written with
+      # the per-run GITHUB_TOKEN, which cannot expire - and Docker Hub is a
+      # mirror of it. docker/metadata-action now emits GHCR names only, so the
+      # Docker Hub names are derived from them by rewriting the registry prefix.
+      - name: Mirror full box (amd64) to Docker Hub
+        if: steps.dockerhub-login.outcome == 'success'
+        env:
+          GHCR_TAGS: |
+            ${{ steps.meta.outputs.tags }}
+            ${{ steps.meta-amd64.outputs.tags }}
+        run: |
+          GHCR_PREFIX="${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}"
+          DH_PREFIX="${{ env.DOCKERHUB_IMAGE_NAME }}"
+          SOURCE="${GHCR_PREFIX}:${{ steps.version.outputs.version }}-amd64"
+
+          TARGETS=()
+          while IFS= read -r tag; do
+            tag=$(echo "$tag" | xargs)
+            [ -z "$tag" ] && continue
+            suffix="${tag#"$GHCR_PREFIX"}"
+            # A name the prefix rewrite does not apply to is not ours to mirror.
+            [ "$suffix" = "$tag" ] && continue
+            TARGETS+=("${DH_PREFIX}${suffix}")
+          done <<< "$GHCR_TAGS"
+
+          bash scripts/release/mirror-to-dockerhub.sh "$SOURCE" "${TARGETS[@]}"
+
       - name: Smoke test released full box (amd64)
         run: |
           set -e
           VERSION="${{ steps.version.outputs.version }}"
-          IMAGE="${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION}"
+          IMAGE="${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION}"
           echo "=== Smoke testing released image: ${IMAGE} ==="
 
           # JavaScript/TypeScript runtimes
@@ -2579,17 +2684,17 @@ jobs:
 
           # Essentials base image
           if [ "${{ needs.build-essentials-arm64.outputs.built }}" = "true" ]; then
-            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-arm64" >> "$GITHUB_OUTPUT"
+            echo "essentials=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION}-arm64" >> "$GITHUB_OUTPUT"
           else
-            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64" >> "$GITHUB_OUTPUT"
+            echo "essentials=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-arm64" >> "$GITHUB_OUTPUT"
           fi
 
           # Language images
           for lang in python go rust java kotlin ruby php perl swift lean rocq; do
             if [ "${{ needs.build-languages-arm64.result }}" = "success" ]; then
-              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:${VERSION}-arm64" >> "$GITHUB_OUTPUT"
+              echo "${lang}=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${lang}:${VERSION}-arm64" >> "$GITHUB_OUTPUT"
             else
-              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:latest-arm64" >> "$GITHUB_OUTPUT"
+              echo "${lang}=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${lang}:latest-arm64" >> "$GITHUB_OUTPUT"
             fi
           done
 
@@ -2599,7 +2704,6 @@ jobs:
         with:
           images: |
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
-            ${{ env.DOCKERHUB_IMAGE_NAME }}
           flavor: |
             suffix=-arm64
           tags: |
@@ -2670,6 +2774,32 @@ jobs:
               .
 
   # === CREATE MULTI-ARCH MANIFEST ===
+      # Issue #115 (RC-3): GHCR is the registry of record - it is written with
+      # the per-run GITHUB_TOKEN, which cannot expire - and Docker Hub is a
+      # mirror of it. docker/metadata-action now emits GHCR names only, so the
+      # Docker Hub names are derived from them by rewriting the registry prefix.
+      - name: Mirror full box (arm64) to Docker Hub
+        if: steps.dockerhub-login.outcome == 'success'
+        env:
+          GHCR_TAGS: |
+            ${{ steps.meta.outputs.tags }}
+        run: |
+          GHCR_PREFIX="${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}"
+          DH_PREFIX="${{ env.DOCKERHUB_IMAGE_NAME }}"
+          SOURCE="${GHCR_PREFIX}:${{ steps.version.outputs.version }}-arm64"
+
+          TARGETS=()
+          while IFS= read -r tag; do
+            tag=$(echo "$tag" | xargs)
+            [ -z "$tag" ] && continue
+            suffix="${tag#"$GHCR_PREFIX"}"
+            # A name the prefix rewrite does not apply to is not ours to mirror.
+            [ "$suffix" = "$tag" ] && continue
+            TARGETS+=("${DH_PREFIX}${suffix}")
+          done <<< "$GHCR_TAGS"
+
+          bash scripts/release/mirror-to-dockerhub.sh "$SOURCE" "${TARGETS[@]}"
+
   docker-manifest:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -2838,7 +2968,7 @@ jobs:
             BASE_SUFFIX="-$NAME"
             DIND_SUFFIX="-${NAME}-dind"
           fi
-          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-amd64" >> "$GITHUB_OUTPUT"
+          echo "base_image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-amd64" >> "$GITHUB_OUTPUT"
           echo "dind_suffix=${DIND_SUFFIX}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
@@ -2892,8 +3022,6 @@ jobs:
           tags: |
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64
           provenance: false
           cache-from: type=gha,scope=dind-${{ matrix.variant }}-amd64
           cache-to: type=gha,scope=dind-${{ matrix.variant }}-amd64,mode=max
@@ -2907,14 +3035,25 @@ jobs:
               --build-arg BASE_IMAGE=${{ steps.names.outputs.base_image }} \
               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64 \
               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64 \
               --provenance=false \
               --cache-from type=gha,scope=dind-${{ matrix.variant }}-amd64 \
               --push \
               .
 
   # === BUILD DIND-BOX VARIANTS (arm64) - issue #80 ===
+      # Issue #115 (RC-3): GHCR is the registry of record - it is written with
+      # the per-run GITHUB_TOKEN, which cannot expire - and Docker Hub is a
+      # mirror of it. Pushing both registries in one `docker buildx build --push`
+      # meant a single expired DOCKERHUB_TOKEN destroyed the GHCR tags and the
+      # `cache-to: type=gha` export as collateral (run 33972074755).
+      - name: Mirror ${{ matrix.variant }} dind-box (amd64) to Docker Hub
+        if: steps.dockerhub-login.outcome == 'success'
+        run: |
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64"
+
   build-dind-arm64:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 45
@@ -2976,7 +3115,7 @@ jobs:
             BASE_SUFFIX="-$NAME"
             DIND_SUFFIX="-${NAME}-dind"
           fi
-          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-arm64" >> "$GITHUB_OUTPUT"
+          echo "base_image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-arm64" >> "$GITHUB_OUTPUT"
           echo "dind_suffix=${DIND_SUFFIX}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
@@ -3030,8 +3169,6 @@ jobs:
           tags: |
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64
           provenance: false
           cache-from: type=gha,scope=dind-${{ matrix.variant }}-arm64
           cache-to: type=gha,scope=dind-${{ matrix.variant }}-arm64,mode=max
@@ -3045,14 +3182,25 @@ jobs:
               --build-arg BASE_IMAGE=${{ steps.names.outputs.base_image }} \
               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64 \
               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64 \
               --provenance=false \
               --cache-from type=gha,scope=dind-${{ matrix.variant }}-arm64 \
               --push \
               .
 
   # === CREATE DIND-BOX MULTI-ARCH MANIFESTS - issue #80 ===
+      # Issue #115 (RC-3): GHCR is the registry of record - it is written with
+      # the per-run GITHUB_TOKEN, which cannot expire - and Docker Hub is a
+      # mirror of it. Pushing both registries in one `docker buildx build --push`
+      # meant a single expired DOCKERHUB_TOKEN destroyed the GHCR tags and the
+      # `cache-to: type=gha` export as collateral (run 33972074755).
+      - name: Mirror ${{ matrix.variant }} dind-box (arm64) to Docker Hub
+        if: steps.dockerhub-login.outcome == 'success'
+        run: |
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64"
+
   dind-manifest:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
