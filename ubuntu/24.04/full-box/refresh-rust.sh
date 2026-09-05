@@ -63,6 +63,10 @@ fi
 log_step "Refreshing the Rust stable toolchain"
 log_info "As copied from the rust image: $(rustc --version 2>/dev/null || echo 'unknown')"
 
+# The rustup *binary* comes from the copied stage too, and an old one can fail
+# to parse a newer channel manifest — self-update first so `update stable`
+# cannot be blocked by the age of the tool doing the updating.
+rustup self update || log_warning "rustup self-update unavailable (managed installation)"
 rustup update stable
 rustup default stable
 
