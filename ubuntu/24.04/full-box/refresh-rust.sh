@@ -71,7 +71,7 @@ rustup update stable
 rustup default stable
 
 # One toolchain per image (issue #112).
-RUST_KEEP="$(rustup show active-toolchain 2>/dev/null | awk '{print $1}')"
+RUST_KEEP="$(rustup show active-toolchain 2>/dev/null | awk 'NR==1 {print $1}')"
 for toolchain in $(rustup toolchain list 2>/dev/null | awk '{print $1}'); do
   if [ -n "$RUST_KEEP" ] && [ "$toolchain" != "$RUST_KEEP" ]; then
     log_info "Removing extra Rust toolchain $toolchain (keeping $RUST_KEEP)"
