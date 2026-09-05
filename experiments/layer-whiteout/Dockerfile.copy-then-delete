@@ -1,0 +1,6 @@
+# syntax=docker/dockerfile:1
+# What the full image used to do: copy the whole stage, then try to clean up.
+FROM whiteout-stage AS rust-stage
+FROM ubuntu:24.04
+COPY --from=rust-stage /opt/toolchains /opt/toolchains
+RUN rm -rf /opt/toolchains/stale

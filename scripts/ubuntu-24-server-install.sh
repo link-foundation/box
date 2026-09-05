@@ -69,6 +69,48 @@ command_exists() {
   command -v "$1" &>/dev/null
 }
 
+# =============================================================================
+# Build-time version policy (shared with the Docker boxes)
+# =============================================================================
+# The version resolvers live in ubuntu/24.04/common.sh so this bare-metal
+# installer and the images cannot drift apart (issue #112). common.sh is sourced
+# in a subshell only, so it can never clobber this script's own helpers; when it
+# is unavailable (plain `curl | bash` with no checkout and no network) every
+# lookup degrades to the pin passed as the second argument.
+BOX_COMMON_SH_URL="${BOX_COMMON_SH_URL:-https://raw.githubusercontent.com/link-foundation/box/main/ubuntu/24.04/common.sh}"
+BOX_COMMON_SH=""
+
+locate_box_common_sh() {
+  local script_dir="" candidate
+  if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  fi
+  for candidate in "${script_dir:+$script_dir/../ubuntu/24.04/common.sh}" /tmp/common.sh; do
+    if [ -n "$candidate" ] && [ -f "$candidate" ]; then
+      BOX_COMMON_SH="$candidate"
+      return 0
+    fi
+  done
+  if curl -fsSL --max-time 20 "$BOX_COMMON_SH_URL" -o /tmp/box-common.sh 2>/dev/null; then
+    BOX_COMMON_SH="/tmp/box-common.sh"
+    return 0
+  fi
+  return 1
+}
+
+# box_resolve <resolver-function> <fallback>
+box_resolve() {
+  local fn="$1" fallback="$2" out=""
+  if [ -n "$BOX_COMMON_SH" ]; then
+    out=$( (set +eu; . "$BOX_COMMON_SH" >/dev/null 2>&1; "$fn" 2>/dev/null) ) || out=""
+  fi
+  if [ -n "$out" ]; then
+    echo "$out"
+  else
+    echo "$fallback"
+  fi
+}
+
 # Run command with sudo only if not root and sudo is available
 maybe_sudo() {
   if [ "$EUID" -eq 0 ]; then
@@ -219,11 +261,23 @@ cleanup_duplicate_apt_sources() {
 # --- Ensure prerequisites ---
 log_step "Installing system prerequisites"
 
+locate_box_common_sh || log_warning "Version policy helpers unavailable; using pinned fallback versions"
+
+NODE_MAJOR="$(box_resolve resolve_node_lts_major 24)"
+NVM_INSTALL_VERSION="$(box_resolve resolve_nvm_version v0.40.7)"
+JAVA_MAJOR="$(box_resolve resolve_java_lts_major 25)"
+log_info "Resolved versions: Node ${NODE_MAJOR} LTS, nvm ${NVM_INSTALL_VERSION}, Java ${JAVA_MAJOR} LTS"
+
 cleanup_duplicate_apt_sources
 apt_update_safe
 
-log_info "Installing essential development tools..."
-maybe_sudo apt install -y wget curl unzip zip git sudo ca-certificates gnupg dotnet-sdk-8.0 build-essential expect screen
+# The .NET channel has to be resolved after apt knows its sources: the resolver
+# intersects Microsoft's active-LTS list with what this archive can install. The
+# last-resort pin is 8.0 because that is the channel Ubuntu 24.04 ships in its
+# own archive, so the install still succeeds without the version helpers.
+DOTNET_SDK_CHANNEL="$(box_resolve resolve_dotnet_apt_channel 8.0)"
+log_info "Installing essential development tools (.NET SDK ${DOTNET_SDK_CHANNEL})..."
+maybe_sudo apt install -y wget curl unzip zip git sudo ca-certificates gnupg "dotnet-sdk-${DOTNET_SDK_CHANNEL}" build-essential expect screen
 log_success "Essential tools installed"
 
 # --- Install C/C++ Development Tools ---
@@ -248,7 +302,13 @@ else
 fi
 
 # --- Install R Language ---
+# CRAN keeps a current R for every supported Ubuntu codename; the distro package
+# is frozen at whatever shipped with the release (issue #112).
 log_info "Installing R statistical language..."
+if [ -n "$BOX_COMMON_SH" ] && (set +eu; . "$BOX_COMMON_SH" >/dev/null 2>&1; add_cran_repo) >/dev/null 2>&1; then
+  log_success "CRAN repository configured"
+  apt_update_safe
+fi
 maybe_sudo apt install -y r-base
 log_success "R language installed"
 
@@ -441,7 +501,7 @@ fi
 # --- NVM + Node ---
 if [ ! -d "$HOME/.nvm" ]; then
   log_info "Installing NVM..."
-  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+  curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_INSTALL_VERSION}/install.sh" | bash
   log_success "NVM installed"
 else
   log_info "NVM already installed."
@@ -582,15 +642,15 @@ if [ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
   set -u
   log_success "SDKMAN loaded for current session"
 
-  log_info "Installing Java 21 LTS (OpenJDK via Eclipse Temurin)..."
+  log_info "Installing Java ${JAVA_MAJOR} LTS (OpenJDK via Eclipse Temurin)..."
   set +u
-  if ! sdk list java 2>/dev/null | grep -q "21.*tem.*installed"; then
-    sdk install java 21-tem < /dev/null || {
+  if ! sdk list java 2>/dev/null | grep "${JAVA_MAJOR}.*tem.*installed" >/dev/null; then
+    sdk install java "${JAVA_MAJOR}-tem" < /dev/null || {
       log_warning "Eclipse Temurin installation failed, trying default OpenJDK..."
-      sdk install java 21-open < /dev/null || true
+      sdk install java "${JAVA_MAJOR}-open" < /dev/null || true
     }
   else
-    log_info "Java 21 (Temurin) already installed."
+    log_info "Java ${JAVA_MAJOR} (Temurin) already installed."
   fi
   set -u
 
@@ -730,21 +790,21 @@ if command -v brew &>/dev/null; then
       export HOMEBREW_NO_ANALYTICS=1
       export HOMEBREW_NO_AUTO_UPDATE=1
 
-      log_info "Installing PHP 8.3 (this may take several minutes)..."
-      brew install shivammathur/php/php@8.3 || true
+      log_info "Installing the current stable PHP (this may take several minutes)..."
+      brew install php || true
 
-      if brew list --formula 2>/dev/null | grep -q "^php@8.3$"; then
-        brew link --overwrite --force shivammathur/php/php@8.3 2>&1 | grep -v "Warning" || true
+      if brew list --formula 2>/dev/null | grep -E "^php(@[0-9.]+)?$" >/dev/null; then
+        brew link --overwrite --force php 2>&1 | grep -v "Warning" || true
 
         BREW_PREFIX=$(brew --prefix 2>/dev/null || echo "")
-        if [[ -n "$BREW_PREFIX" && -d "$BREW_PREFIX/opt/php@8.3" ]]; then
-          export PATH="$BREW_PREFIX/opt/php@8.3/bin:$BREW_PREFIX/opt/php@8.3/sbin:$PATH"
+        if [[ -n "$BREW_PREFIX" && -d "$BREW_PREFIX/opt/php" ]]; then
+          export PATH="$BREW_PREFIX/opt/php/bin:$BREW_PREFIX/opt/php/sbin:$PATH"
 
-          if ! grep -q "php@8.3/bin" "$HOME/.bashrc" 2>/dev/null; then
+          if ! grep -q "opt/php/bin" "$HOME/.bashrc" 2>/dev/null; then
             cat >> "$HOME/.bashrc" << 'PHP_PATH_EOF'
 
-# PHP 8.3 PATH configuration
-export PATH="$(brew --prefix)/opt/php@8.3/bin:$(brew --prefix)/opt/php@8.3/sbin:$PATH"
+# PHP PATH configuration
+export PATH="$(brew --prefix)/opt/php/bin:$(brew --prefix)/opt/php/sbin:$PATH"
 PHP_PATH_EOF
           fi
         fi
@@ -832,13 +892,15 @@ if [ ! -d "$HOME/.rbenv" ]; then
   eval "$(rbenv init - bash)"
   log_success "rbenv installed and configured"
 
-  # Install latest stable Ruby 3.x version (avoid pre-release 4.x)
+  # `rbenv install -l` lists only stable releases, so the newest numeric entry is
+  # the latest stable Ruby of any major (the old 3.x filter would have pinned the
+  # box to Ruby 3 forever — issue #112).
   log_info "Installing latest stable Ruby version (this may take several minutes)..."
-  LATEST_RUBY=$(rbenv install -l 2>/dev/null | grep -E '^\s*3\.[0-9]+\.[0-9]+$' | tail -1 | tr -d '[:space:]')
+  LATEST_RUBY=$(rbenv install -l 2>/dev/null | grep -E '^[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+$' | tail -1 | tr -d '[:space:]')
 
   if [ -n "$LATEST_RUBY" ]; then
     log_info "Installing Ruby $LATEST_RUBY..."
-    if ! rbenv versions | grep -q "$LATEST_RUBY"; then
+    if ! rbenv versions --bare 2>/dev/null | grep -E "^${LATEST_RUBY}$" >/dev/null; then
       rbenv install "$LATEST_RUBY"
     else
       log_info "Ruby $LATEST_RUBY already installed."
@@ -878,10 +940,28 @@ if ! command -v swift &>/dev/null; then
 
   if [ -n "$SWIFT_DIR" ]; then
     # Swift version for Ubuntu 24.04
-    SWIFT_VERSION="6.0.3"
+    # Newest release that actually publishes a build for this Ubuntu/arch (#112)
     SWIFT_RELEASE="RELEASE"
-    SWIFT_PACKAGE="swift-${SWIFT_VERSION}-${SWIFT_RELEASE}-${SWIFT_FILE_SUFFIX}"
-    SWIFT_URL="https://download.swift.org/swift-${SWIFT_VERSION}-release/${SWIFT_DIR}/swift-${SWIFT_VERSION}-${SWIFT_RELEASE}/${SWIFT_PACKAGE}.tar.gz"
+    if ! command -v remote_file_exists >/dev/null 2>&1; then
+      # -L matters: download.swift.org redirects a missing tarball to
+      # swift.org/404.html, and curl treats the 302 itself as success.
+      remote_file_exists() { curl -fsSIL --max-time 30 "$1" >/dev/null 2>&1; }
+    fi
+    SWIFT_CANDIDATES="$(box_resolve resolve_swift_versions 6.3.3)"
+    SWIFT_VERSION=""
+    SWIFT_URL=""
+    SWIFT_PACKAGE=""
+    for candidate in $SWIFT_CANDIDATES; do
+      candidate_package="swift-${candidate}-${SWIFT_RELEASE}-${SWIFT_FILE_SUFFIX}"
+      candidate_url="https://download.swift.org/swift-${candidate}-release/${SWIFT_DIR}/swift-${candidate}-${SWIFT_RELEASE}/${candidate_package}.tar.gz"
+      if remote_file_exists "$candidate_url"; then
+        SWIFT_VERSION="$candidate"
+        SWIFT_PACKAGE="$candidate_package"
+        SWIFT_URL="$candidate_url"
+        break
+      fi
+      log_info "No Swift $candidate build for ${SWIFT_FILE_SUFFIX}, trying the previous release..."
+    done
 
     log_info "Downloading Swift $SWIFT_VERSION for $ARCH..."
     log_info "URL: $SWIFT_URL"
@@ -946,15 +1026,17 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
-# Ensure Node 20 is installed and active
-if ! nvm ls 20 | grep -q 'v20'; then
-  log_info "Installing Node.js 20..."
-  nvm install 20
-  log_success "Node.js 20 installed"
+# Ensure the resolved Node LTS is installed, active AND the default alias, so
+# that login shells and this script agree on the same runtime (issue #112).
+if ! nvm ls "$NODE_MAJOR" 2>/dev/null | grep "v${NODE_MAJOR}\." >/dev/null; then
+  log_info "Installing Node.js ${NODE_MAJOR}..."
+  nvm install "$NODE_MAJOR"
+  log_success "Node.js ${NODE_MAJOR} installed"
 else
-  log_info "Node.js 20 already installed"
+  log_info "Node.js ${NODE_MAJOR} already installed"
 fi
-nvm use 20
+nvm use "$NODE_MAJOR"
+nvm alias default "$NODE_MAJOR"
 
 # Update npm to latest version
 log_info "Updating npm to latest version..."

@@ -40,10 +40,28 @@ on:
         type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Push/dispatch runs keep the classic one-run-per-ref group.
+  #
+  # Pull request runs deliberately get a group of their own (issue #112 follow-up).
+  # A shared group did not do what it promises here: on PR #113 four commits were
+  # pushed inside twelve minutes and GitHub kept the run for the OLDEST one alive
+  # — run 33959630651 started its `pr-test / full` job at 10:29, twenty-two
+  # minutes after that commit had been superseded — while every newer run sat in
+  # the `pending` state behind the group and was cancelled by the next one
+  # without ever executing a step. A `pending` run cannot cancel its predecessor,
+  # because it cannot run anything at all, so the group is the deadlock rather
+  # than the cure. Supersession is handled explicitly instead, by the
+  # `cancel-superseded` job below plus the per-job guard in every expensive job
+  # (scripts/ci/supersede.sh).
+  group: ${{ github.event_name == 'pull_request' && format('{0}-pr-{1}-run-{2}', github.workflow, github.event.pull_request.number, github.run_id) || format('{0}-{1}', github.workflow, github.ref) }}
   cancel-in-progress: true
 
 env:
+  # The full-box Dockerfiles use `RUN --mount=type=bind,from=<stage>` to refresh
+  # the copied rustup toolchains inside the same layer (issue #112). buildx
+  # enables BuildKit implicitly; the plain `docker build` steps below need it
+  # switched on explicitly or that syntax is a parse error.
+  DOCKER_BUILDKIT: "1"
   # GitHub Container Registry
   GHCR_REGISTRY: ghcr.io
   GHCR_IMAGE_NAME: ${{ github.repository }}
@@ -52,6 +70,38 @@ env:
   DOCKERHUB_IMAGE_NAME: konard/box
 
 jobs:
+  # === CANCEL SUPERSEDED RUNS (PRs only) — issue #112 follow-up ===
+  #
+  # "We must fix our CI/CD, so previous commits skip execution in pull requests,
+  #  if multiple are committed in the order. So we only execute on last commit,
+  #  and reduce resource waste on all previous commits."
+  #
+  # This is the first job of every pull request run and it takes seconds: it asks
+  # the API which runs of this workflow are still live for an earlier commit of
+  # this PR and cancels them. Doing it from inside the run — rather than leaving
+  # it to `concurrency` — is what makes it work, because the per-run concurrency
+  # group above guarantees this job can actually start (see the note there).
+  # Covered by experiments/test-issue112-supersede.sh.
+  cancel-superseded:
+    name: Cancel superseded runs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cancel runs for superseded commits of this pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_HEAD_REPO_ID: ${{ github.event.pull_request.head.repo.id }}
+        run: bash scripts/ci/supersede.sh cancel-older
+
   # === VERSION CHECK (PRs only) ===
   # Prohibit manual version changes in VERSION file - versions should only be changed by CI/CD
   version-check:
@@ -312,12 +362,75 @@ jobs:
   #
   # See: docs/case-studies/issue-82/CASE-STUDY.md
 
+  # --- Tier 0: version policy (no image build, runs in seconds) ---
+  # The resolvers in ubuntu/24.04/common.sh are the only thing keeping a rebuild
+  # from shipping last year's runtimes (issue #112), and refresh-rust.sh depends
+  # on a layer property (a delete after COPY --from reclaims nothing) that is
+  # easy to regress. Both are covered without building an image, so this job
+  # gates the expensive tiers below.
+  pr-test-version-policy:
+    name: pr-test / version-policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: [version-check, changeset-check]
+    if: |
+      always() &&
+      (needs.version-check.result == 'success' || needs.version-check.result == 'skipped') &&
+      (needs.changeset-check.result == 'success' || needs.changeset-check.result == 'skipped') &&
+      github.event_name == 'pull_request'
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
+
+      - name: Version resolvers and one-version-per-language invariant
+        run: bash experiments/version-policy-unit-test.sh
+
+      - name: Layer semantics behind the rustup refresh
+        run: bash experiments/rust-refresh-layer-test.sh
+
+      - name: Superseded-commit guard (stubbed API) and its workflow wiring
+        run: bash experiments/test-issue112-supersede.sh
+
+      - name: Resolvers agree with the live upstream feeds
+        # Not an assertion on a specific version — it fails only if a feed
+        # changed shape and every resolver silently fell back to its pin.
+        run: |
+          set -e
+          . ubuntu/24.04/common.sh
+          for fn in resolve_node_lts_major resolve_nvm_version resolve_java_lts_major \
+                    resolve_dotnet_lts_channel resolve_swift_versions resolve_opam_version; do
+            value="$("$fn" | head -n1)"
+            echo "$fn -> $value"
+            [ -n "$value" ] || { echo "::error::$fn returned nothing"; exit 1; }
+          done
+
   # --- Tier 1: JS box ---
   pr-test-js:
     name: pr-test / js
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    needs: [detect-changes, version-check, changeset-check]
+    needs: [detect-changes, version-check, changeset-check, pr-test-version-policy]
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
@@ -325,9 +438,30 @@ jobs:
       (needs.changeset-check.result == 'success' || needs.changeset-check.result == 'skipped') &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.should-build == 'true'
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -353,6 +487,29 @@ jobs:
           docker run --rm box-js bash -c '. $HOME/.nvm/nvm.sh && node --version'
           docker run --rm box-js bash -c 'export PATH=$HOME/.bun/bin:$PATH && bun --version'
           docker run --rm box-js bash -c 'export PATH=$HOME/.deno/bin:$PATH && deno --version'
+
+          # Issue #112: the image must ship the Node LTS that was current when it
+          # was built, exactly one of them, and a login shell must agree.
+          echo "=== Node freshness and one-version invariant ==="
+          . ubuntu/24.04/common.sh
+          EXPECTED_NODE="$(resolve_node_lts_major)"
+          echo "expected Node major: $EXPECTED_NODE"
+          docker run --rm -e EXPECTED_NODE="$EXPECTED_NODE" box-js bash -c '
+            set -e
+            . "$HOME/.nvm/nvm.sh"
+            actual="$(node --version)"
+            echo "image ships $actual, nvm default alias -> $(nvm version default)"
+            case "$actual" in
+              v"$EXPECTED_NODE".*) ;;
+              *) echo "::error::image ships $actual, expected Node $EXPECTED_NODE"; exit 1 ;;
+            esac
+            # Without an explicit default alias the image could ship one Node
+            # and activate another (issue #112).
+            [ "$(nvm version default)" = "$actual" ] \
+              || { echo "::error::nvm default alias is $(nvm version default), active is $actual"; exit 1; }
+            count="$(ls -1 "$HOME/.nvm/versions/node" | wc -l)"
+            [ "$count" -eq 1 ] || { echo "::error::$count Node versions in the image"; exit 1; }
+          '
           echo "=== JS box tests passed ==="
 
   # --- Tier 2: essentials box ---
@@ -366,9 +523,30 @@ jobs:
       needs.pr-test-js.result == 'success' &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.should-build == 'true'
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -407,7 +585,7 @@ jobs:
     name: pr-test / ${{ matrix.language }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    needs: [detect-changes, version-check, changeset-check, pr-test-essentials]
+    needs: [detect-changes, version-check, changeset-check, pr-test-version-policy, pr-test-essentials]
     if: |
       always() &&
       needs.pr-test-essentials.result == 'success' &&
@@ -417,9 +595,30 @@ jobs:
       fail-fast: false
       matrix:
         language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq]
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -510,9 +709,30 @@ jobs:
       needs.pr-test-language.result == 'success' &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.should-build == 'true'
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -625,6 +845,32 @@ jobs:
           docker run --rm box-test expect -v
 
           echo ""
+          echo "=== Runtime freshness and one-version-per-language invariant (issue #112) ==="
+          . ubuntu/24.04/common.sh
+          EXPECTED_NODE="$(resolve_node_lts_major)"
+          ACTUAL_NODE="$(docker run --rm box-test node --version)"
+          echo "full box ships Node $ACTUAL_NODE, expected major $EXPECTED_NODE"
+          case "$ACTUAL_NODE" in
+            v"$EXPECTED_NODE".*) ;;
+            *) echo "::error::full box ships $ACTUAL_NODE, expected Node $EXPECTED_NODE"; exit 1 ;;
+          esac
+
+          # The stale `stable` next to a pinned toolchain is the 2.2 GB ~/.rustup
+          # from issue #112: assert one toolchain, and that it is the one rustup
+          # itself considers current. `rustup check` also reports updates for the
+          # rustup binary, which is not what this asserts — toolchain lines only.
+          docker run --rm box-test rustup toolchain list
+          TOOLCHAINS="$(docker run --rm box-test rustup toolchain list | grep -c .)"
+          [ "$TOOLCHAINS" -eq 1 ] \
+            || { echo "::error::$TOOLCHAINS rustup toolchains in the full box, expected 1"; exit 1; }
+          if docker run --rm box-test rustup check | grep -v "^rustup " | grep "Update available"; then
+            echo "::error::the shipped Rust stable is not the current release"; exit 1
+          fi
+
+          docker run --rm -v "$PWD/ubuntu/24.04/common.sh:/tmp/common.sh:ro" \
+            box-test bash -c '. /tmp/common.sh && assert_single_runtime_versions'
+
+          echo ""
           echo "=== PHP install method check ==="
           docker run --rm box-php cat /home/box/.php-install-method
           docker run --rm box-test cat /home/box/.php-install-method
@@ -641,7 +887,7 @@ jobs:
     name: pr-test / dind-${{ matrix.variant }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    needs: [detect-changes, version-check, changeset-check, pr-test-essentials]
+    needs: [detect-changes, version-check, changeset-check, pr-test-version-policy, pr-test-essentials]
     if: |
       always() &&
       needs.pr-test-essentials.result == 'success' &&
@@ -653,9 +899,30 @@ jobs:
         # variant -> base box flavour. Special value "full" rebuilds the entire chain;
         # everything else needs only JS+essentials+<lang>.
         variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -783,7 +1050,7 @@ jobs:
   docker-build-test:
     name: docker-build-test
     runs-on: ubuntu-24.04
-    needs: [detect-changes, version-check, changeset-check, pr-test-js, pr-test-essentials, pr-test-language, pr-test-full, pr-test-dind]
+    needs: [detect-changes, version-check, changeset-check, pr-test-version-policy, pr-test-js, pr-test-essentials, pr-test-language, pr-test-full, pr-test-dind]
     if: |
       always() &&
       github.event_name == 'pull_request' &&
@@ -792,6 +1059,7 @@ jobs:
       - name: Aggregate pr-test results
         run: |
           set -e
+          echo "pr-test-version-policy: ${{ needs.pr-test-version-policy.result }}"
           echo "pr-test-js:         ${{ needs.pr-test-js.result }}"
           echo "pr-test-essentials: ${{ needs.pr-test-essentials.result }}"
           echo "pr-test-language:   ${{ needs.pr-test-language.result }}"
@@ -800,6 +1068,7 @@ jobs:
 
           fail=0
           for r in \
+            "${{ needs.pr-test-version-policy.result }}" \
             "${{ needs.pr-test-js.result }}" \
             "${{ needs.pr-test-essentials.result }}" \
             "${{ needs.pr-test-language.result }}" \

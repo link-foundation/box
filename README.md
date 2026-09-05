@@ -9,19 +9,25 @@ This box provides a pre-configured development environment with common language 
 ## Included Runtimes & Tools
 
 ### Programming Languages
-- **Node.js 20** (via NVM) + npm + Bun + Deno
+- **Node.js** (current LTS, via NVM) + npm + Bun + Deno
 - **Python** (latest stable via pyenv)
 - **Go** (latest stable)
 - **Rust** (via rustup) + Cargo
-- **Java 21 LTS** (Eclipse Temurin via SDKMAN)
+- **Java** (current LTS — Eclipse Temurin via SDKMAN)
 - **Kotlin** (via SDKMAN)
-- **PHP 8.3** (via Homebrew)
+- **PHP** (latest stable via Homebrew)
 - **Perl** (latest stable via Perlbrew)
 - **Ruby** (latest stable via rbenv)
-- **Swift 6.x** (latest stable)
-- **R** (latest stable)
-- **.NET SDK 8.0**
+- **Swift** (latest release with an Ubuntu 24.04 toolchain)
+- **R** (latest stable, from CRAN)
+- **.NET SDK** (newest LTS channel available in the archive)
 - **Assembly** (GNU Assembler, NASM, LLVM-MC, FASM)
+
+No runtime version is hardcoded: each one is resolved from its upstream release
+feed while the image is built (override with `NODE_VERSION`, `JAVA_VERSION`,
+`DOTNET_CHANNEL`, `SWIFT_VERSION`, … for a reproducible build), and every image
+carries exactly one version per language. See
+[`docs/case-studies/issue-112/CASE-STUDY.md`](docs/case-studies/issue-112/CASE-STUDY.md).
 
 ### Theorem Provers
 - **Lean** (via elan)
@@ -78,10 +84,10 @@ dind-box variants (issue #80, Docker-in-Docker):
 | `konard/box-python` | Python (pyenv) | Built on essentials |
 | `konard/box-go` | Go (latest stable) | Built on essentials |
 | `konard/box-rust` | Rust (rustup + cargo) | Built on essentials |
-| `konard/box-java` | Java 21 (SDKMAN + Temurin) | Built on essentials |
+| `konard/box-java` | Java LTS (SDKMAN + Temurin) | Built on essentials |
 | `konard/box-kotlin` | Kotlin (SDKMAN) | Built on essentials |
 | `konard/box-ruby` | Ruby (rbenv) | Built on essentials |
-| `konard/box-php` | PHP 8.3 (Homebrew) | Built on essentials |
+| `konard/box-php` | PHP (Homebrew) | Built on essentials |
 | `konard/box-perl` | Perl (Perlbrew) | Built on essentials |
 | `konard/box-swift` | Swift 6.x | Built on essentials |
 | `konard/box-lean` | Lean (elan) | Built on essentials |
@@ -95,16 +101,16 @@ Each language has its own standalone `install.sh` and `Dockerfile` under `ubuntu
 
 | Language | Directory | Key Tools |
 |----------|-----------|-----------|
-| JavaScript/TypeScript | `ubuntu/24.04/js/` | NVM, Node.js, Bun, Deno, npm |
+| JavaScript/TypeScript | `ubuntu/24.04/js/` | NVM, Node.js (LTS), Bun, Deno, npm |
 | Python | `ubuntu/24.04/python/` | Pyenv, latest stable Python |
 | Go | `ubuntu/24.04/go/` | Latest stable Go |
 | Rust | `ubuntu/24.04/rust/` | rustup, Cargo |
-| Java | `ubuntu/24.04/java/` | SDKMAN, Eclipse Temurin 21 |
+| Java | `ubuntu/24.04/java/` | SDKMAN, Eclipse Temurin (LTS) |
 | Kotlin | `ubuntu/24.04/kotlin/` | SDKMAN, Kotlin |
-| .NET | `ubuntu/24.04/dotnet/` | .NET SDK 8.0 |
-| R | `ubuntu/24.04/r/` | R base |
-| Ruby | `ubuntu/24.04/ruby/` | rbenv, latest Ruby 3.x |
-| PHP | `ubuntu/24.04/php/` | Homebrew, PHP 8.3 |
+| .NET | `ubuntu/24.04/dotnet/` | .NET SDK (LTS channel) |
+| R | `ubuntu/24.04/r/` | R base (CRAN) |
+| Ruby | `ubuntu/24.04/ruby/` | rbenv, latest stable Ruby |
+| PHP | `ubuntu/24.04/php/` | Homebrew, latest stable PHP |
 | Perl | `ubuntu/24.04/perl/` | Perlbrew, latest Perl |
 | Swift | `ubuntu/24.04/swift/` | Swift 6.x |
 | Lean | `ubuntu/24.04/lean/` | elan, Lean prover |

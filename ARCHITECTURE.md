@@ -155,22 +155,22 @@ box/
 │       ├── kotlin/                  # Kotlin (SDKMAN)
 │       │   ├── install.sh
 │       │   └── Dockerfile
-│       ├── dotnet/                  # .NET SDK 8.0
+│       ├── dotnet/                  # .NET SDK (LTS channel)
 │       │   ├── install.sh
 │       │   └── Dockerfile
-│       ├── r/                       # R language
+│       ├── r/                       # R language (CRAN)
 │       │   ├── install.sh
 │       │   └── Dockerfile
 │       ├── ruby/                    # Ruby (rbenv)
 │       │   ├── install.sh
 │       │   └── Dockerfile
-│       ├── php/                     # PHP 8.3 (Homebrew)
+│       ├── php/                     # PHP (Homebrew)
 │       │   ├── install.sh
 │       │   └── Dockerfile
 │       ├── perl/                    # Perl (Perlbrew)
 │       │   ├── install.sh
 │       │   └── Dockerfile
-│       ├── swift/                   # Swift 6.x
+│       ├── swift/                   # Swift (latest release)
 │       │   ├── install.sh
 │       │   └── Dockerfile
 │       ├── lean/                    # Lean (elan)
@@ -288,6 +288,80 @@ PHP images are tagged with `-local` or `-global` suffix to indicate the install 
 The full-box reads the marker file and adjusts accordingly:
 - If `local`: copies `/home/linuxbrew/.linuxbrew` from php-stage
 - If `global`: installs PHP packages via apt directly
+
+### 5. Build-Time Version Resolution (Issue #112)
+
+No image pins a runtime version in a Dockerfile or an install script. Every
+version is resolved **while the image is being built**, by the resolvers in
+`ubuntu/24.04/common.sh`, which every Dockerfile already copies to
+`/tmp/common.sh`. Three layers, in priority order:
+
+1. **An explicit override** — `NODE_VERSION`, `JAVA_VERSION`, `DOTNET_CHANNEL`,
+   `SWIFT_VERSION`, `RUBY_VERSION`, `NVM_VERSION`, `OPAM_VERSION`,
+   `PHP_BREW_FORMULA`. Set one and the build is reproducible.
+2. **The upstream release feed** — nodejs.org's `index.json` (newest *LTS*, not
+   newest release), SDKMAN's Java list filtered to the LTS cadence (8, 11, 17,
+   then every 4th from 21), Microsoft's `releases-index.json` intersected with
+   what the archive can actually install, swift.org's release list, and the
+   GitHub `/releases/latest` redirect for nvm and opam.
+3. **A pinned fallback** — used only when a feed is unreachable, so a network
+   blip degrades to a known-good version instead of failing the build.
+
+Two properties keep this honest:
+
+- **One version per language root.** `assert_single_runtime_versions()` fails a
+  build that leaves two entries under `~/.nvm/versions/node`,
+  `~/.rustup/toolchains`, `~/.pyenv/versions`, `~/.rbenv/versions` or any
+  `~/.sdkman/candidates/*`. A second entry always means a stale toolchain was
+  carried in from a cached language image and is costing gigabytes.
+- **Refresh happens in the layer that creates it.** `COPY --from=rust-stage`
+  bakes whatever the (possibly cached) rust image was built with, and a later
+  `rustup update` plus delete reclaims nothing — the bytes are already committed
+  and the delete only writes a whiteout, so the image carries both toolchains.
+  `full-box/refresh-rust.sh` therefore binds the stage with
+  `RUN --mount=type=bind,from=rust-stage` and copies, updates and prunes inside
+  a single `RUN`. `experiments/rust-refresh-layer-test.sh` measures both
+  variants and asserts the difference.
+
+The same resolvers back `scripts/ubuntu-24-server-install.sh` and
+`scripts/measure-disk-space.sh` (sourced in a subshell so they cannot clobber
+those scripts' own helpers), so a bare-metal install and an image agree.
+
+**Ubuntu stays on 24.04 LTS.** It is the newest release for which Swift
+publishes a Linux toolchain; swift.org's release feed carries `ubuntu2404`
+builds and nothing newer. Everything installed *on top of* 24.04 tracks its own
+upstream, so the base LTS being one cycle behind does not hold any runtime back.
+
+### 6. Pull-Request Runs Are Superseded Explicitly (Issue #112)
+
+`release.yml` gives **pull-request** runs a concurrency group that is unique per
+run (`<workflow>-pr-<number>-run-<run_id>`); only push/tag runs keep the per-ref
+group that serialises releases. This is deliberate and the opposite of the usual
+advice, because the usual advice deadlocks: a run blocked on a shared group is
+`pending`, executes no step, and therefore cannot cancel the predecessor holding
+it — the predecessor kept running, the newest commit never started, and each
+pending run was cancelled by the next one.
+
+Supersession is instead done by code that actually runs, `scripts/ci/supersede.sh`:
+
+- **`cancel-older`** — the `cancel-superseded` job, first in the run with no
+  `needs:`, cancels every still-live run of this workflow that belongs to an
+  earlier commit of the same pull request.
+- **`stop-if-superseded`** — the first step after checkout in every expensive PR
+  job re-reads the pull request head and cancels its own run if the commit has
+  moved on. Necessary because a matrix job can sit queued long enough for its
+  commit to become stale.
+- **`watch`** — started in the background by that same step, it polls every five
+  minutes for the rest of the job. `cancel-superseded` needs a runner of its own,
+  and a superseded run holding the account's job concurrency is exactly why none
+  is free; a job that is already running can cancel the run from the inside, and
+  one cancelled run frees every slot it holds at once.
+
+A cancel is a request, not a guarantee (the platform ignored one here while the
+job it targeted ran to a green finish), so every cancel is verified and escalated
+to `force-cancel` after a grace period. Everything fails open: a fork pull
+request's read-only token cannot cancel anything, and losing a cancellation only
+wastes runner minutes, while a false one would lose test coverage.
 
 ## Performance Considerations
 

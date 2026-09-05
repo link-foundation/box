@@ -1,0 +1,7 @@
+# Stand-in for konard/box-rust:latest — a home with two toolchains, one of them
+# the frozen `stable` snapshot issue #112 describes.
+FROM ubuntu:24.04
+ARG PAYLOAD_MB=128
+RUN mkdir -p /opt/toolchains/keep /opt/toolchains/stale && \
+    head -c "$(( PAYLOAD_MB * 1024 * 1024 ))" /dev/urandom > /opt/toolchains/keep/payload.bin && \
+    head -c "$(( PAYLOAD_MB * 1024 * 1024 ))" /dev/urandom > /opt/toolchains/stale/payload.bin

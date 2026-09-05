@@ -35,9 +35,10 @@ log_step "Installing additional system packages"
 
 apt_update_with_retry
 
-# .NET SDK
-log_info "Installing .NET SDK 8.0..."
-maybe_sudo apt install -y dotnet-sdk-8.0
+# .NET SDK — channel resolved at build time (issue #112), not hardcoded
+DOTNET_SDK_CHANNEL="$(resolve_dotnet_apt_channel 2>/dev/null || echo "${DOTNET_CHANNEL:-10.0}")"
+log_info "Installing .NET SDK ${DOTNET_SDK_CHANNEL}..."
+maybe_sudo apt install -y "dotnet-sdk-${DOTNET_SDK_CHANNEL}"
 log_success ".NET SDK installed"
 
 # C/C++ tools
@@ -56,8 +57,11 @@ else
   log_success "Assembly tools installed (NASM only)"
 fi
 
-# R language
+# R language — CRAN's maintained build when reachable, distro R otherwise
 log_info "Installing R statistical language..."
+if command -v add_cran_repo >/dev/null 2>&1 && add_cran_repo; then
+  apt_update_with_retry
+fi
 maybe_sudo apt install -y r-base
 log_success "R language installed"
 
@@ -199,9 +203,11 @@ if [ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
   source "$SDKMAN_DIR/bin/sdkman-init.sh"
   set -u
 
-  if ! sdk list java 2>/dev/null | grep -q "21.*tem.*installed"; then
+  JAVA_MAJOR="$(resolve_java_lts_major 2>/dev/null || echo "${JAVA_VERSION:-25}")"
+  if ! sdk list java 2>/dev/null | grep "${JAVA_MAJOR}.*tem.*installed" >/dev/null; then
     set +u
-    sdk install java 21-tem < /dev/null || sdk install java 21-open < /dev/null || true
+    sdk install java "${JAVA_MAJOR}-tem" < /dev/null || sdk install java "${JAVA_MAJOR}-open" < /dev/null || true
+    sdk default java "${JAVA_MAJOR}-tem" < /dev/null 2>/dev/null || true
     set -u
   fi
 fi
@@ -299,17 +305,17 @@ if command_exists brew; then
     if brew tap | grep -q "shivammathur/php"; then
       export HOMEBREW_NO_ANALYTICS=1
       export HOMEBREW_NO_AUTO_UPDATE=1
-      brew install shivammathur/php/php@8.3 || true
-      if brew list --formula 2>/dev/null | grep -q "^php@8.3$"; then
-        brew link --overwrite --force shivammathur/php/php@8.3 2>&1 | grep -v "Warning" || true
+      brew install php || true
+      if brew list --formula 2>/dev/null | grep -E "^php(@[0-9.]+)?$" >/dev/null; then
+        brew link --overwrite --force php 2>&1 | grep -v "Warning" || true
         BREW_PREFIX=$(brew --prefix 2>/dev/null || echo "")
-        if [[ -n "$BREW_PREFIX" && -d "$BREW_PREFIX/opt/php@8.3" ]]; then
-          export PATH="$BREW_PREFIX/opt/php@8.3/bin:$BREW_PREFIX/opt/php@8.3/sbin:$PATH"
-          if ! grep -q "php@8.3/bin" "$HOME/.bashrc" 2>/dev/null; then
+        if [[ -n "$BREW_PREFIX" && -d "$BREW_PREFIX/opt/php" ]]; then
+          export PATH="$BREW_PREFIX/opt/php/bin:$BREW_PREFIX/opt/php/sbin:$PATH"
+          if ! grep -q "opt/php/bin" "$HOME/.bashrc" 2>/dev/null; then
             cat >> "$HOME/.bashrc" << 'PHP_PATH_EOF'
 
-# PHP 8.3 PATH configuration
-export PATH="$(brew --prefix)/opt/php@8.3/bin:$(brew --prefix)/opt/php@8.3/sbin:$PATH"
+# PHP PATH configuration
+export PATH="$(brew --prefix)/opt/php/bin:$(brew --prefix)/opt/php/sbin:$PATH"
 PHP_PATH_EOF
           fi
         fi
@@ -376,9 +382,9 @@ if [ ! -d "$HOME/.rbenv" ]; then
   export PATH="$HOME/.rbenv/bin:$PATH"
   eval "$(rbenv init - bash)"
 
-  LATEST_RUBY=$(rbenv install -l 2>/dev/null | grep -E '^\s*3\.[0-9]+\.[0-9]+$' | tail -1 | tr -d '[:space:]')
+  LATEST_RUBY=$(rbenv install -l 2>/dev/null | grep -E '^[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+$' | tail -1 | tr -d '[:space:]')
   if [ -n "$LATEST_RUBY" ]; then
-    if ! rbenv versions | grep -q "$LATEST_RUBY"; then
+    if ! rbenv versions --bare 2>/dev/null | grep -E "^${LATEST_RUBY}$" >/dev/null; then
       rbenv install "$LATEST_RUBY"
     fi
     rbenv global "$LATEST_RUBY"
@@ -396,13 +402,29 @@ if ! command_exists swift; then
   esac
 
   if [ -n "$SWIFT_DIR" ]; then
-    SWIFT_VERSION="6.0.3"
+    # Newest release that actually ships a build for this Ubuntu/arch (#112).
     SWIFT_RELEASE="RELEASE"
-    SWIFT_PACKAGE="swift-${SWIFT_VERSION}-${SWIFT_RELEASE}-${SWIFT_FILE_SUFFIX}"
-    SWIFT_URL="https://download.swift.org/swift-${SWIFT_VERSION}-release/${SWIFT_DIR}/swift-${SWIFT_VERSION}-${SWIFT_RELEASE}/${SWIFT_PACKAGE}.tar.gz"
+    if ! command -v remote_file_exists >/dev/null 2>&1; then
+      # -L matters: download.swift.org redirects a missing tarball to
+      # swift.org/404.html, and curl treats the 302 itself as success.
+      remote_file_exists() { curl -fsSIL --max-time 30 "$1" >/dev/null 2>&1; }
+    fi
+    SWIFT_CANDIDATES="$(resolve_swift_versions 2>/dev/null || echo "${SWIFT_VERSION:-6.3.3}")"
+    SWIFT_VERSION=""
+    SWIFT_URL=""
+    for candidate in $SWIFT_CANDIDATES; do
+      candidate_package="swift-${candidate}-${SWIFT_RELEASE}-${SWIFT_FILE_SUFFIX}"
+      candidate_url="https://download.swift.org/swift-${candidate}-release/${SWIFT_DIR}/swift-${candidate}-${SWIFT_RELEASE}/${candidate_package}.tar.gz"
+      if remote_file_exists "$candidate_url"; then
+        SWIFT_VERSION="$candidate"
+        SWIFT_PACKAGE="$candidate_package"
+        SWIFT_URL="$candidate_url"
+        break
+      fi
+    done
 
     TEMP_DIR=$(mktemp -d)
-    if curl -fsSL "$SWIFT_URL" -o "$TEMP_DIR/swift.tar.gz"; then
+    if [ -n "$SWIFT_URL" ] && curl -fsSL "$SWIFT_URL" -o "$TEMP_DIR/swift.tar.gz"; then
       mkdir -p "$HOME/.swift"
       tar -xzf "$TEMP_DIR/swift.tar.gz" -C "$TEMP_DIR"
       cp -r "$TEMP_DIR/${SWIFT_PACKAGE}/usr" "$HOME/.swift/"

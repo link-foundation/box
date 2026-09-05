@@ -38,7 +38,14 @@ if ! command_exists opam; then
       aarch64) OPAM_ARCH="arm64" ;;
       *)       OPAM_ARCH="$ARCH" ;;
     esac
-    curl -fsSL "https://github.com/ocaml/opam/releases/latest/download/opam-2.3.0-${OPAM_ARCH}-linux" -o "$OPAM_BIN_DIR/opam" && \
+    # /releases/latest/download/<asset> only works when <asset> exists in the
+    # newest release — "opam-2.3.0-..." stopped existing the day 2.4 shipped, so
+    # this fallback had been 404ing. Resolve the current tag instead (issue #112).
+    if ! command -v resolve_opam_version >/dev/null 2>&1; then
+      resolve_opam_version() { echo "${OPAM_VERSION:-2.5.2}"; }
+    fi
+    OPAM_BIN_VERSION="$(resolve_opam_version)"
+    curl -fsSL "https://github.com/ocaml/opam/releases/download/${OPAM_BIN_VERSION}/opam-${OPAM_BIN_VERSION}-${OPAM_ARCH}-linux" -o "$OPAM_BIN_DIR/opam" && \
       chmod +x "$OPAM_BIN_DIR/opam" || true
   }
 

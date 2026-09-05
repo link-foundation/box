@@ -40,7 +40,11 @@ if [ ! -d "$HOME/.pyenv" ]; then
   fi
   log_success "Pyenv installed and configured"
 else
-  log_info "Pyenv already installed."
+  # pyenv carries its list of installable Pythons as build scripts, so a pyenv
+  # cloned months ago cannot install anything released since. Refresh it before
+  # asking for "the latest" (issue #112).
+  log_info "Pyenv already installed; refreshing it..."
+  git -C "$HOME/.pyenv" pull --ff-only 2>/dev/null || log_warning "Could not update pyenv"
 fi
 
 # Load pyenv for current session
@@ -65,9 +69,25 @@ if command -v pyenv >/dev/null 2>&1; then
 
     log_info "Setting Python $LATEST_PYTHON as global default..."
     pyenv global "$LATEST_PYTHON"
+
+    # One Python per image (issue #112): a refreshed layer must not stack the
+    # new interpreter on top of the one the cached image already carried.
+    for installed in $(pyenv versions --bare 2>/dev/null); do
+      if [ "$installed" != "$LATEST_PYTHON" ]; then
+        log_info "Removing extra Python $installed (keeping $LATEST_PYTHON)"
+        pyenv uninstall -f "$installed" || log_warning "Could not uninstall Python $installed"
+      fi
+    done
+    pyenv rehash
+
     log_success "Python version manager setup complete"
     python --version
   fi
+fi
+
+# Build-time invariant: exactly one Python under ~/.pyenv/versions.
+if command -v assert_single_runtime_versions >/dev/null 2>&1; then
+  assert_single_runtime_versions
 fi
 
 log_success "Python installation complete"

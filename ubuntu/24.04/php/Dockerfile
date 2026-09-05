@@ -3,7 +3,7 @@ FROM ${ESSENTIALS_IMAGE}
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Build: docker build -f ubuntu/24.04/php/Dockerfile --build-arg ESSENTIALS_IMAGE=box-essentials -t box-php .
 
-# PHP box: PHP 8.3 via Homebrew (user-specific/local) with apt fallback (global)
+# PHP box: current stable PHP via Homebrew (user-specific/local) with apt fallback (global)
 # Built on top of essentials-box (inherits JS, git, gh, glab, dev libraries)
 #
 # Strategy (Issue #44):
@@ -51,8 +51,8 @@ RUN . /tmp/common.sh && \
       echo "Installing PHP globally via apt (Homebrew failed/timed out)..." && \
       apt_update_with_retry && \
       apt-get install -y \
-        php8.3-cli php8.3-common php8.3-curl php8.3-mbstring \
-        php8.3-xml php8.3-zip php8.3-bcmath php8.3-opcache && \
+        php-cli php-common php-curl php-mbstring \
+        php-xml php-zip php-bcmath php-opcache && \
       apt-get clean && rm -rf /var/lib/apt/lists/* && \
       echo "[✓] PHP installed globally via apt"; \
     else \
@@ -62,7 +62,7 @@ RUN . /tmp/common.sh && \
 # Verify PHP installation (use full path for local, or /usr/bin/php for global)
 RUN PHP_METHOD=$(cat /home/box/.php-install-method 2>/dev/null || echo "unknown") && \
     if [ "$PHP_METHOD" = "local" ]; then \
-      /home/linuxbrew/.linuxbrew/opt/php@8.3/bin/php --version; \
+      /home/linuxbrew/.linuxbrew/opt/php/bin/php --version; \
     else \
       php --version; \
     fi && \
@@ -78,7 +78,7 @@ WORKDIR /home/box
 
 # PATH: include Homebrew PHP paths (only effective if local install succeeded)
 # For global (apt) install, /usr/bin/php is already in PATH
-ENV PATH="/home/linuxbrew/.linuxbrew/opt/php@8.3/bin:/home/linuxbrew/.linuxbrew/opt/php@8.3/sbin:/home/linuxbrew/.linuxbrew/bin:${PATH}"
+ENV PATH="/home/linuxbrew/.linuxbrew/opt/php/bin:/home/linuxbrew/.linuxbrew/opt/php/sbin:/home/linuxbrew/.linuxbrew/bin:${PATH}"
 
 SHELL ["/bin/bash", "-c"]
 CMD ["/bin/bash"]

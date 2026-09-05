@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PHP 8.3 installation: Homebrew (user-specific/local) with apt fallback (global)
+# PHP installation: Homebrew (user-specific/local) with apt fallback (global)
 # Usage: curl -fsSL <url> | bash  OR  bash install.sh
 #
 # Strategy (Issue #44, #53):
@@ -11,6 +11,7 @@
 # Environment variables:
 #   PHP_HOMEBREW_TIMEOUT - Timeout in seconds for Homebrew install (default: 1800 = 30 min)
 #   PHP_VERBOSE          - Set to "1" to enable verbose output (default: 0)
+#   PHP_BREW_FORMULA     - Homebrew formula to install (default: php = latest stable)
 #
 # Output:
 #   ~/.php-install-method - "local" if Homebrew succeeded, "global" if fallback needed
@@ -42,7 +43,13 @@ if [ "$PHP_VERBOSE" = "1" ]; then
   log_info "Verbose mode enabled"
 fi
 
-log_step "Installing PHP 8.3"
+# The formula is unversioned on purpose (issue #112): homebrew-core's `php`
+# always resolves to the current stable PHP, so a rebuilt box follows PHP
+# upstream instead of staying on the 8.3 that was current when this was
+# written. Pin with PHP_BREW_FORMULA=php@8.3 for a reproducible build.
+PHP_BREW_FORMULA="${PHP_BREW_FORMULA:-php}"
+
+log_step "Installing PHP (${PHP_BREW_FORMULA})"
 log_info "Timeout: ${PHP_HOMEBREW_TIMEOUT} seconds"
 log_info "Architecture: $(uname -m)"
 log_info "Timestamp: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
@@ -88,27 +95,34 @@ install_php_homebrew() {
 
   # Install PHP via Homebrew with timeout
   if command_exists brew; then
-    if ! brew list --formula 2>/dev/null | grep -q "^php@"; then
+    if ! brew list --formula 2>/dev/null | grep -E "^php(@[0-9.]+)?$" >/dev/null; then
       log_info "Installing PHP via Homebrew..."
 
-      if ! brew tap | grep -q "shivammathur/php"; then
-        brew tap shivammathur/php || {
-          log_warning "Failed to tap shivammathur/php"
-          return 1
-        }
-      fi
+      # Only needed for versioned formulas (php@8.3 and friends); the default
+      # unversioned `php` comes from homebrew-core, so a failing tap must not
+      # abort the install.
+      case "$PHP_BREW_FORMULA" in
+        *@*)
+          if ! brew tap | grep "shivammathur/php" >/dev/null; then
+            brew tap shivammathur/php || {
+              log_warning "Failed to tap shivammathur/php"
+              return 1
+            }
+          fi
+          ;;
+      esac
 
-      if brew tap | grep -q "shivammathur/php"; then
+      {
         export HOMEBREW_NO_ANALYTICS=1
         export HOMEBREW_NO_AUTO_UPDATE=1
 
-        log_info "Installing PHP 8.3 (timeout: ${PHP_HOMEBREW_TIMEOUT}s)..."
+        log_info "Installing ${PHP_BREW_FORMULA} (timeout: ${PHP_HOMEBREW_TIMEOUT}s)..."
         log_info "Phase: brew install starting at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
         # Use timeout to prevent 2+ hour source compilations or network hangs (Issue #53)
         # The timeout covers the entire install process including dependency installation
         if timeout --signal=TERM --kill-after=60 "${PHP_HOMEBREW_TIMEOUT}" \
-             brew install shivammathur/php/php@8.3 2>&1; then
+             brew install "$PHP_BREW_FORMULA" 2>&1; then
           log_success "Homebrew PHP install command completed at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
         else
           local exit_code=$?
@@ -121,32 +135,33 @@ install_php_homebrew() {
           return 1
         fi
 
-        if brew list --formula 2>/dev/null | grep -q "^php@8.3$"; then
+        if brew list --formula 2>/dev/null | grep -E "^php(@[0-9.]+)?$" >/dev/null; then
           log_info "Phase: brew link starting at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
           # Link with timeout to catch potential hangs (Issue #53)
           timeout --signal=TERM --kill-after=30 300 \
-            brew link --overwrite --force shivammathur/php/php@8.3 2>&1 | grep -v "Warning" || true
+            brew link --overwrite --force "$PHP_BREW_FORMULA" 2>&1 | grep -v "Warning" || true
           log_info "Phase: brew link completed at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
           BREW_PREFIX=$(brew --prefix 2>/dev/null || echo "")
-          if [[ -n "$BREW_PREFIX" && -d "$BREW_PREFIX/opt/php@8.3" ]]; then
-            export PATH="$BREW_PREFIX/opt/php@8.3/bin:$BREW_PREFIX/opt/php@8.3/sbin:$PATH"
+          PHP_OPT_DIR="${PHP_BREW_FORMULA##*/}"
+          if [[ -n "$BREW_PREFIX" && -d "$BREW_PREFIX/opt/$PHP_OPT_DIR" ]]; then
+            export PATH="$BREW_PREFIX/opt/$PHP_OPT_DIR/bin:$BREW_PREFIX/opt/$PHP_OPT_DIR/sbin:$PATH"
 
-            if ! grep -q "php@8.3/bin" "$HOME/.bashrc" 2>/dev/null; then
-              cat >> "$HOME/.bashrc" << 'PHP_PATH_EOF'
+            if ! grep -q "opt/${PHP_OPT_DIR}/bin" "$HOME/.bashrc" 2>/dev/null; then
+              cat >> "$HOME/.bashrc" << PHP_PATH_EOF
 
-# PHP 8.3 PATH configuration (Homebrew - user-specific/local)
-export PATH="$(brew --prefix)/opt/php@8.3/bin:$(brew --prefix)/opt/php@8.3/sbin:$PATH"
+# PHP PATH configuration (Homebrew - user-specific/local)
+export PATH="\$(brew --prefix)/opt/${PHP_OPT_DIR}/bin:\$(brew --prefix)/opt/${PHP_OPT_DIR}/sbin:\$PATH"
 PHP_PATH_EOF
             fi
           fi
 
           # Verify PHP works
           log_info "Phase: verification starting at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-          if command_exists php && php --version | grep -q "PHP 8\.3"; then
+          if command_exists php && php --version | grep -E "^PHP [0-9]" >/dev/null; then
             local end_time=$(date +%s)
             local duration=$((end_time - start_time))
-            log_success "PHP 8.3 installed via Homebrew (user-specific/local)"
+            log_success "$(php --version | head -n1) installed via Homebrew (user-specific/local)"
             log_info "Total Homebrew installation time: ${duration} seconds"
             echo "local" > "$HOME/.php-install-method"
             return 0
@@ -155,10 +170,10 @@ PHP_PATH_EOF
             return 1
           fi
         else
-          log_warning "php@8.3 not found in Homebrew after install attempt"
+          log_warning "${PHP_BREW_FORMULA} not found in Homebrew after install attempt"
           return 1
         fi
-      fi
+      }
     else
       log_info "PHP already installed via Homebrew"
       echo "local" > "$HOME/.php-install-method"
@@ -181,20 +196,22 @@ install_php_apt() {
     log_warning "apt update failed"
   }
 
+  # Unversioned metapackages track whatever PHP the distro currently ships,
+  # so this fallback does not need editing every Ubuntu release (issue #112).
   local apt_packages=(
-    php8.3-cli
-    php8.3-common
-    php8.3-curl
-    php8.3-mbstring
-    php8.3-xml
-    php8.3-zip
-    php8.3-bcmath
-    php8.3-opcache
+    php-cli
+    php-common
+    php-curl
+    php-mbstring
+    php-xml
+    php-zip
+    php-bcmath
+    php-opcache
   )
 
   if maybe_sudo apt-get install -y "${apt_packages[@]}" 2>/dev/null; then
-    if command_exists php && php --version | grep -q "PHP 8\.3"; then
-      log_success "PHP 8.3 installed via apt (global)"
+    if command_exists php && php --version | grep -E "^PHP [0-9]" >/dev/null; then
+      log_success "$(php --version | head -n1) installed via apt (global)"
 
       if ! grep -q "# PHP configuration" "$HOME/.bashrc" 2>/dev/null; then
         cat >> "$HOME/.bashrc" << 'PHP_BASHRC_EOF'
@@ -218,12 +235,12 @@ PHP_BASHRC_EOF
 # =============================================================================
 
 # Check if PHP is already installed
-if command_exists php && php --version 2>/dev/null | grep -q "PHP 8\."; then
+if command_exists php && php --version 2>/dev/null | grep -E "^PHP [0-9]" >/dev/null; then
   PHP_VERSION=$(php --version 2>/dev/null | head -n 1)
   log_success "PHP already installed: $PHP_VERSION"
   if [ -f "$HOME/.php-install-method" ]; then
     : # already set
-  elif command_exists brew && brew list --formula 2>/dev/null | grep -q "^php@"; then
+  elif command_exists brew && brew list --formula 2>/dev/null | grep -E "^php(@[0-9.]+)?$" >/dev/null; then
     echo "local" > "$HOME/.php-install-method"
   else
     echo "global" > "$HOME/.php-install-method"

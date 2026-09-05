@@ -170,3 +170,331 @@ is_docker_build() {
   fi
   return 1
 }
+
+# =============================================================================
+# Build-time version policy (issue #112)
+# =============================================================================
+# Runtimes that are not installed through a version manager's own "latest"
+# selector resolve their version here, at build time, in three layers:
+#
+#   1. explicit override   — a <RUNTIME>_VERSION / <RUNTIME>_CHANNEL variable,
+#      settable per build (docker build --build-arg / docker run -e), used to
+#      reproduce an older image or to pin a hotfix;
+#   2. upstream resolution — the canonical release feed of that runtime, so a
+#      rebuild picks up a new LTS without a commit to this repository;
+#   3. pinned fallback     — used only when the feed is unreachable, so a
+#      network blip degrades the build to "slightly behind" instead of failing
+#      it outright.
+#
+# The *_FALLBACK values are a floor, never the intended version: they are what
+# the resolvers returned when they were last refreshed.
+
+VERSION_FETCH_TIMEOUT="${VERSION_FETCH_TIMEOUT:-20}"
+
+NODE_LTS_FALLBACK="${NODE_LTS_FALLBACK:-24}"
+NVM_VERSION_FALLBACK="${NVM_VERSION_FALLBACK:-v0.40.7}"
+JAVA_LTS_FALLBACK="${JAVA_LTS_FALLBACK:-25}"
+DOTNET_CHANNEL_FALLBACK="${DOTNET_CHANNEL_FALLBACK:-10.0}"
+SWIFT_VERSION_FALLBACK="${SWIFT_VERSION_FALLBACK:-6.3.3}"
+OPAM_VERSION_FALLBACK="${OPAM_VERSION_FALLBACK:-2.5.2}"
+
+# Fetch a release feed. Never fatal: callers fall back to a pinned version.
+fetch_release_feed() {
+  curl -fsSL --max-time "${VERSION_FETCH_TIMEOUT}" --retry 2 --retry-delay 1 "$1" 2>/dev/null
+}
+
+# Does this download URL point at a real file?
+#
+# Redirect following is not optional here: download.swift.org answers a missing
+# tarball with `302 -> https://swift.org/404.html`, and `curl -fsSI` treats a
+# 302 as success. Probing without -L therefore reports "exists" for every
+# version/platform combination, which silently defeats the point of walking the
+# release list (issue #112). With -L the probe ends on the real 404 and fails.
+remote_file_exists() {
+  curl -fsSIL --max-time "${VERSION_FETCH_TIMEOUT}" "$1" >/dev/null 2>&1
+}
+
+# Latest release tag of a GitHub repository, read from the /releases/latest
+# redirect instead of api.github.com: the HTML endpoint is not subject to the
+# unauthenticated API rate limit that CI runners routinely exhaust.
+github_latest_tag() {
+  local effective_url
+  effective_url=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+    --max-time "${VERSION_FETCH_TIMEOUT}" --retry 2 --retry-delay 1 \
+    "https://github.com/$1/releases/latest" 2>/dev/null) || return 1
+  case "$effective_url" in
+    */releases/tag/*) echo "${effective_url##*/}" ;;
+    *) return 1 ;;
+  esac
+}
+
+# Newest Node.js LTS major, e.g. "24".
+# Feed: https://nodejs.org/dist/index.json — newest first, LTS entries carry a
+# codename ("lts":"Krypton"), non-LTS entries carry "lts":false.
+resolve_node_lts_major() {
+  local major=""
+  if [ -n "${NODE_VERSION:-}" ]; then
+    echo "${NODE_VERSION%%.*}"
+    return 0
+  fi
+  major=$(fetch_release_feed "https://nodejs.org/dist/index.json" \
+    | tr '{' '\n' | grep '"lts":"' | head -n1 \
+    | sed -n 's/.*"version":"v\([0-9][0-9]*\)\..*/\1/p') || true
+  if [[ "$major" =~ ^[0-9]+$ ]]; then
+    echo "$major"
+  else
+    echo "$NODE_LTS_FALLBACK"
+  fi
+}
+
+# Newest nvm installer tag, e.g. "v0.40.7".
+resolve_nvm_version() {
+  local tag=""
+  if [ -n "${NVM_VERSION:-}" ]; then
+    echo "$NVM_VERSION"
+    return 0
+  fi
+  tag=$(github_latest_tag "nvm-sh/nvm") || true
+  if [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "$tag"
+  else
+    echo "$NVM_VERSION_FALLBACK"
+  fi
+}
+
+# Is this Java feature release an LTS? 8, 11, 17, then every 4th from 21.
+is_java_lts_major() {
+  local major="$1"
+  case "$major" in
+    8|11|17) return 0 ;;
+    *) [[ "$major" =~ ^[0-9]+$ ]] && [ "$major" -ge 21 ] && [ $(( (major - 21) % 4 )) -eq 0 ] ;;
+  esac
+}
+
+# Newest Temurin LTS major offered by SDKMAN, e.g. "25". The vendor list also
+# advertises non-LTS features (26 at the time of writing), which must not be
+# picked up by a rebuild.
+resolve_java_lts_major() {
+  local candidate best=""
+  if [ -n "${JAVA_VERSION:-}" ]; then
+    echo "${JAVA_VERSION%%.*}"
+    return 0
+  fi
+  for candidate in $(fetch_release_feed \
+      "https://api.sdkman.io/2/candidates/java/linuxx64/versions/list?current=&installed=" \
+      | grep -oE '[0-9]+(\.[0-9]+)*(\+[0-9.]+)?-tem' \
+      | sed 's/[.+].*//; s/-tem//' | sort -un); do
+    if is_java_lts_major "$candidate"; then
+      best="$candidate"
+    fi
+  done
+  if [[ "$best" =~ ^[0-9]+$ ]]; then
+    echo "$best"
+  else
+    echo "$JAVA_LTS_FALLBACK"
+  fi
+}
+
+# Newest actively supported .NET LTS channel, e.g. "10.0".
+resolve_dotnet_lts_channel() {
+  local channel=""
+  if [ -n "${DOTNET_CHANNEL:-}" ]; then
+    echo "$DOTNET_CHANNEL"
+    return 0
+  fi
+  channel=$(fetch_release_feed \
+    "https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/releases-index.json" \
+    | awk '
+      /"channel-version"/ { c=$0; sub(/.*"channel-version"[ ]*:[ ]*"/,"",c); sub(/".*/,"",c); p=""; t="" }
+      /"support-phase"/   { p=$0; sub(/.*"support-phase"[ ]*:[ ]*"/,"",p);   sub(/".*/,"",p) }
+      /"release-type"/    { t=$0; sub(/.*"release-type"[ ]*:[ ]*"/,"",t);    sub(/".*/,"",t) }
+      (c != "" && p == "active" && t == "lts") { print c; c="" }
+    ' | sort -V | tail -n1) || true
+  if [[ "$channel" =~ ^[0-9]+\.[0-9]+$ ]]; then
+    echo "$channel"
+  else
+    echo "$DOTNET_CHANNEL_FALLBACK"
+  fi
+}
+
+# True when apt can actually install a package (it is in the enabled archives).
+apt_has_package() {
+  # No `grep -q` here: it exits at the first match and SIGPIPEs apt-cache,
+  # which `set -o pipefail` then reports as a failure (exit 141).
+  apt-cache policy "$1" 2>/dev/null | grep -E '^[[:space:]]*Candidate: [0-9]' >/dev/null
+}
+
+# The .NET SDK is installed from Ubuntu's own archive, which carries only some
+# channels. Print the newest channel that is both an active LTS and actually
+# installable here, so a build never asks apt for a package that does not
+# exist. Prints nothing but the channel: it is used inside a package name.
+resolve_dotnet_apt_channel() {
+  local preferred available
+  preferred="$(resolve_dotnet_lts_channel)"
+  if apt_has_package "dotnet-sdk-${preferred}"; then
+    echo "$preferred"
+    return 0
+  fi
+  available=$(apt-cache search --names-only '^dotnet-sdk-[0-9]+\.[0-9]+$' 2>/dev/null \
+    | awk '{print $1}' | sed 's/^dotnet-sdk-//' | sort -V | tail -n1) || true
+  if [ -n "$available" ]; then
+    echo "$available"
+  else
+    echo "$DOTNET_CHANNEL_FALLBACK"
+  fi
+}
+
+# Newest Swift release tag, e.g. "6.3.3". Callers must still verify that a
+# tarball exists for the image's Ubuntu release: Swift does not publish a build
+# for every Ubuntu version (26.04 has none as of this change), so the download
+# step walks this list backwards until a URL responds.
+resolve_swift_versions() {
+  local versions=""
+  if [ -n "${SWIFT_VERSION:-}" ]; then
+    echo "$SWIFT_VERSION"
+    return 0
+  fi
+  versions=$(fetch_release_feed "https://www.swift.org/api/v1/install/releases.json" \
+    | grep -oE '"tag"[ ]*:[ ]*"swift-[0-9][0-9.]*-RELEASE"' \
+    | sed -n 's/.*swift-\([0-9][0-9.]*\)-RELEASE.*/\1/p' \
+    | sort -V | tail -n5 | tac) || true
+  if [ -n "$versions" ]; then
+    echo "$versions"
+  else
+    echo "$SWIFT_VERSION_FALLBACK"
+  fi
+}
+
+# Newest opam release, e.g. "2.5.2".
+resolve_opam_version() {
+  local tag=""
+  if [ -n "${OPAM_VERSION:-}" ]; then
+    echo "$OPAM_VERSION"
+    return 0
+  fi
+  tag=$(github_latest_tag "ocaml/opam") || true
+  tag="${tag#v}"
+  if [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "$tag"
+  else
+    echo "$OPAM_VERSION_FALLBACK"
+  fi
+}
+
+# Ubuntu's own archive freezes R at whatever was current when the release was
+# cut (4.3.3 on noble), so a box built today ships an R that is years behind.
+# CRAN publishes a maintained r-base for every supported Ubuntu codename; add
+# that repository when it is reachable and let the caller fall back to the
+# distro package when it is not (offline builds must still succeed).
+# Returns 0 when the CRAN repository is configured, 1 otherwise.
+add_cran_repo() {
+  local codename="${CRAN_UBUNTU_CODENAME:-}"
+  # CRAN_APT_ROOT is only ever set by the unit test, so the apt configuration
+  # can be written into a temporary tree instead of the real /etc.
+  local etc="${CRAN_APT_ROOT:-}/etc/apt"
+  local keyring="${etc}/keyrings/cran_ubuntu_key.asc"
+  local list="${etc}/sources.list.d/cran.list"
+  local base="https://cloud.r-project.org/bin/linux/ubuntu"
+
+  if [ -z "$codename" ]; then
+    if [ -f /etc/os-release ]; then
+      codename=$(. /etc/os-release && echo "${VERSION_CODENAME:-}")
+    fi
+  fi
+  [ -n "$codename" ] || codename=$(lsb_release -cs 2>/dev/null || echo "")
+  if [ -z "$codename" ]; then
+    log_warning "Could not determine Ubuntu codename; skipping CRAN repository"
+    return 1
+  fi
+
+  if [ -f "$list" ] && grep -q "cran40" "$list" 2>/dev/null; then
+    log_info "CRAN repository already configured"
+    return 0
+  fi
+
+  # Probe before touching apt configuration: a half-added repository whose
+  # Release file 404s breaks every later `apt-get update` in the build. CRAN
+  # answers an unsupported codename with a real 404 (unlike download.swift.org),
+  # but the probe goes through the same redirect-following helper anyway.
+  if ! remote_file_exists "${base}/${codename}-cran40/Release"; then
+    log_warning "CRAN has no ${codename}-cran40 suite (or it is unreachable); using the distro R"
+    return 1
+  fi
+
+  maybe_sudo mkdir -p "${etc}/keyrings" "${etc}/sources.list.d"
+  if ! curl -fsSL --max-time "${VERSION_FETCH_TIMEOUT}" "${base}/marutter_pubkey.asc" \
+       | maybe_sudo tee "$keyring" >/dev/null; then
+    log_warning "Could not fetch the CRAN signing key; using the distro R"
+    maybe_sudo rm -f "$keyring"
+    return 1
+  fi
+  maybe_sudo chmod a+r "$keyring"
+
+  echo "deb [signed-by=${keyring}] ${base} ${codename}-cran40/" \
+    | maybe_sudo tee "$list" >/dev/null
+  log_success "CRAN repository configured for ${codename}"
+  return 0
+}
+
+# =============================================================================
+# One-version-per-language-root invariant (issue #112)
+# =============================================================================
+# A box image ships exactly one version of each runtime. More than one means a
+# stale toolchain was carried in by a COPY --from a cached language image and
+# is silently costing gigabytes; zero means the layer never arrived. Assert it
+# where the layer is built instead of discovering it in a released image.
+
+# Count installed versions in a version-manager root, ignoring the manager's
+# own bookkeeping entries ("current" symlinks, dotfiles, aliases).
+count_installed_versions() {
+  local root="$1" entry count=0
+  [ -d "$root" ] || { echo 0; return 0; }
+  for entry in "$root"/*; do
+    [ -d "$entry" ] || continue
+    [ -L "$entry" ] && continue
+    case "$(basename "$entry")" in
+      current|.*) continue ;;
+    esac
+    count=$((count + 1))
+  done
+  echo "$count"
+}
+
+# assert_single_runtime_versions [--warn]
+# Fails (or, with --warn, only reports) when a language root holds more than
+# one version. Roots that do not exist are skipped: language images legitimately
+# ship a single runtime each.
+assert_single_runtime_versions() {
+  local mode="strict" home="${BOX_HOME:-$HOME}" status=0 root count candidate
+  [ "${1:-}" = "--warn" ] && mode="warn"
+
+  local roots=(
+    "node:$home/.nvm/versions/node"
+    "rust:$home/.rustup/toolchains"
+    "python:$home/.pyenv/versions"
+    "ruby:$home/.rbenv/versions"
+  )
+  for candidate in "$home"/.sdkman/candidates/*; do
+    [ -d "$candidate" ] || continue
+    roots+=("sdkman/$(basename "$candidate"):$candidate")
+  done
+
+  for root in "${roots[@]}"; do
+    local name="${root%%:*}" path="${root#*:}"
+    [ -d "$path" ] || continue
+    count=$(count_installed_versions "$path")
+    if [ "$count" -gt 1 ]; then
+      log_error "$name: expected exactly 1 version in $path, found $count:"
+      ls -1 "$path" | sed 's/^/      /'
+      status=1
+    elif [ "$count" -eq 1 ]; then
+      log_success "$name: 1 version ($(ls -1 "$path" | grep -v '^current$' | head -n1))"
+    fi
+  done
+
+  if [ "$status" -ne 0 ] && [ "$mode" = "strict" ]; then
+    log_error "Single-version invariant violated (issue #112)"
+    return 1
+  fi
+  return 0
+}

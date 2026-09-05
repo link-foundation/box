@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Full Box environment Docker image
 # Contains all language runtimes and development tools.
 # This is the "full-box" image (konard/box or konard/box-full).
@@ -59,9 +60,10 @@ COPY ubuntu/24.04/common.sh /tmp/common.sh
 # --- Install system-level packages (cannot be COPY'd from images) ---
 # Note: PHP is NOT installed here unconditionally - it depends on the php-stage method
 RUN . /tmp/common.sh && \
+    (add_cran_repo || true) && \
     apt_update_with_retry && \
     apt-get install -y \
-      dotnet-sdk-8.0 \
+      "dotnet-sdk-$(resolve_dotnet_apt_channel)" \
       r-base \
       cmake clang llvm lld \
       nasm \
@@ -78,9 +80,15 @@ COPY --from=python-stage --chown=box:box /home/box/.pyenv /home/box/.pyenv
 # Go
 COPY --from=go-stage --chown=box:box /home/box/.go /home/box/.go
 
-# Rust (cargo + rustup)
-COPY --from=rust-stage --chown=box:box /home/box/.cargo /home/box/.cargo
-COPY --from=rust-stage --chown=box:box /home/box/.rustup /home/box/.rustup
+# Rust (cargo + rustup) — copied AND refreshed inside one layer (issue #112).
+# A plain COPY --from=rust-stage bakes whatever `stable` was current when the
+# rust image was last built, and CI falls back to konard/box-rust:latest
+# whenever the rust matrix did not rebuild. See refresh-rust.sh for why the
+# refresh has to happen in the same layer as the copy.
+RUN --mount=type=bind,from=rust-stage,source=/home/box,target=/mnt/rust-home \
+    --mount=type=bind,source=ubuntu/24.04/common.sh,target=/tmp/common.sh \
+    --mount=type=bind,source=ubuntu/24.04/full-box/refresh-rust.sh,target=/tmp/refresh-rust.sh \
+    bash /tmp/refresh-rust.sh
 
 # Java (SDKMAN)
 COPY --from=java-stage --chown=box:box /home/box/.sdkman /home/box/.sdkman
@@ -103,8 +111,8 @@ RUN . /tmp/common.sh && \
       echo "Installing PHP globally via apt (matching php-stage method)..." && \
       apt_update_with_retry && \
       apt-get install -y \
-        php8.3-cli php8.3-common php8.3-curl php8.3-mbstring \
-        php8.3-xml php8.3-zip php8.3-bcmath php8.3-opcache && \
+        php-cli php-common php-curl php-mbstring \
+        php-xml php-zip php-bcmath php-opcache && \
       apt-get clean && rm -rf /var/lib/apt/lists/* && \
       rm -rf /home/linuxbrew/.linuxbrew && \
       echo "[✓] PHP installed globally via apt in full-box"; \
@@ -193,7 +201,7 @@ ENV RBENV_ROOT="/home/box/.rbenv"
 
 # PATH for tools that don't need special initialization
 # Includes Homebrew PHP paths (only effective if local install was used, harmless otherwise)
-ENV PATH="/home/linuxbrew/.linuxbrew/opt/php@8.3/bin:/home/linuxbrew/.linuxbrew/opt/php@8.3/sbin:/home/linuxbrew/.linuxbrew/bin:/home/box/.pyenv/bin:/home/box/.pyenv/shims:/home/box/.rbenv/bin:/home/box/.rbenv/shims:/home/box/.swift/usr/bin:/home/box/.elan/bin:/home/box/.opam/default/bin:/home/box/.cargo/bin:/home/box/.deno/bin:/home/box/.bun/bin:/home/box/.go/bin:/home/box/.go/path/bin:${PATH}"
+ENV PATH="/home/linuxbrew/.linuxbrew/opt/php/bin:/home/linuxbrew/.linuxbrew/opt/php/sbin:/home/linuxbrew/.linuxbrew/bin:/home/box/.pyenv/bin:/home/box/.pyenv/shims:/home/box/.rbenv/bin:/home/box/.rbenv/shims:/home/box/.swift/usr/bin:/home/box/.elan/bin:/home/box/.opam/default/bin:/home/box/.cargo/bin:/home/box/.deno/bin:/home/box/.bun/bin:/home/box/.go/bin:/home/box/.go/path/bin:${PATH}"
 
 # Opam environment variables for Rocq/Coq theorem prover
 ENV OPAM_SWITCH_PREFIX="/home/box/.opam/default"
