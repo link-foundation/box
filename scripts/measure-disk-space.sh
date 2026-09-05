@@ -56,6 +56,47 @@ maybe_sudo() {
   fi
 }
 
+# =============================================================================
+# Build-time version policy (shared with the Docker boxes)
+# =============================================================================
+# Same resolvers the images use (ubuntu/24.04/common.sh) so the measurements
+# describe the versions the boxes actually ship (issue #112). common.sh is
+# sourced in a subshell only, so it cannot clobber this script's helpers; when
+# it is unavailable every lookup degrades to the pin passed as the fallback.
+BOX_COMMON_SH_URL="${BOX_COMMON_SH_URL:-https://raw.githubusercontent.com/link-foundation/box/main/ubuntu/24.04/common.sh}"
+BOX_COMMON_SH=""
+
+locate_box_common_sh() {
+  local script_dir="" candidate
+  if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  fi
+  for candidate in "${script_dir:+$script_dir/../ubuntu/24.04/common.sh}" /tmp/common.sh; do
+    if [ -n "$candidate" ] && [ -f "$candidate" ]; then
+      BOX_COMMON_SH="$candidate"
+      return 0
+    fi
+  done
+  if curl -fsSL --max-time 20 "$BOX_COMMON_SH_URL" -o /tmp/box-common.sh 2>/dev/null; then
+    BOX_COMMON_SH="/tmp/box-common.sh"
+    return 0
+  fi
+  return 1
+}
+
+# box_resolve <resolver-function> <fallback>
+box_resolve() {
+  local fn="$1" fallback="$2" out=""
+  if [ -n "$BOX_COMMON_SH" ]; then
+    out=$( (set +eu; . "$BOX_COMMON_SH" >/dev/null 2>&1; "$fn" 2>/dev/null) ) || out=""
+  fi
+  if [ -n "$out" ]; then
+    echo "$out"
+  else
+    echo "$fallback"
+  fi
+}
+
 apt_update_with_retry() {
   local max_retries="${APT_UPDATE_MAX_RETRIES:-5}"
   local initial_delay="${APT_UPDATE_INITIAL_DELAY:-5}"
@@ -271,6 +312,13 @@ cleanup_for_measurement
 # ============================================================================
 log_step "Measuring System Prerequisites"
 
+locate_box_common_sh || log_warning "Version policy helpers unavailable; using pinned fallback versions"
+NODE_MAJOR="$(box_resolve resolve_node_lts_major 24)"
+NVM_INSTALL_VERSION="$(box_resolve resolve_nvm_version v0.40.7)"
+JAVA_MAJOR="$(box_resolve resolve_java_lts_major 25)"
+DOTNET_SDK_CHANNEL="$(box_resolve resolve_dotnet_apt_channel 8.0)"
+log_note "Resolved versions: Node ${NODE_MAJOR} LTS, nvm ${NVM_INSTALL_VERSION}, Java ${JAVA_MAJOR} LTS, .NET ${DOTNET_SDK_CHANNEL}"
+
 measure_apt_install "Essential Tools" "System" \
   wget curl unzip zip git sudo ca-certificates gnupg build-essential expect screen
 
@@ -279,9 +327,14 @@ measure_apt_install "Essential Tools" "System" \
 # ============================================================================
 log_step "Measuring APT-based Languages and Tools"
 
-measure_apt_install ".NET SDK 8.0" "Runtime" dotnet-sdk-8.0
+measure_apt_install ".NET SDK ${DOTNET_SDK_CHANNEL}" "Runtime" "dotnet-sdk-${DOTNET_SDK_CHANNEL}"
 measure_apt_install "C/C++ Tools (CMake, Clang, LLVM, LLD)" "Build Tools" cmake clang llvm lld
 measure_apt_install "Assembly Tools (NASM, FASM)" "Build Tools" nasm fasm
+# CRAN carries a current R for every supported codename; the distro package is
+# frozen at whatever shipped with the release (issue #112).
+if [ -n "$BOX_COMMON_SH" ] && (set +eu; . "$BOX_COMMON_SH" >/dev/null 2>&1; add_cran_repo) >/dev/null 2>&1; then
+  apt_update_with_retry || true
+fi
 measure_apt_install "R Language" "Runtime" r-base
 measure_apt_install "Bubblewrap" "Dependencies" bubblewrap
 measure_apt_install "Ruby Build Dependencies" "Dependencies" libyaml-dev
@@ -458,13 +511,14 @@ measure_install "Deno" "Runtime" install_deno
 
 # --- NVM + Node.js ---
 install_nvm_node() {
-  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+  curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_INSTALL_VERSION}/install.sh" | bash
   export NVM_DIR="$HOME/.nvm"
   [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-  nvm install 20
+  nvm install "$NODE_MAJOR"
+  nvm alias default "$NODE_MAJOR"
   npm install -g npm@latest --no-fund --silent
 }
-measure_install "NVM + Node.js 20" "Runtime" install_nvm_node
+measure_install "NVM + Node.js ${NODE_MAJOR}" "Runtime" install_nvm_node
 
 # Load NVM for subsequent commands
 export NVM_DIR="$HOME/.nvm"
@@ -564,10 +618,10 @@ install_sdkman_java() {
   export SDKMAN_DIR="$HOME/.sdkman"
   set +u
   [ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ] && source "$SDKMAN_DIR/bin/sdkman-init.sh"
-  sdk install java 21-tem < /dev/null || sdk install java 21-open < /dev/null || true
+  sdk install java "${JAVA_MAJOR}-tem" < /dev/null || sdk install java "${JAVA_MAJOR}-open" < /dev/null || true
   set -u
 }
-measure_install "SDKMAN + Java 21" "Runtime" install_sdkman_java
+measure_install "SDKMAN + Java ${JAVA_MAJOR}" "Runtime" install_sdkman_java
 
 # Load SDKMAN
 export SDKMAN_DIR="$HOME/.sdkman"
@@ -693,7 +747,7 @@ install_rbenv_ruby() {
   export PATH="$HOME/.rbenv/bin:$PATH"
   eval "$(rbenv init - bash)"
 
-  LATEST_RUBY=$(rbenv install -l 2>/dev/null | grep -E '^\s*3\.[0-9]+\.[0-9]+$' | tail -1 | tr -d '[:space:]')
+  LATEST_RUBY=$(rbenv install -l 2>/dev/null | grep -E '^[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+$' | tail -1 | tr -d '[:space:]')
   if [ -n "$LATEST_RUBY" ]; then
     rbenv install "$LATEST_RUBY"
     rbenv global "$LATEST_RUBY"
@@ -711,13 +765,24 @@ install_swift() {
   esac
 
   if [ -n "$SWIFT_DIR" ]; then
-    SWIFT_VERSION="6.0.3"
+    # Newest release that actually publishes a build for this Ubuntu/arch (#112)
     SWIFT_RELEASE="RELEASE"
-    SWIFT_PACKAGE="swift-${SWIFT_VERSION}-${SWIFT_RELEASE}-${SWIFT_FILE_SUFFIX}"
-    SWIFT_URL="https://download.swift.org/swift-${SWIFT_VERSION}-release/${SWIFT_DIR}/swift-${SWIFT_VERSION}-${SWIFT_RELEASE}/${SWIFT_PACKAGE}.tar.gz"
+    SWIFT_VERSION=""
+    SWIFT_URL=""
+    SWIFT_PACKAGE=""
+    for candidate in $(box_resolve resolve_swift_versions 6.3.3); do
+      candidate_package="swift-${candidate}-${SWIFT_RELEASE}-${SWIFT_FILE_SUFFIX}"
+      candidate_url="https://download.swift.org/swift-${candidate}-release/${SWIFT_DIR}/swift-${candidate}-${SWIFT_RELEASE}/${candidate_package}.tar.gz"
+      if curl -fsSI --max-time 20 "$candidate_url" >/dev/null 2>&1; then
+        SWIFT_VERSION="$candidate"
+        SWIFT_PACKAGE="$candidate_package"
+        SWIFT_URL="$candidate_url"
+        break
+      fi
+    done
 
     TEMP_DIR=$(mktemp -d)
-    if curl -fsSL "$SWIFT_URL" -o "$TEMP_DIR/swift.tar.gz"; then
+    if [ -n "$SWIFT_URL" ] && curl -fsSL "$SWIFT_URL" -o "$TEMP_DIR/swift.tar.gz"; then
       mkdir -p "$HOME/.swift"
       tar -xzf "$TEMP_DIR/swift.tar.gz" -C "$TEMP_DIR"
       cp -r "$TEMP_DIR/${SWIFT_PACKAGE}/usr" "$HOME/.swift/"
