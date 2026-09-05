@@ -1,0 +1,1909 @@
+ INFO zizmor: 🌈 zizmor v1.30.0
+ WARN audit: zizmor: zizmor is running in offline mode by default; some audits and auto-fixes will not be available. see https://docs.zizmor.sh/usage/#operating-modes for details
+ INFO audit: zizmor: 🌈 completed .github/actions/setup-buildx-resilient/action.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/measure-disk-space.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release.yml
+error[unpinned-uses]: unpinned action reference
+   --> .github/actions/setup-buildx-resilient/action.yml:108:13
+    |
+108 |       uses: docker/setup-buildx-action@v4
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+  --> .github/workflows/measure-disk-space.yml:38:15
+   |
+38 |         uses: actions/checkout@v6
+   |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+   |
+   = note: audit confidence → High
+   = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/measure-disk-space.yml:180:15
+    |
+180 |         uses: actions/upload-artifact@v7
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+warning[excessive-permissions]: overly broad permissions
+    --> .github/workflows/release.yml:1:1
+     |
+   1 | / name: Build and Release Docker Image
+   2 | |
+   3 | | on:
+   4 | |   push:
+...    |
+3432 | |           echo "GitHub Release v${VERSION} created/updated successfully"
+     | |_________________________________________________________________________^ default permissions used due to no permissions: block
+     |
+     = note: audit confidence → Medium
+     = help: audit documentation → https://docs.zizmor.sh/audits/#excessive-permissions
+
+warning[excessive-permissions]: overly broad permissions
+   --> .github/workflows/release.yml:107:3
+    |
+107 | /   version-check:
+108 | |     name: Check for Manual Version Changes
+109 | |     runs-on: ubuntu-24.04
+110 | |     if: github.event_name == 'pull_request'
+...   |
+124 | |   # === CHANGESET CHECK (PRs only) ===
+125 | |   # Ensure PRs with code changes include a changeset
+    | |                                                    ^
+    | |                                                    |
+    | |____________________________________________________this job
+    |                                                      default permissions used due to no permissions: block
+    |
+    = note: audit confidence → Medium
+    = help: audit documentation → https://docs.zizmor.sh/audits/#excessive-permissions
+
+warning[excessive-permissions]: overly broad permissions
+   --> .github/workflows/release.yml:126:3
+    |
+126 | /   changeset-check:
+127 | |     name: Check for Changesets
+128 | |     runs-on: ubuntu-24.04
+129 | |     if: github.event_name == 'pull_request'
+...   |
+162 | |   # === AUTOMATIC VERSION BUMP (push to main with changesets) ===
+    | |                                                                 ^
+    | |                                                                 |
+    | |_________________________________________________________________this job
+    |                                                                   default permissions used due to no permissions: block
+    |
+    = note: audit confidence → Medium
+    = help: audit documentation → https://docs.zizmor.sh/audits/#excessive-permissions
+
+warning[excessive-permissions]: overly broad permissions
+   --> .github/workflows/release.yml:257:3
+    |
+257 | /   detect-changes:
+258 | |     runs-on: ubuntu-24.04
+259 | |     needs: [apply-changesets, version-bump]
+260 | |     # Always run, but wait for version jobs if they're running
+...   |
+369 | |   # easy to regress. Both are covered without building an image, so this job
+370 | |   # gates the expensive tiers below.
+    | |                                    ^
+    | |                                    |
+    | |____________________________________this job
+    |                                      default permissions used due to no permissions: block
+    |
+    = note: audit confidence → Medium
+    = help: audit documentation → https://docs.zizmor.sh/audits/#excessive-permissions
+
+warning[excessive-permissions]: overly broad permissions
+    --> .github/workflows/release.yml:1050:3
+     |
+1050 | /   docker-build-test:
+1051 | |     name: docker-build-test
+1052 | |     runs-on: ubuntu-24.04
+1053 | |     needs: [detect-changes, version-check, changeset-check, pr-test-version-policy, pr-test-js, pr-test-essentials, pr-test-lang...
+...    |
+1088 | |   # === BUILD JS BOX (amd64) ===
+1089 | |   # JS box is the base layer - built first, other images depend on it
+     | |                                                                     ^
+     | |                                                                     |
+     | |_____________________________________________________________________this job
+     |                                                                       default permissions used due to no permissions: block
+     |
+     = note: audit confidence → Medium
+     = help: audit documentation → https://docs.zizmor.sh/audits/#excessive-permissions
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/release.yml:222:21
+    |
+213 |         run: |
+    |         --- this run block
+...
+222 |           case "${{ github.event.inputs.bump_type }}" in
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+    |
+    = note: audit confidence → High
+    = note: this finding has an auto-fix
+    = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/release.yml:245:28
+    |
+213 |         run: |
+    |         --- this run block
+...
+245 |           DESCRIPTION="${{ github.event.inputs.description }}"
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+    |
+    = note: audit confidence → High
+    = note: this finding has an auto-fix
+    = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1193:50
+     |
+1186 |         run: |
+     |         --- this run block
+...
+1193 |               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-amd64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1194:50
+     |
+1186 |         run: |
+     |         --- this run block
+...
+1194 |               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1322:50
+     |
+1315 |         run: |
+     |         --- this run block
+...
+1322 |               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-arm64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1323:50
+     |
+1315 |         run: |
+     |         --- this run block
+...
+1323 |               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1399:63
+     |
+1396 |         run: |
+     |         --- this run block
+...
+1399 |           docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest \
+     |                                                               ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1400:50
+     |
+1396 |         run: |
+     |         --- this run block
+...
+1400 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-amd64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1401:50
+     |
+1396 |         run: |
+     |         --- this run block
+...
+1401 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-arm64
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1402:61
+     |
+1396 |         run: |
+     |         --- this run block
+...
+1402 |           docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest
+     |                                                             ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1404:63
+     |
+1396 |         run: |
+     |         --- this run block
+...
+1404 |           docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION} \
+     |                                                               ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1405:50
+     |
+1396 |         run: |
+     |         --- this run block
+...
+1405 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION}-amd64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1406:50
+     |
+1396 |         run: |
+     |         --- this run block
+...
+1406 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION}-arm64
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1407:61
+     |
+1396 |         run: |
+     |         --- this run block
+...
+1407 |           docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION}
+     |                                                             ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1554:50
+     |
+1546 |         run: |
+     |         --- this run block
+...
+1554 |               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-amd64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1555:50
+     |
+1546 |         run: |
+     |         --- this run block
+...
+1555 |               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1698:50
+     |
+1690 |         run: |
+     |         --- this run block
+...
+1698 |               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-arm64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1699:50
+     |
+1690 |         run: |
+     |         --- this run block
+...
+1699 |               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1775:63
+     |
+1772 |         run: |
+     |         --- this run block
+...
+1775 |           docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest \
+     |                                                               ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1776:50
+     |
+1772 |         run: |
+     |         --- this run block
+...
+1776 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-amd64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1777:50
+     |
+1772 |         run: |
+     |         --- this run block
+...
+1777 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-arm64
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1778:61
+     |
+1772 |         run: |
+     |         --- this run block
+...
+1778 |           docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest
+     |                                                             ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1780:63
+     |
+1772 |         run: |
+     |         --- this run block
+...
+1780 |           docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION} \
+     |                                                               ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1781:50
+     |
+1772 |         run: |
+     |         --- this run block
+...
+1781 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION}-amd64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1782:50
+     |
+1772 |         run: |
+     |         --- this run block
+...
+1782 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION}-arm64
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1783:61
+     |
+1772 |         run: |
+     |         --- this run block
+...
+1783 |           docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION}
+     |                                                             ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1950:43
+     |
+1947 |         run: |
+     |         --- this run block
+...
+1950 |             "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64"
+     |                                           ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1951:43
+     |
+1947 |         run: |
+     |         --- this run block
+...
+1951 |             "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64"
+     |                                           ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:1999:44
+     |
+1985 |         run: |
+     |         --- this run block
+...
+1999 |               ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}
+     |                                            ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2001:44
+     |
+1985 |         run: |
+     |         --- this run block
+...
+2001 |               ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64-${PHP_METHOD}
+     |                                            ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2005:54
+     |
+1985 |         run: |
+     |         --- this run block
+...
+2005 |             docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}
+     |                                                      ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2005:54
+     |
+1985 |         run: |
+     |         --- this run block
+...
+2005 |             docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}
+     |                                                      ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2151:43
+     |
+2148 |         run: |
+     |         --- this run block
+...
+2151 |             "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64"
+     |                                           ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2152:43
+     |
+2148 |         run: |
+     |         --- this run block
+...
+2152 |             "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64"
+     |                                           ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2200:44
+     |
+2186 |         run: |
+     |         --- this run block
+...
+2200 |               ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}
+     |                                            ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2202:44
+     |
+2186 |         run: |
+     |         --- this run block
+...
+2202 |               ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64-${PHP_METHOD}
+     |                                            ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2206:54
+     |
+2186 |         run: |
+     |         --- this run block
+...
+2206 |             docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}
+     |                                                      ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2206:54
+     |
+2186 |         run: |
+     |         --- this run block
+...
+2206 |             docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}
+     |                                                      ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2270:63
+     |
+2266 |         run: |
+     |         --- this run block
+...
+2270 |           docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest \
+     |                                                               ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2271:50
+     |
+2266 |         run: |
+     |         --- this run block
+...
+2271 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest-amd64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2272:50
+     |
+2266 |         run: |
+     |         --- this run block
+...
+2272 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest-arm64
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2273:61
+     |
+2266 |         run: |
+     |         --- this run block
+...
+2273 |           docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest
+     |                                                             ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2275:63
+     |
+2266 |         run: |
+     |         --- this run block
+...
+2275 |           docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION} \
+     |                                                               ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2276:50
+     |
+2266 |         run: |
+     |         --- this run block
+...
+2276 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION}-amd64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2277:50
+     |
+2266 |         run: |
+     |         --- this run block
+...
+2277 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION}-arm64
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2278:61
+     |
+2266 |         run: |
+     |         --- this run block
+...
+2278 |           docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION}
+     |                                                             ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2819:63
+     |
+2815 |         run: |
+     |         --- this run block
+...
+2819 |           docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:latest \
+     |                                                               ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2820:50
+     |
+2815 |         run: |
+     |         --- this run block
+...
+2820 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:latest-amd64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2821:50
+     |
+2815 |         run: |
+     |         --- this run block
+...
+2821 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:latest-arm64
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2823:61
+     |
+2815 |         run: |
+     |         --- this run block
+...
+2823 |           docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:latest
+     |                                                             ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2826:63
+     |
+2815 |         run: |
+     |         --- this run block
+...
+2826 |           docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION} \
+     |                                                               ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2826:63
+     |
+2815 |         run: |
+     |         --- this run block
+...
+2826 |           docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION} \
+     |                                                               ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2827:50
+     |
+2815 |         run: |
+     |         --- this run block
+...
+2827 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION}-amd64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2828:50
+     |
+2815 |         run: |
+     |         --- this run block
+...
+2828 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION}-arm64
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2987:50
+     |
+2979 |         run: |
+     |         --- this run block
+...
+2987 |               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:2988:50
+     |
+2979 | ...   run: |
+     |       --- this run block
+...
+2988 | ...         --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outp...
+     |                                                ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:3128:50
+     |
+3120 |         run: |
+     |         --- this run block
+...
+3128 |               --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:3129:50
+     |
+3120 | ...   run: |
+     |       --- this run block
+...
+3129 | ...         --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outp...
+     |                                                ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:3216:63
+     |
+3212 |         run: |
+     |         --- this run block
+...
+3216 |           docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest \
+     |                                                               ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:3217:50
+     |
+3212 |         run: |
+     |         --- this run block
+...
+3217 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest-amd64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:3218:50
+     |
+3212 |         run: |
+     |         --- this run block
+...
+3218 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest-arm64
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:3219:61
+     |
+3212 |         run: |
+     |         --- this run block
+...
+3219 |           docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest
+     |                                                             ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:3221:63
+     |
+3212 |         run: |
+     |         --- this run block
+...
+3221 |           docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION} \
+     |                                                               ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:3222:50
+     |
+3212 |         run: |
+     |         --- this run block
+...
+3222 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}-amd64 \
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:3223:50
+     |
+3212 |         run: |
+     |         --- this run block
+...
+3223 |             --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}-arm64
+     |                                                  ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:3224:61
+     |
+3212 |         run: |
+     |         --- this run block
+...
+3224 |           docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}
+     |                                                             ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+help[template-injection]: code injection via template expansion
+    --> .github/workflows/release.yml:3224:61
+     |
+3212 |         run: |
+     |         --- this run block
+...
+3224 |           docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}
+     |                                                             ^^^^^^^^^^^^^^^^^^^ may expand into attacker-controllable code
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#template-injection
+
+error[unpinned-uses]: unpinned action reference
+  --> .github/workflows/release.yml:94:15
+   |
+94 |       - uses: actions/checkout@v6
+   |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+   |
+   = note: audit confidence → High
+   = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:112:15
+    |
+112 |       - uses: actions/checkout@v6
+    |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:131:15
+    |
+131 |       - uses: actions/checkout@v6
+    |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:174:15
+    |
+174 |       - uses: actions/checkout@v6
+    |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:202:15
+    |
+202 |       - uses: actions/checkout@v6
+    |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:294:15
+    |
+294 |       - uses: actions/checkout@v6
+    |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:388:15
+    |
+388 |         uses: actions/checkout@v6
+    |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:448:15
+    |
+448 |         uses: actions/checkout@v6
+    |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:467:15
+    |
+467 |         uses: jlumbroso/free-disk-space@main
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:533:15
+    |
+533 |         uses: actions/checkout@v6
+    |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:552:15
+    |
+552 |         uses: jlumbroso/free-disk-space@main
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:605:15
+    |
+605 |         uses: actions/checkout@v6
+    |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:624:15
+    |
+624 |         uses: jlumbroso/free-disk-space@main
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:719:15
+    |
+719 |         uses: actions/checkout@v6
+    |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:738:15
+    |
+738 |         uses: jlumbroso/free-disk-space@main
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:909:15
+    |
+909 |         uses: actions/checkout@v6
+    |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/release.yml:928:15
+    |
+928 |         uses: jlumbroso/free-disk-space@main
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1114:15
+     |
+1114 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1122:15
+     |
+1122 |         uses: jlumbroso/free-disk-space@main
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1143:15
+     |
+1143 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1154:15
+     |
+1154 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1168:15
+     |
+1168 |         uses: docker/build-push-action@v7
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1243:15
+     |
+1243 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1251:15
+     |
+1251 |         uses: jlumbroso/free-disk-space@main
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1272:15
+     |
+1272 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1283:15
+     |
+1283 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1297:15
+     |
+1297 |         uses: docker/build-push-action@v7
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1361:15
+     |
+1361 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1373:15
+     |
+1373 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1384:15
+     |
+1384 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1462:15
+     |
+1462 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1470:15
+     |
+1470 |         uses: jlumbroso/free-disk-space@main
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1491:15
+     |
+1491 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1502:15
+     |
+1502 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1526:15
+     |
+1526 |         uses: docker/build-push-action@v7
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1607:15
+     |
+1607 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1615:15
+     |
+1615 |         uses: jlumbroso/free-disk-space@main
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1636:15
+     |
+1636 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1647:15
+     |
+1647 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1670:15
+     |
+1670 |         uses: docker/build-push-action@v7
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1737:15
+     |
+1737 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1749:15
+     |
+1749 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1760:15
+     |
+1760 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1857:15
+     |
+1857 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1866:15
+     |
+1866 |         uses: jlumbroso/free-disk-space@main
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1890:15
+     |
+1890 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1902:15
+     |
+1902 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:1927:15
+     |
+1927 |         uses: docker/build-push-action@v7
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2058:15
+     |
+2058 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2067:15
+     |
+2067 |         uses: jlumbroso/free-disk-space@main
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2091:15
+     |
+2091 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2103:15
+     |
+2103 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2128:15
+     |
+2128 |         uses: docker/build-push-action@v7
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2231:15
+     |
+2231 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2243:15
+     |
+2243 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2254:15
+     |
+2254 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2329:15
+     |
+2329 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2337:15
+     |
+2337 |         uses: jlumbroso/free-disk-space@main
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2359:15
+     |
+2359 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2370:15
+     |
+2370 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2406:15
+     |
+2406 |         uses: docker/metadata-action@v6
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2419:15
+     |
+2419 |         uses: docker/metadata-action@v6
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2435:15
+     |
+2435 |         uses: docker/build-push-action@v7
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2597:15
+     |
+2597 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2605:15
+     |
+2605 |         uses: jlumbroso/free-disk-space@main
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2627:15
+     |
+2627 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2638:15
+     |
+2638 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2672:15
+     |
+2672 |         uses: docker/metadata-action@v6
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2688:15
+     |
+2688 |         uses: docker/build-push-action@v7
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2779:15
+     |
+2779 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2792:15
+     |
+2792 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2803:15
+     |
+2803 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2890:15
+     |
+2890 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2898:15
+     |
+2898 |         uses: jlumbroso/free-disk-space@main
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2935:15
+     |
+2935 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2946:15
+     |
+2946 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:2960:15
+     |
+2960 |         uses: docker/build-push-action@v7
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:3033:15
+     |
+3033 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:3041:15
+     |
+3041 |         uses: jlumbroso/free-disk-space@main
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:3076:15
+     |
+3076 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:3087:15
+     |
+3087 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:3101:15
+     |
+3101 |         uses: docker/build-push-action@v7
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:3167:15
+     |
+3167 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:3179:15
+     |
+3179 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:3190:15
+     |
+3190 |         uses: docker/login-action@v4
+     |               ^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+error[unpinned-uses]: unpinned action reference
+    --> .github/workflows/release.yml:3268:15
+     |
+3268 |         uses: actions/checkout@v6
+     |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+     |
+     = note: audit confidence → High
+     = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+
+help[self-repository]: use GitHub's dedicated self-repository syntax
+   --> .github/workflows/release.yml:749:15
+    |
+748 |       - name: Set up Docker Buildx
+    |         -------------------------- this step
+749 |         uses: ./.github/actions/setup-buildx-resilient
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use '$/...' instead of './...'
+    |
+    = note: audit confidence → High
+    = note: this finding has an auto-fix
+    = help: audit documentation → https://docs.zizmor.sh/audits/#self-repository
+
+help[self-repository]: use GitHub's dedicated self-repository syntax
+   --> .github/workflows/release.yml:939:15
+    |
+938 |       - name: Set up Docker Buildx
+    |         -------------------------- this step
+939 |         uses: ./.github/actions/setup-buildx-resilient
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use '$/...' instead of './...'
+    |
+    = note: audit confidence → High
+    = note: this finding has an auto-fix
+    = help: audit documentation → https://docs.zizmor.sh/audits/#self-repository
+
+help[self-repository]: use GitHub's dedicated self-repository syntax
+    --> .github/workflows/release.yml:1140:15
+     |
+1139 |       - name: Set up Docker Buildx
+     |         -------------------------- this step
+1140 |         uses: ./.github/actions/setup-buildx-resilient
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use '$/...' instead of './...'
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#self-repository
+
+help[self-repository]: use GitHub's dedicated self-repository syntax
+    --> .github/workflows/release.yml:1269:15
+     |
+1268 |       - name: Set up Docker Buildx
+     |         -------------------------- this step
+1269 |         uses: ./.github/actions/setup-buildx-resilient
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use '$/...' instead of './...'
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#self-repository
+
+help[self-repository]: use GitHub's dedicated self-repository syntax
+    --> .github/workflows/release.yml:1488:15
+     |
+1487 |       - name: Set up Docker Buildx
+     |         -------------------------- this step
+1488 |         uses: ./.github/actions/setup-buildx-resilient
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use '$/...' instead of './...'
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#self-repository
+
+help[self-repository]: use GitHub's dedicated self-repository syntax
+    --> .github/workflows/release.yml:1633:15
+     |
+1632 |       - name: Set up Docker Buildx
+     |         -------------------------- this step
+1633 |         uses: ./.github/actions/setup-buildx-resilient
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use '$/...' instead of './...'
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#self-repository
+
+help[self-repository]: use GitHub's dedicated self-repository syntax
+    --> .github/workflows/release.yml:1886:15
+     |
+1884 |       - name: Set up Docker Buildx
+     |         -------------------------- this step
+1885 |         if: steps.check-lang.outputs.should_build == 'true'
+1886 |         uses: ./.github/actions/setup-buildx-resilient
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use '$/...' instead of './...'
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#self-repository
+
+help[self-repository]: use GitHub's dedicated self-repository syntax
+    --> .github/workflows/release.yml:2087:15
+     |
+2085 |       - name: Set up Docker Buildx
+     |         -------------------------- this step
+2086 |         if: steps.check-lang.outputs.should_build == 'true'
+2087 |         uses: ./.github/actions/setup-buildx-resilient
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use '$/...' instead of './...'
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#self-repository
+
+help[self-repository]: use GitHub's dedicated self-repository syntax
+    --> .github/workflows/release.yml:2356:15
+     |
+2355 |       - name: Set up Docker Buildx
+     |         -------------------------- this step
+2356 |         uses: ./.github/actions/setup-buildx-resilient
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use '$/...' instead of './...'
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#self-repository
+
+help[self-repository]: use GitHub's dedicated self-repository syntax
+    --> .github/workflows/release.yml:2624:15
+     |
+2623 |       - name: Set up Docker Buildx
+     |         -------------------------- this step
+2624 |         uses: ./.github/actions/setup-buildx-resilient
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use '$/...' instead of './...'
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#self-repository
+
+help[self-repository]: use GitHub's dedicated self-repository syntax
+    --> .github/workflows/release.yml:2932:15
+     |
+2931 |       - name: Set up Docker Buildx
+     |         -------------------------- this step
+2932 |         uses: ./.github/actions/setup-buildx-resilient
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use '$/...' instead of './...'
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#self-repository
+
+help[self-repository]: use GitHub's dedicated self-repository syntax
+    --> .github/workflows/release.yml:3073:15
+     |
+3072 |       - name: Set up Docker Buildx
+     |         -------------------------- this step
+3073 |         uses: ./.github/actions/setup-buildx-resilient
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use '$/...' instead of './...'
+     |
+     = note: audit confidence → High
+     = note: this finding has an auto-fix
+     = help: audit documentation → https://docs.zizmor.sh/audits/#self-repository
+
+604 findings (125 ignored, 306 suppressed, 12 safe fixes, 67 unsafe fixes): 0 informational, 77 low, 5 medium, 91 high
