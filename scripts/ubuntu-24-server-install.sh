@@ -5,6 +5,24 @@ set -euo pipefail
 # This script installs common language runtimes for a development box.
 # It is AI-agnostic - no AI tools or assistants are included.
 # Based on: https://github.com/link-assistant/hive-mind/blob/main/scripts/ubuntu-24-server-install.sh
+#
+# Usage: ./ubuntu-24-server-install.sh [--verbose]
+#
+#   --verbose  trace what the script resolves, generates and hands to the box
+#              user, and run the generated box-user script under `set -x`.
+#              Off by default. Also settable with BOX_VERBOSE=1, which is the
+#              only way to reach it through `curl ... | bash`.
+
+BOX_VERBOSE="${BOX_VERBOSE:-0}"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -v|--verbose) BOX_VERBOSE=1; shift ;;
+    -h|--help)    sed -n '4,14p' "$0" | sed 's/^# \?//'; exit 0 ;;
+    --)           shift; break ;;
+    *)            echo "ubuntu-24-server-install.sh: unknown argument $1" >&2; exit 2 ;;
+  esac
+done
 
 # Color codes for enhanced output (disabled in non-TTY)
 if [ -t 1 ]; then
@@ -48,6 +66,11 @@ log_step() {
   echo -e "\n${GREEN}==>${NC} ${BLUE}$1${NC}\n"
 }
 
+# Debug output, silent unless --verbose / BOX_VERBOSE=1 (issue #115).
+log_debug() {
+  [ "$BOX_VERBOSE" = "1" ] && echo -e "${CYAN}[debug]${NC} $1" || true
+}
+
 # Verification helper
 verify_command() {
   local tool_name="$1"
@@ -55,7 +78,9 @@ verify_command() {
   local version_flag="${3:---version}"
 
   if command -v "$command_name" &>/dev/null; then
-    local version=$("$command_name" $version_flag 2>/dev/null | head -n1 || echo "installed")
+    local version
+    # shellcheck disable=SC2086  # $version_flag is deliberately word-split
+    version=$("$command_name" $version_flag 2>/dev/null | head -n1 || echo "installed")
     log_success "$tool_name: $version"
     return 0
   else
@@ -102,6 +127,7 @@ locate_box_common_sh() {
 box_resolve() {
   local fn="$1" fallback="$2" out=""
   if [ -n "$BOX_COMMON_SH" ]; then
+    # shellcheck source=/dev/null  # resolved at runtime by locate_box_common_sh
     out=$( (set +eu; . "$BOX_COMMON_SH" >/dev/null 2>&1; "$fn" 2>/dev/null) ) || out=""
   fi
   if [ -n "$out" ]; then
@@ -267,6 +293,7 @@ NODE_MAJOR="$(box_resolve resolve_node_lts_major 24)"
 NVM_INSTALL_VERSION="$(box_resolve resolve_nvm_version v0.40.7)"
 JAVA_MAJOR="$(box_resolve resolve_java_lts_major 25)"
 log_info "Resolved versions: Node ${NODE_MAJOR} LTS, nvm ${NVM_INSTALL_VERSION}, Java ${JAVA_MAJOR} LTS"
+log_debug "Version policy source: ${BOX_COMMON_SH:-<none, using pinned fallbacks>}"
 
 cleanup_duplicate_apt_sources
 apt_update_safe
@@ -305,6 +332,7 @@ fi
 # CRAN keeps a current R for every supported Ubuntu codename; the distro package
 # is frozen at whatever shipped with the release (issue #112).
 log_info "Installing R statistical language..."
+# shellcheck source=/dev/null  # resolved at runtime by locate_box_common_sh
 if [ -n "$BOX_COMMON_SH" ] && (set +eu; . "$BOX_COMMON_SH" >/dev/null 2>&1; add_cran_repo) >/dev/null 2>&1; then
   log_success "CRAN repository configured"
   apt_update_safe
@@ -418,6 +446,12 @@ set -euo pipefail
 : "${NODE_MAJOR:?must be passed in by scripts/ubuntu-24-server-install.sh}"
 : "${NVM_INSTALL_VERSION:?must be passed in by scripts/ubuntu-24-server-install.sh}"
 : "${JAVA_MAJOR:?must be passed in by scripts/ubuntu-24-server-install.sh}"
+
+BOX_VERBOSE="${BOX_VERBOSE:-0}"
+# Trace every command when asked. Off by default: this install log already runs
+# to thousands of lines, and `set -x` over it is unreadable unless you are
+# specifically chasing something (issue #115).
+[ "$BOX_VERBOSE" = "1" ] && set -x || true
 
 # Define logging functions for box user session
 if [ -t 1 ]; then
@@ -1157,15 +1191,18 @@ EOF_BOX_SCRIPT
 # Make the script executable
 chmod +x /tmp/box-user-setup.sh
 
+log_debug "Handing to the box user: NODE_MAJOR=$NODE_MAJOR NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION JAVA_MAJOR=$JAVA_MAJOR BOX_VERBOSE=$BOX_VERBOSE"
+log_debug "Generated script: /tmp/box-user-setup.sh ($(wc -l < /tmp/box-user-setup.sh) lines)"
+
 # Execute as box user.
 # `su -` and `sudo -i` both start a login shell with a fresh environment, so the
 # versions resolved above are passed explicitly; /tmp/box-user-setup.sh asserts
 # each one (issue #115). `env` is used rather than a bare VAR=value prefix
 # because sudo's env_reset policy rejects unlisted variables.
 if [ "$EUID" -eq 0 ]; then
-  su - box -c "env NODE_MAJOR='$NODE_MAJOR' NVM_INSTALL_VERSION='$NVM_INSTALL_VERSION' JAVA_MAJOR='$JAVA_MAJOR' bash /tmp/box-user-setup.sh"
+  su - box -c "env NODE_MAJOR='$NODE_MAJOR' NVM_INSTALL_VERSION='$NVM_INSTALL_VERSION' JAVA_MAJOR='$JAVA_MAJOR' BOX_VERBOSE='$BOX_VERBOSE' bash /tmp/box-user-setup.sh"
 else
-  sudo -i -u box env "NODE_MAJOR=$NODE_MAJOR" "NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION" "JAVA_MAJOR=$JAVA_MAJOR" bash /tmp/box-user-setup.sh
+  sudo -i -u box env "NODE_MAJOR=$NODE_MAJOR" "NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION" "JAVA_MAJOR=$JAVA_MAJOR" "BOX_VERBOSE=$BOX_VERBOSE" bash /tmp/box-user-setup.sh
 fi
 
 # Clean up the temporary script

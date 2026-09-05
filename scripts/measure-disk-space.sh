@@ -5,15 +5,39 @@ set -euo pipefail
 # This script measures disk space used by each installed component.
 # It wraps the installation script with disk space tracking capabilities.
 #
-# Usage: ./measure-disk-space.sh [--json-output FILE]
+# Usage: ./measure-disk-space.sh [--json-output FILE] [--verbose]
+#
+#   --json-output FILE  where to write the measurements (default:
+#                       /tmp/disk-space-measurements.json)
+#   --verbose           trace what the script resolves, generates and hands to
+#                       the box user, and run the generated script under `set -x`.
+#                       Off by default. Also settable with BOX_VERBOSE=1, which
+#                       is how the workflow exposes it.
 #
 # Output: JSON file with disk space measurements for each component
 
-# Parse arguments
-JSON_OUTPUT_FILE="${1:-/tmp/disk-space-measurements.json}"
-if [[ "$1" == "--json-output" ]] && [[ -n "${2:-}" ]]; then
-  JSON_OUTPUT_FILE="$2"
-fi
+# Parse arguments.
+#
+# Every positional reference is guarded. This script runs under `set -u`, and
+# the previous `[[ "$1" == ... ]]` aborted with `$1: unbound variable` before the
+# first line of real work whenever it was called with no arguments at all —
+# which is exactly the invocation the Usage line above advertises. CI always
+# passes --json-output, so the defect stayed latent (issue #115).
+JSON_OUTPUT_FILE="/tmp/disk-space-measurements.json"
+BOX_VERBOSE="${BOX_VERBOSE:-0}"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --json-output)
+      [ -n "${2:-}" ] || { echo "measure-disk-space.sh: --json-output needs a FILE" >&2; exit 2; }
+      JSON_OUTPUT_FILE="$2"; shift 2 ;;
+    -v|--verbose) BOX_VERBOSE=1; shift ;;
+    -h|--help)    sed -n '4,16p' "$0" | sed 's/^# \?//'; exit 0 ;;
+    --)           shift; break ;;
+    -*)           echo "measure-disk-space.sh: unknown option $1" >&2; exit 2 ;;
+    *)            JSON_OUTPUT_FILE="$1"; shift ;;   # bare path, as before
+  esac
+done
 
 # Color codes for enhanced output (disabled in non-TTY)
 if [ -t 1 ]; then
@@ -39,6 +63,9 @@ log_warning() { echo -e "${YELLOW}[!]${NC} $1"; }
 log_error() { echo -e "${RED}[✗]${NC} $1"; }
 log_note() { echo -e "${CYAN}[i]${NC} $1"; }
 log_step() { echo -e "\n${GREEN}==>${NC} ${BLUE}$1${NC}\n"; }
+# Off unless --verbose / BOX_VERBOSE=1. This job runs unattended for ~40
+# minutes, so when it fails the log is the only evidence there is (issue #115).
+log_debug() { [ "$BOX_VERBOSE" = "1" ] && echo -e "${CYAN}[debug]${NC} $1" || true; }
 
 # Check if a command exists (silent)
 command_exists() {
@@ -88,6 +115,7 @@ locate_box_common_sh() {
 box_resolve() {
   local fn="$1" fallback="$2" out=""
   if [ -n "$BOX_COMMON_SH" ]; then
+    # shellcheck source=/dev/null  # resolved at runtime by locate_box_common_sh
     out=$( (set +eu; . "$BOX_COMMON_SH" >/dev/null 2>&1; "$fn" 2>/dev/null) ) || out=""
   fi
   if [ -n "$out" ]; then
@@ -318,6 +346,7 @@ NVM_INSTALL_VERSION="$(box_resolve resolve_nvm_version v0.40.7)"
 JAVA_MAJOR="$(box_resolve resolve_java_lts_major 25)"
 DOTNET_SDK_CHANNEL="$(box_resolve resolve_dotnet_apt_channel 8.0)"
 log_note "Resolved versions: Node ${NODE_MAJOR} LTS, nvm ${NVM_INSTALL_VERSION}, Java ${JAVA_MAJOR} LTS, .NET ${DOTNET_SDK_CHANNEL}"
+log_debug "Version policy source: ${BOX_COMMON_SH:-<none, using pinned fallbacks>}"
 
 measure_apt_install "Essential Tools" "System" \
   wget curl unzip zip git sudo ca-certificates gnupg build-essential expect screen
@@ -332,6 +361,7 @@ measure_apt_install "C/C++ Tools (CMake, Clang, LLVM, LLD)" "Build Tools" cmake 
 measure_apt_install "Assembly Tools (NASM, FASM)" "Build Tools" nasm fasm
 # CRAN carries a current R for every supported codename; the distro package is
 # frozen at whatever shipped with the release (issue #112).
+# shellcheck source=/dev/null  # resolved at runtime by locate_box_common_sh
 if [ -n "$BOX_COMMON_SH" ] && (set +eu; . "$BOX_COMMON_SH" >/dev/null 2>&1; add_cran_repo) >/dev/null 2>&1; then
   apt_update_with_retry || true
 fi
@@ -407,8 +437,15 @@ JSON_OUTPUT_FILE="${1:-/tmp/disk-space-measurements.json}"
 : "${NVM_INSTALL_VERSION:?must be passed in by scripts/measure-disk-space.sh}"
 : "${JAVA_MAJOR:?must be passed in by scripts/measure-disk-space.sh}"
 
+BOX_VERBOSE="${BOX_VERBOSE:-0}"
+# Trace every command when asked. Off by default: this log is already ~1800
+# lines, and `set -x` over a 40-minute install run is unreadable unless you are
+# specifically chasing something (issue #115).
+[ "$BOX_VERBOSE" = "1" ] && set -x || true
+
 # Logging
 log_info() { echo -e "\033[0;34m[*]\033[0m $1"; }
+log_debug() { [ "$BOX_VERBOSE" = "1" ] && echo -e "\033[0;36m[debug]\033[0m $1" || true; }
 log_success() { echo -e "\033[0;32m[✓]\033[0m $1"; }
 log_warning() { echo -e "\033[1;33m[!]\033[0m $1"; }
 
@@ -831,15 +868,18 @@ JSON_TMP_COPY="$(mktemp /tmp/disk-space-measurements-XXXXXX.json)"
 cp "$JSON_OUTPUT_FILE_ABS" "$JSON_TMP_COPY"
 chmod o+rw "$JSON_TMP_COPY"
 
+log_debug "Handing to the box user: NODE_MAJOR=$NODE_MAJOR NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION JAVA_MAJOR=$JAVA_MAJOR BOX_VERBOSE=$BOX_VERBOSE"
+log_debug "Generated script: /tmp/box-measure.sh ($(wc -l < /tmp/box-measure.sh) lines), JSON copy: $JSON_TMP_COPY"
+
 # Execute box user measurements against the /tmp copy.
 # `su -` and `sudo -i` both start a login shell with a fresh environment, so the
 # versions resolved above are passed explicitly; /tmp/box-measure.sh asserts
 # each one (issue #115). `env` is used rather than a bare VAR=value prefix
 # because sudo's env_reset policy rejects unlisted variables.
 if [ "$EUID" -eq 0 ]; then
-  su - box -c "env NODE_MAJOR='$NODE_MAJOR' NVM_INSTALL_VERSION='$NVM_INSTALL_VERSION' JAVA_MAJOR='$JAVA_MAJOR' bash /tmp/box-measure.sh '$JSON_TMP_COPY'"
+  su - box -c "env NODE_MAJOR='$NODE_MAJOR' NVM_INSTALL_VERSION='$NVM_INSTALL_VERSION' JAVA_MAJOR='$JAVA_MAJOR' BOX_VERBOSE='$BOX_VERBOSE' bash /tmp/box-measure.sh '$JSON_TMP_COPY'"
 else
-  sudo -i -u box env "NODE_MAJOR=$NODE_MAJOR" "NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION" "JAVA_MAJOR=$JAVA_MAJOR" bash /tmp/box-measure.sh "$JSON_TMP_COPY"
+  sudo -i -u box env "NODE_MAJOR=$NODE_MAJOR" "NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION" "JAVA_MAJOR=$JAVA_MAJOR" "BOX_VERBOSE=$BOX_VERBOSE" bash /tmp/box-measure.sh "$JSON_TMP_COPY"
 fi
 
 # Copy the updated measurements back to the original location

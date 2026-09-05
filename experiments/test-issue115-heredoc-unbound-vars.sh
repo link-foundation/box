@@ -28,6 +28,8 @@
 #        positives — must NOT flag text the shell would never expand.
 # Part 3 asserts the real tree is clean and that both scripts now pass the
 #        values in explicitly and assert them.
+# Part 4 covers the verbose/debug mode added under this issue: it must reach the
+#        generated script, and it must change nothing when it is not asked for.
 #
 # Exit non-zero on the first failed assertion.
 
@@ -293,6 +295,96 @@ if grep -rq 'check-heredoc-vars.sh' "$WF_DIR" 2>/dev/null; then
   ok "check-heredoc-vars.sh runs in CI"
 else
   bad "check-heredoc-vars.sh is not referenced by any workflow"
+fi
+
+# =============================================================================
+echo ""
+echo "=== Part 4: the verbose mode (default off) ==="
+# =============================================================================
+# The issue asks for debug output that can be switched on for the next
+# iteration, switched off by default. Two things have to hold: the flag must
+# exist and reach the generated script across the su/sudo boundary, and nothing
+# must change when it is absent.
+
+# Extracting the argument prologue (everything up to the parser's `done`) lets
+# the parser be executed without running a 40-minute install as root. This is
+# also the direct reproduction of the second defect found under this issue:
+# `measure-disk-space.sh` dereferenced a bare $1 under `set -u`, so the
+# documented no-argument invocation aborted with `$1: unbound variable`.
+prologue() {
+  local src="$1" out="$2"
+  awk 'NR == 1, /^done$/' "$src" > "$out"
+}
+
+for rel in scripts/measure-disk-space.sh scripts/ubuntu-24-server-install.sh; do
+  f="$ROOT/$rel"
+  base="$(basename "$rel")"
+
+  # --help must not start any work, and must document the flag.
+  set +e
+  help_out="$("$f" --help 2>&1)"
+  help_rc=$?
+  set -e
+  check "$base --help exits 0" "0" "$help_rc"
+  check "$base --help documents --verbose" "1" "$(grep -q -- '--verbose' <<<"$help_out" && echo 1 || echo 0)"
+
+  # An unrecognised option is a usage error, not a silent full install.
+  set +e
+  "$f" --definitely-not-an-option >/dev/null 2>&1
+  bad_rc=$?
+  set -e
+  check "$base rejects an unknown option with exit 2" "2" "$bad_rc"
+
+  # The prologue, run with no arguments at all, under the same `set -u` the
+  # real script uses. Before the fix this aborted on $1.
+  pro="$TMP/prologue-$base"
+  prologue "$f" "$pro"
+  set +e
+  pro_out="$(bash "$pro" 2>&1; echo "rc=$?")"
+  set -e
+  check "$base parses an empty argument list without an unbound variable" \
+    "" "$(grep -o 'unbound variable' <<<"$pro_out" || true)"
+  check "  (and the prologue exits cleanly)" "rc=0" "$(tail -n1 <<<"$pro_out")"
+
+  # Default off, in the parent and in the generated script.
+  check "$base defaults BOX_VERBOSE to 0" "2" \
+    "$(grep -c 'BOX_VERBOSE="\${BOX_VERBOSE:-0}"' "$f" || true)"
+
+  # `set -x` in the generated script must be behind the flag, never bare.
+  check "$base only traces the generated script when BOX_VERBOSE=1" "1" \
+    "$(grep -c '\[ "\$BOX_VERBOSE" = "1" \] && set -x' "$f" || true)"
+  check "  (and never enables tracing unconditionally)" "" \
+    "$(grep -nE '^[[:space:]]*set -x[[:space:]]*$' "$f" || true)"
+
+  # The flag has to survive the same boundary that discarded the versions.
+  invocations="$(grep -nE '(su - box|sudo -i -u box)' "$f" | grep -E 'box-(measure|user-setup)\.sh' || true)"
+  missing=""
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    grep -q 'BOX_VERBOSE=' <<<"$line" || missing="$missing line${line%%:*}"
+  done <<<"$invocations"
+  check "$base passes BOX_VERBOSE across the su/sudo boundary" "" "$missing"
+
+  # And the debug helper itself is silent unless asked. Evaluated in isolation
+  # so this tests the actual definition, not a paraphrase of it.
+  helper="$(sed -n '/^log_debug() {/,/^}/p' "$f")"
+  [ -n "$helper" ] || helper="$(grep -m1 '^log_debug() {.*}$' "$f")"
+  if [ -z "$helper" ]; then
+    bad "$base has no log_debug helper"
+  else
+    off="$(BOX_VERBOSE=0 CYAN='' NC='' bash -c "$helper"$'\n''log_debug "should not appear"' 2>&1 || true)"
+    on="$(BOX_VERBOSE=1 CYAN='' NC='' bash -c "$helper"$'\n''log_debug "should appear"' 2>&1 || true)"
+    check "$base log_debug is silent by default" "" "$off"
+    check "$base log_debug prints when BOX_VERBOSE=1" "1" \
+      "$(grep -c 'should appear' <<<"$on" || true)"
+  fi
+done
+
+# The workflow has to expose the switch, or nobody can turn it on in CI.
+if grep -q 'BOX_VERBOSE' "$WF_DIR/measure-disk-space.yml" 2>/dev/null; then
+  ok "measure-disk-space.yml exposes the verbose switch"
+else
+  bad "measure-disk-space.yml does not expose BOX_VERBOSE"
 fi
 
 echo ""
