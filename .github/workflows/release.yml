@@ -56,6 +56,14 @@ concurrency:
   group: ${{ github.event_name == 'pull_request' && format('{0}-pr-{1}-run-{2}', github.workflow, github.event.pull_request.number, github.run_id) || format('{0}-{1}', github.workflow, github.ref) }}
   cancel-in-progress: true
 
+# Least-privilege default. Every job that needs more declares it itself
+# (contents: write for the version/release jobs, packages: write for the image
+# builds, actions: write for the supersession guard). Without this, the four
+# jobs that declare nothing — version-check, changeset-check, detect-changes and
+# docker-build-test — ran with the repository's default token scope (issue #115).
+permissions:
+  contents: read
+
 env:
   # The full-box Dockerfiles use `RUN --mount=type=bind,from=<stage>` to refresh
   # the copied rustup toolchains inside the same layer (issue #112). buildx
@@ -210,16 +218,22 @@ jobs:
 
       - name: Bump version
         id: bump
+        # The dispatch inputs arrive through env, not through ${{ }} inside the
+        # script. Interpolating them directly splices attacker-controlled text
+        # into a shell that holds contents: write on main (issue #115).
+        env:
+          BUMP_TYPE: ${{ github.event.inputs.bump_type }}
+          DESCRIPTION: ${{ github.event.inputs.description }}
         run: |
           # Read current version
-          CURRENT_VERSION=$(cat VERSION | tr -d '[:space:]')
+          CURRENT_VERSION=$(tr -d '[:space:]' < VERSION)
           echo "Current version: $CURRENT_VERSION"
 
           # Parse version components
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 
           # Bump based on type
-          case "${{ github.event.inputs.bump_type }}" in
+          case "$BUMP_TYPE" in
             major)
               MAJOR=$((MAJOR + 1))
               MINOR=0
@@ -242,16 +256,15 @@ jobs:
 
           # Commit and push
           git add VERSION
-          DESCRIPTION="${{ github.event.inputs.description }}"
-          if [ -n "$DESCRIPTION" ]; then
+          if [ -n "${DESCRIPTION:-}" ]; then
             git commit -m "$NEW_VERSION: $DESCRIPTION"
           else
             git commit -m "$NEW_VERSION"
           fi
           git push origin main
 
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "bumped=true" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "bumped=true" >> "$GITHUB_OUTPUT"
 
   # === DETECT CHANGES (per-image granularity) ===
   detect-changes:
@@ -309,8 +322,8 @@ jobs:
       - name: Get version from VERSION file
         id: version
         run: |
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Detected version: $VERSION"
 
       # Single source of truth for change detection (issue #108).
@@ -464,7 +477,7 @@ jobs:
             > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: false
           android: true
@@ -549,7 +562,7 @@ jobs:
             > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: false
           android: true
@@ -621,7 +634,7 @@ jobs:
             > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: false
           android: true
@@ -735,7 +748,7 @@ jobs:
             > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: false
           android: true
@@ -925,7 +938,7 @@ jobs:
             > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: false
           android: true
@@ -1119,7 +1132,7 @@ jobs:
       # base images / running buildx so that COPY --from=*-stage and large
       # apt installs never hit "no space left on device" mid-build.
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: false
           android: true
@@ -1133,8 +1146,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: ./.github/actions/setup-buildx-resilient
@@ -1212,7 +1225,7 @@ jobs:
 
       - name: Mark as built
         id: result
-        run: echo "built=true" >> $GITHUB_OUTPUT
+        run: echo "built=true" >> "$GITHUB_OUTPUT"
 
   # === BUILD JS BOX (arm64) ===
   build-js-arm64:
@@ -1248,7 +1261,7 @@ jobs:
       # base images / running buildx so that COPY --from=*-stage and large
       # apt installs never hit "no space left on device" mid-build.
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: false
           android: true
@@ -1262,8 +1275,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: ./.github/actions/setup-buildx-resilient
@@ -1341,7 +1354,7 @@ jobs:
 
       - name: Mark as built
         id: result
-        run: echo "built=true" >> $GITHUB_OUTPUT
+        run: echo "built=true" >> "$GITHUB_OUTPUT"
 
   # === CREATE JS MULTI-ARCH MANIFEST ===
   js-manifest:
@@ -1366,8 +1379,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4
@@ -1467,7 +1480,7 @@ jobs:
       # base images / running buildx so that COPY --from=*-stage and large
       # apt installs never hit "no space left on device" mid-build.
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: false
           android: true
@@ -1481,8 +1494,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: ./.github/actions/setup-buildx-resilient
@@ -1515,9 +1528,9 @@ jobs:
         run: |
           # Use freshly built JS image if JS was rebuilt, otherwise use latest
           if [ "${{ needs.build-js-amd64.outputs.built }}" = "true" ]; then
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64" >> $GITHUB_OUTPUT
+            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64" >> "$GITHUB_OUTPUT"
           else
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64" >> $GITHUB_OUTPUT
+            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build and push essentials box (amd64)
@@ -1573,7 +1586,7 @@ jobs:
 
       - name: Mark as built
         id: result
-        run: echo "built=true" >> $GITHUB_OUTPUT
+        run: echo "built=true" >> "$GITHUB_OUTPUT"
 
   # === BUILD ESSENTIALS BOX (arm64) ===
   build-essentials-arm64:
@@ -1612,7 +1625,7 @@ jobs:
       # base images / running buildx so that COPY --from=*-stage and large
       # apt installs never hit "no space left on device" mid-build.
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: false
           android: true
@@ -1626,8 +1639,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: ./.github/actions/setup-buildx-resilient
@@ -1659,9 +1672,9 @@ jobs:
         id: js-base
         run: |
           if [ "${{ needs.build-js-arm64.outputs.built }}" = "true" ]; then
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64" >> $GITHUB_OUTPUT
+            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64" >> "$GITHUB_OUTPUT"
           else
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64" >> $GITHUB_OUTPUT
+            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build and push essentials box (arm64)
@@ -1717,7 +1730,7 @@ jobs:
 
       - name: Mark as built
         id: result
-        run: echo "built=true" >> $GITHUB_OUTPUT
+        run: echo "built=true" >> "$GITHUB_OUTPUT"
 
   # === CREATE ESSENTIALS MULTI-ARCH MANIFEST ===
   essentials-manifest:
@@ -1742,8 +1755,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4
@@ -1845,10 +1858,10 @@ jobs:
              [ "$JS_CHANGED" = "true" ] || \
              [ "$VERSION_CHANGED" = "true" ] || \
              [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
             echo "Building ${LANG}: change detected or workflow_dispatch"
           else
-            echo "should_build=false" >> $GITHUB_OUTPUT
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
             echo "Skipping ${LANG}: no relevant changes"
           fi
 
@@ -1863,7 +1876,7 @@ jobs:
       # apt installs never hit "no space left on device" mid-build.
       - name: Free disk space
         if: steps.check-lang.outputs.should_build == 'true'
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: false
           android: true
@@ -1878,8 +1891,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         if: steps.check-lang.outputs.should_build == 'true'
@@ -1915,9 +1928,9 @@ jobs:
         id: essentials-base
         run: |
           if [ "${{ needs.build-essentials-amd64.outputs.built }}" = "true" ]; then
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64" >> $GITHUB_OUTPUT
+            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64" >> "$GITHUB_OUTPUT"
           else
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64" >> $GITHUB_OUTPUT
+            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build and push ${{ matrix.language }} box (amd64)
@@ -1952,9 +1965,9 @@ jobs:
             "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64"
             "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64"
           )
-          TAG_ARGS=""
+          TAG_ARGS=()
           for tag in "${TAGS[@]}"; do
-            TAG_ARGS="$TAG_ARGS --tag $tag"
+            TAG_ARGS+=(--tag "$tag")
           done
           for attempt in 1 2 3; do
             echo "==> Retry attempt $attempt/3..."
@@ -1962,7 +1975,7 @@ jobs:
               --file ubuntu/24.04/${{ matrix.language }}/Dockerfile \
               --platform linux/amd64 \
               --build-arg ESSENTIALS_IMAGE=${{ steps.essentials-base.outputs.image }} \
-              $TAG_ARGS \
+              "${TAG_ARGS[@]}" \
               --provenance=false \
               --cache-from type=gha,scope=${{ matrix.language }}-amd64 \
               --push \
@@ -1992,18 +2005,18 @@ jobs:
           if [ "$PHP_METHOD" = "local" ] || [ "$PHP_METHOD" = "global" ]; then
             # Tag with method suffix on both registries
             docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
-              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}
+              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-amd64-"${PHP_METHOD}"
             docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
-              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64-${PHP_METHOD}
+              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64-"${PHP_METHOD}"
             docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
-              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}
+              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-amd64-"${PHP_METHOD}"
             docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
-              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64-${PHP_METHOD}
+              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64-"${PHP_METHOD}"
 
-            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}
-            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64-${PHP_METHOD}
-            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}
-            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64-${PHP_METHOD}
+            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-amd64-"${PHP_METHOD}"
+            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64-"${PHP_METHOD}"
+            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-amd64-"${PHP_METHOD}"
+            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64-"${PHP_METHOD}"
 
             echo "Tagged PHP image with -${PHP_METHOD} suffix"
           fi
@@ -2046,10 +2059,10 @@ jobs:
              [ "$JS_CHANGED" = "true" ] || \
              [ "$VERSION_CHANGED" = "true" ] || \
              [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
             echo "Building ${LANG}: change detected or workflow_dispatch"
           else
-            echo "should_build=false" >> $GITHUB_OUTPUT
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
             echo "Skipping ${LANG}: no relevant changes"
           fi
 
@@ -2064,7 +2077,7 @@ jobs:
       # apt installs never hit "no space left on device" mid-build.
       - name: Free disk space
         if: steps.check-lang.outputs.should_build == 'true'
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: false
           android: true
@@ -2079,8 +2092,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         if: steps.check-lang.outputs.should_build == 'true'
@@ -2116,9 +2129,9 @@ jobs:
         id: essentials-base
         run: |
           if [ "${{ needs.build-essentials-arm64.outputs.built }}" = "true" ]; then
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64" >> $GITHUB_OUTPUT
+            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64" >> "$GITHUB_OUTPUT"
           else
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64" >> $GITHUB_OUTPUT
+            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build and push ${{ matrix.language }} box (arm64)
@@ -2153,9 +2166,9 @@ jobs:
             "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64"
             "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64"
           )
-          TAG_ARGS=""
+          TAG_ARGS=()
           for tag in "${TAGS[@]}"; do
-            TAG_ARGS="$TAG_ARGS --tag $tag"
+            TAG_ARGS+=(--tag "$tag")
           done
           for attempt in 1 2 3; do
             echo "==> Retry attempt $attempt/3..."
@@ -2163,7 +2176,7 @@ jobs:
               --file ubuntu/24.04/${{ matrix.language }}/Dockerfile \
               --platform linux/arm64 \
               --build-arg ESSENTIALS_IMAGE=${{ steps.essentials-base.outputs.image }} \
-              $TAG_ARGS \
+              "${TAG_ARGS[@]}" \
               --provenance=false \
               --cache-from type=gha,scope=${{ matrix.language }}-arm64 \
               --push \
@@ -2193,18 +2206,18 @@ jobs:
           if [ "$PHP_METHOD" = "local" ] || [ "$PHP_METHOD" = "global" ]; then
             # Tag with method suffix on both registries
             docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
-              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}
+              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-arm64-"${PHP_METHOD}"
             docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
-              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64-${PHP_METHOD}
+              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64-"${PHP_METHOD}"
             docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
-              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}
+              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-arm64-"${PHP_METHOD}"
             docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
-              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64-${PHP_METHOD}
+              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64-"${PHP_METHOD}"
 
-            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}
-            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64-${PHP_METHOD}
-            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}
-            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64-${PHP_METHOD}
+            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-arm64-"${PHP_METHOD}"
+            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64-"${PHP_METHOD}"
+            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-arm64-"${PHP_METHOD}"
+            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64-"${PHP_METHOD}"
 
             echo "Tagged PHP image with -${PHP_METHOD} suffix"
           fi
@@ -2236,8 +2249,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4
@@ -2334,7 +2347,7 @@ jobs:
       # This step removes unnecessary pre-installed software from the runner to free ~30 GB
       # See: docs/case-studies/issue-41/CASE-STUDY.md
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: false  # Keep tool cache for setup-* action compatibility
           android: true      # Free ~14 GB
@@ -2348,8 +2361,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Building version: $VERSION"
 
       - name: Set up Docker Buildx
@@ -2385,19 +2398,18 @@ jobs:
 
           # Essentials base image
           if [ "${{ needs.build-essentials-amd64.outputs.built }}" = "true" ]; then
-            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-amd64" >> $GITHUB_OUTPUT
+            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-amd64" >> "$GITHUB_OUTPUT"
           else
-            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64" >> $GITHUB_OUTPUT
+            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64" >> "$GITHUB_OUTPUT"
           fi
 
           # Language images - use version tag if languages were built, otherwise latest
           for lang in python go rust java kotlin ruby php perl swift lean rocq; do
-            LANG_UPPER=$(echo "$lang" | tr '[:lower:]' '[:upper:]')
             # If the language matrix ran successfully, use versioned tag
             if [ "${{ needs.build-languages-amd64.result }}" = "success" ]; then
-              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:${VERSION}-amd64" >> $GITHUB_OUTPUT
+              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:${VERSION}-amd64" >> "$GITHUB_OUTPUT"
             else
-              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:latest-amd64" >> $GITHUB_OUTPUT
+              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:latest-amd64" >> "$GITHUB_OUTPUT"
             fi
           done
 
@@ -2468,11 +2480,11 @@ jobs:
             ${{ steps.meta-amd64.outputs.tags }}
         run: |
           echo "First push attempt failed, retrying with backoff..."
-          TAG_ARGS=""
+          TAG_ARGS=()
           while IFS= read -r tag; do
             tag=$(echo "$tag" | xargs)
             [ -z "$tag" ] && continue
-            TAG_ARGS="$TAG_ARGS --tag $tag"
+            TAG_ARGS+=(--tag "$tag")
           done <<< "$ALL_TAGS"
           for attempt in 1 2 3; do
             echo "==> Retry attempt $attempt/3..."
@@ -2491,7 +2503,7 @@ jobs:
               --build-arg SWIFT_IMAGE=${{ steps.base-images.outputs.swift }} \
               --build-arg LEAN_IMAGE=${{ steps.base-images.outputs.lean }} \
               --build-arg ROCQ_IMAGE=${{ steps.base-images.outputs.rocq }} \
-              $TAG_ARGS \
+              "${TAG_ARGS[@]}" \
               --provenance=false \
               --cache-from type=gha \
               --push \
@@ -2602,7 +2614,7 @@ jobs:
       # ARM64 runners have more disk space (~45 GB) but we still clean up for safety
       # See: docs/case-studies/issue-41/CASE-STUDY.md
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: false  # Keep tool cache for setup-* action compatibility
           android: true      # Free ~14 GB
@@ -2616,8 +2628,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Building version: $VERSION"
 
       - name: Set up Docker Buildx
@@ -2653,17 +2665,17 @@ jobs:
 
           # Essentials base image
           if [ "${{ needs.build-essentials-arm64.outputs.built }}" = "true" ]; then
-            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-arm64" >> $GITHUB_OUTPUT
+            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-arm64" >> "$GITHUB_OUTPUT"
           else
-            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64" >> $GITHUB_OUTPUT
+            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64" >> "$GITHUB_OUTPUT"
           fi
 
           # Language images
           for lang in python go rust java kotlin ruby php perl swift lean rocq; do
             if [ "${{ needs.build-languages-arm64.result }}" = "success" ]; then
-              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:${VERSION}-arm64" >> $GITHUB_OUTPUT
+              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:${VERSION}-arm64" >> "$GITHUB_OUTPUT"
             else
-              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:latest-arm64" >> $GITHUB_OUTPUT
+              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:latest-arm64" >> "$GITHUB_OUTPUT"
             fi
           done
 
@@ -2717,11 +2729,11 @@ jobs:
           ALL_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
           echo "First push attempt failed, retrying with backoff..."
-          TAG_ARGS=""
+          TAG_ARGS=()
           while IFS= read -r tag; do
             tag=$(echo "$tag" | xargs)
             [ -z "$tag" ] && continue
-            TAG_ARGS="$TAG_ARGS --tag $tag"
+            TAG_ARGS+=(--tag "$tag")
           done <<< "$ALL_TAGS"
           for attempt in 1 2 3; do
             echo "==> Retry attempt $attempt/3..."
@@ -2740,7 +2752,7 @@ jobs:
               --build-arg SWIFT_IMAGE=${{ steps.base-images.outputs.swift }} \
               --build-arg LEAN_IMAGE=${{ steps.base-images.outputs.lean }} \
               --build-arg ROCQ_IMAGE=${{ steps.base-images.outputs.rocq }} \
-              $TAG_ARGS \
+              "${TAG_ARGS[@]}" \
               --provenance=false \
               --cache-from type=gha \
               --push \
@@ -2784,8 +2796,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Creating manifest for version: $VERSION"
 
       - name: Log in to GitHub Container Registry
@@ -2895,7 +2907,7 @@ jobs:
       # base images / running buildx so that COPY --from=*-stage and large
       # apt installs never hit "no space left on device" mid-build.
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: false
           android: true
@@ -2909,8 +2921,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Compute image names
         id: names
@@ -2925,8 +2937,8 @@ jobs:
             BASE_SUFFIX="-$NAME"
             DIND_SUFFIX="-${NAME}-dind"
           fi
-          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-amd64" >> $GITHUB_OUTPUT
-          echo "dind_suffix=${DIND_SUFFIX}" >> $GITHUB_OUTPUT
+          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-amd64" >> "$GITHUB_OUTPUT"
+          echo "dind_suffix=${DIND_SUFFIX}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: ./.github/actions/setup-buildx-resilient
@@ -3038,7 +3050,7 @@ jobs:
       # base images / running buildx so that COPY --from=*-stage and large
       # apt installs never hit "no space left on device" mid-build.
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: false
           android: true
@@ -3052,8 +3064,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Compute image names
         id: names
@@ -3066,8 +3078,8 @@ jobs:
             BASE_SUFFIX="-$NAME"
             DIND_SUFFIX="-${NAME}-dind"
           fi
-          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-arm64" >> $GITHUB_OUTPUT
-          echo "dind_suffix=${DIND_SUFFIX}" >> $GITHUB_OUTPUT
+          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-arm64" >> "$GITHUB_OUTPUT"
+          echo "dind_suffix=${DIND_SUFFIX}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: ./.github/actions/setup-buildx-resilient
@@ -3172,8 +3184,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4
@@ -3203,9 +3215,9 @@ jobs:
         run: |
           NAME="${{ matrix.variant }}"
           if [ "$NAME" = "full" ]; then
-            echo "dind_suffix=-dind" >> $GITHUB_OUTPUT
+            echo "dind_suffix=-dind" >> "$GITHUB_OUTPUT"
           else
-            echo "dind_suffix=-${NAME}-dind" >> $GITHUB_OUTPUT
+            echo "dind_suffix=-${NAME}-dind" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Create and push ${{ matrix.variant }} dind multi-arch manifests (GHCR)
@@ -3273,8 +3285,8 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Creating release for version: $VERSION"
 
       - name: Create GitHub Release
@@ -3391,6 +3403,9 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           REPO="${{ github.repository }}"
 
+          # shellcheck disable=SC2016  # the backticks are Markdown code spans
+          # inside printf format strings, not command substitutions; the values
+          # arrive as %s arguments, so single quotes are what is wanted here.
           {
             printf '\n### Docker Hub - dind-box (Docker-in-Docker variants, issue #80)\n\n'
             printf 'Each variant runs an inner Docker daemon. Run with `docker run --privileged` (default) or `docker run --runtime=sysbox-runc` (recommended for shared hosts). `docker ps -a` inside the container only lists containers created by that container - see [docs/case-studies/issue-80](https://github.com/%s/blob/v%s/docs/case-studies/issue-80/CASE-STUDY.md).\n\n' "$REPO" "$VERSION"

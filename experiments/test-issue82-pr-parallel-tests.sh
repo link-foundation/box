@@ -15,7 +15,10 @@
 # Invariants checked here:
 #   1. Each pr-test-* job exists.
 #   2. Each pr-test-* build job has a `Free disk space` step using
-#      jlumbroso/free-disk-space@main, *before* its first build step.
+#      jlumbroso/free-disk-space, *before* its first build step. The ref is
+#      not asserted to be a branch: since issue #115 every third-party action
+#      is pinned to a full 40-character commit SHA (zizmor `unpinned-uses`),
+#      so this checks the action is present and that its pin is immutable.
 #   3. The pr-test-language matrix lists all 11 languages.
 #   4. The pr-test-dind matrix lists all 14 variants (js, essentials, 11
 #      languages, full).
@@ -52,7 +55,8 @@ for job in pr-test-js pr-test-essentials pr-test-language pr-test-full pr-test-d
   check "$job job is defined" "grep -q '^  ${job}:$' '$WF'"
 done
 
-# 2. Each build job has a Free disk space step using jlumbroso/free-disk-space@main.
+# 2. Each build job has a Free disk space step using jlumbroso/free-disk-space,
+#    pinned to a full-length commit SHA.
 BUILD_JOBS=(
   pr-test-js
   pr-test-essentials
@@ -94,11 +98,23 @@ for job in jobs:
         print(f"FAIL: job '{job}' not found in workflow", file=sys.stderr)
         fail = 1
         continue
-    if 'jlumbroso/free-disk-space@main' not in block:
-        print(f"FAIL: job '{job}' is missing 'jlumbroso/free-disk-space@main'", file=sys.stderr)
+    refs = re.findall(r'jlumbroso/free-disk-space@(\S+)', block)
+    if not refs:
+        print(f"FAIL: job '{job}' is missing 'jlumbroso/free-disk-space'", file=sys.stderr)
+        fail = 1
+        continue
+    # Issue #115: third-party actions must be pinned to an immutable commit
+    # SHA, never a branch or tag that upstream can move under us.
+    unpinned = [r for r in refs if not re.fullmatch(r'[0-9a-f]{40}', r)]
+    if unpinned:
+        print(
+            f"FAIL: job '{job}' uses jlumbroso/free-disk-space@{unpinned[0]}; "
+            "expected a full 40-character commit SHA",
+            file=sys.stderr,
+        )
         fail = 1
     else:
-        print(f"PASS: job '{job}' has free-disk-space step")
+        print(f"PASS: job '{job}' has a SHA-pinned free-disk-space step")
 sys.exit(fail)
 PY
 disk_status=$?
