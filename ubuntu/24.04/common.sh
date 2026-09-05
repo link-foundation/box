@@ -203,6 +203,17 @@ fetch_release_feed() {
   curl -fsSL --max-time "${VERSION_FETCH_TIMEOUT}" --retry 2 --retry-delay 1 "$1" 2>/dev/null
 }
 
+# Does this download URL point at a real file?
+#
+# Redirect following is not optional here: download.swift.org answers a missing
+# tarball with `302 -> https://swift.org/404.html`, and `curl -fsSI` treats a
+# 302 as success. Probing without -L therefore reports "exists" for every
+# version/platform combination, which silently defeats the point of walking the
+# release list (issue #112). With -L the probe ends on the real 404 and fails.
+remote_file_exists() {
+  curl -fsSIL --max-time "${VERSION_FETCH_TIMEOUT}" "$1" >/dev/null 2>&1
+}
+
 # Latest release tag of a GitHub repository, read from the /releases/latest
 # redirect instead of api.github.com: the HTML endpoint is not subject to the
 # unauthenticated API rate limit that CI runners routinely exhaust.

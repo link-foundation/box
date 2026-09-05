@@ -84,6 +84,17 @@ case "$url" in
   *api.sdkman.io/2/candidates/java/*)   cat "$FIXTURES/sdkman-java.txt" ;;
   *releases-index.json)                 cat "$FIXTURES/dotnet-index.json" ;;
   *swift.org/api/v1/install/releases.json) cat "$FIXTURES/swift-releases.json" ;;
+  # download.swift.org answers a missing tarball with a 302 to swift.org/404.html
+  # instead of a 404, so a probe that does not follow redirects sees success for
+  # every URL. The mock reproduces exactly that: without -L it always succeeds.
+  *download.swift.org/*)
+    follow=0
+    for arg in "$@"; do case "$arg" in -*L*) follow=1 ;; esac; done
+    [ "$follow" = "1" ] || exit 0
+    case "$url" in
+      *-"${MOCK_SWIFT_PLATFORM:-ubuntu24.04}".tar.gz) exit 0 ;;
+      *) exit 22 ;;
+    esac ;;
   # github_latest_tag reads the redirect target that -w '%{url_effective}' prints
   *github.com/nvm-sh/nvm/releases/latest)
     printf '%s' "https://github.com/nvm-sh/nvm/releases/tag/${MOCK_NVM_TAG:-v0.40.7}" ;;
@@ -133,6 +144,17 @@ eq "nvm resolves the latest installer tag"                      "v0.40.7" "$(res
 eq "java resolves the newest LTS, skipping non-LTS 26"          "25" "$(resolve_java_lts_major)"
 eq "dotnet resolves the active LTS channel"                     "10.0" "$(resolve_dotnet_lts_channel)"
 eq "swift resolves newest-first"                                "6.3.3 6.3.2 6.3.1 6.3 6.2.4" "$(resolve_swift_versions | tr '\n' ' ' | sed 's/ $//')"
+
+# The Swift installers walk that list and probe each candidate's tarball, which
+# only tells them anything if the probe follows redirects (issue #112).
+swift_url() { echo "https://download.swift.org/swift-$1-release/$2/swift-$1-RELEASE/swift-$1-RELEASE-$3.tar.gz"; }
+check "remote_file_exists accepts a tarball that is published" \
+  remote_file_exists "$(swift_url 6.3.3 ubuntu2404 ubuntu24.04)"
+if remote_file_exists "$(swift_url 6.3.3 ubuntu2604 ubuntu26.04)"; then
+  echo "  FAIL: remote_file_exists accepted a redirect to swift.org/404.html"; fail=$((fail+1))
+else
+  echo "  PASS: remote_file_exists rejects a redirect to swift.org/404.html"; pass=$((pass+1))
+fi
 eq "opam resolves the latest release"                           "2.5.2" "$(resolve_opam_version)"
 
 echo "== Case 2: an unreachable feed degrades to the pinned fallback, never fails the build =="

@@ -70,7 +70,21 @@ Two resolvers deserve a note:
   archive has not published yet.
 - **Swift** returns a *list*, not a version. swift.org does not publish an
   `ubuntu2404`/`aarch64` tarball for every release, so the install script probes
-  each candidate URL with `curl -fsSI` and takes the newest that really exists.
+  each candidate URL and takes the newest that really exists. The probe has to
+  follow redirects — `remote_file_exists()` uses `curl -fsSIL`, not `-fsSI` —
+  because download.swift.org answers a missing tarball with `302 ->
+  swift.org/404.html`, which `curl -f` reports as *success*:
+
+  ```console
+  $ curl -fsSI  .../swift-6.3.3-RELEASE-ubuntu26.04.tar.gz >/dev/null; echo $?
+  0            # the 302 itself; the file does not exist
+  $ curl -fsSIL .../swift-6.3.3-RELEASE-ubuntu26.04.tar.gz >/dev/null; echo $?
+  22           # follows through to the real 404
+  ```
+
+  Without `-L` the loop accepts its first candidate on every platform, which is
+  the same class of bug as the hardcoded version it replaced. The unit test
+  mocks that exact redirect, so the probe cannot regress to `-fsSI`.
 
 The pinned fallbacks are the only hardcoded versions left in the repository, and
 they are reachable only when the feed is unreachable.
@@ -214,7 +228,7 @@ publishes a newer Ubuntu build, moving the base is a one-directory change.
 
 | Test | What it proves |
 |---|---|
-| `experiments/version-policy-unit-test.sh` — **67 assertions** | Every resolver against mocked feeds: override wins, feed is parsed correctly (LTS selection, Java LTS cadence, dotnet archive intersection, swift ordering), fallback on an unreachable feed, and `assert_single_runtime_versions` accepting one / rejecting two. Case 9 covers `add_cran_repo` end to end (success, idempotency, unsupported codename, key-download failure, offline degradation) and asserts no partial apt config is left behind. |
+| `experiments/version-policy-unit-test.sh` — **69 assertions** | Every resolver against mocked feeds: override wins, feed is parsed correctly (LTS selection, Java LTS cadence, dotnet archive intersection, swift ordering), fallback on an unreachable feed, and `assert_single_runtime_versions` accepting one / rejecting two. Case 9 covers `add_cran_repo` end to end (success, idempotency, unsupported codename, key-download failure, offline degradation) and asserts no partial apt config is left behind. |
 | `experiments/rust-refresh-layer-test.sh` — 7 assertions | Builds the three images above and asserts the single-layer variant is measurably smaller, i.e. that the fix had to be a layer change. |
 | `experiments/node-lts-integration-test.sh` | Runs the real js install path in `ubuntu:24.04`: exactly one Node under `~/.nvm/versions/node`, the active Node is the resolved LTS, a **login shell** runs the same Node (the `nvm alias default` regression), and the assertion helper accepts the pruned tree and rejects a two-version one. |
 | `pr-test / version-policy` (new CI job) | Runs the two experiment suites and then calls each resolver against the **live** upstream feeds, failing if any returns empty. It gates all three existing PR test tiers and the `docker-build-test` aggregator. |

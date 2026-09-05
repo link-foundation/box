@@ -21,7 +21,9 @@ Resolve every runtime version at build time instead of hardcoding it (issue #112
   prunes and asserts, and CI re-checks it on the built images.
 - **Every box follows its upstream.** Java (SDKMAN LTS list), .NET (Microsoft's
   releases index intersected with the archive), PHP (unversioned Homebrew/apt
-  formulas), Swift (newest release with a real ubuntu2404 build), Ruby (any major,
+  formulas), Swift (newest release with a real ubuntu2404 build — the probe follows
+  redirects, because download.swift.org answers a missing tarball with a 302 to
+  its 404 page that `curl -f` would otherwise accept), Ruby (any major,
   ruby-build refreshed), Python (pyenv refreshed), R (CRAN), opam (current tag —
   the old `/releases/latest/download/opam-2.3.0-…` URL had been 404ing), Rust
   (always refreshed). All overridable via `NODE_VERSION`, `JAVA_VERSION`,
@@ -29,7 +31,7 @@ Resolve every runtime version at build time instead of hardcoding it (issue #112
   `OPAM_VERSION`, `PHP_BREW_FORMULA`, with pinned fallbacks when a feed is
   unreachable. The standalone `scripts/ubuntu-24-server-install.sh` and
   `scripts/measure-disk-space.sh` use the same policy.
-- **Covered by tests:** `experiments/version-policy-unit-test.sh` (67 assertions),
+- **Covered by tests:** `experiments/version-policy-unit-test.sh` (69 assertions),
   `experiments/rust-refresh-layer-test.sh` (measures COPY-then-delete at +256 MB
   vs single-layer at +128 MB for a 128 MB payload),
   `experiments/node-lts-integration-test.sh`, a new `pr-test / version-policy` CI

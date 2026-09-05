@@ -404,13 +404,18 @@ if ! command_exists swift; then
   if [ -n "$SWIFT_DIR" ]; then
     # Newest release that actually ships a build for this Ubuntu/arch (#112).
     SWIFT_RELEASE="RELEASE"
+    if ! command -v remote_file_exists >/dev/null 2>&1; then
+      # -L matters: download.swift.org redirects a missing tarball to
+      # swift.org/404.html, and curl treats the 302 itself as success.
+      remote_file_exists() { curl -fsSIL --max-time 30 "$1" >/dev/null 2>&1; }
+    fi
     SWIFT_CANDIDATES="$(resolve_swift_versions 2>/dev/null || echo "${SWIFT_VERSION:-6.3.3}")"
     SWIFT_VERSION=""
     SWIFT_URL=""
     for candidate in $SWIFT_CANDIDATES; do
       candidate_package="swift-${candidate}-${SWIFT_RELEASE}-${SWIFT_FILE_SUFFIX}"
       candidate_url="https://download.swift.org/swift-${candidate}-release/${SWIFT_DIR}/swift-${candidate}-${SWIFT_RELEASE}/${candidate_package}.tar.gz"
-      if curl -fsSI --max-time 20 "$candidate_url" >/dev/null 2>&1; then
+      if remote_file_exists "$candidate_url"; then
         SWIFT_VERSION="$candidate"
         SWIFT_PACKAGE="$candidate_package"
         SWIFT_URL="$candidate_url"
