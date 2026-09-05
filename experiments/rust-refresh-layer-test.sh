@@ -18,6 +18,7 @@ set -euo pipefail
 
 CTX="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/layer-whiteout"
 PAYLOAD_MB="${PAYLOAD_MB:-128}"
+BASE_IMAGE="${BASE_IMAGE:-ubuntu:24.04}"
 export DOCKER_BUILDKIT=1
 
 cleanup() {
@@ -25,6 +26,11 @@ cleanup() {
 }
 trap cleanup EXIT
 cleanup
+
+# The sizes are measured against the base image, and BuildKit keeps its build
+# cache outside the image store, so building FROM the base does not leave it
+# there. Pull it explicitly or `docker image inspect` fails on a clean runner.
+docker image inspect "$BASE_IMAGE" >/dev/null 2>&1 || docker pull -q "$BASE_IMAGE" >/dev/null
 
 echo "==> Building the stand-in 'rust image' (a kept toolchain + a stale one, ${PAYLOAD_MB} MB each)"
 docker build -q -t whiteout-stage \
@@ -39,7 +45,7 @@ docker build -q -t whiteout-single-layer -f "$CTX/Dockerfile.single-layer" "$CTX
 size() { docker image inspect -f '{{.Size}}' "$1"; }
 mb() { echo "$(( $1 / 1024 / 1024 ))"; }
 
-base=$(size ubuntu:24.04)
+base=$(size "$BASE_IMAGE")
 a=$(size whiteout-copy-then-delete)
 b=$(size whiteout-single-layer)
 
@@ -47,7 +53,7 @@ a_added=$(( a - base ))
 b_added=$(( b - base ))
 
 echo
-echo "  base ubuntu:24.04                : $(mb "$base") MB"
+echo "  base ${BASE_IMAGE}                  : $(mb "$base") MB"
 echo "  A: COPY --from + later rm -rf    : $(mb "$a") MB  (+$(mb "$a_added") MB)"
 echo "  B: RUN --mount + prune in-layer  : $(mb "$b") MB  (+$(mb "$b_added") MB)"
 echo
