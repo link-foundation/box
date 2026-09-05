@@ -59,7 +59,8 @@ log_info "Timestamp: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 # Installs to /home/linuxbrew/.linuxbrew (can be COPY'd between Docker images)
 # =============================================================================
 install_php_homebrew() {
-  local start_time=$(date +%s)
+  local start_time
+  start_time=$(date +%s)
   log_info "Attempting PHP installation via Homebrew (user-specific)..."
   log_info "Timeout: ${PHP_HOMEBREW_TIMEOUT} seconds"
   log_info "Start timestamp: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
@@ -159,7 +160,8 @@ PHP_PATH_EOF
           # Verify PHP works
           log_info "Phase: verification starting at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
           if command_exists php && php --version | grep -E "^PHP [0-9]" >/dev/null; then
-            local end_time=$(date +%s)
+            local end_time
+            end_time=$(date +%s)
             local duration=$((end_time - start_time))
             log_success "$(php --version | head -n1) installed via Homebrew (user-specific/local)"
             log_info "Total Homebrew installation time: ${duration} seconds"

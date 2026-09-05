@@ -59,6 +59,42 @@ jobs:
       - name: Checker fixtures and the run 33972074753 reproduction
         run: bash experiments/test-issue115-heredoc-unbound-vars.sh
 
+  # Issue #115. actionlint runs shellcheck over the `run:` blocks inside
+  # .github/workflows/**, and nothing ran it over the 75 tracked *.sh files that
+  # actually build the boxes — the largest body of shell in the repository was
+  # the only one no linter saw. That is a false negative by construction: a
+  # `for x in $(ls ...)` in ubuntu/24.04/js/install.sh is exactly the class of
+  # defect shellcheck exists to catch, and four of them were sitting in the
+  # tree when this job was added.
+  #
+  # Threshold is --severity=warning, the same bar actionlint's bundled
+  # shellcheck applies to workflow `run:` blocks, so a snippet does not pass in
+  # one place and fail in the other. `info` and below are excluded on purpose:
+  # they are dominated by SC1091 (sourcing a path that only exists inside the
+  # image) and SC2016 (single-quoted `$` in the heredocs that generate the
+  # in-image scripts), both of which are deliberate here.
+  #
+  # Reproduce locally with the identical command:
+  #   bash scripts/ci/run-shellcheck.sh
+  shellcheck:
+    name: scripts / shellcheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-shellcheck
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: shellcheck every tracked shell script
+        run: bash scripts/ci/run-shellcheck.sh
+
+      - name: The runner's own fixtures still hold
+        run: bash experiments/test-issue115-shellcheck-gate.sh
+
   # Issue #115 (RC-9). The repository had 27 regression suites under
   # experiments/ and the workflows referenced 5 of them. The remaining 22 ran
   # only when someone remembered to — so two of them had been crashing on any

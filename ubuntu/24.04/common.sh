@@ -38,7 +38,8 @@ verify_command() {
   local version_flag="${3:---version}"
 
   if command -v "$command_name" &>/dev/null; then
-    local version=$("$command_name" $version_flag 2>/dev/null | head -n1 || echo "installed")
+    local version
+    version=$("$command_name" $version_flag 2>/dev/null | head -n1 || echo "installed")
     log_success "$tool_name: $version"
     return 0
   else
@@ -460,6 +461,24 @@ count_installed_versions() {
   echo "$count"
 }
 
+# List the installed versions in a version-manager root, one per line,
+# applying exactly the same rules as count_installed_versions. Parsing `ls`
+# output would break on any name containing whitespace and would count the
+# manager's own "current" symlink as a version.
+list_installed_versions() {
+  local root="$1" entry name
+  [ -d "$root" ] || return 0
+  for entry in "$root"/*; do
+    [ -d "$entry" ] || continue
+    [ -L "$entry" ] && continue
+    name="$(basename "$entry")"
+    case "$name" in
+      current|.*) continue ;;
+    esac
+    printf '%s\n' "$name"
+  done
+}
+
 # assert_single_runtime_versions [--warn]
 # Fails (or, with --warn, only reports) when a language root holds more than
 # one version. Roots that do not exist are skipped: language images legitimately
@@ -485,10 +504,10 @@ assert_single_runtime_versions() {
     count=$(count_installed_versions "$path")
     if [ "$count" -gt 1 ]; then
       log_error "$name: expected exactly 1 version in $path, found $count:"
-      ls -1 "$path" | sed 's/^/      /'
+      list_installed_versions "$path" | sed 's/^/      /'
       status=1
     elif [ "$count" -eq 1 ]; then
-      log_success "$name: 1 version ($(ls -1 "$path" | grep -v '^current$' | head -n1))"
+      log_success "$name: 1 version ($(list_installed_versions "$path" | head -n1))"
     fi
   done
 

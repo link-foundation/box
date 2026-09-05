@@ -130,12 +130,15 @@ nvm alias default "$NODE_MAJOR"
 # previous layer or an earlier build of this image left behind, so the image
 # never carries two runtimes worth of bytes.
 NODE_KEEP="$(nvm current)"
-for installed in $(ls -1 "$NVM_DIR/versions/node" 2>/dev/null); do
+# list_installed_versions (../common.sh) globs the directory instead of parsing
+# `ls`, so a version directory is never word-split and nvm's own bookkeeping
+# entries are never handed to `nvm uninstall`.
+while IFS= read -r installed; do
   if [ "$installed" != "$NODE_KEEP" ]; then
     log_info "Removing extra Node.js $installed (keeping $NODE_KEEP)"
     nvm uninstall "$installed" || log_warning "Could not uninstall Node.js $installed"
   fi
-done
+done < <(list_installed_versions "$NVM_DIR/versions/node")
 
 log_success "Node.js $(node --version) active, nvm default alias set to ${NODE_MAJOR}"
 

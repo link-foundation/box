@@ -7,7 +7,7 @@ set -u
 PASS=0
 FAIL=0
 WORKDIR=$(mktemp -d)
-trap "rm -rf $WORKDIR" EXIT
+trap 'rm -rf "$WORKDIR"' EXIT
 
 pass() { echo "  [PASS] $1"; PASS=$((PASS+1)); }
 fail() { echo "  [FAIL] $1"; FAIL=$((FAIL+1)); }

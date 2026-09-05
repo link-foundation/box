@@ -5,7 +5,7 @@
 set -u
 
 WORKDIR=$(mktemp -d)
-trap "rm -rf $WORKDIR" EXIT
+trap 'rm -rf "$WORKDIR"' EXIT
 
 echo "=== Simulating .bashrc merge bug ==="
 echo ""
