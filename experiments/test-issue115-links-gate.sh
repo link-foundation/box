@@ -5,11 +5,11 @@
 # checker and, more importantly, the policy that keeps it honest.
 #
 # Nothing in this repository had ever resolved a URL. The first lychee run over
-# the tracked markdown reported 111 broken links across 58 files: case studies
-# citing CI logs GitHub had already deleted (90-day retention), 84 README links
-# to GHCR packages that were never published, an OWASP page that 404s, a
-# GitHub repository that had been transferred. Every one of them was fixed in
-# the diff. The failure mode this suite exists to prevent is the cheap
+# the tracked markdown reported 113 failures over 16 files - 107 distinct URLs:
+# case studies citing CI logs GitHub had already deleted (90-day retention), 85
+# README links to GHCR packages that were never published, an OWASP page that
+# 404s, a GitHub repository that had been transferred. Every one of them was
+# fixed in the diff. The failure mode this suite exists to prevent is the cheap
 # alternative - moving a dead link into .lycheeignore, which turns a real
 # finding into permanent silence.
 #

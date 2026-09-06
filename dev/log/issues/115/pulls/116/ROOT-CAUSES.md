@@ -653,7 +653,97 @@ A literal 40-character key in the script would be found by the very scan it
 exists to validate — the first version of the script failed on itself — and a
 constant would eventually become an allow-listed one, which is the bug.
 
-**Pinned by.** `experiments/test-issue115-secretlint-gate.sh` — 20 static
-assertions (21 with `SECRETLINT_LIVE=1`), including that the canary is generated
+**Pinned by.** `experiments/test-issue115-secretlint-gate.sh` — 22 static
+assertions (23 with `SECRETLINT_LIVE=1`), including that the canary is generated
 rather than literal, that a missing canary detection is a hard failure, and that
 the CLI and the preset are pinned to the same exact version.
+
+---
+
+## RC-17 — 107 links in the documentation point at nothing, and 85 of them advertise images that were never published — **error, hidden by a missing check**
+
+**Symptom.** No tool in this repository had ever resolved a URL. Running one
+over the tree as it stood at `024dd6a`:
+
+```
+$ docker run --rm -v "$PWD:/repo" -w /repo lycheeverse/lychee:0.24.2 \
+    --no-progress --max-retries 2 --timeout 30 --exclude-path dev/log './**/*.md'
+Issues found in 16 inputs. Find details below.
+...
+🔍 688 Total 🔗 505 Unique ✅ 575 OK 🚫 113 Errors 🔀 15 Redirects
+```
+
+113 reported failures, 107 distinct URLs. Full log:
+[`logs/lychee-baseline-024dd6a.log`](logs/lychee-baseline-024dd6a.log).
+
+**Mechanism.** Four independent causes, each one a different way for a document
+to become wrong after it was written:
+
+1. **85 GHCR package pages that have never existed** (89 of the 107 failures are
+   404s; 85 of those are `github.com/link-foundation/box/pkgs/container/box-*`).
+   The README linked one per image. They 404 because **GHCR has never received a
+   single push**:
+
+   ```
+   $ docker manifest inspect ghcr.io/link-foundation/box-js:latest
+   manifest unknown
+   $ docker manifest inspect docker.io/konard/box-js:latest
+   { "schemaVersion": 2, ... }        # exit 0
+   ```
+
+   This is [RC-3](#rc-3) — the 52 × `personal access token is expired` in
+   `logs/release-33972074755.log.gz` — seen from the outside. The README was
+   advertising a registry the pipeline had never successfully written to, and
+   nothing in CI could tell, because nothing checked.
+
+2. **14 links to files that are not in the repository.** Case studies cite the
+   CI logs that produced them, but the links point at GitHub run pages or at
+   log files that were never committed. GitHub deletes a run's logs after 90
+   days:
+
+   ```
+   $ gh run view 21997899227 --log
+   HTTP 410: Not Found (https://api.github.com/repos/.../actions/runs/21997899227/logs)
+   ```
+
+   A document that cites a log it does not carry has a shelf life, and nothing
+   said so. The rest are relative paths off by one `../` (`issue-66`,
+   `issue-68`, `issue-82`), which have been wrong since they were committed.
+
+3. **Three dead upstream URLs.** An OWASP page removed with no Wayback snapshot,
+   a hive-mind script that moved in `ee6233a`, and a podman issue whose
+   repository was transferred. All three were correct when they were written.
+
+4. **Hosts that answer a link checker differently from a browser** — 429 from
+   gnu.org, 503 from manpages.ubuntu.com, a TLS handshake failure from
+   flatassembler.net. These are the only genuine false positives in the set.
+
+**Where it occurs.** 16 markdown files, listed in the baseline log. The largest
+single concentration is `README.md`.
+
+**Fix.** Every one of the 107 is resolved in the diff, by kind:
+
+| Kind | Fix |
+| --- | --- |
+| GHCR package pages | De-linked to plain code spans, plus a note in the README stating that GHCR is the registry of record but is not populated yet, that Docker Hub `konard/box-*` is what exists today, and linking the org's package index |
+| Expired CI logs | Replaced with prose naming the run and job id and marking the log expired, so the citation survives the retention window |
+| Relative paths | Corrected |
+| Dead upstream URLs | Repointed at the current location (CAPEC-632 for the OWASP page, the transferred podman repository) or pinned to the commit that still holds the file |
+| Unverifiable hosts | `.lycheeignore`, each with the reason |
+
+The check itself is `.github/workflows/links.yml`, and
+`scripts/ci/check-web-archive.mjs` asks the Wayback Machine for a replacement
+before the job fails, so the red X arrives with a URL to use instead.
+
+The rule that keeps this from decaying back is the one the whole issue is
+about: **`.lycheeignore` may contain only URLs that are correct but
+unverifiable.** Anything genuinely broken is fixed in the diff. Silencing a
+dead link converts a true positive into permanent silence, which is exactly the
+class of defect RC-6, RC-9, RC-11, RC-12, RC-14 and RC-16 belong to.
+
+**Pinned by.** `experiments/test-issue115-links-gate.sh` — 28 assertions,
+including offline unit tests of the Wayback parser (a redirect is not a broken
+link; a missing local file is unarchivable and must fail), that lychee's exit
+code still fails the job, and that no ignore pattern is broad enough to swallow
+a URL this repository depends on being right — the Docker Hub repositories, the
+repository itself, the hive-mind best-practices document.

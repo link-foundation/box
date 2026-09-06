@@ -2,10 +2,14 @@ name: Links
 
 # Ported from the template's links.yml (issue #115, R3/R5; hive-mind principle
 # #12, "documentation validation"). Nothing in this repository had ever checked
-# a URL: the first run found 111 broken links across 58 markdown files - 93 of
-# them the GHCR package pages the README advertised for images that have never
-# been pushed, plus a dozen relative links off by one `../`, three dead upstream
-# URLs and several links to CI logs that GitHub's 90-day retention had removed.
+# a URL. Reproduced against the tree as it was at 024dd6a, the run reports 113
+# failures over 16 files (107 distinct URLs, log in
+# dev/log/issues/115/pulls/116/logs/lychee-baseline-024dd6a.log): 85 GHCR
+# package pages the README advertised for images that have never been pushed,
+# 14 relative links to files that are not there - CI logs GitHub's 90-day
+# retention had already removed, and paths off by one `../` - three dead
+# upstream URLs, and a handful of hosts that answer a link checker with 429,
+# 503 or a TLS handshake failure.
 #
 # Reproduce locally with the same image and the same arguments:
 #

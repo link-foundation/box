@@ -35,6 +35,7 @@ templates/ snapshots of the reference template and the best-practices document t
 | `logs/measure-disk-space-33972074753.log` | 33972074753, `main` @ `42be663` | R2's second failing run. |
 | `logs/release-33997488721.log.gz` | 33997488721, this branch @ `30801ee` | The base-image preflight firing on a branch whose `konard/box-*` bases did not exist yet. |
 | `logs/scripts-34003004420.log` | 34003004420, this branch @ `46f80a5` | `test-issue108-detect-changes.sh` dying with git exit 128 in a shallow checkout — the defect ROOT-CAUSES.md records as RC-15. |
+| `logs/lychee-baseline-024dd6a.log` | not a CI run: lychee 0.24.2 over the tree at `024dd6a` | The documentation as it stood before any link had ever been checked — 113 failures over 16 files, 107 distinct URLs (RC-17). |
 
 Analysis probes:
 

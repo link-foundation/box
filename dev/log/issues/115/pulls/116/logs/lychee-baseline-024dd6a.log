@@ -1,0 +1,153 @@
+Issues found in 16 inputs. Find details below.
+
+[docs/case-studies/issue-11/README.md]:
+[404] https://github.com/link-foundation/box/pkgs/container/box (at 59:57) | Rejected status code: 404 Not Found
+
+[docs/case-studies/issue-25/README.md]:
+[ERROR] https://arm.flatassembler.net/ (at 92:3) | Network error: received fatal alert: HandshakeFailure
+[ERROR] https://flatassembler.net/ (at 91:3) | Network error: received fatal alert: HandshakeFailure
+
+[docs/case-studies/issue-39/CASE-STUDY.md]:
+[404] https://github.com/link-foundation/box/pkgs/container/box (at 96:3) | Rejected status code: 404 Not Found
+
+[docs/case-studies/issue-41/CASE-STUDY.md]:
+[ERROR] file:///repo/docs/case-studies/issue-41/logs/job-docker-build-push-63564368345.log (at 184:3) | File not found. Check if file exists and path is correct
+[ERROR] file:///repo/docs/case-studies/issue-41/logs/run-21997899227.log (at 183:3) | File not found. Check if file exists and path is correct
+
+[docs/case-studies/issue-46/CASE-STUDY.md]:
+[503] https://manpages.ubuntu.com/manpages/focal/en/man1/su.1.html (at 241:4) | Rejected status code: 503 Service Unavailable
+[503] https://manpages.ubuntu.com/manpages/focal/en/man1/su.1.html (at 53:121) | Rejected status code: 503 Service Unavailable
+
+[docs/case-studies/issue-51/README.md]:
+[ERROR] file:///repo/docs/case-studies/issue-51/ci-run-22263724056-failed.log (at 177:3) | File not found. Check if file exists and path is correct
+[ERROR] file:///repo/docs/case-studies/issue-51/ci-run-22265618808-failed.log (at 176:3) | File not found. Check if file exists and path is correct
+[ERROR] file:///repo/docs/case-studies/issue-51/ci-run-22267653514-failed.log (at 174:3) | File not found. Check if file exists and path is correct
+[ERROR] file:///repo/docs/ci-run-22267653514.log (at 175:3) | File not found. Check if file exists and path is correct
+
+[docs/case-studies/issue-62/CASE-STUDY.md]:
+[404] https://owasp.org/www-community/attacks/Unicode_Characters (at 180:3) | Rejected status code: 404 Not Found
+
+[docs/case-studies/issue-64/CASE-STUDY.md]:
+[404] https://github.com/link-assistant/hive-mind/blob/main/scripts/ubuntu-24-server-install.sh (at 186:3) | Rejected status code: 404 Not Found
+[404] https://github.com/link-assistant/hive-mind/blob/main/scripts/ubuntu-24-server-install.sh (at 5:151) | Rejected status code: 404 Not Found
+
+[docs/case-studies/issue-66/CASE-STUDY.md]:
+[ERROR] file:///repo/docs/experiments/test-bashrc-merge-fix.sh (at 219:3) | File not found. Check if file exists and path is correct
+[ERROR] file:///repo/docs/experiments/test-bashrc-merge.sh (at 218:3) | File not found. Check if file exists and path is correct
+
+[docs/case-studies/issue-68/CASE-STUDY.md]:
+[ERROR] file:///repo/docs/ci-logs/issue-68-playwright-warning.txt (at 219:3) | File not found. Check if file exists and path is correct
+
+[docs/case-studies/issue-80/research.md]:
+[404] https://github.com/containers/podman/issues/15419 (at 86:1) | Rejected status code: 404 Not Found
+
+[docs/case-studies/issue-82/CASE-STUDY.md]:
+[ERROR] file:///repo/docs/issue-41/CASE-STUDY.md (at 171:272) | File not found. Check if file exists and path is correct
+[404] https://github.com/link-foundation/box/settings/secrets/actions (at 104:43) | Error (cached)
+[302] https://hub.docker.com/settings/security (at 102:29) | Error (cached)
+
+[docs/case-studies/issue-84/CASE-STUDY.md]:
+[429] https://www.gnu.org/software/findutils/manual/html_mono/find.html#Safe-File-Name-Handling (at 83:1) | Rejected status code: 429 Too Many Requests
+
+[docs/case-studies/issue-90/CASE-STUDY.md]:
+[ERROR] file:///repo/.changeset/issue-90-guard-dockerhub-manifests.md (at 165:10) | File not found. Check if file exists and path is correct
+[ERROR] file:///repo/docs/case-studies/issue-90/ci-logs/job-79583415202-dind-manifest-perl.log (at 25:27) | File not found. Check if file exists and path is correct
+
+[docs/case-studies/issue-92/CASE-STUDY.md]:
+[503] https://manpages.ubuntu.com/manpages/resolute/man5/apt.conf.5.html (at 104:1) | Rejected status code: 503 Service Unavailable
+
+[README.md]:
+[404] https://github.com/link-foundation/box/pkgs/container/box-dind?tag=latest (at 204:17) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-dind?tag=latest-amd64 (at 204:138) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-dind?tag=latest-arm64 (at 204:238) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-essentials-dind?tag=latest (at 205:23) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-essentials-dind?tag=latest-amd64 (at 205:166) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-essentials-dind?tag=latest-arm64 (at 205:277) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-essentials?tag=latest (at 181:16) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-essentials?tag=latest-amd64 (at 181:149) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-essentials?tag=latest-arm64 (at 181:255) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-go-dind?tag=latest (at 208:15) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-go-dind?tag=latest-amd64 (at 208:142) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-go-dind?tag=latest-arm64 (at 208:245) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-go?tag=latest (at 189:8) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-go?tag=latest-amd64 (at 189:125) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-go?tag=latest-arm64 (at 189:223) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-java-dind?tag=latest (at 210:17) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-java-dind?tag=latest-amd64 (at 210:148) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-java-dind?tag=latest-arm64 (at 210:253) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-java?tag=latest (at 191:10) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-java?tag=latest-amd64 (at 191:131) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-java?tag=latest-arm64 (at 191:231) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-js-dind?tag=latest (at 206:15) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-js-dind?tag=latest-amd64 (at 206:142) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-js-dind?tag=latest-arm64 (at 206:245) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-js?tag=latest (at 182:8) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-js?tag=latest-amd64 (at 182:125) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-js?tag=latest-arm64 (at 182:223) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-kotlin-dind?tag=latest (at 211:19) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-kotlin-dind?tag=latest-amd64 (at 211:154) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-kotlin-dind?tag=latest-arm64 (at 211:261) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-kotlin?tag=latest (at 192:12) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-kotlin?tag=latest-amd64 (at 192:137) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-kotlin?tag=latest-arm64 (at 192:239) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-lean-dind?tag=latest (at 216:17) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-lean-dind?tag=latest-amd64 (at 216:148) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-lean-dind?tag=latest-arm64 (at 216:253) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-lean?tag=latest (at 197:10) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-lean?tag=latest-amd64 (at 197:131) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-lean?tag=latest-arm64 (at 197:231) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-perl-dind?tag=latest (at 214:17) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-perl-dind?tag=latest-amd64 (at 214:148) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-perl-dind?tag=latest-arm64 (at 214:253) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-perl?tag=latest (at 195:10) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-perl?tag=latest-amd64 (at 195:131) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-perl?tag=latest-arm64 (at 195:231) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-php-dind?tag=latest (at 213:16) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-php-dind?tag=latest-amd64 (at 213:145) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-php-dind?tag=latest-arm64 (at 213:249) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-php?tag=latest (at 194:9) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-php?tag=latest-amd64 (at 194:128) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-php?tag=latest-arm64 (at 194:227) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-python-dind?tag=latest (at 207:19) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-python-dind?tag=latest-amd64 (at 207:154) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-python-dind?tag=latest-arm64 (at 207:261) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-python?tag=latest (at 188:12) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-python?tag=latest-amd64 (at 188:137) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-python?tag=latest-arm64 (at 188:239) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-rocq-dind?tag=latest (at 217:17) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-rocq-dind?tag=latest-amd64 (at 217:148) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-rocq-dind?tag=latest-arm64 (at 217:253) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-rocq?tag=latest (at 198:10) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-rocq?tag=latest-amd64 (at 198:131) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-rocq?tag=latest-arm64 (at 198:231) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-ruby-dind?tag=latest (at 212:17) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-ruby-dind?tag=latest-amd64 (at 212:148) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-ruby-dind?tag=latest-arm64 (at 212:253) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-ruby?tag=latest (at 193:10) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-ruby?tag=latest-amd64 (at 193:131) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-ruby?tag=latest-arm64 (at 193:231) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-rust-dind?tag=latest (at 209:17) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-rust-dind?tag=latest-amd64 (at 209:148) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-rust-dind?tag=latest-arm64 (at 209:253) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-rust?tag=latest (at 190:10) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-rust?tag=latest-amd64 (at 190:131) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-rust?tag=latest-arm64 (at 190:231) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-swift-dind?tag=latest (at 215:18) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-swift-dind?tag=latest-amd64 (at 215:151) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-swift-dind?tag=latest-arm64 (at 215:257) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-swift?tag=latest (at 196:11) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-swift?tag=latest-amd64 (at 196:134) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box-swift?tag=latest-arm64 (at 196:235) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box?tag=latest (at 180:14) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box?tag=latest-amd64 (at 180:125) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/pkgs/container/box?tag=latest-arm64 (at 180:220) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/settings/secrets/actions (at 362:90) | Rejected status code: 404 Not Found
+[404] https://github.com/link-foundation/box/settings/secrets/actions (at 372:9) | Rejected status code: 404 Not Found
+[302] https://hub.docker.com/settings/security (at 370:29) | Rejected status code: 302 Found | Followed 10 redirects. Redirects: https://hub.docker.com/settings/security --[302]--> https://hub.docker.com/login?returnTo=https%3A%2F%2Fhub.docker.com%2Fsettings%2Fsecurity --[302]--> https://login.docker.com/authorize?response_type=code&client_id=lve9GGl8JtSUrneQ1EVuC0lbjHdi9nb9&redirect_uri=https%3A%2F%2Fhub.docker.com%2Fauth%2Fcallback&state=0tpnDnRAFXM9DSNpU9vlLZia3c13N2kaHnwVSjFb62E&code_challenge_method=S256&code_challenge=MBDsgoYrHFgjTo497DrQhg_jRvBYTJ_FBwGchoZ9zgM&scope=offline_access+openid&audience=https%3A%2F%2Fhub.docker.com --[302]--> https://login.docker.com/u/login/identifier?state=hKFo2SBubC1WYmM4dEZlcGVLVFFZWm1BUDVjYm14WVJzcjREaaFur3VuaXZlcnNhbC1sb2dpbqN0aWTZIFRKMllpOHhIQ2pnYmctWEQtY1ZPd214M2xkSnlKUGhRo2NpZNkgbHZlOUdHbDhKdFNVcm5lUTFFVnVDMGxiakhkaTluYjk --[302]--> https://hub.docker.com/login?iss=https%3A%2F%2Flogin.docker.com%2F --[302]--> https://login.docker.com/authorize?response_type=code&client_id=lve9GGl8JtSUrneQ1EVuC0lbjHdi9nb9&redirect_uri=https%3A%2F%2Fhub.docker.com%2Fauth%2Fcallback&state=tUMryTPNjMeUNHG7QRtg8rA_MgfStYnHkMK12q4-Ykg&code_challenge_method=S256&code_challenge=tsJ30vm8Cj9YDV8MHXJPTZjnIb4W9gRC89JUVzSHivk&scope=offline_access+openid&audience=https%3A%2F%2Fhub.docker.com --[302]--> https://login.docker.com/u/login/identifier?state=hKFo2SBPamtxVGFRSnJGckdMQUNxVG9BMXJQdzBOc0JxYldLcqFur3VuaXZlcnNhbC1sb2dpbqN0aWTZIGZ1R0pEbFE1dUlHRlZfcjZNQUZPNnpuLWh6cnN6UkY1o2NpZNkgbHZlOUdHbDhKdFNVcm5lUTFFVnVDMGxiakhkaTluYjk --[302]--> https://hub.docker.com/login?iss=https%3A%2F%2Flogin.docker.com%2F --[302]--> https://login.docker.com/authorize?response_type=code&client_id=lve9GGl8JtSUrneQ1EVuC0lbjHdi9nb9&redirect_uri=https%3A%2F%2Fhub.docker.com%2Fauth%2Fcallback&state=TimW4aJ68kgPuEC1TAtb_J6kN2WcJgBDhTiDhmMZvGw&code_challenge_method=S256&code_challenge=WH1zm1_PCQII5RZdMAWsVmOg5Mn5sdD9c7NiL1xf238&scope=offline_access+openid&audience=https%3A%2F%2Fhub.docker.com --[302]--> https://login.docker.com/u/login/identifier?state=hKFo2SBTSVFoNTk3RzRFRk9wUmpISWhzbUhvZ2xSOXNBUXhwaaFur3VuaXZlcnNhbC1sb2dpbqN0aWTZIGxDbk02TXkxZUZkY2toSWtWNzFYMEtuSkhnT2RiV2h0o2NpZNkgbHZlOUdHbDhKdFNVcm5lUTFFVnVDMGxiakhkaTluYjk --[302]--> https://hub.docker.com/login?iss=https%3A%2F%2Flogin.docker.com%2F
+
+🔍 688 Total (in 1m 20s 722ms) 🔗 505 Unique ✅ 575 OK 🚫 113 Errors 🔀 15 Redirects
+
+Hint: Encountered rate limit responses. You might be able to work around this by adding `[hosts."www.gnu.org"]` to the TOML config to adjust the `concurrency` and `request_interval` values.
+Hint: Followed 15 redirects. You might want to consider replacing redirecting URLs with the resolved URLs. Use verbose mode (`-v`/`-vv`) to see redirection details.
+Hint: Rejected redirectional status codes. This means some redirects were not followed. You might want to increase the limit for `-m`/`--max-redirects`.
+Hint: You can configure accepted/rejected response codes with `-a` or `--accept`
