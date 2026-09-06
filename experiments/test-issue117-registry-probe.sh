@@ -293,8 +293,6 @@ fi
 REGISTRY_PROBE_USERNAME="konard"
 REGISTRY_PROBE_PASSWORD="pat"
 STDOUT="$(registry_probe_push ghcr.io link-foundation/box)"
-REGISTRY_PROBE_USERNAME=""
-REGISTRY_PROBE_PASSWORD=""
 if [ -z "$STDOUT" ]; then
   pass "the push probe prints nothing either"
 else
