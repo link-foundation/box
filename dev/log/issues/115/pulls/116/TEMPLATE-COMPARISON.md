@@ -136,7 +136,7 @@ Every row of Parts 1 and 2 that moved, and the commit that moved it.
 | secretlint + CodeQL, with a canary that proves the scanner ran | `53dacc2` | `experiments/test-issue115-secretlint-gate.sh` |
 | CodeQL scoped to our own tree, not the vendored evidence | `c7c5350` | `experiments/test-issue115-secretlint-gate.sh` |
 | Link checking, with a Wayback fallback and an ignore file that may only hold false positives | `ee78f40` | `experiments/test-issue115-links-gate.sh` |
-| The GitHub Release is no longer gated on an image push, and the notes assert what was published | `PENDING` | `experiments/test-issue115-release-notes.sh` (Part 5) |
+| The GitHub Release is no longer gated on an image push, and the notes assert what was published | `aa9f54e` | `experiments/test-issue115-release-notes.sh` (Part 5) |
 
 Still open, in the order they will be taken: `release.yml` under 1500 lines and
 then `check-file-line-limits.sh` (#2); `simulate-fresh-merge.sh` (#7);
