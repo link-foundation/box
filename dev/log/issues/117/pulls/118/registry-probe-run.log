@@ -1,0 +1,19 @@
+=== anonymous pull probe, 2026-09-06T18:15:07Z ===
+published	ghcr.io/astral-sh/uv:0.9.0	anonymous GET of the manifest returned HTTP 200
+missing	ghcr.io/astral-sh/uv:0.0.0-nope	the registry has no 0.0.0-nope tag for astral-sh/uv (HTTP 404)
+private	ghcr.io/link-foundation/box:2.6.0	ghcr.io/link-foundation/box does not issue an anonymous pull token (HTTP 401)
+private	ghcr.io/link-foundation/box-dind:2.6.0	ghcr.io/link-foundation/box-dind does not issue an anonymous pull token (HTTP 401)
+private	ghcr.io/link-foundation/box:2.4.0	ghcr.io/link-foundation/box does not issue an anonymous pull token (HTTP 401)
+private	ghcr.io/link-foundation/box-js:2.6.0	ghcr.io/link-foundation/box-js does not issue an anonymous pull token (HTTP 401)
+published	konard/box:2.4.0	anonymous GET of the manifest returned HTTP 200
+missing	konard/box:2.5.0	the registry has no 2.5.0 tag for konard/box (HTTP 404)
+missing	konard/box:2.6.0	the registry has no 2.6.0 tag for konard/box (HTTP 404)
+published	konard/box:latest	anonymous GET of the manifest returned HTTP 200
+published	ubuntu:24.04	anonymous GET of the manifest returned HTTP 200
+unknown	example.invalid/x:1	unsupported registry 'example.invalid'; registry-probe.sh knows ghcr.io and docker.io
+
+=== push probe with no credentials ===
+missing-credentials	ghcr.io/link-foundation/box	no username/password configured for ghcr.io
+
+=== push probe with a deliberately wrong Docker Hub credential ===
+invalid-credentials	docker.io/konard/box	docker.io rejected the credential (HTTP 401): {"details":"incorrect username or password"}

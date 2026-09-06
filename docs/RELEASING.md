@@ -67,8 +67,10 @@ rather than falling through to a login that cannot work.
 
 ## Rotating `DOCKERHUB_TOKEN` (while the token path is in use)
 
-1. Create a new access token with **Read & Write** scope at
-   <https://app.docker.com/settings/personal-access-tokens>.
+1. Create a new access token with **Read & Write** scope: sign in to Docker Hub
+   and open *Account settings -> Personal access tokens -> Generate new token*
+   (the direct URL is behind the login wall, so it is not linked here; see
+   [Docker's access token documentation](https://docs.docker.com/security/for-developers/access-tokens/)).
 2. Update the `DOCKERHUB_TOKEN` secret under
    *Settings → Secrets and variables → Actions*.
 3. Re-run the release workflow. The preflight step at the top of the run either
