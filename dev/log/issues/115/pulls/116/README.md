@@ -17,6 +17,7 @@ Everything in this folder was collected from the live repository and its CI on
 | [`TEMPLATE-COMPARISON.md`](TEMPLATE-COMPARISON.md) | File-by-file comparison against the pipeline template and the hive-mind best-practices document (R3, R5, R6). |
 | [`PRIOR-ART.md`](PRIOR-ART.md) | Existing tools and libraries that solve these problems, and which of them this repository can adopt. |
 | [`SOLUTION-PLAN.md`](SOLUTION-PLAN.md) | The plan per requirement, with the order of execution and what "done" means. |
+| [`UPSTREAM-REPORTS.md`](UPSTREAM-REPORTS.md) | What was reported upstream, what was deliberately not reported, and the reproduction behind each decision (R4). |
 
 ## Raw evidence
 

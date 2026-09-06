@@ -209,6 +209,17 @@ If reproduction shows a candidate does **not** affect upstream, that is recorded
 here with the evidence rather than filed — R4 asks for reports of *shared*
 defects, and a wrong report is worse than none.
 
+**Outcome: [`UPSTREAM-REPORTS.md`](UPSTREAM-REPORTS.md).** Five reports filed
+([elan #210](https://github.com/leanprover/elan/issues/210),
+[secretlint #1688](https://github.com/secretlint/secretlint/issues/1688),
+[shellcheck #3534](https://github.com/koalaman/shellcheck/issues/3534),
+template [#174](https://github.com/link-foundation/js-ai-driven-development-pipeline-template/issues/174)
+and [#175](https://github.com/link-foundation/js-ai-driven-development-pipeline-template/issues/175)),
+one added to an existing upstream issue as
+[a comment on template #167](https://github.com/link-foundation/js-ai-driven-development-pipeline-template/issues/167#issuecomment-5556797713),
+and four candidates dropped after reproduction showed the defect was ours and
+not theirs. The evidence for each decision, filed or not, is in that file.
+
 ---
 
 <a id="s8"></a>

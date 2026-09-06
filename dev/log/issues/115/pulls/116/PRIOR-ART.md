@@ -15,18 +15,23 @@ addresses, with a verdict on whether this repository should adopt it.
    expansion happens on the wrong side). There is no check for "a quoted
    heredoc references a name that only exists in the parent". ShellCheck also
    [does not analyse heredoc bodies as scripts](https://github.com/koalaman/shellcheck/issues/108).
-2. **SC2154 cannot reach it even in principle**, because it exempts all-uppercase
-   names as presumed environment variables. Reproduced locally:
+2. **SC2154 cannot reach it even in principle.** In RC-1's shape the variable
+   *is* assigned - in the parent - so "referenced but not assigned" does not
+   describe it, and the heredoc body is never analysed as a script. On top of
+   that, SC2154 exempts all-uppercase names by default, and every variable in
+   RC-1 is uppercase. Reproduced against ShellCheck 0.11.0:
 
    ```bash
    $ printf 'set -u\necho "$FOO_BAR"\necho "$foo_bar"\n' > /tmp/t2.sh
-   $ shellcheck /tmp/t2.sh
+   $ shellcheck -s bash /tmp/t2.sh
    In /tmp/t2.sh line 3:
    echo "$foo_bar"
           ^-- SC2154 (warning): foo_bar is referenced but not assigned.
    ```
 
-   `FOO_BAR` produces no finding. Every variable in RC-1 is uppercase.
+   `FOO_BAR` produces no finding under the default options; it is reported only
+   with the optional `check-unassigned-uppercase` (`-o all`), which still would
+   not fire for RC-1 because the name is assigned.
 
 **Adjacent tools evaluated and rejected for this purpose:**
 

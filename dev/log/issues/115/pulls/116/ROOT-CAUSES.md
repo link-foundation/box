@@ -79,6 +79,8 @@ off-the-shelf shell linter can find it — and ShellCheck does not analyse hered
 bodies as separate scripts at all. A purpose-built repository check is required
 (see [`SOLUTION-PLAN.md`](SOLUTION-PLAN.md#s1)).
 
+**Reported upstream.** [koalaman/shellcheck#3534](https://github.com/koalaman/shellcheck/issues/3534) — a check for a *quoted* heredoc that references a variable of the enclosing script, the mirror image of SC2087. Not filed against actionlint: it bundles shellcheck and surfaces its findings, so one check covers both ([`UPSTREAM-REPORTS.md`](UPSTREAM-REPORTS.md)).
+
 ---
 
 <a id="rc-2"></a>
@@ -400,6 +402,8 @@ among other things, that every per-language check reappears in the `full`
 profile, that no inline `docker run --rm box-test` survives in the workflow, and
 that exactly two steps run the `full` profile.
 
+**Reported upstream.** [template#175](https://github.com/link-foundation/js-ai-driven-development-pipeline-template/issues/175) — the same shape in the template: `pipeline-status.needs` restates the job list of `release.yml` by hand, and a job left out of it can fail while the gate prints "All required jobs succeeded".
+
 ---
 
 <a id="rc-11"></a>
@@ -577,6 +581,8 @@ run in the full profile too.
 the default run; `ELAN_LIVE=1` adds the live docker reproduction) and the two
 offline checks in the `lean` profile of `scripts/ci/test-box.sh`.
 
+**Reported upstream.** [leanprover/elan#210](https://github.com/leanprover/elan/issues/210), reproduced live on elan 4.2.4, with a suggested `install_from_dist_if_not_installed()` patch and three softer alternatives.
+
 ---
 
 <a id="rc-15"></a>
@@ -713,6 +719,8 @@ constant would eventually become an allow-listed one, which is the bug.
 assertions (23 with `SECRETLINT_LIVE=1`), including that the canary is generated
 rather than literal, that a missing canary detection is a hard failure, and that
 the CLI and the preset are pinned to the same exact version.
+
+**Reported upstream.** [secretlint/secretlint#1688](https://github.com/secretlint/secretlint/issues/1688) — an empty `"rules": []` scans and exits 0 silently while the three neighbouring misconfigurations all exit 2. The same vacuous-pass shape in the template's line-limit gate is [template#174](https://github.com/link-foundation/js-ai-driven-development-pipeline-template/issues/174).
 
 ---
 
@@ -977,6 +985,7 @@ that a string appears in a log.
 
 ---
 
+<a id="rc-20"></a>
 ## RC-20 — Nothing formats the shell this repository is written in — **warning**
 
 **What it is.** Template best practice #3 is automated code formatting: the
@@ -1037,6 +1046,7 @@ Two defects the suite found while being written, both in the gate itself:
 
 ---
 
+<a id="rc-21"></a>
 ## RC-21 — The formatter silently disabled the skip list of the runner that runs every check — **false negative, caused by the fix for RC-20**
 
 **What happened.** `scripts/ci/run-experiments.sh` excludes three suites from
@@ -1099,13 +1109,19 @@ empty suite directory is an error rather than a silent pass.
 subscript is left anywhere in the tree, and demonstrates the rewrite on a
 fixture so the paragraph above stays checkable rather than becoming folklore.
 
-**To report upstream.** mvdan/sh. A formatter is allowed to change how a
-script looks; rewriting an associative-array subscript changes what it does,
-and shfmt does it silently. Queued in [`SOLUTION-PLAN.md`](SOLUTION-PLAN.md#s7)
-with the reproducer from the gate suite.
+**Upstream: not reported, and deliberately so.** A formatter is allowed to
+change how a script looks; rewriting an associative-array subscript changes what
+it does, and shfmt does it silently. mvdan/sh has already declined this three
+times — [#1343](https://github.com/mvdan/sh/issues/1343),
+[#1273](https://github.com/mvdan/sh/issues/1273) and
+[#1367](https://github.com/mvdan/sh/issues/1367) — each closed pointing at the
+README caveat *"when indexing Bash associative arrays, always use quotes"*,
+because the static parser cannot tell a literal key from arithmetic. A fourth
+report would add nothing; see [`UPSTREAM-REPORTS.md`](UPSTREAM-REPORTS.md).
 
 ---
 
+<a id="rc-22"></a>
 ## RC-22 — A workflow that matched a script by its formatting, and the formatter changed it — **error, caused by the fix for RC-20**
 
 **Evidence.** Run
@@ -1200,6 +1216,7 @@ established for gates that examine an empty file set.
 
 ---
 
+<a id="rc-23"></a>
 ## RC-23 — The heredoc gate read an example *of* a heredoc as a heredoc — **false positive, found by the fix for RC-22**
 
 **Evidence.** `scripts/ci/check-heredoc-vars.sh`, run over the tree with

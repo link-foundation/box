@@ -6,6 +6,7 @@ Quotes are verbatim from the issue body.
 
 ---
 
+<a id="r1"></a>
 ## R1 — Find and fix every false positive, false negative, warning and error in CI/CD
 
 From the title: *"Check for all false positives, false negatives, warnings and errors in CI/CD and fix them all"*.
@@ -26,6 +27,7 @@ enforced allow-list.
 
 ---
 
+<a id="r2"></a>
 ## R2 — Fix the two failing runs on `main` at commit `42be663`
 
 | Workflow | Conclusion | Run |
@@ -39,6 +41,7 @@ against the current `main` and passes after the fix.
 
 ---
 
+<a id="r3"></a>
 ## R3 — Adopt the best practices from the CI/CD template, comparing the full file tree
 
 > *"Use all the best practices from CI/CD templates (check full file tree to compare for all GitHub workflow and CI/CD scripts file)"*
@@ -51,6 +54,7 @@ with each gap either closed or recorded with the reason it does not apply.
 
 ---
 
+<a id="r4"></a>
 ## R4 — Report the defect upstream when the template shares it
 
 > *"if the same issue is found in template report issue also in templates"*
@@ -63,6 +67,7 @@ evidence that established it.
 
 ---
 
+<a id="r5"></a>
 ## R5 — Compare *all* files, so the class of error cannot recur
 
 > *"We should compare all files, so we don't have more CI/CD errors in the future and reuse all the best practices from these templates."*
@@ -79,6 +84,7 @@ than by documentation alone.
 
 ---
 
+<a id="r6"></a>
 ## R6 — Follow the hive-mind CI/CD best practices
 
 > Follow the CI/CD best practices collected in
@@ -93,6 +99,7 @@ has a recorded, justified exception.
 
 ---
 
+<a id="r7"></a>
 ## R7 — Do all of it in this one pull request
 
 > *"Please plan and execute everything in this single pull request, you have unlimited time and context […] until it is each and every requirement fully addressed, and everything is totally done."*

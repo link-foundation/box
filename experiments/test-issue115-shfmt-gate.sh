@@ -343,8 +343,12 @@ echo "== Part 8: the one construct the formatter is not safe on =="
 # contains what looks like an operator survives the round trip as a *different
 # key*: `[node-lts-integration-test.sh]` in scripts/ci/run-experiments.sh came
 # back as `[node - lts - integration - test.sh]`, three skip entries stopped
-# matching, and nothing reported anything. Reported upstream; the invariant
-# that keeps it from recurring here is that no subscript is left unquoted.
+# matching, and nothing reported anything. Upstream declines to change this:
+# mvdan/sh#1343, #1273 and #1367 were all closed pointing at the README
+# caveat "when indexing Bash associative arrays, always use quotes", because
+# the static parser cannot tell a literal key from arithmetic. So the
+# invariant that keeps it from recurring here is that no subscript is left
+# unquoted.
 # A subscript containing an operator is the risky shape; quoted keys are
 # safe, so lines whose subscript opens with a quote are filtered out.
 UNQUOTED="$(bash "$RUNNER" --list \
