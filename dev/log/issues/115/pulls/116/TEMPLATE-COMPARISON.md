@@ -94,13 +94,13 @@ scripts, hooks and tool configuration.
 | 8 | Pre-commit hooks | **Fail** | **Skipped** | No `package.json` to hang husky off; see 1d |
 | 9 | Release automation | **Partial** | **Partial** | One registry can no longer fail another's push ([RC-3](ROOT-CAUSES.md#rc-3)), but `create-release` still `needs: docker-manifest`, so the release is still gated on an image push — principle #13 says it must not be |
 | 10 | Concurrency control | **Fail** | **Pass** | `always()` × 24 → × 0; `!cancelled()` × 0 → × 24 ([RC-7](ROOT-CAUSES.md#rc-7)). `measure-disk-space.yml` no longer cancels its own `contents: write` main-writer |
-| 11 | Secrets detection | **Fail** | **Fail** | No secretlint |
+| 11 | Secrets detection | **Fail** | **Pass** | `scripts/ci/run-secretlint.sh`, run by `security.yml`. It validates itself against a generated canary before it reports on the tree — a clean scan that proves nothing is the defect this check exists to avoid ([RC-16](ROOT-CAUSES.md#rc-16)) |
 | 12 | Documentation validation | **Fail** | **Fail** | No `validate-docs`, no link checking |
 | 13 | Native runners, no QEMU, always cache, never gate release on image push, assert published manifests | **Partial** | **Partial** | Native runners: pass. Cache: no longer cancelled by a coupled push. Assert published manifests: pass — `assert-base-image.sh` checks a `FROM` exists before the build and is unit-tested. Never gate release on push: still fail (see #9) |
 | 14 | Lint the workflows themselves | **Fail** | **Pass** | `workflows.yml`, both linters pinned by digest-bearing tag, both reproducible locally with the command the workflow prints |
-| 15 | Audit the dependency tree | **Fail** | **Fail** | No scheduled audit, no CodeQL. `dependency-review`/`npm audit` do not transfer; CodeQL's `actions` language does |
+| 15 | Audit the dependency tree | **Fail** | **Partial** | CodeQL over `javascript-typescript`, `python` and `actions`, on every push, pull request and weekly. `dependency-review`/`npm audit` still do not transfer — no root `package.json`, no lockfile, so both would report green forever |
 
-**Score: 2 pass, 2 partial, 11 fail → 5 pass, 3 partial, 6 fail, 1 skipped-with-reason.**
+**Score: 2 pass, 2 partial, 11 fail → 6 pass, 4 partial, 4 fail, 1 skipped-with-reason.**
 
 ---
 
@@ -132,6 +132,8 @@ Every row of Parts 1 and 2 that moved, and the commit that moved it.
 | Release notes generated, not hand-written | `bff4bf4` | `experiments/test-issue115-release-notes.sh` |
 | One acceptance script per box, run offline | `780b762`, `8faf836` | `experiments/test-issue115-test-box.sh` |
 | hadolint over every tracked Dockerfile; no bare `apt` | `46f80a5` | `experiments/test-issue115-hadolint-gate.sh` |
+| Change detection degrades instead of dying on a shallow checkout | `9145c0e` | `experiments/test-issue108-detect-changes.sh` (Part 2b) |
+| secretlint + CodeQL, with a canary that proves the scanner ran | `53dacc2` | `experiments/test-issue115-secretlint-gate.sh` |
 
 Still open, in the order they will be taken: `release.yml` under 1500 lines and
 then `check-file-line-limits.sh`; `security.yml` (CodeQL + secretlint);
