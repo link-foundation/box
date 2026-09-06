@@ -40,8 +40,8 @@ scripts, hooks and tool configuration.
 | — | — | `.github/workflows/release-dind.yml` | — | 450 | **Box-only, new** (from the split) |
 | — | — | `.github/workflows/file-sizes.yml` | — | 91 | **Box-only, new.** Runs the ported line-limit gate. Its own workflow rather than a job in Scripts, because it checks Markdown and YAML too, and a gate that skips documentation-only pull requests has a hole in it |
 | `.github/workflows/workflows.yml` | 69 | `.github/workflows/workflows.yml` | — | 78 | **Adopted.** actionlint + zizmor, both pinned. Closes [RC-6](ROOT-CAUSES.md#rc-6) |
-| `.github/workflows/security.yml` | 93 | — | — | — | **Still missing.** CodeQL (`javascript-typescript` + `actions`) and secretlint transfer; `dependency-review` and `npm audit` do not — this repository has no root `package.json` |
-| `.github/workflows/links.yml` | 104 | — | — | — | **Still missing.** lychee link checking with Web-Archive fallback |
+| `.github/workflows/security.yml` | 93 | `.github/workflows/security.yml` | — | 107 | **Adopted** in `53dacc2`. CodeQL (`javascript-typescript`, `python` and `actions`, scoped by `.github/codeql-config.yml` to our own tree rather than the vendored evidence under `dev/log/`) and secretlint, which validates itself against a planted canary before its silence is believed ([RC-16](ROOT-CAUSES.md#rc-16)). `dependency-review` and `npm audit` did not transfer — this repository has no root `package.json` |
+| `.github/workflows/links.yml` | 104 | `.github/workflows/links.yml` | — | 130 | **Adopted** in `ee78f40`. lychee with the Web-Archive fallback, on change, weekly and on demand. Its first run is the baseline in `logs/lychee-baseline-024dd6a.log` ([RC-17](ROOT-CAUSES.md#rc-17)) |
 | `.github/workflows/example-app.yml` | 318 | — | — | — | Not applicable — template-specific demo app |
 | — | — | `.github/workflows/scripts.yml` | — | 131 | **Box-only, new.** shellcheck over all 88 tracked scripts, the quoted-heredoc checker, and every regression suite. The template lints `.mjs`; this is the same practice applied to the language this repository is actually written in |
 | — | — | `.github/workflows/dockerfiles.yml` | — | 70 | **Box-only, new.** hadolint over all 23 tracked Dockerfiles. No template counterpart — the template ships no Dockerfile — but principle #4 applies to the 7.9 % of this repository that is one |
@@ -63,7 +63,7 @@ scripts, hooks and tool configuration.
 | `scripts/publish-failure-classifier.mjs`, `scripts/push-failure-classifier.mjs` | `scripts/release/docker-push-failure-classifier.sh` | **Adopted**, as shell. Box retried an expired token three times; the classifier now refuses to retry `401`/`403`/`denied`/`unauthorized` and fails fast instead ([RC-5](ROOT-CAUSES.md#rc-5)). Pinned by `experiments/test-issue115-push-retry-classifier.sh` |
 | `scripts/detect-code-changes.mjs` | `scripts/ci/detect-changes.sh` | Present in both — box satisfies best practice #1 |
 | `scripts/check-changesets.mjs`, `check-version.mjs`, `validate-changeset.mjs`, `changeset-version.mjs` | `scripts/release/check-changesets.sh`, `check-version.sh`, `validate-changeset.sh`, `apply-changesets.sh`, `create-changeset.sh` | Present in both — box satisfies best practice #6 |
-| `scripts/check-web-archive.mjs` | — | Still missing, follows from `links.yml` being missing |
+| `scripts/check-web-archive.mjs` | `scripts/ci/check-web-archive.mjs` | **Adopted** in `ee78f40`, alongside `links.yml`. Suggests a Wayback replacement for each dead URL before the job fails, so a broken link arrives with its own fix |
 | `scripts/lint.mjs`, `lint-changed-lines.mjs` | `scripts/ci/run-shellcheck.sh`, `scripts/ci/run-hadolint.sh` | **Adopted**, in the languages this repository is written in. Both discover their file set from `git ls-files`, so a new file is linted the moment it lands; both are the identical command CI runs, so a developer reproduces a CI failure with one line |
 | — | `scripts/ci/supersede.sh` | Box-only, added for issue #112. No template counterpart; keep |
 | — | `scripts/release/docker-push-with-retry.sh` | Was **dead code** while `release.yml` carried ten hand-copied inline retry loops. Now the single retry path, wired to the classifier |
@@ -77,10 +77,10 @@ scripts, hooks and tool configuration.
 | `.github/zizmor.yml` | `.github/zizmor.yml` | **Adopted.** `jlumbroso/free-disk-space@main` — a mutable branch — is now hash-pinned to `54081f13` (v1.3.1) in every build job |
 | — | `.hadolint.yaml` | **Box-only, new.** `failure-threshold: warning`, one documented ignore (`DL3008`, for the issue-#112 reason). No template counterpart |
 | `.husky/pre-commit` + `lint-staged` | — | **Skipped with reason.** husky installs from `package.json`'s `prepare` script; this repository has no root `package.json` and adding npm to a Docker-image factory to gain a hook is a worse trade than the hook is worth. The checks a hook would run (shellcheck, actionlint, hadolint) all run in CI and are all reproducible locally with the single command each workflow prints |
-| `.secretlintrc.json` | — | **Still missing.** Best practice #11 |
+| `.secretlintrc.json` | `.secretlintrc.json` | **Adopted** in `53dacc2`. `@secretlint/secretlint-rule-preset-recommend`. Best practice #11 |
 | `.prettierrc`, `.prettierignore` | `scripts/ci/run-shfmt.sh` (style in the script, not a dotfile) | **Adopted**, in the language this repository is written in. `shfmt -i 2 -ci -bn`, chosen by measuring all six candidate styles against the tree; the style lives with the runner so CI and a developer cannot disagree about it |
 | `.jscpd.json` | — | **Skipped with reason.** jscpd is npm-only and its target here — the ten copied retry blocks and the duplicated manifest steps — has been removed by extraction rather than measured |
-| `.lycheeignore` | — | Still missing, follows from `links.yml` |
+| `.lycheeignore` | `.lycheeignore` | **Adopted** in `ee78f40`. Holds only URLs that are correct but unverifiable from CI — nothing that is merely broken |
 | `.changeset/config.json` | `.changeset/config.json` | Present in both |
 
 ---
@@ -148,5 +148,5 @@ Every row of Parts 1 and 2 that moved, and the commit that moved it.
 | Automated formatting: `shfmt` over every tracked script, with a canary that proves the formatter looked | `7488af9` | `experiments/test-issue115-shfmt-gate.sh` |
 | The runner that runs every other check is itself checked, and its skip list must name real files | `7488af9` | `experiments/test-issue115-experiment-runner.sh` |
 | `release.yml` split by image family, and a line-limit gate so it cannot grow back | `7af5cf5` | `experiments/test-issue115-workflow-split.sh`, `experiments/test-issue115-line-limits.sh`, `analysis/verify-split-equivalence.py` |
-| Workflows read a script through a parser instead of matching its formatting, so the formatter cannot break them | *this commit* | `experiments/test-issue115-heredoc-extraction.sh` |
-| The heredoc gate no longer reads an example of a heredoc as a heredoc (quote- and herestring-aware) | *this commit* | `experiments/test-issue115-heredoc-unbound-vars.sh` (Part 2) |
+| Workflows read a script through a parser instead of matching its formatting, so the formatter cannot break them | `ef5c29e` | `experiments/test-issue115-heredoc-extraction.sh` |
+| The heredoc gate no longer reads an example of a heredoc as a heredoc (quote- and herestring-aware) | `ef5c29e` | `experiments/test-issue115-heredoc-unbound-vars.sh` (Part 2) |
