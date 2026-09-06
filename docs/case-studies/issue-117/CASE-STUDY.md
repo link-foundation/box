@@ -165,6 +165,30 @@ instead of attempting a login that cannot succeed.
 | `test-issue117-check-publication.sh` | 16 assertions, including that the script reads no credential of any kind | same |
 | `test-issue115-release-notes.sh` | 36 assertions, ported to a stub probe, with the v2.6.0 shape pinned | same |
 
+### What the first live run reported
+
+The preflight ran on this pull request in `--mode report`
+([run 34053764507](https://github.com/link-foundation/box/actions/runs/34053764507),
+transcript in
+[`dev/log/issues/117/pulls/118/preflight-report-mode-run-34053764507.log`](../../../dev/log/issues/117/pulls/118/preflight-report-mode-run-34053764507.log)),
+against the repository's real secrets, and moved two of the issue's five
+findings:
+
+```
+==> GHCR: OK - ghcr.io/link-foundation/box accepted a blob upload session (HTTP 202)
+==> Docker Hub: OK - docker.io/<account>/box accepted a blob upload session (HTTP 202)
+
+| GHCR visibility | ghcr.io/link-foundation/box:latest      | private | HTTP 401 |
+| GHCR visibility | ghcr.io/link-foundation/box-dind:latest | private | HTTP 401 |
+```
+
+The Docker Hub credential **works today** — the expired token from run
+33972074755 has been replaced — so finding #1 is now a missing release run
+rather than a missing credential. The private packages of finding #3 are
+confirmed by the pipeline itself rather than by an outside probe. Neither fact
+was available from any run before this one: the old pipeline could report
+`success` in both states and did.
+
 The preflight will **block releases on `main` until the GHCR packages are made
 public**, which is a manual step: see
 [`docs/RELEASING.md`](../../RELEASING.md). That is the intended behaviour, not

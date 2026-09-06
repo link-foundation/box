@@ -147,8 +147,17 @@ found nothing wrong" and "I could not look".
 
 - **2.5.0 has no git tag and no GitHub Release.** The version bump was
   committed, the release was not produced, and the tags run v2.4.0 → v2.6.0.
-- **Docker Hub carries nothing newer than 2.4.0** (2026-06-21) until the
-  credential is restored and `scripts/release/mirror-to-dockerhub.sh` runs.
+- **Docker Hub carries nothing newer than 2.4.0** (2026-06-21), even though
+  the credential works again: preflight run
+  [34053764507](https://github.com/link-foundation/box/actions/runs/34053764507)
+  reports `docker.io/<account>/box accepted a blob upload session (HTTP 202)`.
+  The expired token that produced the failure in the issue has been replaced;
+  what is missing is a release run, or `scripts/release/mirror-to-dockerhub.sh`
+  against the existing tags.
+- **Both GHCR packages are still private**, which the same preflight run
+  reports for `ghcr.io/link-foundation/box` and
+  `ghcr.io/link-foundation/box-dind`. This is the one blocker no script can
+  clear; see *Making the GHCR packages public* above.
 - **`konard/box:latest` on Docker Hub is the pre-#112 June image** — Node 20,
   and the duplicated `~/.rustup` that issue #112 fixed. The fix ships in 2.5.0
   and later, which is to say: not on Docker Hub yet.
