@@ -49,6 +49,13 @@ jobs:
           # widen what a compromised step could reach.
           persist-credentials: false
 
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
       # Fails the job on any expansion inside a quoted heredoc that the
       # generated script cannot resolve, with a file/line annotation.
       - name: No variable leaks out of a quoted heredoc
@@ -89,6 +96,13 @@ jobs:
         with:
           persist-credentials: false
 
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
       - name: shellcheck every tracked shell script
         run: bash scripts/ci/run-shellcheck.sh
 
@@ -114,6 +128,13 @@ jobs:
         uses: actions/checkout@v6
         with:
           persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
 
       - name: List the suites that will run
         run: bash scripts/ci/run-experiments.sh --list

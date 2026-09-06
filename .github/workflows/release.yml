@@ -423,6 +423,13 @@ jobs:
           setsid nohup bash scripts/ci/supersede.sh watch \
             > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
       - name: Version resolvers and one-version-per-language invariant
         run: bash experiments/version-policy-unit-test.sh
 
@@ -483,6 +490,13 @@ jobs:
           setsid nohup bash scripts/ci/supersede.sh watch \
             > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
       - name: Free disk space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
@@ -538,6 +552,13 @@ jobs:
           # slot is exactly why there is none.
           setsid nohup bash scripts/ci/supersede.sh watch \
             > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
@@ -610,6 +631,13 @@ jobs:
           setsid nohup bash scripts/ci/supersede.sh watch \
             > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
 
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
       - name: Free disk space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
@@ -678,6 +706,13 @@ jobs:
           # slot is exactly why there is none.
           setsid nohup bash scripts/ci/supersede.sh watch \
             > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
@@ -784,6 +819,13 @@ jobs:
           # slot is exactly why there is none.
           setsid nohup bash scripts/ci/supersede.sh watch \
             > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1

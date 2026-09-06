@@ -61,6 +61,13 @@ jobs:
         with:
           persist-credentials: false
 
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
       - name: Syntax-check the scripts
         run: |
           for f in scripts/measure-disk-space.sh scripts/ubuntu-24-server-install.sh scripts/update-readme-sizes.sh; do

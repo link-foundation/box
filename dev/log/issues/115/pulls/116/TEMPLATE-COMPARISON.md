@@ -52,7 +52,7 @@ scripts, hooks and tool configuration.
 | Template script | Box equivalent | State |
 | --- | --- | --- |
 | `scripts/check-file-line-limits.sh` | — | **Still missing**, deliberately: it would fail on `release.yml` the day it lands. Ports once the extraction work brings the file under 1500 lines ([RC-8](ROOT-CAUSES.md#rc-8)) |
-| `scripts/simulate-fresh-merge.sh` | — | **Still missing.** Box tests the merge preview, not the actual merge result (best practice #7) |
+| `scripts/simulate-fresh-merge.sh` | `scripts/ci/simulate-fresh-merge.sh` | **Adopted**, plus the two parts a shallow-by-default checkout needs: it deepens before merging (`--depth 1` leaves no common ancestor, and the resulting *unrelated histories* error is not a conflict) and separates a conflict, exit 1, from CI misuse, exit 2 ([RC-19](ROOT-CAUSES.md#rc-19)). Wrapped in `.github/actions/simulate-fresh-merge` and called by all sixteen pull-request jobs |
 | `scripts/publish-failure-classifier.mjs`, `scripts/push-failure-classifier.mjs` | `scripts/release/docker-push-failure-classifier.sh` | **Adopted**, as shell. Box retried an expired token three times; the classifier now refuses to retry `401`/`403`/`denied`/`unauthorized` and fails fast instead ([RC-5](ROOT-CAUSES.md#rc-5)). Pinned by `experiments/test-issue115-push-retry-classifier.sh` |
 | `scripts/detect-code-changes.mjs` | `scripts/ci/detect-changes.sh` | Present in both — box satisfies best practice #1 |
 | `scripts/check-changesets.mjs`, `check-version.mjs`, `validate-changeset.mjs`, `changeset-version.mjs` | `scripts/release/check-changesets.sh`, `check-version.sh`, `validate-changeset.sh`, `apply-changesets.sh`, `create-changeset.sh` | Present in both — box satisfies best practice #6 |
@@ -90,7 +90,7 @@ scripts, hooks and tool configuration.
 | 4 | Static analysis and linting | **Fail** | **Pass** | actionlint + zizmor (`workflows.yml`), shellcheck over 88 scripts (`scripts.yml`), hadolint over 23 Dockerfiles (`dockerfiles.yml`). The 83 + 173 + 15 findings that sat unreported are fixed and gated ([RC-6](ROOT-CAUSES.md#rc-6)) |
 | 5 | Fast-fail job ordering | **Fail** | **Partial** | The lint workflows are separate and finish in seconds, and `assert-base-image.sh` fails a build before it spends 22 minutes on a `FROM` that does not exist ([RC-4](ROOT-CAUSES.md#rc-4)). Within `release.yml` the build jobs still start off `detect-changes` alone |
 | 6 | Changeset-based versioning | **Pass** | **Pass** | `scripts/release/*changeset*.sh` |
-| 7 | Validate the actual merge result | **Fail** | **Fail** | No `simulate-fresh-merge.sh`; jobs check out `ref: main` or the merge preview |
+| 7 | Validate the actual merge result | **Fail** | **Pass** | All sixteen pull-request jobs merge the base tip in before checking anything, so a green check means "green after merging" rather than "green against the preview GitHub computed at the last push" ([RC-19](ROOT-CAUSES.md#rc-19)). Measured over the last 25 merges, that preview was never stale at merge time here — this repository merges one pull request at a time — so the row closes a latent false positive, not a demonstrated one, and says so |
 | 8 | Pre-commit hooks | **Fail** | **Skipped** | No `package.json` to hang husky off; see 1d |
 | 9 | Release automation | **Partial** | **Pass** | One registry can no longer fail another's push ([RC-3](ROOT-CAUSES.md#rc-3)), and `create-release` no longer requires `docker-manifest` to have succeeded — an expired Docker Hub token used to mean the tagged commit got no GitHub Release at all ([RC-18](ROOT-CAUSES.md#rc-18)). The notes now report which references the registries actually answer for |
 | 10 | Concurrency control | **Fail** | **Pass** | `always()` × 24 → × 0; `!cancelled()` × 0 → × 24 ([RC-7](ROOT-CAUSES.md#rc-7)). `measure-disk-space.yml` no longer cancels its own `contents: write` main-writer |
@@ -100,7 +100,7 @@ scripts, hooks and tool configuration.
 | 14 | Lint the workflows themselves | **Fail** | **Pass** | `workflows.yml`, both linters pinned by digest-bearing tag, both reproducible locally with the command the workflow prints |
 | 15 | Audit the dependency tree | **Fail** | **Partial** | CodeQL over `javascript-typescript`, `python` and `actions`, on every push, pull request and weekly. `dependency-review`/`npm audit` still do not transfer — no root `package.json`, no lockfile, so both would report green forever |
 
-**Score: 2 pass, 2 partial, 11 fail → 9 pass, 2 partial, 3 fail, 1 skipped-with-reason.**
+**Score: 2 pass, 2 partial, 11 fail → 10 pass, 2 partial, 2 fail, 1 skipped-with-reason.**
 
 ---
 
@@ -137,7 +137,8 @@ Every row of Parts 1 and 2 that moved, and the commit that moved it.
 | CodeQL scoped to our own tree, not the vendored evidence | `c7c5350` | `experiments/test-issue115-secretlint-gate.sh` |
 | Link checking, with a Wayback fallback and an ignore file that may only hold false positives | `ee78f40` | `experiments/test-issue115-links-gate.sh` |
 | The GitHub Release is no longer gated on an image push, and the notes assert what was published | `aa9f54e` | `experiments/test-issue115-release-notes.sh` (Part 5) |
+| Every pull-request check runs against the real merge result, not a stale preview | `PENDING` | `experiments/test-issue115-fresh-merge.sh` |
 
 Still open, in the order they will be taken: `release.yml` under 1500 lines and
-then `check-file-line-limits.sh` (#2); `simulate-fresh-merge.sh` (#7);
-automated formatting, `shfmt` for a repository whose source is shell (#3).
+then `check-file-line-limits.sh` (#2); automated formatting, `shfmt` for a
+repository whose source is shell (#3).

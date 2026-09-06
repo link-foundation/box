@@ -1,0 +1,41 @@
+name: 'Simulate a fresh merge with the base branch'
+description: >
+  For a pull_request event GitHub checks out refs/pull/N/merge, a merge commit
+  it computed when the pull request was last synchronised and does not recompute
+  when the base branch moves. Every check therefore reports on a possibly stale
+  merge result: a pull request opened before a base commit that breaks it stays
+  green, and the breakage lands on main. This merges the current base tip into
+  the checked-out preview first, so a green check means "green after merging",
+  and a genuine conflict is reported as a conflict (issue #115, best practice
+  #7). A no-op for any event other than pull_request. Run it directly after
+  actions/checkout, before anything the checks depend on.
+inputs:
+  base-ref:
+    description: >
+      Branch to merge in. Defaults to the pull request's base branch; set it
+      explicitly only when a job checks out something other than the merge
+      preview.
+    required: false
+    default: ''
+  verbose:
+    description: 'Set to "true" to trace every command the script runs.'
+    required: false
+    default: 'false'
+runs:
+  using: 'composite'
+  steps:
+    - name: Merge the base branch into the merge preview
+      if: github.event_name == 'pull_request'
+      shell: bash
+      env:
+        BASE_REF: ${{ inputs.base-ref != '' && inputs.base-ref || github.base_ref }}
+        VERBOSE: ${{ inputs.verbose }}
+      run: |
+        # Tracing is opt-in via the input, or automatic when the run was started
+        # with "Enable debug logging" (RUNNER_DEBUG=1) - the same convention as
+        # setup-buildx-resilient. RUNNER_DEBUG is a runner variable, not part of
+        # the `env` context, so it has to be read here rather than in `env:`.
+        if [ "${VERBOSE}" = "true" ] || [ "${RUNNER_DEBUG:-}" = "1" ]; then
+          export BOX_VERBOSE=1
+        fi
+        bash "${GITHUB_WORKSPACE}/scripts/ci/simulate-fresh-merge.sh"

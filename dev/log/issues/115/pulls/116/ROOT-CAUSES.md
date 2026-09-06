@@ -828,3 +828,93 @@ reference published (`56 of 56`, nothing listed as missing), none published
 unknown, never as missing). It also asserts the generator makes no registry
 call at all when `VERIFY_IMAGES` is unset, so the notes stay reproducible
 offline.
+
+---
+
+<a id="rc-19"></a>
+## RC-19 — Every check reports on a merge result that may be days old — **false positive**
+
+**Symptom.** A pull request is green on every check, is merged, and `main` goes
+red on the first run afterwards — with a failure that neither the base branch
+nor the pull request produces on its own.
+
+**Mechanism.** For a `pull_request` event `actions/checkout` checks out
+`refs/pull/N/merge`. That ref is a merge commit **GitHub computed when the pull
+request was last synchronised**, and GitHub does not recompute it as the base
+branch moves. Between the last push to a branch and the press of the merge
+button, `main` can take any number of commits; none of them are in the tree the
+checks ran against.
+
+**How much has it actually cost here — measured, not assumed.** For each of the
+last 25 merge commits on `main`, comparing the branch's last commit date
+against the commits already on `main` at the moment of the merge:
+
+```
+$ for m in $(git rev-list --merges origin/main --max-count=25); do
+    read -r p1 p2 <<< "$(git rev-list --parents -n1 "$m" | cut -d' ' -f2-3)"
+    n="$(git rev-list --count --since="$(git log -1 --format=%cI "$p2")" "$p1")"
+    echo "$(git log -1 --format=%h "$m") behind_at_merge=$n"
+  done
+```
+
+Every one is `behind_at_merge=0`, except `a269776`: an author merging
+`origin/main` into their branch **by hand**, which is exactly what this script
+automates. This repository has not yet been bitten, for one reason: pull
+requests are opened, reviewed and merged one at a time, so `main` rarely moves
+while one is open. It is a property of the current pace, not a property of the
+checks, and it stops holding the moment two pull requests are open at once.
+
+So this is a latent false positive rather than a demonstrated one, and it is
+recorded that way. It is fixed anyway because the fix is cheap (one fetch and
+one merge per job), because the failure it prevents lands on the default branch
+after review where nobody is watching, and because it is best practice #7 in
+the reference the issue asks this repository to follow.
+
+**Where it occurs.** Every job that reacts to a `pull_request` event and checks
+the tree out: `dockerfiles.yml`, `links.yml`, `measure-disk-space.yml`,
+`scripts.yml` (3 jobs), `security.yml` (2), `workflows.yml` (2) and the six
+`pr-test-*` jobs in `release.yml` — sixteen in total.
+
+**Fix.** `scripts/ci/simulate-fresh-merge.sh`, wrapped in
+`.github/actions/simulate-fresh-merge` and called by all sixteen immediately
+after checkout. It fetches the current tip of the base branch and merges it
+into the preview, so a green check means "green after merging". A conflict is
+reported as a conflict — `::error title=Merge conflict::` naming the paths —
+instead of surfacing later as a mystery.
+
+Two details the template's version does not have, both found by running it:
+
+* **Deepening.** `actions/checkout` clones at depth 1, and a shallow HEAD has
+  no common ancestor with a freshly fetched base tip; the merge fails with
+  *refusing to merge unrelated histories*, which is not a conflict and must not
+  be reported as one. The script `--unshallow`es first, falling back to
+  `--deepen`.
+* **Three outcomes, not two.** Exit 1 is a conflict (the pull request's
+  problem); exit 2 is misuse — no `BASE_REF`, not a git repository, a base
+  branch that cannot be fetched (CI's problem). Collapsing them would turn a
+  broken workflow input into "your branch conflicts", which is a false
+  *positive* of the loudest kind. The fetch is also retried three times: with
+  sixteen jobs depending on it, a single flaky fetch would otherwise fail all
+  sixteen for a reason that has nothing to do with the code under test.
+
+Three jobs are deliberately **excluded**: `version-check`, `changeset-check`
+and `detect-changes` diff the pull request against its base, and merging the
+base in first would change what they measure.
+
+**Pinned by.** `experiments/test-issue115-fresh-merge.sh` — 31 assertions
+against real throwaway git repositories, no network and no GitHub. It covers an
+up-to-date preview (exit 0, no empty merge commit), a moved base (the base
+commit is present in the tree afterwards and the branch's own change survives),
+a genuine conflict (exit 1, annotated, path named, merge aborted so the tree is
+left usable), each misuse case (exit 2), and the wiring — the expected call
+count in each of the seven workflows, because a gate nothing calls is the
+false negative this pull request keeps finding.
+
+Writing that suite produced a false negative of its own, which is worth
+recording: `git clone --depth` is *silently ignored* for a local-path clone
+(`warning: --depth is ignored in local clones`), so the first version of the
+shallow fixture was not shallow, and the assertion about deepening could only
+ever have passed by accident. The fixture now clones over `file://` and carries
+a control that performs the same merge without deepening and asserts it fails —
+so the assertion is evidence that the deepening step does something, not just
+that a string appears in a log.

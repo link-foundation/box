@@ -54,6 +54,13 @@ jobs:
           # widen what a compromised step could reach.
           persist-credentials: false
 
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
       - name: List the Dockerfiles that will be checked
         run: bash scripts/ci/run-hadolint.sh --list
 
