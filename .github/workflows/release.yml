@@ -499,36 +499,7 @@ jobs:
           docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
 
       - name: Test JS box
-        run: |
-          set -e
-          echo "=== Testing JS box ==="
-          docker run --rm box-js bash -c '. $HOME/.nvm/nvm.sh && node --version'
-          docker run --rm box-js bash -c 'export PATH=$HOME/.bun/bin:$PATH && bun --version'
-          docker run --rm box-js bash -c 'export PATH=$HOME/.deno/bin:$PATH && deno --version'
-
-          # Issue #112: the image must ship the Node LTS that was current when it
-          # was built, exactly one of them, and a login shell must agree.
-          echo "=== Node freshness and one-version invariant ==="
-          . ubuntu/24.04/common.sh
-          EXPECTED_NODE="$(resolve_node_lts_major)"
-          echo "expected Node major: $EXPECTED_NODE"
-          docker run --rm -e EXPECTED_NODE="$EXPECTED_NODE" box-js bash -c '
-            set -e
-            . "$HOME/.nvm/nvm.sh"
-            actual="$(node --version)"
-            echo "image ships $actual, nvm default alias -> $(nvm version default)"
-            case "$actual" in
-              v"$EXPECTED_NODE".*) ;;
-              *) echo "::error::image ships $actual, expected Node $EXPECTED_NODE"; exit 1 ;;
-            esac
-            # Without an explicit default alias the image could ship one Node
-            # and activate another (issue #112).
-            [ "$(nvm version default)" = "$actual" ] \
-              || { echo "::error::nvm default alias is $(nvm version default), active is $actual"; exit 1; }
-            count="$(ls -1 "$HOME/.nvm/versions/node" | wc -l)"
-            [ "$count" -eq 1 ] || { echo "::error::$count Node versions in the image"; exit 1; }
-          '
-          echo "=== JS box tests passed ==="
+        run: bash scripts/ci/test-box.sh js box-js
 
   # --- Tier 2: essentials box ---
   pr-test-essentials:
@@ -589,14 +560,7 @@ jobs:
             --build-arg JS_IMAGE=box-js -t box-essentials .
 
       - name: Test essentials box
-        run: |
-          set -e
-          echo "=== Testing essentials box ==="
-          docker run --rm box-essentials gh --version
-          docker run --rm box-essentials glab --version
-          docker run --rm box-essentials gh-setup-git-identity --version
-          docker run --rm box-essentials glab-setup-git-identity --version
-          echo "=== Essentials box tests passed ==="
+        run: bash scripts/ci/test-box.sh essentials box-essentials
 
   # --- Tier 3: per-language boxes (parallel matrix, one VM each) ---
   pr-test-language:
@@ -667,54 +631,9 @@ jobs:
             -t "box-${{ matrix.language }}" .
 
       - name: Test ${{ matrix.language }} box
-        run: |
-          set -e
-          LANG="${{ matrix.language }}"
-          IMG="box-${LANG}"
-          echo "=== Testing ${LANG} box (${IMG}) ==="
-          case "$LANG" in
-            python)
-              docker run --rm "$IMG" python3 --version
-              docker run --rm "$IMG" pip3 --version
-              ;;
-            go)
-              docker run --rm "$IMG" go version
-              ;;
-            rust)
-              docker run --rm "$IMG" rustc --version
-              docker run --rm "$IMG" cargo --version
-              docker run --rm "$IMG" rustup --version
-              ;;
-            java)
-              docker run --rm "$IMG" java -version
-              ;;
-            kotlin)
-              docker run --rm "$IMG" kotlin -version
-              ;;
-            ruby)
-              docker run --rm "$IMG" ruby --version
-              docker run --rm "$IMG" gem --version
-              ;;
-            php)
-              docker run --rm "$IMG" php --version
-              echo "=== PHP install method ==="
-              docker run --rm "$IMG" cat /home/box/.php-install-method
-              ;;
-            perl)
-              docker run --rm "$IMG" perl --version
-              ;;
-            swift)
-              docker run --rm "$IMG" swift --version
-              ;;
-            lean)
-              docker run --rm "$IMG" lean --version
-              ;;
-            rocq)
-              # rocq is invoked via "rocq --version" but historically coqc; check both
-              docker run --rm "$IMG" bash -c 'rocq --version 2>/dev/null || coqc --version'
-              ;;
-          esac
-          echo "=== ${LANG} box tests passed ==="
+        env:
+          LANGUAGE: ${{ matrix.language }}
+        run: bash scripts/ci/test-box.sh "$LANGUAGE" "box-$LANGUAGE"
 
   # --- Tier 4: full box (integration smoke test, all languages on one VM) ---
   pr-test-full:
@@ -805,96 +724,12 @@ jobs:
             -t box-test .
 
       - name: Test full box
-        run: |
-          set -e
-          echo "=== Testing full box ==="
-          echo "Note: Using entrypoint script which initializes all environments"
-
-          # JavaScript/TypeScript runtimes
-          docker run --rm box-test node --version
-          docker run --rm box-test bun --version
-          docker run --rm box-test deno --version
-
-          # Python (pyenv)
-          docker run --rm box-test python3 --version
-          docker run --rm box-test pip3 --version
-
-          # Go
-          docker run --rm box-test go version
-
-          # Rust (rustup + cargo + rustc)
-          docker run --rm box-test rustc --version
-          docker run --rm box-test cargo --version
-          docker run --rm box-test rustup --version
-
-          # Java/JVM (SDKMAN)
-          docker run --rm box-test java -version
-          docker run --rm box-test kotlin -version
-
-          # Ruby (rbenv)
-          docker run --rm box-test ruby --version
-          docker run --rm box-test gem --version
-
-          # PHP
-          docker run --rm box-test php --version
-
-          # Perl (perlbrew)
-          docker run --rm box-test perl --version
-
-          # Swift
-          docker run --rm box-test swift --version
-
-          # Lean/Mathlib (elan)
-          docker run --rm box-test lean --version
-
-          # Dotnet
-          docker run --rm box-test dotnet --version
-
-          # R language
-          docker run --rm box-test Rscript --version
-
-          # CLI tools
-          docker run --rm box-test gh --version
-          docker run --rm box-test glab --version
-          docker run --rm box-test gh-setup-git-identity --version
-          docker run --rm box-test glab-setup-git-identity --version
-
-          # expect (interactive automation tool, issue #64)
-          docker run --rm box-test expect -v
-
-          echo ""
-          echo "=== Runtime freshness and one-version-per-language invariant (issue #112) ==="
-          . ubuntu/24.04/common.sh
-          EXPECTED_NODE="$(resolve_node_lts_major)"
-          ACTUAL_NODE="$(docker run --rm box-test node --version)"
-          echo "full box ships Node $ACTUAL_NODE, expected major $EXPECTED_NODE"
-          case "$ACTUAL_NODE" in
-            v"$EXPECTED_NODE".*) ;;
-            *) echo "::error::full box ships $ACTUAL_NODE, expected Node $EXPECTED_NODE"; exit 1 ;;
-          esac
-
-          # The stale `stable` next to a pinned toolchain is the 2.2 GB ~/.rustup
-          # from issue #112: assert one toolchain, and that it is the one rustup
-          # itself considers current. `rustup check` also reports updates for the
-          # rustup binary, which is not what this asserts — toolchain lines only.
-          docker run --rm box-test rustup toolchain list
-          TOOLCHAINS="$(docker run --rm box-test rustup toolchain list | grep -c .)"
-          [ "$TOOLCHAINS" -eq 1 ] \
-            || { echo "::error::$TOOLCHAINS rustup toolchains in the full box, expected 1"; exit 1; }
-          if docker run --rm box-test rustup check | grep -v "^rustup " | grep "Update available"; then
-            echo "::error::the shipped Rust stable is not the current release"; exit 1
-          fi
-
-          docker run --rm -v "$PWD/ubuntu/24.04/common.sh:/tmp/common.sh:ro" \
-            box-test bash -c '. /tmp/common.sh && assert_single_runtime_versions'
-
-          echo ""
-          echo "=== PHP install method check ==="
-          docker run --rm box-php cat /home/box/.php-install-method
-          docker run --rm box-test cat /home/box/.php-install-method
-
-          echo ""
-          echo "=== All full box tests passed ==="
+        env:
+          # The standalone PHP box is the source of /home/box/.php-install-method
+          # in the full box; printing both catches a COPY that silently took the
+          # wrong stage.
+          PHP_METHOD_REFERENCE_IMAGE: box-php
+        run: bash scripts/ci/test-box.sh full box-test
 
   # --- Tier 5: dind-box variants (parallel matrix: 14 variants, one VM each) — issue #80 ---
   # Each dind variant rebuilds its base chain (JS + essentials + optional lang/full)
@@ -2491,64 +2326,14 @@ jobs:
 
           bash scripts/release/mirror-to-dockerhub.sh "$SOURCE" "${TARGETS[@]}"
 
+      # Issue #115: the same script as the pre-merge full-box test, so the
+      # pushed artifact is verified by exactly the checks its candidate passed.
+      # This step used to be a hand-maintained copy that had drifted to a
+      # 22-of-29 subset.
       - name: Smoke test released full box (amd64)
-        run: |
-          set -e
-          VERSION="${{ steps.version.outputs.version }}"
-          IMAGE="${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION}"
-          echo "=== Smoke testing released image: ${IMAGE} ==="
-
-          # JavaScript/TypeScript runtimes
-          docker run --rm "${IMAGE}" node --version
-          docker run --rm "${IMAGE}" bun --version
-          docker run --rm "${IMAGE}" deno --version
-
-          # Python (pyenv)
-          docker run --rm "${IMAGE}" python3 --version
-          docker run --rm "${IMAGE}" pip3 --version
-
-          # Go
-          docker run --rm "${IMAGE}" go version
-
-          # Rust (rustup + cargo + rustc)
-          docker run --rm "${IMAGE}" rustc --version
-          docker run --rm "${IMAGE}" cargo --version
-          docker run --rm "${IMAGE}" rustup --version
-
-          # Java/JVM (SDKMAN)
-          docker run --rm "${IMAGE}" java -version
-          docker run --rm "${IMAGE}" kotlin -version
-
-          # Ruby (rbenv)
-          docker run --rm "${IMAGE}" ruby --version
-          docker run --rm "${IMAGE}" gem --version
-
-          # PHP
-          docker run --rm "${IMAGE}" php --version
-
-          # Perl (perlbrew)
-          docker run --rm "${IMAGE}" perl --version
-
-          # Swift
-          docker run --rm "${IMAGE}" swift --version
-
-          # Lean/Mathlib (elan)
-          docker run --rm "${IMAGE}" lean --version
-
-          # Dotnet
-          docker run --rm "${IMAGE}" dotnet --version
-
-          # R language
-          docker run --rm "${IMAGE}" Rscript --version
-
-          # CLI tools
-          docker run --rm "${IMAGE}" gh --version
-          docker run --rm "${IMAGE}" glab --version
-
-          # expect (interactive automation tool, issue #64)
-          docker run --rm "${IMAGE}" expect -v
-
-          echo "=== All smoke tests passed for ${IMAGE} ==="
+        env:
+          IMAGE: ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${{ steps.version.outputs.version }}
+        run: bash scripts/ci/test-box.sh full "$IMAGE"
 
   # === BUILD AND PUSH ARM64 IMAGE ===
   # Using native ARM64 runner for optimal build performance

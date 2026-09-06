@@ -41,6 +41,7 @@ done
 declare -A SKIP_SUITES=(
   [node-lts-integration-test.sh]="needs network: resolves the live Node LTS feed (covered by the version-policy CI tier)"
   [rust-refresh-layer-test.sh]="needs docker: builds layers to measure image size"
+  [verify-full-box-tooling.sh]="needs docker and a pulled full-box image (tens of GB); manual probe behind scripts/ci/test-box.sh"
 )
 
 mapfile -t SUITES < <(find experiments -maxdepth 1 -name '*.sh' -type f | sort)
