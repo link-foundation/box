@@ -1,0 +1,94 @@
+name: 'Log in to Docker Hub'
+description: >
+  One Docker Hub login for the whole repository, with an OpenID Connect path
+  that needs no stored token. The 15 hand-written login steps this replaces all
+  passed a personal access token, and in run 33972074755 that token had expired:
+  every one of them failed, every mirror step was skipped, and 2.5.0 and 2.6.0
+  were never published (issue #117). A credential that expires is a release
+  outage waiting for a calendar date, so this prefers trusted publishing and
+  falls back to the token.
+
+  Set the repository variable DOCKERHUB_OIDC_CONNECTIONID (and
+  DOCKERHUB_ORGANIZATION, the Docker Hub org the connection belongs to) to use
+  OIDC; the calling job must then grant `id-token: write`. Docker Hub OIDC
+  connections are an organization feature, so a personal namespace has to keep
+  using a token - see docs/RELEASING.md.
+
+  Deliberately still fails when there is no usable credential, so a caller that
+  wraps this in `continue-on-error: true` keeps seeing `outcome != 'success'`
+  and warns exactly as it does today (issue #82).
+inputs:
+  registry:
+    description: 'Registry host to log in to.'
+    required: false
+    default: 'docker.io'
+  username:
+    description: 'Docker Hub account for the personal access token path.'
+    required: false
+    default: ''
+  password:
+    description: 'Docker Hub personal access token.'
+    required: false
+    default: ''
+  oidc-connection-id:
+    description: >
+      Docker Hub OIDC connection ID. When non-empty, this path is used and no
+      token is read at all.
+    required: false
+    default: ''
+  oidc-organization:
+    description: >
+      Docker Hub organization the OIDC connection belongs to; docker/login-action
+      expects it in `username`. Defaults to `username`.
+    required: false
+    default: ''
+runs:
+  using: 'composite'
+  steps:
+    # Setting the variable is not enough: a job that does not grant
+    # `id-token: write` cannot mint an OIDC token, and docker/login-action then
+    # fails with a message about the token request rather than about the
+    # missing permission. ACTIONS_ID_TOKEN_REQUEST_URL is injected by the runner
+    # only when the permission is granted, so its absence is the direct
+    # evidence, available before anything is attempted.
+    - name: Check that this job can mint an OIDC token
+      if: inputs.oidc-connection-id != ''
+      shell: bash
+      run: |
+        # Read in the shell rather than in `if:`; the runner injects this
+        # variable into the step's environment, and whether the `env` context is
+        # populated for a composite step's condition is not something to bet a
+        # release on.
+        if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+          echo "::error title=OIDC login is not possible in this job::DOCKERHUB_OIDC_CONNECTIONID is set, but this job does not grant 'id-token: write', so no OIDC token can be requested. Add it to the job's permissions: (and, for a called workflow, to the caller job's too). See docs/RELEASING.md." >&2
+          exit 1
+        fi
+        echo "==> This job can mint an OIDC token; logging in to Docker Hub without a stored token."
+
+    - name: Log in to Docker Hub with OpenID Connect
+      if: inputs.oidc-connection-id != ''
+      uses: docker/login-action@v4
+      env:
+        DOCKERHUB_OIDC_CONNECTIONID: ${{ inputs.oidc-connection-id }}
+      with:
+        registry: ${{ inputs.registry }}
+        username: ${{ inputs.oidc-organization != '' && inputs.oidc-organization || inputs.username }}
+
+    - name: Log in to Docker Hub with a personal access token
+      if: inputs.oidc-connection-id == '' && inputs.password != ''
+      uses: docker/login-action@v4
+      with:
+        registry: ${{ inputs.registry }}
+        username: ${{ inputs.username }}
+        password: ${{ inputs.password }}
+
+    # Not a silent skip. "No credential is configured" and "the credential was
+    # refused" are different problems with the same consequence, and a run that
+    # cannot tell them apart is how an expired token stayed invisible for two
+    # releases.
+    - name: Report that no Docker Hub credential is configured
+      if: inputs.oidc-connection-id == '' && inputs.password == ''
+      shell: bash
+      run: |
+        echo "::error title=Docker Hub credential missing::No DOCKERHUB_TOKEN and no DOCKERHUB_OIDC_CONNECTIONID variable, so this job cannot authenticate to ${{ inputs.registry }}. Nothing will be mirrored. See docs/RELEASING.md." >&2
+        exit 1
