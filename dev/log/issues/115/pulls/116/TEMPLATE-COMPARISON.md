@@ -16,6 +16,10 @@ the comparison is about **practices and enforcement mechanisms**, not about
 copying `npm`-specific jobs. Where a practice does not transfer, that is stated
 with the reason.
 
+**Two states are recorded throughout.** *As found* is `42be663`, the commit whose
+two failing runs opened the issue. *Now* is the head of this pull request. The
+ledger of what changed and in which commit is [Part 4](#part-4--adoption-ledger).
+
 ---
 
 ## Part 1 — Full file-tree comparison of the CI/CD surface
@@ -25,71 +29,78 @@ scripts, hooks and tool configuration.
 
 ### 1a. Workflows
 
-| Template | Lines | Box | Lines | Gap |
-| --- | --- | --- | --- | --- |
-| `.github/workflows/release.yml` | 890 | `.github/workflows/release.yml` | **3432** | Box is 2.3× the 1500-line limit the template enforces on this exact file ([RC-8](ROOT-CAUSES.md#rc-8)) |
-| `.github/workflows/workflows.yml` | 69 | — | — | **Missing.** actionlint + zizmor. Directly causes [RC-6](ROOT-CAUSES.md#rc-6) |
-| `.github/workflows/security.yml` | 93 | — | — | **Missing.** CodeQL (incl. the `actions` language), dependency review, `npm audit` on a weekly schedule |
-| `.github/workflows/links.yml` | 104 | — | — | **Missing.** lychee link checking with Web-Archive fallback |
-| `.github/workflows/example-app.yml` | 318 | — | — | Not applicable — template-specific demo app |
-| — | — | `.github/workflows/measure-disk-space.yml` | 212 | Box-specific. Has no `pull_request` trigger ([RC-2](ROOT-CAUSES.md#rc-2)) and cancels a `contents: write` main-writer job |
+| Template | Lines | Box | As found | Now | State |
+| --- | --- | --- | --- | --- | --- |
+| `.github/workflows/release.yml` | 890 | `.github/workflows/release.yml` | **3432** | **3068** | Still 2.0× the 1500-line limit the template enforces on this exact file ([RC-8](ROOT-CAUSES.md#rc-8)). −364 lines so far, all by extraction (`create-multiarch-manifest.sh`, `build-release-notes.sh`, `test-box.sh`); the line-limit check is only worth porting once the file is under it |
+| `.github/workflows/workflows.yml` | 69 | `.github/workflows/workflows.yml` | — | 78 | **Adopted.** actionlint + zizmor, both pinned. Closes [RC-6](ROOT-CAUSES.md#rc-6) |
+| `.github/workflows/security.yml` | 93 | — | — | — | **Still missing.** CodeQL (`javascript-typescript` + `actions`) and secretlint transfer; `dependency-review` and `npm audit` do not — this repository has no root `package.json` |
+| `.github/workflows/links.yml` | 104 | — | — | — | **Still missing.** lychee link checking with Web-Archive fallback |
+| `.github/workflows/example-app.yml` | 318 | — | — | — | Not applicable — template-specific demo app |
+| — | — | `.github/workflows/scripts.yml` | — | 131 | **Box-only, new.** shellcheck over all 88 tracked scripts, the quoted-heredoc checker, and every regression suite. The template lints `.mjs`; this is the same practice applied to the language this repository is actually written in |
+| — | — | `.github/workflows/dockerfiles.yml` | — | 70 | **Box-only, new.** hadolint over all 23 tracked Dockerfiles. No template counterpart — the template ships no Dockerfile — but principle #4 applies to the 7.9 % of this repository that is one |
+| — | — | `.github/workflows/measure-disk-space.yml` | 212 | 289 | Box-specific. Gained the `pull_request` trigger it never had ([RC-2](ROOT-CAUSES.md#rc-2)) |
 
 ### 1b. Composite actions
 
-| Template | Box | Gap |
+| Template | Box | State |
 | --- | --- | --- |
 | `.github/actions/setup-buildx-resilient/action.yml` | same file, present | Identical apart from comment wording — the two repositories already share this action. `diff` is 14 lines, all prose |
-| `.github/actions/publish-dockerhub/action.yml` | — | **Missing, and it is the fix for [RC-3](ROOT-CAUSES.md#rc-3).** It builds **one registry per invocation** with `push-by-digest=true`, so one registry's credentials cannot fail another registry's push |
+| `.github/actions/publish-dockerhub/action.yml` | — | **Practice adopted, file not copied.** The template's action builds **one registry per invocation** so one registry's credentials cannot fail another's push. Box reached the same separation from the other end: GHCR is the registry of record and Docker Hub a mirror (`scripts/release/mirror-to-dockerhub.sh`), which is what [RC-3](ROOT-CAUSES.md#rc-3) required. Copying the action itself would mean adopting `push-by-digest` across 12 build jobs — a larger change than the defect warrants |
 
 ### 1c. CI scripts
 
-| Template script | Box equivalent | Gap |
+| Template script | Box equivalent | State |
 | --- | --- | --- |
-| `scripts/check-file-line-limits.sh` | — | **Missing.** This is the check that would have flagged `release.yml` at 3432 lines |
-| `scripts/simulate-fresh-merge.sh` | — | **Missing.** Box tests the merge preview, not the actual merge result (best practice #7) |
-| `scripts/publish-failure-classifier.mjs`, `scripts/push-failure-classifier.mjs` | — | **Missing, and it is the fix for [RC-5](ROOT-CAUSES.md#rc-5).** The template's classifier lists `401`/`403`/`access token expired` as `NON_RETRYABLE_PATTERNS` and refuses to retry them; box retries an expired token three times |
+| `scripts/check-file-line-limits.sh` | — | **Still missing**, deliberately: it would fail on `release.yml` the day it lands. Ports once the extraction work brings the file under 1500 lines ([RC-8](ROOT-CAUSES.md#rc-8)) |
+| `scripts/simulate-fresh-merge.sh` | — | **Still missing.** Box tests the merge preview, not the actual merge result (best practice #7) |
+| `scripts/publish-failure-classifier.mjs`, `scripts/push-failure-classifier.mjs` | `scripts/release/docker-push-failure-classifier.sh` | **Adopted**, as shell. Box retried an expired token three times; the classifier now refuses to retry `401`/`403`/`denied`/`unauthorized` and fails fast instead ([RC-5](ROOT-CAUSES.md#rc-5)). Pinned by `experiments/test-issue115-push-retry-classifier.sh` |
 | `scripts/detect-code-changes.mjs` | `scripts/ci/detect-changes.sh` | Present in both — box satisfies best practice #1 |
 | `scripts/check-changesets.mjs`, `check-version.mjs`, `validate-changeset.mjs`, `changeset-version.mjs` | `scripts/release/check-changesets.sh`, `check-version.sh`, `validate-changeset.sh`, `apply-changesets.sh`, `create-changeset.sh` | Present in both — box satisfies best practice #6 |
-| `scripts/check-web-archive.mjs` | — | Missing, follows from `links.yml` being missing |
-| `scripts/lint.mjs`, `lint-changed-lines.mjs` | — | No linter of any kind runs in box CI |
+| `scripts/check-web-archive.mjs` | — | Still missing, follows from `links.yml` being missing |
+| `scripts/lint.mjs`, `lint-changed-lines.mjs` | `scripts/ci/run-shellcheck.sh`, `scripts/ci/run-hadolint.sh` | **Adopted**, in the languages this repository is written in. Both discover their file set from `git ls-files`, so a new file is linted the moment it lands; both are the identical command CI runs, so a developer reproduces a CI failure with one line |
 | — | `scripts/ci/supersede.sh` | Box-only, added for issue #112. No template counterpart; keep |
-| — | `scripts/release/docker-push-with-retry.sh` | Box-only, and **dead code**: `grep -rn docker-push-with-retry` finds no caller. Meanwhile `release.yml` carries **ten hand-copied inline retry loops** that are worse than it (no classifier, no per-tag isolation) |
+| — | `scripts/release/docker-push-with-retry.sh` | Was **dead code** while `release.yml` carried ten hand-copied inline retry loops. Now the single retry path, wired to the classifier |
+| — | `scripts/ci/test-box.sh` | Box-only, new: one acceptance check per box, replacing per-job inline blocks. Runs the tool-presence checks offline (`--network none`), which is what caught [RC-14](ROOT-CAUSES.md#rc-14) |
+| — | `scripts/release/assert-base-image.sh`, `create-multiarch-manifest.sh`, `build-release-notes.sh` | Box-only, new: the three largest blocks of duplicated inline YAML, extracted and unit-tested |
 
 ### 1d. Tool configuration and hooks
 
-| Template | Box | Gap |
+| Template | Box | State |
 | --- | --- | --- |
-| `.github/zizmor.yml` | — | **Missing.** The template's `unpinned-uses` policy allows tag pins only for a named allow-list of publishers and requires hash pins for everything else. Box uses `jlumbroso/free-disk-space@main` — a mutable branch — in every build job |
-| `.husky/pre-commit` + `lint-staged` | — | **Missing.** Best practice #8 |
-| `.secretlintrc.json` | — | **Missing.** Best practice #11 |
-| `.prettierrc`, `.prettierignore` | — | **Missing.** Best practice #3 |
-| `.jscpd.json` | — | Missing. Duplication detection — directly relevant given the ten copied retry blocks |
-| `.lycheeignore` | — | Missing, follows from `links.yml` |
+| `.github/zizmor.yml` | `.github/zizmor.yml` | **Adopted.** `jlumbroso/free-disk-space@main` — a mutable branch — is now hash-pinned to `54081f13` (v1.3.1) in every build job |
+| — | `.hadolint.yaml` | **Box-only, new.** `failure-threshold: warning`, one documented ignore (`DL3008`, for the issue-#112 reason). No template counterpart |
+| `.husky/pre-commit` + `lint-staged` | — | **Skipped with reason.** husky installs from `package.json`'s `prepare` script; this repository has no root `package.json` and adding npm to a Docker-image factory to gain a hook is a worse trade than the hook is worth. The checks a hook would run (shellcheck, actionlint, hadolint) all run in CI and are all reproducible locally with the single command each workflow prints |
+| `.secretlintrc.json` | — | **Still missing.** Best practice #11 |
+| `.prettierrc`, `.prettierignore` | — | **Still missing.** Best practice #3. `shfmt` is the transferable equivalent for an 80.9 %-shell repository |
+| `.jscpd.json` | — | **Skipped with reason.** jscpd is npm-only and its target here — the ten copied retry blocks and the duplicated manifest steps — has been removed by extraction rather than measured |
+| `.lycheeignore` | — | Still missing, follows from `links.yml` |
 | `.changeset/config.json` | `.changeset/config.json` | Present in both |
 
 ---
 
 ## Part 2 — The 15 hive-mind principles, scored
 
-| # | Principle | Box | Evidence |
-| --- | --- | --- | --- |
-| 1 | Run checks only on relevant file changes | **Pass** | `scripts/ci/detect-changes.sh` + a `detect-changes` job feeding every build gate |
-| 2 | File size limits (1500 lines) | **Fail** | `release.yml` 3432. No check enforces it ([RC-8](ROOT-CAUSES.md#rc-8)) |
-| 3 | Automated code formatting | **Fail** | No prettier/shfmt, no `format:check` job |
-| 4 | Static analysis and linting | **Fail** | No actionlint, no zizmor, no shellcheck job. 83 + 173 + 15 findings sit unreported ([RC-6](ROOT-CAUSES.md#rc-6)) |
-| 5 | Fast-fail job ordering | **Fail** | The slowest thing in the repository — a 22-minute image build — starts before anything cheap has validated the change. Run 33972074755 spent ~40 min on 44 builds after a credential failure was already known at 14:34:38 |
-| 6 | Changeset-based versioning | **Pass** | `scripts/release/*changeset*.sh`, `Apply Changesets` job succeeded even in the failing run |
-| 7 | Validate the actual merge result | **Fail** | No `simulate-fresh-merge.sh`; jobs check out `ref: main` or the merge preview |
-| 8 | Pre-commit hooks | **Fail** | No `.husky/` |
-| 9 | Release automation | **Partial** | Automated, but gated on image pushes to two registries at once, so one expired token stops the release ([RC-3](ROOT-CAUSES.md#rc-3)). Principle #13 explicitly says never gate the release on the image push |
-| 10 | Concurrency control | **Fail** | `always()` × 24, `!cancelled()` × 0 ([RC-7](ROOT-CAUSES.md#rc-7)); `measure-disk-space.yml` sets `cancel-in-progress: true` on a `contents: write` job that pushes to `main` — the read/write separation the principle requires is inverted |
-| 11 | Secrets detection | **Fail** | No secretlint |
-| 12 | Documentation validation | **Fail** | No `validate-docs`, no link checking |
-| 13 | Native runners per architecture, no QEMU, always cache, never gate release on image push, assert published manifests | **Partial** | Native `ubuntu-24.04` / `ubuntu-24.04-arm` runners: **pass**. Cache: **fails in practice** — the coupled push cancels the cache export (`#18 CANCELED`). Never gate release on push: **fail**. Assert published manifests: **fail** — nothing verified that `konard/box-js:2.5.0-amd64` actually existed before 28 dind jobs tried to pull it ([RC-4](ROOT-CAUSES.md#rc-4)) |
-| 14 | Lint the workflows themselves | **Fail** | The single most directly-applicable principle, and the one with no implementation at all |
-| 15 | Audit the dependency tree | **Fail** | No scheduled audit, no dependency review, no CodeQL |
+"As found" is `42be663`; "Now" is this pull request's head.
 
-**Score: 2 pass, 2 partial, 11 fail.**
+| # | Principle | As found | Now | Evidence |
+| --- | --- | --- | --- | --- |
+| 1 | Run checks only on relevant file changes | **Pass** | **Pass** | `scripts/ci/detect-changes.sh` + a `detect-changes` job feeding every build gate |
+| 2 | File size limits (1500 lines) | **Fail** | **Fail** | `release.yml` 3432 → 3068. Still over; no check enforces it yet ([RC-8](ROOT-CAUSES.md#rc-8)) |
+| 3 | Automated code formatting | **Fail** | **Fail** | No prettier/shfmt, no `format:check` job |
+| 4 | Static analysis and linting | **Fail** | **Pass** | actionlint + zizmor (`workflows.yml`), shellcheck over 88 scripts (`scripts.yml`), hadolint over 23 Dockerfiles (`dockerfiles.yml`). The 83 + 173 + 15 findings that sat unreported are fixed and gated ([RC-6](ROOT-CAUSES.md#rc-6)) |
+| 5 | Fast-fail job ordering | **Fail** | **Partial** | The lint workflows are separate and finish in seconds, and `assert-base-image.sh` fails a build before it spends 22 minutes on a `FROM` that does not exist ([RC-4](ROOT-CAUSES.md#rc-4)). Within `release.yml` the build jobs still start off `detect-changes` alone |
+| 6 | Changeset-based versioning | **Pass** | **Pass** | `scripts/release/*changeset*.sh` |
+| 7 | Validate the actual merge result | **Fail** | **Fail** | No `simulate-fresh-merge.sh`; jobs check out `ref: main` or the merge preview |
+| 8 | Pre-commit hooks | **Fail** | **Skipped** | No `package.json` to hang husky off; see 1d |
+| 9 | Release automation | **Partial** | **Partial** | One registry can no longer fail another's push ([RC-3](ROOT-CAUSES.md#rc-3)), but `create-release` still `needs: docker-manifest`, so the release is still gated on an image push — principle #13 says it must not be |
+| 10 | Concurrency control | **Fail** | **Pass** | `always()` × 24 → × 0; `!cancelled()` × 0 → × 24 ([RC-7](ROOT-CAUSES.md#rc-7)). `measure-disk-space.yml` no longer cancels its own `contents: write` main-writer |
+| 11 | Secrets detection | **Fail** | **Fail** | No secretlint |
+| 12 | Documentation validation | **Fail** | **Fail** | No `validate-docs`, no link checking |
+| 13 | Native runners, no QEMU, always cache, never gate release on image push, assert published manifests | **Partial** | **Partial** | Native runners: pass. Cache: no longer cancelled by a coupled push. Assert published manifests: pass — `assert-base-image.sh` checks a `FROM` exists before the build and is unit-tested. Never gate release on push: still fail (see #9) |
+| 14 | Lint the workflows themselves | **Fail** | **Pass** | `workflows.yml`, both linters pinned by digest-bearing tag, both reproducible locally with the command the workflow prints |
+| 15 | Audit the dependency tree | **Fail** | **Fail** | No scheduled audit, no CodeQL. `dependency-review`/`npm audit` do not transfer; CodeQL's `actions` language does |
+
+**Score: 2 pass, 2 partial, 11 fail → 5 pass, 3 partial, 6 fail, 1 skipped-with-reason.**
 
 ---
 
@@ -101,3 +112,28 @@ release/changeset shape. Findings to report upstream are recorded in
 [`SOLUTION-PLAN.md`](SOLUTION-PLAN.md#s7) once each has been reproduced against
 a clean checkout of the template, so that every report carries a reproducible
 example, a workaround and a suggested code fix as required.
+
+---
+
+## Part 4 — Adoption ledger
+
+Every row of Parts 1 and 2 that moved, and the commit that moved it.
+
+| Practice adopted | Commit | Pinned by |
+| --- | --- | --- |
+| actionlint + zizmor, `.github/zizmor.yml`, hash-pinned third-party actions | `12992f8` | `experiments/test-issue115-ci-policy.sh` |
+| `!cancelled()` for `always()`, everywhere | `12992f8` | `experiments/test-issue115-ci-policy.sh` |
+| Non-retryable registry failures fail fast | `7e46ce8` | `experiments/test-issue115-push-retry-classifier.sh` |
+| Assert a base image exists before building `FROM` it | `30801ee` | `experiments/test-issue115-base-image-preflight.sh` |
+| Every regression suite runs in CI | `149f807` | `scripts/ci/run-experiments.sh --list` |
+| GHCR the registry of record, Docker Hub a mirror | `a385c41` | `experiments/test-issue115-registry-split.sh` |
+| shellcheck over every tracked script | `fa0fd07` | `experiments/test-issue115-shellcheck-gate.sh` |
+| Duplicated manifest steps extracted | `ca338c7` | `experiments/test-issue115-manifest-script.sh` |
+| Release notes generated, not hand-written | `bff4bf4` | `experiments/test-issue115-release-notes.sh` |
+| One acceptance script per box, run offline | `780b762`, `8faf836` | `experiments/test-issue115-test-box.sh` |
+| hadolint over every tracked Dockerfile; no bare `apt` | `46f80a5` | `experiments/test-issue115-hadolint-gate.sh` |
+
+Still open, in the order they will be taken: `release.yml` under 1500 lines and
+then `check-file-line-limits.sh`; `security.yml` (CodeQL + secretlint);
+`links.yml` + `.lycheeignore`; `simulate-fresh-merge.sh`; decoupling
+`create-release` from `docker-manifest`.
