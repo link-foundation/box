@@ -20,7 +20,7 @@ cd "$(dirname "$0")/.."
 install="ubuntu/24.04/js/install.sh"
 fail=0
 
-assert_grep() {  # extended-regex, description
+assert_grep() { # extended-regex, description
   if grep -qE "$1" "$install"; then
     echo "  PASS: $2"
   else
@@ -29,7 +29,7 @@ assert_grep() {  # extended-regex, description
   fi
 }
 
-assert_not_grep() {  # extended-regex, description
+assert_not_grep() { # extended-regex, description
   if grep -qE "$1" "$install"; then
     echo "  FAIL: $2"
     fail=1
@@ -61,7 +61,10 @@ log_warning() { :; }
 sleep() { :; }
 
 attempts=0
-succeed_now() { attempts=$((attempts + 1)); return 0; }
+succeed_now() {
+  attempts=$((attempts + 1))
+  return 0
+}
 if BUILD_RETRY_INITIAL_DELAY=0 run_with_retry succeed_now && [ "$attempts" -eq 1 ]; then
   echo "  PASS: succeeds on the first attempt without retrying"
 else
@@ -70,7 +73,10 @@ else
 fi
 
 attempts=0
-fail_then_succeed() { attempts=$((attempts + 1)); [ "$attempts" -ge 3 ]; }
+fail_then_succeed() {
+  attempts=$((attempts + 1))
+  [ "$attempts" -ge 3 ]
+}
 if BUILD_RETRY_INITIAL_DELAY=0 BUILD_RETRY_MAX_RETRIES=5 run_with_retry fail_then_succeed \
   && [ "$attempts" -eq 3 ]; then
   echo "  PASS: retries transient failures and ultimately succeeds (3 attempts)"
@@ -80,7 +86,10 @@ else
 fi
 
 attempts=0
-always_fail() { attempts=$((attempts + 1)); return 1; }
+always_fail() {
+  attempts=$((attempts + 1))
+  return 1
+}
 if BUILD_RETRY_INITIAL_DELAY=0 BUILD_RETRY_MAX_RETRIES=3 run_with_retry always_fail; then
   echo "  FAIL: should have given up after exhausting retries"
   fail=1

@@ -47,15 +47,15 @@ cp .secretlintrc.json "$CANARY_DIR/"
 # this file would be found by the very scan it is here to validate - the first
 # version of this script failed on itself. Random also means the canary cannot
 # quietly become an allow-listed constant.
-rand_alnum() { LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c "$1"; }
+rand_alnum() { LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$1"; }
 {
   printf 'aws_access_key_id = AKIA%s\n' "$(rand_alnum 16)"
   printf 'aws_secret_access_key = %s\n' "$(rand_alnum 40)"
-} > "$CANARY_DIR/canary.txt"
+} >"$CANARY_DIR/canary.txt"
 
 echo "==> Canary: secretlint must find a planted key before its silence means anything"
 set +e
-( cd "$CANARY_DIR" && secretlint_run canary.txt ) > "$CANARY_DIR/output.txt" 2>&1
+(cd "$CANARY_DIR" && secretlint_run canary.txt) >"$CANARY_DIR/output.txt" 2>&1
 CANARY_STATUS=$?
 set -e
 

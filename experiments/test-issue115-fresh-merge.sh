@@ -25,8 +25,14 @@ ACTION="$REPO_ROOT/.github/actions/simulate-fresh-merge/action.yml"
 PASS=0
 FAIL=0
 
-pass() { echo "PASS: $1"; PASS=$((PASS + 1)); }
-fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
+pass() {
+  echo "PASS: $1"
+  PASS=$((PASS + 1))
+}
+fail() {
+  echo "FAIL: $1"
+  FAIL=$((FAIL + 1))
+}
 
 for f in "$SCRIPT" "$ACTION"; do
   if [ -f "$f" ]; then
@@ -37,7 +43,10 @@ for f in "$SCRIPT" "$ACTION"; do
 done
 
 if [ "$FAIL" -gt 0 ]; then
-  echo; echo "passed: $PASS"; echo "failed: $FAIL"; exit 1
+  echo
+  echo "passed: $PASS"
+  echo "failed: $FAIL"
+  exit 1
 fi
 
 TMP="$(mktemp -d)"
@@ -81,16 +90,16 @@ scenario() {
   git init --quiet "$seed"
   (
     cd "$seed" || exit 1
-    echo base > shared.txt
-    echo "unrelated" > other.txt
+    echo base >shared.txt
+    echo "unrelated" >other.txt
     git add -A && git commit --quiet -m "base"
     git checkout --quiet -b feature
-    echo "branch history" > history.txt
+    echo "branch history" >history.txt
     git add -A && git commit --quiet -m "work on the branch"
     git checkout --quiet main
     git remote add origin "$up"
     git push --quiet origin main feature
-  ) > /dev/null 2>&1
+  ) >/dev/null 2>&1
 
   git clone --quiet --depth "$depth" --branch feature "file://$up" "$work" 2>/dev/null
   printf '%s' "$work"
@@ -103,10 +112,10 @@ advance_base() {
   (
     cd "$seed" || exit 1
     git checkout --quiet main
-    printf '%s\n' "$content" > "$file"
+    printf '%s\n' "$content" >"$file"
     git add -A && git commit --quiet -m "base moves on"
     git push --quiet origin main
-  ) > /dev/null 2>&1
+  ) >/dev/null 2>&1
 }
 
 # advance_branch NAME CONTENT FILE - add a commit to the feature branch in the
@@ -115,9 +124,9 @@ advance_branch() {
   local work="$1" content="$2" file="$3"
   (
     cd "$work" || exit 1
-    printf '%s\n' "$content" > "$file"
+    printf '%s\n' "$content" >"$file"
     git add -A && git commit --quiet -m "pull request work"
-  ) > /dev/null 2>&1
+  ) >/dev/null 2>&1
 }
 
 # simulate WORK - run the script in WORK, leaving output in $OUT, status in
@@ -142,7 +151,10 @@ fi
 
 case "$OUT" in
   *"Nothing to do"*) pass "and says so, instead of making an empty merge commit" ;;
-  *) fail "and says so" ; printf '%s\n' "$OUT" | sed 's/^/      /' >&2 ;;
+  *)
+    fail "and says so"
+    printf '%s\n' "$OUT" | sed 's/^/      /' >&2
+    ;;
 esac
 
 echo ""
@@ -225,7 +237,10 @@ fi
 
 case "$OUT" in
   *"::error title=Merge conflict::"*) pass "the conflict is annotated as an error" ;;
-  *) fail "the conflict is annotated as an error" ; printf '%s\n' "$OUT" | sed 's/^/      /' >&2 ;;
+  *)
+    fail "the conflict is annotated as an error"
+    printf '%s\n' "$OUT" | sed 's/^/      /' >&2
+    ;;
 esac
 
 case "$OUT" in
@@ -250,14 +265,16 @@ echo ""
 echo "== Part 4: misuse is refused, not guessed at =="
 
 W="$(scenario misuse)"
-OUT="$(cd "$W" && FETCH_DELAY=0 bash "$SCRIPT" 2>&1)"; STATUS=$?
+OUT="$(cd "$W" && FETCH_DELAY=0 bash "$SCRIPT" 2>&1)"
+STATUS=$?
 if [ "$STATUS" -eq 2 ] && printf '%s' "$OUT" | grep -q '::error'; then
   pass "a missing BASE_REF exits 2 with an annotation"
 else
   fail "a missing BASE_REF exits 2 with an annotation (got $STATUS)"
 fi
 
-OUT="$(cd "$TMP" && BASE_REF=main FETCH_DELAY=0 bash "$SCRIPT" 2>&1)"; STATUS=$?
+OUT="$(cd "$TMP" && BASE_REF=main FETCH_DELAY=0 bash "$SCRIPT" 2>&1)"
+STATUS=$?
 if [ "$STATUS" -eq 2 ]; then
   pass "running outside a git repository exits 2"
 else
@@ -265,7 +282,8 @@ else
 fi
 
 W="$(scenario nobase)"
-OUT="$(cd "$W" && BASE_REF=does-not-exist FETCH_DELAY=0 bash "$SCRIPT" 2>&1)"; STATUS=$?
+OUT="$(cd "$W" && BASE_REF=does-not-exist FETCH_DELAY=0 bash "$SCRIPT" 2>&1)"
+STATUS=$?
 if [ "$STATUS" -eq 2 ] && printf '%s' "$OUT" | grep -q 'cannot fetch'; then
   pass "a base branch that does not exist exits 2, not 1"
 else

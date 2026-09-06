@@ -26,10 +26,10 @@ fi
 git fetch origin "$BASE_REF" 2>/dev/null || true
 
 # Get added changeset files (status 'A' for added)
-ADDED_CHANGESETS=$(git diff --name-status "origin/${BASE_REF}...HEAD" 2>/dev/null | \
-  grep "^A.*${CHANGESET_DIR}/.*\.md$" | \
-  grep -v "README.md" | \
-  awk '{print $2}')
+ADDED_CHANGESETS=$(git diff --name-status "origin/${BASE_REF}...HEAD" 2>/dev/null \
+  | grep "^A.*${CHANGESET_DIR}/.*\.md$" \
+  | grep -v "README.md" \
+  | awk '{print $2}')
 
 if [ -z "$ADDED_CHANGESETS" ]; then
   echo ""

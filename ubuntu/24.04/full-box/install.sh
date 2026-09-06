@@ -94,7 +94,7 @@ fi
 # --- Install all language runtimes as box user ---
 log_step "Installing language runtimes as box user"
 
-cat > /tmp/full-box-user-setup.sh <<'EOF_FULL_SETUP'
+cat >/tmp/full-box-user-setup.sh <<'EOF_FULL_SETUP'
 #!/usr/bin/env bash
 set -euo pipefail
 

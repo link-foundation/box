@@ -17,17 +17,24 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
-pass=0; fail=0
-ok()   { echo "  PASS: $1"; pass=$((pass + 1)); }
-bad()  { echo "  FAIL: $1"; fail=$((fail + 1)); }
-check(){ if [ "$2" = "$3" ]; then ok "$1"; else bad "$1 (expected '$3', got '$2')"; fi; }
+pass=0
+fail=0
+ok() {
+  echo "  PASS: $1"
+  pass=$((pass + 1))
+}
+bad() {
+  echo "  FAIL: $1"
+  fail=$((fail + 1))
+}
+check() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1 (expected '$3', got '$2')"; fi; }
 
 SCRIPT="scripts/release/assert-base-image.sh"
 WF=".github/workflows/release.yml"
 
 STUB_DIR="$(mktemp -d)"
 trap 'rm -rf "$STUB_DIR"' EXIT
-cat > "$STUB_DIR/docker" << 'STUB'
+cat >"$STUB_DIR/docker" <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >> "$STUB_LOG"
 if [ "${STUB_PRESENT:-0}" = "1" ]; then
@@ -40,11 +47,11 @@ exit 1
 STUB
 chmod +x "$STUB_DIR/docker"
 
-run_assert() {  # run_assert PRESENT -> exit status, output in $STUB_DIR/out
-  : > "$STUB_DIR/calls"
+run_assert() { # run_assert PRESENT -> exit status, output in $STUB_DIR/out
+  : >"$STUB_DIR/calls"
   env PATH="$STUB_DIR:$PATH" STUB_LOG="$STUB_DIR/calls" STUB_PRESENT="$1" \
-      bash "$SCRIPT" konard/box-js:2.5.0-amd64 "the js dind-box (amd64) image" \
-      > "$STUB_DIR/out" 2>&1
+    bash "$SCRIPT" konard/box-js:2.5.0-amd64 "the js dind-box (amd64) image" \
+    >"$STUB_DIR/out" 2>&1
   echo "$?"
 }
 
@@ -68,14 +75,14 @@ check "points at the skipped-vs-failed ambiguity (RC-4)" \
   "$(grep -qc 'issue #115, RC-4' "$STUB_DIR/out" && echo 1 || echo 0)" "1"
 
 echo "== Part 3: usage =="
-env PATH="$STUB_DIR:$PATH" bash "$SCRIPT" > /dev/null 2>&1
+env PATH="$STUB_DIR:$PATH" bash "$SCRIPT" >/dev/null 2>&1
 check "no arguments is a usage error" "$?" "2"
 
 echo "== Part 4: both dind jobs run the preflight before building =="
 check "preflight is wired into both dind jobs" \
   "$(grep -c 'assert-base-image.sh' "$WF")" "2"
 
-python3 - "$WF" << 'PY'
+python3 - "$WF" <<'PY'
 import io, re, sys
 text = io.open(sys.argv[1], encoding="utf-8").read()
 fail = 0
@@ -101,5 +108,8 @@ if [ $? -eq 0 ]; then pass=$((pass + 2)); else fail=$((fail + 1)); fi
 
 echo ""
 echo "$pass passed, $fail failed"
-[ "$fail" -eq 0 ] || { echo "RESULT: FAIL"; exit 1; }
+[ "$fail" -eq 0 ] || {
+  echo "RESULT: FAIL"
+  exit 1
+}
 echo "RESULT: PASS - a missing base image is reported once, before the build"

@@ -30,8 +30,14 @@ WORKFLOW=".github/workflows/security.yml"
 PASS=0
 FAIL=0
 
-pass() { echo "PASS: $1"; PASS=$((PASS + 1)); }
-fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
+pass() {
+  echo "PASS: $1"
+  PASS=$((PASS + 1))
+}
+fail() {
+  echo "FAIL: $1"
+  FAIL=$((FAIL + 1))
+}
 
 for f in "$RUNNER" "$CONFIG" "$WORKFLOW"; do
   if [ -f "$f" ]; then
@@ -42,7 +48,9 @@ for f in "$RUNNER" "$CONFIG" "$WORKFLOW"; do
 done
 
 if [ "$FAIL" -gt 0 ]; then
-  echo; echo "$PASS passed, $FAIL failed"; exit 1
+  echo
+  echo "$PASS passed, $FAIL failed"
+  exit 1
 fi
 
 RUNNER_SRC="$(cat "$RUNNER")"
@@ -64,7 +72,7 @@ fi
 # AWS's documented example key is allow-listed by the rule. If it ever appears
 # as the canary again, the gate is back to passing against a planted secret.
 if grep -q 'AKIAIOSFODNN7EXAMPLE' "$RUNNER" \
-   && ! grep -q 'AKIAIOSFODNN7EXAMPLE' <<< "$(grep -v '^#' "$RUNNER")"; then
+  && ! grep -q 'AKIAIOSFODNN7EXAMPLE' <<<"$(grep -v '^#' "$RUNNER")"; then
   pass "the allow-listed example key appears only in the comment explaining it"
 elif ! grep -q 'AKIAIOSFODNN7EXAMPLE' "$RUNNER"; then
   pass "the allow-listed example key is not used as a canary"
@@ -88,7 +96,7 @@ else
 fi
 
 if grep -q "secretlint@\${SECRETLINT_VERSION}" "$RUNNER" \
-   && grep -q "preset-recommend@\${SECRETLINT_VERSION}" "$RUNNER"; then
+  && grep -q "preset-recommend@\${SECRETLINT_VERSION}" "$RUNNER"; then
   pass "the rule preset is pinned to the same version as the runner"
 else
   fail "the rule preset floats independently of the pinned runner"

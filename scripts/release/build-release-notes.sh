@@ -170,8 +170,8 @@ publication_section() {
     state="$(published_state "$ref")"
     case "$state" in
       published) published=$((published + 1)) ;;
-      missing)   missing+=("$ref") ;;
-      *)         unknown+=("$ref") ;;
+      missing) missing+=("$ref") ;;
+      *) unknown+=("$ref") ;;
     esac
   done < <(all_refs)
 

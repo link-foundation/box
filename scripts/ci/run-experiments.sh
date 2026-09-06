@@ -29,25 +29,65 @@ LIST_ONLY=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --list)       LIST_ONLY=1; shift ;;
-    -v|--verbose) BOX_VERBOSE=1; shift ;;
-    -h|--help)    sed -n '2,22p' "$0" | sed 's/^# \?//'; exit 0 ;;
-    *)            echo "run-experiments.sh: unknown option $1" >&2; exit 2 ;;
+    --list)
+      LIST_ONLY=1
+      shift
+      ;;
+    -v | --verbose)
+      BOX_VERBOSE=1
+      shift
+      ;;
+    -h | --help)
+      sed -n '2,22p' "$0" | sed 's/^# \?//'
+      exit 0
+      ;;
+    *)
+      echo "run-experiments.sh: unknown option $1" >&2
+      exit 2
+      ;;
   esac
 done
 
 # Suites excluded from the default run, each with the reason. Keep this list
 # short and justified; "it is slow" is not a reason to stop running a check.
+#
+# The keys are quoted, and that is not a style choice. An unquoted subscript is
+# an arithmetic expression to any tool that parses one, and shfmt formats it as
+# such: `[node-lts-integration-test.sh]` came back from the formatter as
+# `[node - lts - integration - test.sh]`. Bash does not evaluate subscripts of
+# an associative array, so the key silently became a different string, all
+# three entries stopped matching, and a run that should have skipped three
+# suites ran them and reported two failures instead. Nothing complained. The
+# assertion below is what turns that back into an error.
 declare -A SKIP_SUITES=(
-  [node-lts-integration-test.sh]="needs network: resolves the live Node LTS feed (covered by the version-policy CI tier)"
-  [rust-refresh-layer-test.sh]="needs docker: builds layers to measure image size"
-  [verify-full-box-tooling.sh]="needs docker and a pulled full-box image (tens of GB); manual probe behind scripts/ci/test-box.sh"
+  ['node-lts-integration-test.sh']="needs network: resolves the live Node LTS feed (covered by the version-policy CI tier)"
+  ['rust-refresh-layer-test.sh']="needs docker: builds layers to measure image size"
+  ['verify-full-box-tooling.sh']="needs docker and a pulled full-box image (tens of GB); manual probe behind scripts/ci/test-box.sh"
 )
 
-mapfile -t SUITES < <(find experiments -maxdepth 1 -name '*.sh' -type f | sort)
+# Where the skip names come from, which is the repository's suite directory
+# even when EXPERIMENTS_DIR points somewhere else for this runner's own tests.
+SKIP_ROOT="experiments"
+
+# A skip entry that names nothing is indistinguishable from no entry at all:
+# the suite runs, and whoever wrote the exclusion never learns it stopped
+# applying. Renaming a suite and forgetting the list has the same shape as the
+# formatter defect above, so both are caught here.
+for skipped_name in "${!SKIP_SUITES[@]}"; do
+  if [ ! -f "$SKIP_ROOT/$skipped_name" ]; then
+    echo "::error title=run-experiments::SKIP_SUITES names '$skipped_name', which does not exist under $SKIP_ROOT/. Either the suite was renamed or the subscript was rewritten; an entry that matches nothing silently stops skipping." >&2
+    exit 2
+  fi
+done
+
+# Overridable so this runner's own regression suite can drive it against
+# fixtures. The thing that runs every other check had no check of its own.
+EXPERIMENTS_DIR="${EXPERIMENTS_DIR:-experiments}"
+
+mapfile -t SUITES < <(find "$EXPERIMENTS_DIR" -maxdepth 1 -name '*.sh' -type f | sort)
 
 if [ "${#SUITES[@]}" -eq 0 ]; then
-  echo "::error::No suites found under experiments/ — the discovery glob is wrong."
+  echo "::error::No suites found under $EXPERIMENTS_DIR/ - the discovery glob is wrong."
   exit 1
 fi
 
@@ -66,7 +106,9 @@ fi
 LOG_DIR="${LOG_DIR:-/tmp/experiment-logs}"
 mkdir -p "$LOG_DIR"
 
-passed=(); failed=(); skipped=()
+passed=()
+failed=()
+skipped=()
 
 for suite in "${SUITES[@]}"; do
   base="$(basename "$suite")"
@@ -79,7 +121,7 @@ for suite in "${SUITES[@]}"; do
 
   log="$LOG_DIR/${base%.sh}.log"
   echo "==> RUN  $base"
-  if timeout "$SUITE_TIMEOUT" bash "$suite" > "$log" 2>&1; then
+  if timeout "$SUITE_TIMEOUT" bash "$suite" >"$log" 2>&1; then
     passed+=("$base")
     [ "$BOX_VERBOSE" = "1" ] && sed 's/^/    /' "$log"
   else

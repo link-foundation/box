@@ -19,10 +19,17 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
-pass=0; fail=0
-ok()   { echo "  PASS: $1"; pass=$((pass + 1)); }
-bad()  { echo "  FAIL: $1"; fail=$((fail + 1)); }
-check(){ if [ "$2" = "$3" ]; then ok "$1"; else bad "$1 (expected '$3', got '$2')"; fi; }
+pass=0
+fail=0
+ok() {
+  echo "  PASS: $1"
+  pass=$((pass + 1))
+}
+bad() {
+  echo "  FAIL: $1"
+  fail=$((fail + 1))
+}
+check() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1 (expected '$3', got '$2')"; fi; }
 
 CLASSIFIER="scripts/release/docker-push-failure-classifier.sh"
 RETRY="scripts/release/docker-push-with-retry.sh"
@@ -30,7 +37,7 @@ RETRY="scripts/release/docker-push-with-retry.sh"
 # shellcheck source=scripts/release/docker-push-failure-classifier.sh
 source "$CLASSIFIER"
 
-classify() {  # classify TEXT -> "non-retryable" | "retryable"
+classify() { # classify TEXT -> "non-retryable" | "retryable"
   if is_non_retryable_push_failure "$1"; then echo "non-retryable"; else echo "retryable"; fi
 }
 
@@ -84,7 +91,7 @@ check "an actionable annotation is emitted" \
 # End-to-end, with docker stubbed out.
 STUB_DIR="$(mktemp -d)"
 trap 'rm -rf "$STUB_DIR"' EXIT
-cat > "$STUB_DIR/docker" << 'STUB'
+cat >"$STUB_DIR/docker" <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >> "$STUB_LOG"
 echo "The push refers to repository [docker.io/konard/box-js]"
@@ -93,17 +100,17 @@ exit 1
 STUB
 chmod +x "$STUB_DIR/docker"
 
-run_retry() {  # run_retry ERROR_TEXT [ENV=VAL ...]
-  : > "$STUB_DIR/calls"
+run_retry() { # run_retry ERROR_TEXT [ENV=VAL ...]
+  : >"$STUB_DIR/calls"
   env PATH="$STUB_DIR:$PATH" STUB_LOG="$STUB_DIR/calls" STUB_ERROR="$1" \
-      INITIAL_DELAY=0 "${@:2}" bash "$RETRY" konard/box-js:latest \
-      > "$STUB_DIR/out" 2>&1
+    INITIAL_DELAY=0 "${@:2}" bash "$RETRY" konard/box-js:latest \
+    >"$STUB_DIR/out" 2>&1
   echo "$?"
 }
 
 status="$(run_retry 'unauthorized: personal access token is expired')"
 check "permanent failure still exits non-zero" "$status" "1"
-check "permanent failure pushes exactly once" "$(wc -l < "$STUB_DIR/calls" | tr -d ' ')" "1"
+check "permanent failure pushes exactly once" "$(wc -l <"$STUB_DIR/calls" | tr -d ' ')" "1"
 check "permanent failure explains how to rotate the token" \
   "$(grep -qc 'DOCKERHUB_TOKEN' "$STUB_DIR/out" && echo 1 || echo 0)" "1"
 check "permanent failure does not claim attempts were exhausted" \
@@ -111,13 +118,16 @@ check "permanent failure does not claim attempts were exhausted" \
 
 status="$(run_retry 'denied: 403 Forbidden')"
 check "transient failure exits non-zero after retrying" "$status" "1"
-check "transient failure uses every attempt" "$(wc -l < "$STUB_DIR/calls" | tr -d ' ')" "3"
+check "transient failure uses every attempt" "$(wc -l <"$STUB_DIR/calls" | tr -d ' ')" "3"
 
 status="$(run_retry 'unauthorized: personal access token is expired' DOCKER_PUSH_FORCE_RETRY=1)"
 check "DOCKER_PUSH_FORCE_RETRY restores the old behaviour" \
-  "$(wc -l < "$STUB_DIR/calls" | tr -d ' ')" "3"
+  "$(wc -l <"$STUB_DIR/calls" | tr -d ' ')" "3"
 
 echo ""
 echo "$pass passed, $fail failed"
-[ "$fail" -eq 0 ] || { echo "RESULT: FAIL"; exit 1; }
+[ "$fail" -eq 0 ] || {
+  echo "RESULT: FAIL"
+  exit 1
+}
 echo "RESULT: PASS - permanent registry failures are no longer retried"

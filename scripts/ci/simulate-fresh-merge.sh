@@ -48,7 +48,7 @@ if [ -z "${BASE_REF:-}" ]; then
   exit 2
 fi
 
-if ! git rev-parse --git-dir > /dev/null 2>&1; then
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
   echo "::error title=simulate-fresh-merge::not inside a git repository" >&2
   exit 2
 fi
@@ -107,7 +107,7 @@ echo "Base branch tip:    $(git rev-parse "origin/${BASE_REF}")"
 # every job: an unmergeable-looking history here means the deepening above did
 # not reach far enough, which is a CI configuration problem, not the pull
 # request's fault.
-if ! git merge-base HEAD "origin/${BASE_REF}" > /dev/null 2>&1; then
+if ! git merge-base HEAD "origin/${BASE_REF}" >/dev/null 2>&1; then
   echo "::warning title=simulate-fresh-merge::no common ancestor with origin/${BASE_REF} after deepening; checks run against the merge preview as checked out"
   exit 0
 fi

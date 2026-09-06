@@ -98,13 +98,13 @@ if ! command_exists gh; then
   maybe_sudo mkdir -p -m 755 /etc/apt/keyrings
   out=$(mktemp)
   wget -nv -O"$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg
-  cat "$out" | maybe_sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
+  cat "$out" | maybe_sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
   maybe_sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
   rm -f "$out"
 
   maybe_sudo mkdir -p -m 755 /etc/apt/sources.list.d
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-    | maybe_sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+    | maybe_sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
 
   apt_update_with_retry
   maybe_sudo apt-get install -y gh
@@ -125,7 +125,7 @@ fi
 # --- Install git identity tools as box user (using Bun from JS box) ---
 log_step "Installing git identity tools"
 
-cat > /tmp/essentials-identity-setup.sh <<'EOF_IDENTITY'
+cat >/tmp/essentials-identity-setup.sh <<'EOF_IDENTITY'
 #!/usr/bin/env bash
 set -euo pipefail
 

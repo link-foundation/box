@@ -304,7 +304,7 @@ case "$PROFILE" in
     # standalone boxes are tested but never published (issue #115); the full
     # box installs their toolchains, so it has to answer for them.
     for language in python go rust java kotlin ruby php perl swift lean rocq \
-                    cpp assembly dotnet r; do
+      cpp assembly dotnet r; do
       echo "--- $language ---"
       check_language "$language"
     done

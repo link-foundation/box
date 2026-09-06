@@ -66,7 +66,7 @@ warn() {
   local title="$1" message="$2"
   echo "::warning title=${title}::${message}"
   if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-    printf '> [!WARNING]\n> **%s** — %s\n\n' "$title" "$message" >> "$GITHUB_STEP_SUMMARY"
+    printf '> [!WARNING]\n> **%s** — %s\n\n' "$title" "$message" >>"$GITHUB_STEP_SUMMARY"
   fi
 }
 
@@ -86,8 +86,8 @@ publish_tag() {
     # --amend makes `create` idempotent: the local manifest store survives a
     # failed attempt, so a plain `create` would report "already exists" on the
     # retry and turn a transient push failure into a permanent one.
-    if output="$( { docker manifest create "$target" "${amend_args[@]}" &&
-                    docker manifest push "$target"; } 2>&1 )"; then
+    if output="$({ docker manifest create "$target" "${amend_args[@]}" \
+      && docker manifest push "$target"; } 2>&1)"; then
       printf '%s\n' "$output"
       echo "==> Published ${target}"
       return 0

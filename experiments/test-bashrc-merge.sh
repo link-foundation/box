@@ -11,7 +11,7 @@ echo "=== Simulating .bashrc merge bug ==="
 echo ""
 
 # Create a base .bashrc with some fi lines (simulating Ubuntu's /etc/skel/.bashrc)
-cat > "$WORKDIR/.bashrc-base" << 'BASHRC_BASE'
+cat >"$WORKDIR/.bashrc-base" <<'BASHRC_BASE'
 # Base .bashrc (simulating Ubuntu /etc/skel/.bashrc)
 # if block 1
 if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
@@ -39,7 +39,7 @@ echo ""
 
 # Create perl's .bashrc (same base plus Perlbrew block)
 cp "$WORKDIR/.bashrc-base" "$WORKDIR/.bashrc-perl"
-cat >> "$WORKDIR/.bashrc-perl" << 'PERL_SECTION'
+cat >>"$WORKDIR/.bashrc-perl" <<'PERL_SECTION'
 
 # Perlbrew configuration
 if [ -n "$PS1" ]; then
@@ -59,9 +59,9 @@ cp "$WORKDIR/.bashrc-base" "$WORKDIR/.bashrc-merged"
 # Process perl's .bashrc (append unique lines, skip blank lines)
 while IFS= read -r line; do
   if [ -n "$line" ] && ! grep -qxF "$line" "$WORKDIR/.bashrc-merged" 2>/dev/null; then
-    echo "$line" >> "$WORKDIR/.bashrc-merged"
+    echo "$line" >>"$WORKDIR/.bashrc-merged"
   fi
-done < "$WORKDIR/.bashrc-perl"
+done <"$WORKDIR/.bashrc-perl"
 
 echo ""
 echo "Merged .bashrc content:"
@@ -79,5 +79,4 @@ while IFS= read -r line; do
   if [ -n "$line" ] && grep -qxF "$line" "$WORKDIR/.bashrc-base" 2>/dev/null; then
     echo "  SKIPPED: '$line'"
   fi
-done < "$WORKDIR/.bashrc-perl"
-
+done <"$WORKDIR/.bashrc-perl"

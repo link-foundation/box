@@ -46,9 +46,9 @@ print(login_count, id_count, len(check_indices), cond_count)
 PY
 )
 
-printf '%-60s %s\n' "Login steps:"          "$LOGIN_COUNT"
-printf '%-60s %s\n' "id: dockerhub-login:"  "$ID_COUNT"
-printf '%-60s %s\n' "Check-login steps:"    "$CHECK_COUNT"
+printf '%-60s %s\n' "Login steps:" "$LOGIN_COUNT"
+printf '%-60s %s\n' "id: dockerhub-login:" "$ID_COUNT"
+printf '%-60s %s\n' "Check-login steps:" "$CHECK_COUNT"
 printf '%-60s %s\n' "outcome != success guards:" "$COND_COUNT"
 
 fail=0

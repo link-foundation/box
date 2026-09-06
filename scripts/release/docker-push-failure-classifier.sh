@@ -69,11 +69,11 @@ docker_push_failure_guidance() {
   local tag="$1" registry
   registry="${tag%%/*}"
   case "$registry" in
-    *.*|localhost*) : ;;              # already a registry host
-    *) registry="docker.io" ;;        # bare namespace/name is Docker Hub
+    *.* | localhost*) : ;;     # already a registry host
+    *) registry="docker.io" ;; # bare namespace/name is Docker Hub
   esac
 
-  cat << GUIDANCE
+  cat <<GUIDANCE
 
 === REGISTRY AUTHENTICATION FAILURE (not retried) ===
 

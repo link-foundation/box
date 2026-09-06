@@ -59,51 +59,51 @@ echo "==> Checking already installed tools..."
 echo ""
 
 if command -v as &>/dev/null; then
-    echo "✓ GNU Assembler (as): $(as --version | head -n1)"
+  echo "✓ GNU Assembler (as): $(as --version | head -n1)"
 else
-    echo "✗ GNU Assembler (as): not found"
+  echo "✗ GNU Assembler (as): not found"
 fi
 
 if command -v llvm-mc &>/dev/null; then
-    echo "✓ LLVM Machine Code Playground (llvm-mc): installed"
+  echo "✓ LLVM Machine Code Playground (llvm-mc): installed"
 else
-    echo "✗ llvm-mc: not found (may need explicit check)"
+  echo "✗ llvm-mc: not found (may need explicit check)"
 fi
 
 if command -v nasm &>/dev/null; then
-    echo "✓ NASM: $(nasm -v)"
+  echo "✓ NASM: $(nasm -v)"
 else
-    echo "✗ NASM: not installed"
+  echo "✗ NASM: not installed"
 fi
 
 if command -v fasm &>/dev/null; then
-    echo "✓ FASM: $(fasm 2>&1 | head -n1 || echo 'version check failed')"
+  echo "✓ FASM: $(fasm 2>&1 | head -n1 || echo 'version check failed')"
 else
-    echo "✗ FASM: not installed"
+  echo "✗ FASM: not installed"
 fi
 
 if command -v R &>/dev/null; then
-    echo "✓ R: $(R --version | head -n1)"
+  echo "✓ R: $(R --version | head -n1)"
 else
-    echo "✗ R: not installed"
+  echo "✗ R: not installed"
 fi
 
 if command -v swift &>/dev/null; then
-    echo "✓ Swift: $(swift --version | head -n1)"
+  echo "✓ Swift: $(swift --version | head -n1)"
 else
-    echo "✗ Swift: not installed"
+  echo "✗ Swift: not installed"
 fi
 
 if command -v ruby &>/dev/null; then
-    echo "✓ Ruby: $(ruby --version)"
+  echo "✓ Ruby: $(ruby --version)"
 else
-    echo "✗ Ruby: not installed"
+  echo "✗ Ruby: not installed"
 fi
 
 if command -v kotlin &>/dev/null; then
-    echo "✓ Kotlin: $(kotlin -version 2>&1 | head -n1)"
+  echo "✓ Kotlin: $(kotlin -version 2>&1 | head -n1)"
 else
-    echo "✗ Kotlin: not installed"
+  echo "✗ Kotlin: not installed"
 fi
 
 echo ""

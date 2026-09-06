@@ -34,9 +34,16 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
-pass=0; fail=0
-ok()  { echo "  PASS: $1"; pass=$((pass + 1)); }
-bad() { echo "  FAIL: $1"; fail=$((fail + 1)); }
+pass=0
+fail=0
+ok() {
+  echo "  PASS: $1"
+  pass=$((pass + 1))
+}
+bad() {
+  echo "  FAIL: $1"
+  fail=$((fail + 1))
+}
 
 WORKFLOW_DIR=".github/workflows"
 
@@ -106,18 +113,18 @@ else
 fi
 
 echo "== Invariant 6: the workflows lint clean =="
-if ! command -v docker > /dev/null 2>&1; then
+if ! command -v docker >/dev/null 2>&1; then
   echo "  SKIP: docker unavailable, cannot run actionlint/zizmor"
 else
-  if docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 > /tmp/actionlint-policy.log 2>&1; then
+  if docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 >/tmp/actionlint-policy.log 2>&1; then
     ok "actionlint (with its bundled shellcheck) reports no problems"
   else
     sed 's/^/    /' /tmp/actionlint-policy.log
     bad "actionlint (with its bundled shellcheck) reports no problems"
   fi
   if docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/zizmorcore/zizmor:1.30.0 \
-       --min-confidence medium --min-severity medium --no-progress --format plain \
-       --config .github/zizmor.yml "$WORKFLOW_DIR" > /tmp/zizmor-policy.log 2>&1; then
+    --min-confidence medium --min-severity medium --no-progress --format plain \
+    --config .github/zizmor.yml "$WORKFLOW_DIR" >/tmp/zizmor-policy.log 2>&1; then
     ok "zizmor reports no medium+ findings"
   else
     sed 's/^/    /' /tmp/zizmor-policy.log
@@ -127,5 +134,8 @@ fi
 
 echo ""
 echo "$pass passed, $fail failed"
-[ "$fail" -eq 0 ] || { echo "RESULT: FAIL"; exit 1; }
+[ "$fail" -eq 0 ] || {
+  echo "RESULT: FAIL"
+  exit 1
+}
 echo "RESULT: PASS - repo-wide CI/CD invariants hold"

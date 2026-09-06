@@ -36,7 +36,7 @@ if [ ! -d "$HOME/.pyenv" ]; then
       echo 'export PATH="$PYENV_ROOT/bin:$PATH"'
       echo 'eval "$(pyenv init --path)"'
       echo 'eval "$(pyenv init -)"'
-    } >> "$HOME/.bashrc"
+    } >>"$HOME/.bashrc"
   fi
   log_success "Pyenv installed and configured"
 else

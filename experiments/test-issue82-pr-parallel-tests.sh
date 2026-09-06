@@ -133,7 +133,7 @@ EXPECTED_LANGS=""
 for dockerfile in "$ROOT"/ubuntu/24.04/*/Dockerfile; do
   dir="$(basename "$(dirname "$dockerfile")")"
   case "$dir" in
-    js|essentials-box|full-box|dind) continue ;;
+    js | essentials-box | full-box | dind) continue ;;
   esac
   EXPECTED_LANGS="$EXPECTED_LANGS $dir"
 done

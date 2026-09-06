@@ -68,7 +68,7 @@ warn() {
   local title="$1" message="$2"
   echo "::warning title=${title}::${message}"
   if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-    printf '> [!WARNING]\n> **%s** — %s\n\n' "$title" "$message" >> "$GITHUB_STEP_SUMMARY"
+    printf '> [!WARNING]\n> **%s** — %s\n\n' "$title" "$message" >>"$GITHUB_STEP_SUMMARY"
   fi
 }
 

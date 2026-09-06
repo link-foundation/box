@@ -33,7 +33,7 @@ if [ ! -d "$HOME/.elan" ]; then
       echo ''
       echo '# Lean (elan) configuration'
       echo 'export PATH="$HOME/.elan/bin:$PATH"'
-    } >> "$HOME/.bashrc"
+    } >>"$HOME/.bashrc"
   fi
 else
   log_info "Lean (elan) already installed."

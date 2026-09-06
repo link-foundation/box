@@ -25,8 +25,14 @@ TEST_BOX="scripts/ci/test-box.sh"
 PASS=0
 FAIL=0
 
-pass() { echo "PASS: $1"; PASS=$((PASS + 1)); }
-fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
+pass() {
+  echo "PASS: $1"
+  PASS=$((PASS + 1))
+}
+fail() {
+  echo "FAIL: $1"
+  FAIL=$((FAIL + 1))
+}
 
 # The composed images and dind are not languages: js and essentials-box are the
 # base layers every language box is built on, full-box merges them all, and dind
@@ -72,7 +78,7 @@ fi
 # Behavioural, not textual: touching a language's directory must set its output.
 for language in $DIRS; do
   OUT="$(CHANGED_FILES_OVERRIDE="ubuntu/24.04/${language}/install.sh" \
-         GITHUB_EVENT_NAME=pull_request bash "$DETECT" 2>&1)"
+    GITHUB_EVENT_NAME=pull_request bash "$DETECT" 2>&1)"
   if printf '%s\n' "$OUT" | grep -qx "${language}=true"; then
     pass "a change under ubuntu/24.04/$language/ sets ${language}=true"
   else
@@ -110,7 +116,7 @@ echo "=== Part 4: every language has acceptance checks ==="
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/bin"
-cat > "$TMP/bin/docker" <<'FAKE'
+cat >"$TMP/bin/docker" <<'FAKE'
 #!/usr/bin/env bash
 exit 0
 FAKE
@@ -118,7 +124,7 @@ chmod +x "$TMP/bin/docker"
 
 for language in $DIRS; do
   if PATH="$TMP/bin:$PATH" BOX_CHECK_FRESHNESS=0 \
-       bash "$TEST_BOX" "$language" "box-$language" >/dev/null 2>&1; then
+    bash "$TEST_BOX" "$language" "box-$language" >/dev/null 2>&1; then
     pass "test-box.sh has checks for $language"
   else
     fail "test-box.sh has checks for $language"

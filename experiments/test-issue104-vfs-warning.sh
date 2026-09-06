@@ -28,60 +28,68 @@ trap 'rm -rf "$WORK"' EXIT
 # shellcheck disable=SC1090
 DIND_ENTRYPOINT_SOURCE_ONLY=1 . "$ENTRYPOINT"
 
-pass=0; fail=0
+pass=0
+fail=0
 check() { # check <description> <condition-cmd...>
-  desc="$1"; shift
-  if "$@"; then echo "  PASS: $desc"; pass=$((pass+1)); else echo "  FAIL: $desc"; fail=$((fail+1)); fi
+  desc="$1"
+  shift
+  if "$@"; then
+    echo "  PASS: $desc"
+    pass=$((pass + 1))
+  else
+    echo "  FAIL: $desc"
+    fail=$((fail + 1))
+  fi
 }
 
 ERR="$WORK/err.log"
-PRESENT_FUSE="$WORK/fuse-present"   # an existing path: stands in for /dev/fuse
-MISSING_FUSE="$WORK/fuse-missing"   # a path that does not exist
-: > "$PRESENT_FUSE"
+PRESENT_FUSE="$WORK/fuse-present" # an existing path: stands in for /dev/fuse
+MISSING_FUSE="$WORK/fuse-missing" # a path that does not exist
+: >"$PRESENT_FUSE"
 rm -f "$MISSING_FUSE"
 
 echo "== Case 1: vfs driver emits the copy-on-write warning =="
-: > "$ERR"
+: >"$ERR"
 DIND_FUSE_DEVICE="$PRESENT_FUSE" warn_if_vfs_storage_driver vfs 2>"$ERR"
-check "warns the driver is vfs"                     grep -q "'vfs' storage driver" "$ERR"
-check "calls out NO copy-on-write"                  grep -q "NO copy-on-write" "$ERR"
-check "names the disk failure mode"                 grep -q "no space left on device" "$ERR"
-check "names the fuse-overlayfs remediation"        grep -q "DIND_STORAGE_DRIVER=fuse-overlayfs" "$ERR"
+check "warns the driver is vfs" grep -q "'vfs' storage driver" "$ERR"
+check "calls out NO copy-on-write" grep -q "NO copy-on-write" "$ERR"
+check "names the disk failure mode" grep -q "no space left on device" "$ERR"
+check "names the fuse-overlayfs remediation" grep -q "DIND_STORAGE_DRIVER=fuse-overlayfs" "$ERR"
 
 echo "== Case 2: overlay2 driver stays silent =="
-: > "$ERR"
+: >"$ERR"
 DIND_FUSE_DEVICE="$PRESENT_FUSE" warn_if_vfs_storage_driver overlay2 2>"$ERR"
 check "no warning for overlay2" bash -c '! test -s "$1"' _ "$ERR"
 
 echo "== Case 3: fuse-overlayfs driver stays silent =="
-: > "$ERR"
+: >"$ERR"
 DIND_FUSE_DEVICE="$PRESENT_FUSE" warn_if_vfs_storage_driver fuse-overlayfs 2>"$ERR"
 check "no warning for fuse-overlayfs" bash -c '! test -s "$1"' _ "$ERR"
 
 echo "== Case 4: empty/unknown driver stays silent =="
-: > "$ERR"
+: >"$ERR"
 DIND_FUSE_DEVICE="$PRESENT_FUSE" warn_if_vfs_storage_driver "" 2>"$ERR"
 check "no warning for empty driver" bash -c '! test -s "$1"' _ "$ERR"
 
 echo "== Case 5: /dev/fuse present -> 'set fuse-overlayfs' remediation =="
-: > "$ERR"
+: >"$ERR"
 DIND_FUSE_DEVICE="$PRESENT_FUSE" warn_if_vfs_storage_driver vfs 2>"$ERR"
-check "remediation says the device is present"   grep -q "is present" "$ERR"
+check "remediation says the device is present" grep -q "is present" "$ERR"
 check "remediation does NOT claim it is missing" bash -c '! grep -q "is missing" "$1"' _ "$ERR"
 
 echo "== Case 6: /dev/fuse missing -> explains why fuse-overlayfs is unavailable =="
-: > "$ERR"
+: >"$ERR"
 DIND_FUSE_DEVICE="$MISSING_FUSE" warn_if_vfs_storage_driver vfs 2>"$ERR"
-check "remediation explains the device is missing"   grep -q "is missing" "$ERR"
-check "remediation suggests --device /dev/fuse"      grep -q -- "--device /dev/fuse" "$ERR"
-check "remediation suggests --privileged"            grep -q -- "--privileged" "$ERR"
-check "still names the fuse-overlayfs driver"        grep -q "DIND_STORAGE_DRIVER=fuse-overlayfs" "$ERR"
+check "remediation explains the device is missing" grep -q "is missing" "$ERR"
+check "remediation suggests --device /dev/fuse" grep -q -- "--device /dev/fuse" "$ERR"
+check "remediation suggests --privileged" grep -q -- "--privileged" "$ERR"
+check "still names the fuse-overlayfs driver" grep -q "DIND_STORAGE_DRIVER=fuse-overlayfs" "$ERR"
 
 echo "== Case 7: function returns success so the start_dockerd success branch is unaffected =="
 # warn_if_vfs_storage_driver runs immediately before `return 0`; under `set -e`
 # a non-zero return would abort startup. Assert exit status 0 for both vfs and
 # non-vfs drivers.
-check "returns 0 for vfs"      bash -c 'DIND_ENTRYPOINT_SOURCE_ONLY=1 . "$1"; DIND_FUSE_DEVICE="$2" warn_if_vfs_storage_driver vfs >/dev/null 2>&1' _ "$ENTRYPOINT" "$PRESENT_FUSE"
+check "returns 0 for vfs" bash -c 'DIND_ENTRYPOINT_SOURCE_ONLY=1 . "$1"; DIND_FUSE_DEVICE="$2" warn_if_vfs_storage_driver vfs >/dev/null 2>&1' _ "$ENTRYPOINT" "$PRESENT_FUSE"
 check "returns 0 for overlay2" bash -c 'DIND_ENTRYPOINT_SOURCE_ONLY=1 . "$1"; warn_if_vfs_storage_driver overlay2 >/dev/null 2>&1' _ "$ENTRYPOINT"
 
 echo

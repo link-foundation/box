@@ -153,8 +153,8 @@ setup_repo() {
   git_quiet config user.email t@t.t
   git_quiet config user.name t
   mkdir -p "$REPO/ubuntu/24.04/js" "$REPO/docs"
-  echo "base" > "$REPO/ubuntu/24.04/js/Dockerfile"
-  echo "readme" > "$REPO/README.md"
+  echo "base" >"$REPO/ubuntu/24.04/js/Dockerfile"
+  echo "readme" >"$REPO/README.md"
   git_quiet add -A
   git_quiet commit -m "base commit"
 }
@@ -177,9 +177,9 @@ assert_repo_build() {
 #     image: per-commit detection => should NOT build. ---
 setup_repo pr-trailing-gitkeep
 git_quiet checkout -b prhead
-echo "changed by PR" > "$REPO/ubuntu/24.04/js/Dockerfile"
+echo "changed by PR" >"$REPO/ubuntu/24.04/js/Dockerfile"
 git_quiet add -A && git_quiet commit -m "real image change (already tested when pushed)"
-echo "# placeholder" > "$REPO/.gitkeep"
+echo "# placeholder" >"$REPO/.gitkeep"
 git_quiet add -A && git_quiet commit -m "add .gitkeep (trivial synchronize)"
 git_quiet checkout main
 git_quiet merge --no-ff prhead -m "Merge pull request"
@@ -188,9 +188,9 @@ EVENT=pull_request assert_repo_build false "PR trailing .gitkeep skips build (pe
 # --- PR whose latest commit changes an image => should build. ---
 setup_repo pr-trailing-code
 git_quiet checkout -b prhead
-echo "# doc" > "$REPO/docs/x.md"
+echo "# doc" >"$REPO/docs/x.md"
 git_quiet add -A && git_quiet commit -m "docs commit"
-echo "changed" > "$REPO/ubuntu/24.04/js/Dockerfile"
+echo "changed" >"$REPO/ubuntu/24.04/js/Dockerfile"
 git_quiet add -A && git_quiet commit -m "real image change as latest commit"
 git_quiet checkout main
 git_quiet merge --no-ff prhead -m "Merge pull request"
@@ -199,18 +199,18 @@ EVENT=pull_request assert_repo_build true "PR trailing image change builds"
 # --- push event spanning code + trivial commits => whole range builds. ---
 setup_repo push-range
 BEFORE="$(git -C "$REPO" rev-parse HEAD)"
-echo "changed" > "$REPO/ubuntu/24.04/js/Dockerfile"
+echo "changed" >"$REPO/ubuntu/24.04/js/Dockerfile"
 git_quiet add -A && git_quiet commit -m "image change mid-range"
-echo "# placeholder" > "$REPO/.gitkeep"
+echo "# placeholder" >"$REPO/.gitkeep"
 git_quiet add -A && git_quiet commit -m "trailing .gitkeep"
 EVENT=push PUSH_BEFORE_SHA="$BEFORE" assert_repo_build true "push range with image change builds"
 
 # --- push event that only touches docs across the whole range => no build. ---
 setup_repo push-docs-only
 BEFORE="$(git -C "$REPO" rev-parse HEAD)"
-echo "# doc" > "$REPO/docs/y.md"
+echo "# doc" >"$REPO/docs/y.md"
 git_quiet add -A && git_quiet commit -m "docs only"
-echo "# placeholder" > "$REPO/.gitkeep"
+echo "# placeholder" >"$REPO/.gitkeep"
 git_quiet add -A && git_quiet commit -m "trailing .gitkeep"
 EVENT=push PUSH_BEFORE_SHA="$BEFORE" assert_repo_build false "push range docs-only skips build"
 
@@ -258,7 +258,7 @@ EVENT=push assert_repo_output "ubuntu=true" "root commit classifies every tracke
 # --- shallow clone: the actions/checkout default ---
 setup_repo shallow-source
 git_quiet checkout -b prhead
-echo "changed" > "$REPO/ubuntu/24.04/js/Dockerfile"
+echo "changed" >"$REPO/ubuntu/24.04/js/Dockerfile"
 git_quiet add -A && git_quiet commit -m "image change"
 SOURCE="$REPO"
 REPO="$TMP/shallow-clone"

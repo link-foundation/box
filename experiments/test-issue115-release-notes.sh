@@ -20,8 +20,14 @@ WORKFLOW=".github/workflows/release.yml"
 PASS=0
 FAIL=0
 
-pass() { echo "PASS: $1"; PASS=$((PASS + 1)); }
-fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
+pass() {
+  echo "PASS: $1"
+  PASS=$((PASS + 1))
+}
+fail() {
+  echo "FAIL: $1"
+  FAIL=$((FAIL + 1))
+}
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -33,13 +39,15 @@ DOCKERHUB_IMAGE="konard/box"
 NOTES="$TMP/notes.md"
 
 if VERSION="$VERSION" REPO="$REPO" GHCR_IMAGE="$GHCR_IMAGE" \
-   DOCKERHUB_IMAGE="$DOCKERHUB_IMAGE" RELEASE_DATE="2026-01-01" \
-   bash "$SCRIPT" > "$NOTES" 2> "$TMP/err"; then
+  DOCKERHUB_IMAGE="$DOCKERHUB_IMAGE" RELEASE_DATE="2026-01-01" \
+  bash "$SCRIPT" >"$NOTES" 2>"$TMP/err"; then
   pass "the generator runs"
 else
   fail "the generator runs"
   sed 's/^/      /' "$TMP/err" >&2
-  echo "passed: $PASS"; echo "failed: $FAIL"; exit 1
+  echo "passed: $PASS"
+  echo "failed: $FAIL"
+  exit 1
 fi
 
 echo "== Part 1: every image the release publishes has a row =="
@@ -65,7 +73,7 @@ fi
 missing=""
 for lang in $LANGUAGES; do
   for image in "${DOCKERHUB_IMAGE}-${lang}" "${GHCR_IMAGE}-${lang}" \
-               "${DOCKERHUB_IMAGE}-${lang}-dind" "${GHCR_IMAGE}-${lang}-dind"; do
+    "${DOCKERHUB_IMAGE}-${lang}-dind" "${GHCR_IMAGE}-${lang}-dind"; do
     grep -qF "\`${image}:${VERSION}\`" "$NOTES" || missing="${missing} ${image}"
   done
 done
@@ -78,8 +86,8 @@ fi
 
 missing=""
 for image in "${DOCKERHUB_IMAGE}" "${DOCKERHUB_IMAGE}-essentials" "${DOCKERHUB_IMAGE}-js" \
-             "${GHCR_IMAGE}" "${GHCR_IMAGE}-essentials" "${GHCR_IMAGE}-js" \
-             "${DOCKERHUB_IMAGE}-dind" "${GHCR_IMAGE}-dind"; do
+  "${GHCR_IMAGE}" "${GHCR_IMAGE}-essentials" "${GHCR_IMAGE}-js" \
+  "${DOCKERHUB_IMAGE}-dind" "${GHCR_IMAGE}-dind"; do
   grep -qF "\`${image}:${VERSION}\`" "$NOTES" || missing="${missing} ${image}"
 done
 if [ -z "$missing" ]; then
@@ -132,7 +140,7 @@ fi
 # starts with a pipe, so this counts rows without depending on whether a row's
 # tags are links (Docker Hub) or code spans (GHCR).
 ROWS="$(grep -c "^| .*:${VERSION}" "$NOTES")"
-EXPECTED=$(( (3 + $(echo "$LANGUAGES" | wc -w)) * 4 ))
+EXPECTED=$(((3 + $(echo "$LANGUAGES" | wc -w)) * 4))
 if [ "$ROWS" -eq "$EXPECTED" ]; then
   pass "row count is (combos + languages) x (2 registries) x (plain + dind) = $EXPECTED"
 else
@@ -145,8 +153,8 @@ echo "== Part 3: misuse and drift are caught =="
 for var in VERSION REPO GHCR_IMAGE DOCKERHUB_IMAGE; do
   # Blank exactly one required variable and keep the rest.
   out="$(env VERSION="$VERSION" REPO="$REPO" GHCR_IMAGE="$GHCR_IMAGE" \
-             DOCKERHUB_IMAGE="$DOCKERHUB_IMAGE" "$var=" \
-             bash "$SCRIPT" 2>&1)"
+    DOCKERHUB_IMAGE="$DOCKERHUB_IMAGE" "$var=" \
+    bash "$SCRIPT" 2>&1)"
   status=$?
   if [ "$status" -eq 2 ] && printf '%s' "$out" | grep -q "::error"; then
     pass "a missing $var is refused with an annotation"
@@ -235,7 +243,7 @@ fi
 # A fake docker on PATH, so the three registry answers can be tested without
 # one. $TMP/bin/docker prints what FAKE_DOCKER_MODE says and exits accordingly.
 mkdir -p "$TMP/bin"
-cat > "$TMP/bin/docker" <<'FAKE'
+cat >"$TMP/bin/docker" <<'FAKE'
 #!/usr/bin/env bash
 case "${FAKE_DOCKER_MODE}" in
   ok)      exit 0 ;;
@@ -255,7 +263,7 @@ verified() {
 
 TOTAL_REFS="$EXPECTED"
 
-verified ok > "$TMP/ok.md" 2>"$TMP/ok.err"
+verified ok >"$TMP/ok.md" 2>"$TMP/ok.err"
 if grep -q "^${TOTAL_REFS} of ${TOTAL_REFS} image references resolve" "$TMP/ok.md"; then
   pass "every reference is checked, and a full push reports $TOTAL_REFS of $TOTAL_REFS"
 else
@@ -269,7 +277,7 @@ else
   fail "a full push lists something as missing"
 fi
 
-verified missing > "$TMP/missing.md" 2>"$TMP/missing.err"
+verified missing >"$TMP/missing.md" 2>"$TMP/missing.err"
 if grep -q "^0 of ${TOTAL_REFS} image references resolve" "$TMP/missing.md"; then
   pass "an unpushed release reports 0 of $TOTAL_REFS, instead of advertising them all"
 else
@@ -277,7 +285,7 @@ else
 fi
 
 if grep -q 'are \*\*not published\*\*' "$TMP/missing.md" \
-   && grep -qF "\`${GHCR_IMAGE}:${VERSION}\`" "$TMP/missing.md"; then
+  && grep -qF "\`${GHCR_IMAGE}:${VERSION}\`" "$TMP/missing.md"; then
   pass "the missing references are named, so the notes do not promise a pull that fails"
 else
   fail "the missing references are not named"
@@ -285,7 +293,7 @@ fi
 
 # The distinction that keeps the check honest: a registry that will not answer
 # is not evidence that the image is absent.
-verified ratelimited > "$TMP/unknown.md" 2>"$TMP/unknown.err"
+verified ratelimited >"$TMP/unknown.md" 2>"$TMP/unknown.err"
 if grep -q 'state is unknown' "$TMP/unknown.md" && ! grep -q 'not published' "$TMP/unknown.md"; then
   pass "a rate-limited registry is reported as unknown, never as missing"
 else

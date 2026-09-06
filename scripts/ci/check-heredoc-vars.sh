@@ -71,11 +71,26 @@ FILES=()
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -v|--verbose) VERBOSE=1; shift ;;
-    -h|--help) sed -n '2,66p' "$0"; exit 0 ;;
-    --) shift; break ;;
-    -*) echo "check-heredoc-vars.sh: unknown option $1" >&2; exit 2 ;;
-    *) FILES+=("$1"); shift ;;
+    -v | --verbose)
+      VERBOSE=1
+      shift
+      ;;
+    -h | --help)
+      sed -n '2,66p' "$0"
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "check-heredoc-vars.sh: unknown option $1" >&2
+      exit 2
+      ;;
+    *)
+      FILES+=("$1")
+      shift
+      ;;
   esac
 done
 FILES+=("$@")
@@ -106,7 +121,7 @@ for file in "${FILES[@]}"; do
   # command that crosses an environment barrier, pass 2 does the analysis.
   out="$(
     VERBOSE="$VERBOSE" ENV_ALLOWLIST="$ENV_ALLOWLIST" \
-    awk -v FILE="$file" '
+      awk -v FILE="$file" '
       BEGIN {
         verbose = (ENVIRON["VERBOSE"] == "1")
         n = split(ENVIRON["ENV_ALLOWLIST"], a, /[ \t\n]+/)

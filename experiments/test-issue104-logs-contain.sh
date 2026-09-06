@@ -18,7 +18,10 @@ cd "$(dirname "$0")/.."
 
 fail=0
 pass() { echo "  PASS: $1"; }
-miss() { echo "  FAIL: $1"; fail=1; }
+miss() {
+  echo "  FAIL: $1"
+  fail=1
+}
 
 lib="tests/dind/lib.sh"
 
@@ -42,7 +45,10 @@ echo "== Case 3: example scripts assert via the pipe-free log helpers =="
 # this check fail the moment example-storage-driver-vfs.sh switched to
 # wait_for_logs in 6c3d582, even though the invariant still held (issue #115).
 for f in tests/dind/example-preload-images.sh tests/dind/example-storage-driver-vfs.sh; do
-  [ -f "$f" ] || { miss "$f exists"; continue; }
+  [ -f "$f" ] || {
+    miss "$f exists"
+    continue
+  }
   if grep -qE 'logs_contain|wait_for_logs' "$f"; then
     pass "$(basename "$f") asserts logs via logs_contain/wait_for_logs"
   else
@@ -62,8 +68,8 @@ producer() {
     printf 'trailing log line %s aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n' "$n"
   done
 }
-old_match() { producer | grep -q "$NEEDLE"; }            # vulnerable
-new_match() {                                            # logs_contain's core
+old_match() { producer | grep -q "$NEEDLE"; } # vulnerable
+new_match() {                                 # logs_contain's core
   local logs
   logs="$(producer 2>&1 || true)"
   case "$logs" in *"$NEEDLE"*) return 0 ;; *) return 1 ;; esac

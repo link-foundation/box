@@ -29,7 +29,7 @@ rootfs_dir="$(mktemp -d)"
 register_temp_dir "$rootfs_dir"
 # Keep the rootfs tar out of $tarball_dir so the directory-form preload below
 # only ever sees a real image tarball (image.tar), not this raw filesystem tar.
-echo "issue-94 preload fixture" > "$rootfs_dir/marker.txt"
+echo "issue-94 preload fixture" >"$rootfs_dir/marker.txt"
 tar -C "$rootfs_dir" -cf "$rootfs_dir/rootfs.tar" marker.txt
 docker import "$rootfs_dir/rootfs.tar" "$fixture_image" >/dev/null
 
@@ -55,7 +55,7 @@ wait_for_preload_complete() {
     # was not seeded (issue #106). Sync on either so the wait never hangs on the
     # warning path.
     if logs_contain "$container" "image preload/passthrough complete" \
-       || logs_contain "$container" "image preload/passthrough finished WITH WARNINGS"; then
+      || logs_contain "$container" "image preload/passthrough finished WITH WARNINGS"; then
       log "image preload/passthrough finished in ${container} after ${i}s"
       return 0
     fi
@@ -128,9 +128,9 @@ run_dind_container "$host_daemon_container" \
 # socket path. vfs keeps it independent of the outer storage driver.
 docker exec -d "$host_daemon_container" \
   sudo -n /usr/bin/dockerd \
-    --host=unix:///sockets/docker.sock \
-    --data-root=/var/lib/docker \
-    --storage-driver=vfs
+  --host=unix:///sockets/docker.sock \
+  --data-root=/var/lib/docker \
+  --storage-driver=vfs
 
 host_docker="docker exec $host_daemon_container docker -H unix:///sockets/docker.sock"
 i=0
@@ -148,7 +148,7 @@ log "throwaway host daemon is ready"
 # it has no RepoDigest, which is exactly the "locally built" case the default
 # public mode must refuse to pass through.
 docker exec -i "$host_daemon_container" \
-  docker -H unix:///sockets/docker.sock load < "$tarball_dir/image.tar"
+  docker -H unix:///sockets/docker.sock load <"$tarball_dir/image.tar"
 
 # Also seed it with a genuinely public image. Pulling it from a public registry
 # is what records a RepoDigest (docker save/load does NOT preserve one), so this

@@ -54,7 +54,7 @@ resolve_range() {
     # Synthetic merge commit: HEAD^1=base, HEAD^2=PR head.
     if git rev-parse --verify -q "HEAD^2" >/dev/null 2>&1; then
       if git rev-parse --verify -q "HEAD^2^" >/dev/null 2>&1; then
-        echo "HEAD^2^ HEAD^2"   # per-commit diff of the PR head (issue #108)
+        echo "HEAD^2^ HEAD^2" # per-commit diff of the PR head (issue #108)
         return
       fi
       # First commit on the PR head has no parent inside the PR: diff the PR
@@ -139,7 +139,7 @@ set_output() {
   local name="$1" value="$2"
   log "${name}=${value}"
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
-    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+    echo "${name}=${value}" >>"$GITHUB_OUTPUT"
   fi
 }
 
@@ -157,11 +157,11 @@ main() {
 
   # --- Top-level categories ---
   local docker scripts ubuntu workflow version
-  docker=$(printf '%s\n'   "$changed_files" | matches '^Dockerfile$')
-  scripts=$(printf '%s\n'  "$changed_files" | matches '^scripts/')
-  ubuntu=$(printf '%s\n'   "$changed_files" | matches '^ubuntu/')
+  docker=$(printf '%s\n' "$changed_files" | matches '^Dockerfile$')
+  scripts=$(printf '%s\n' "$changed_files" | matches '^scripts/')
+  ubuntu=$(printf '%s\n' "$changed_files" | matches '^ubuntu/')
   workflow=$(printf '%s\n' "$changed_files" | matches '^\.github/(workflows|actions)/')
-  version=$(printf '%s\n'  "$changed_files" | matches '^VERSION$')
+  version=$(printf '%s\n' "$changed_files" | matches '^VERSION$')
   set_output docker "$docker"
   set_output scripts "$scripts"
   set_output ubuntu "$ubuntu"
@@ -170,14 +170,14 @@ main() {
 
   # --- Per-image categories ---
   local js essentials full common dind
-  js=$(printf '%s\n'         "$changed_files" | matches '^ubuntu/24\.04/js/')
+  js=$(printf '%s\n' "$changed_files" | matches '^ubuntu/24\.04/js/')
   essentials=$(printf '%s\n' "$changed_files" | matches '^ubuntu/24\.04/essentials-box/')
-  full=$(printf '%s\n'       "$changed_files" | matches '^(ubuntu/24\.04/full-box/|Dockerfile$|scripts/)')
-  common=$(printf '%s\n'     "$changed_files" | matches '^ubuntu/24\.04/common\.sh$')
+  full=$(printf '%s\n' "$changed_files" | matches '^(ubuntu/24\.04/full-box/|Dockerfile$|scripts/)')
+  common=$(printf '%s\n' "$changed_files" | matches '^ubuntu/24\.04/common\.sh$')
   # dind: image source and the CI example tests that exercise it. Documentation
   # under docs/dind/ is intentionally NOT a build trigger (issue #108: docs and
   # other non-essential files must not run the image build/test matrix).
-  dind=$(printf '%s\n'       "$changed_files" | matches '^(ubuntu/24\.04/dind/|tests/dind/)')
+  dind=$(printf '%s\n' "$changed_files" | matches '^(ubuntu/24\.04/dind/|tests/dind/)')
   set_output js "$js"
   set_output essentials "$essentials"
   set_output full "$full"
@@ -194,19 +194,26 @@ main() {
   # --- Aggregate build decision ---
   local should_build="false" reason="no relevant changes detected"
   if [ "${GITHUB_EVENT_NAME:-}" = "workflow_dispatch" ]; then
-    should_build="true"; reason="manual dispatch"
+    should_build="true"
+    reason="manual dispatch"
   elif [ "$docker" = "true" ]; then
-    should_build="true"; reason="Dockerfile changes"
+    should_build="true"
+    reason="Dockerfile changes"
   elif [ "$scripts" = "true" ]; then
-    should_build="true"; reason="scripts changes"
+    should_build="true"
+    reason="scripts changes"
   elif [ "$ubuntu" = "true" ]; then
-    should_build="true"; reason="ubuntu modular scripts changes"
+    should_build="true"
+    reason="ubuntu modular scripts changes"
   elif [ "$workflow" = "true" ]; then
-    should_build="true"; reason="workflow/action changes"
+    should_build="true"
+    reason="workflow/action changes"
   elif [ "$version" = "true" ]; then
-    should_build="true"; reason="VERSION file changes"
+    should_build="true"
+    reason="VERSION file changes"
   elif [ "$dind" = "true" ]; then
-    should_build="true"; reason="dind image/test changes"
+    should_build="true"
+    reason="dind image/test changes"
   fi
   set_output should-build "$should_build"
   log ""

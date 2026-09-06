@@ -17,10 +17,22 @@ BOX_VERBOSE="${BOX_VERBOSE:-0}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -v|--verbose) BOX_VERBOSE=1; shift ;;
-    -h|--help)    sed -n '4,14p' "$0" | sed 's/^# \?//'; exit 0 ;;
-    --)           shift; break ;;
-    *)            echo "ubuntu-24-server-install.sh: unknown argument $1" >&2; exit 2 ;;
+    -v | --verbose)
+      BOX_VERBOSE=1
+      shift
+      ;;
+    -h | --help)
+      sed -n '4,14p' "$0" | sed 's/^# \?//'
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "ubuntu-24-server-install.sh: unknown argument $1" >&2
+      exit 2
+      ;;
   esac
 done
 
@@ -128,7 +140,11 @@ box_resolve() {
   local fn="$1" fallback="$2" out=""
   if [ -n "$BOX_COMMON_SH" ]; then
     # shellcheck source=/dev/null  # resolved at runtime by locate_box_common_sh
-    out=$( (set +eu; . "$BOX_COMMON_SH" >/dev/null 2>&1; "$fn" 2>/dev/null) ) || out=""
+    out=$( (
+      set +eu
+      . "$BOX_COMMON_SH" >/dev/null 2>&1
+      "$fn" 2>/dev/null
+    )) || out=""
   fi
   if [ -n "$out" ]; then
     echo "$out"
@@ -263,15 +279,15 @@ cleanup_duplicate_apt_sources() {
   log_info "Checking for duplicate APT sources..."
   local duplicates_found=false
 
-  if [ -f /etc/apt/sources.list.d/microsoft-edge.list ] && \
-     [ -f /etc/apt/sources.list.d/microsoft-edge-stable.list ]; then
+  if [ -f /etc/apt/sources.list.d/microsoft-edge.list ] \
+    && [ -f /etc/apt/sources.list.d/microsoft-edge-stable.list ]; then
     log_info "Found duplicate Microsoft Edge APT sources"
     maybe_sudo rm -f /etc/apt/sources.list.d/microsoft-edge.list
     duplicates_found=true
   fi
 
-  if [ -f /etc/apt/sources.list.d/google-chrome.list ] && \
-     [ -f /etc/apt/sources.list.d/google-chrome-stable.list ]; then
+  if [ -f /etc/apt/sources.list.d/google-chrome.list ] \
+    && [ -f /etc/apt/sources.list.d/google-chrome-stable.list ]; then
     log_info "Found duplicate Google Chrome APT sources"
     maybe_sudo rm -f /etc/apt/sources.list.d/google-chrome-stable.list
     duplicates_found=true
@@ -333,7 +349,11 @@ fi
 # is frozen at whatever shipped with the release (issue #112).
 log_info "Installing R statistical language..."
 # shellcheck source=/dev/null  # resolved at runtime by locate_box_common_sh
-if [ -n "$BOX_COMMON_SH" ] && (set +eu; . "$BOX_COMMON_SH" >/dev/null 2>&1; add_cran_repo) >/dev/null 2>&1; then
+if [ -n "$BOX_COMMON_SH" ] && (
+  set +eu
+  . "$BOX_COMMON_SH" >/dev/null 2>&1
+  add_cran_repo
+) >/dev/null 2>&1; then
   log_success "CRAN repository configured"
   apt_update_safe
 fi
@@ -369,13 +389,13 @@ if ! command -v gh &>/dev/null; then
   maybe_sudo mkdir -p -m 755 /etc/apt/keyrings
   out=$(mktemp)
   wget -nv -O"$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg
-  cat "$out" | maybe_sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
+  cat "$out" | maybe_sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
   maybe_sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
   rm -f "$out"
 
   maybe_sudo mkdir -p -m 755 /etc/apt/sources.list.d
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-    | maybe_sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+    | maybe_sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
 
   apt_update_with_retry
   maybe_sudo apt-get install -y gh
@@ -431,7 +451,7 @@ else
 fi
 
 # --- Switch to box user for language tools setup ---
-cat > /tmp/box-user-setup.sh <<'EOF_BOX_SCRIPT'
+cat >/tmp/box-user-setup.sh <<'EOF_BOX_SCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -1192,7 +1212,7 @@ EOF_BOX_SCRIPT
 chmod +x /tmp/box-user-setup.sh
 
 log_debug "Handing to the box user: NODE_MAJOR=$NODE_MAJOR NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION JAVA_MAJOR=$JAVA_MAJOR BOX_VERBOSE=$BOX_VERBOSE"
-log_debug "Generated script: /tmp/box-user-setup.sh ($(wc -l < /tmp/box-user-setup.sh) lines)"
+log_debug "Generated script: /tmp/box-user-setup.sh ($(wc -l </tmp/box-user-setup.sh) lines)"
 
 # Execute as box user.
 # `su -` and `sudo -i` both start a login shell with a fresh environment, so the

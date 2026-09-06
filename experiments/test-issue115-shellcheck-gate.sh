@@ -24,8 +24,14 @@ RUNNER="scripts/ci/run-shellcheck.sh"
 PASS=0
 FAIL=0
 
-pass() { echo "PASS: $1"; PASS=$((PASS + 1)); }
-fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
+pass() {
+  echo "PASS: $1"
+  PASS=$((PASS + 1))
+}
+fail() {
+  echo "FAIL: $1"
+  FAIL=$((FAIL + 1))
+}
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -74,7 +80,7 @@ for fixture in "${FIXTURES[@]}"; do
   label="${rest%%|*}"
   body="${rest#*|}"
   file="$TMP/fixture-${code}.sh"
-  printf '#!/usr/bin/env bash\n%s\n' "$body" > "$file"
+  printf '#!/usr/bin/env bash\n%s\n' "$body" >"$file"
 
   if run_on "$file"; then
     fail "$code ($label) is rejected"
@@ -91,7 +97,7 @@ echo "== Part 3: false-positive fixture - correct shell must pass =="
 
 # The corrected form of every fixture above, written the way the repository
 # now writes it.
-cat > "$TMP/clean.sh" <<'CLEAN'
+cat >"$TMP/clean.sh" <<'CLEAN'
 #!/usr/bin/env bash
 set -euo pipefail
 d="$(mktemp -d)"

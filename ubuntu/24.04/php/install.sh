@@ -88,7 +88,7 @@ install_php_homebrew() {
 
     if ! grep -q "brew shellenv" "$HOME/.bashrc" 2>/dev/null; then
       BREW_PREFIX=$(brew --prefix 2>/dev/null || echo "/home/linuxbrew/.linuxbrew")
-      echo "eval \"\$($BREW_PREFIX/bin/brew shellenv)\"" >> "$HOME/.bashrc"
+      echo "eval \"\$($BREW_PREFIX/bin/brew shellenv)\"" >>"$HOME/.bashrc"
     fi
   else
     eval "$(brew shellenv 2>/dev/null)" || true
@@ -123,7 +123,7 @@ install_php_homebrew() {
         # Use timeout to prevent 2+ hour source compilations or network hangs (Issue #53)
         # The timeout covers the entire install process including dependency installation
         if timeout --signal=TERM --kill-after=60 "${PHP_HOMEBREW_TIMEOUT}" \
-             brew install "$PHP_BREW_FORMULA" 2>&1; then
+          brew install "$PHP_BREW_FORMULA" 2>&1; then
           log_success "Homebrew PHP install command completed at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
         else
           local exit_code=$?
@@ -149,7 +149,7 @@ install_php_homebrew() {
             export PATH="$BREW_PREFIX/opt/$PHP_OPT_DIR/bin:$BREW_PREFIX/opt/$PHP_OPT_DIR/sbin:$PATH"
 
             if ! grep -q "opt/${PHP_OPT_DIR}/bin" "$HOME/.bashrc" 2>/dev/null; then
-              cat >> "$HOME/.bashrc" << PHP_PATH_EOF
+              cat >>"$HOME/.bashrc" <<PHP_PATH_EOF
 
 # PHP PATH configuration (Homebrew - user-specific/local)
 export PATH="\$(brew --prefix)/opt/${PHP_OPT_DIR}/bin:\$(brew --prefix)/opt/${PHP_OPT_DIR}/sbin:\$PATH"
@@ -165,7 +165,7 @@ PHP_PATH_EOF
             local duration=$((end_time - start_time))
             log_success "$(php --version | head -n1) installed via Homebrew (user-specific/local)"
             log_info "Total Homebrew installation time: ${duration} seconds"
-            echo "local" > "$HOME/.php-install-method"
+            echo "local" >"$HOME/.php-install-method"
             return 0
           else
             log_warning "PHP installed but version check failed"
@@ -178,7 +178,7 @@ PHP_PATH_EOF
       }
     else
       log_info "PHP already installed via Homebrew"
-      echo "local" > "$HOME/.php-install-method"
+      echo "local" >"$HOME/.php-install-method"
       return 0
     fi
   fi
@@ -216,14 +216,14 @@ install_php_apt() {
       log_success "$(php --version | head -n1) installed via apt (global)"
 
       if ! grep -q "# PHP configuration" "$HOME/.bashrc" 2>/dev/null; then
-        cat >> "$HOME/.bashrc" << 'PHP_BASHRC_EOF'
+        cat >>"$HOME/.bashrc" <<'PHP_BASHRC_EOF'
 
 # PHP configuration (installed via apt - global)
 alias php-version='php --version'
 PHP_BASHRC_EOF
       fi
 
-      echo "global" > "$HOME/.php-install-method"
+      echo "global" >"$HOME/.php-install-method"
       return 0
     fi
   fi
@@ -243,9 +243,9 @@ if command_exists php && php --version 2>/dev/null | grep -E "^PHP [0-9]" >/dev/
   if [ -f "$HOME/.php-install-method" ]; then
     : # already set
   elif command_exists brew && brew list --formula 2>/dev/null | grep -E "^php(@[0-9.]+)?$" >/dev/null; then
-    echo "local" > "$HOME/.php-install-method"
+    echo "local" >"$HOME/.php-install-method"
   else
-    echo "global" > "$HOME/.php-install-method"
+    echo "global" >"$HOME/.php-install-method"
   fi
   exit 0
 fi
@@ -267,11 +267,11 @@ fi
 # If we can't install via apt either (no root/sudo), just mark as global
 # The Dockerfile will handle the apt installation as root
 log_warning "Homebrew PHP failed, marking for apt fallback (will be handled by Dockerfile)"
-echo "global" > "$HOME/.php-install-method"
+echo "global" >"$HOME/.php-install-method"
 
 # Add a placeholder bashrc entry
 if ! grep -q "# PHP configuration" "$HOME/.bashrc" 2>/dev/null; then
-  cat >> "$HOME/.bashrc" << 'PHP_BASHRC_EOF'
+  cat >>"$HOME/.bashrc" <<'PHP_BASHRC_EOF'
 
 # PHP configuration (installed via apt - global)
 alias php-version='php --version'

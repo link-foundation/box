@@ -28,7 +28,7 @@ CURRENT_VERSION=$(cat "$VERSION_FILE" | tr -d '[:space:]')
 echo "Current version: $CURRENT_VERSION"
 
 # Parse version components
-IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+IFS='.' read -r MAJOR MINOR PATCH <<<"$CURRENT_VERSION"
 
 trim_description() {
   sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//'
@@ -118,7 +118,7 @@ NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
 echo "New version: $NEW_VERSION"
 
 # Update VERSION file
-echo "$NEW_VERSION" > "$VERSION_FILE"
+echo "$NEW_VERSION" >"$VERSION_FILE"
 echo "Updated VERSION file"
 
 # Delete processed changesets
@@ -158,7 +158,7 @@ echo "Version bump completed: $CURRENT_VERSION -> $NEW_VERSION"
 
 # Output for GitHub Actions
 if [ -n "$GITHUB_OUTPUT" ]; then
-  echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-  echo "version_bumped=true" >> "$GITHUB_OUTPUT"
-  echo "old_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+  echo "new_version=$NEW_VERSION" >>"$GITHUB_OUTPUT"
+  echo "version_bumped=true" >>"$GITHUB_OUTPUT"
+  echo "old_version=$CURRENT_VERSION" >>"$GITHUB_OUTPUT"
 fi

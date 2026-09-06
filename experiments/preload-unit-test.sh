@@ -18,7 +18,7 @@ trap 'rm -rf "$WORK"' EXIT
 
 # --- Mock docker on PATH; records calls and simulates inner + host state ---
 mkdir -p "$WORK/bin"
-cat > "$WORK/bin/docker" <<'MOCK'
+cat >"$WORK/bin/docker" <<'MOCK'
 #!/usr/bin/env bash
 # Host-daemon calls look like: docker -H unix://<sock> <subcommand> ...
 host=0
@@ -84,14 +84,27 @@ export ERR_LOG="$WORK/err.log"
 # shellcheck disable=SC1090
 DIND_ENTRYPOINT_SOURCE_ONLY=1 . "$ENTRYPOINT"
 
-pass=0; fail=0
+pass=0
+fail=0
 reset_state() {
-  : > "$DOCKER_CALLS"; : > "$DOCKER_LOADED"; : > "$DOCKER_PULLED"
-  : > "$DOCKER_PRESENT"; : > "$DOCKER_SAVED"; : > "$HOST_IMAGES"; : > "$HOST_DIGESTS"
+  : >"$DOCKER_CALLS"
+  : >"$DOCKER_LOADED"
+  : >"$DOCKER_PULLED"
+  : >"$DOCKER_PRESENT"
+  : >"$DOCKER_SAVED"
+  : >"$HOST_IMAGES"
+  : >"$HOST_DIGESTS"
 }
 check() { # check <description> <condition-cmd...>
-  desc="$1"; shift
-  if "$@"; then echo "  PASS: $desc"; pass=$((pass+1)); else echo "  FAIL: $desc"; fail=$((fail+1)); fi
+  desc="$1"
+  shift
+  if "$@"; then
+    echo "  PASS: $desc"
+    pass=$((pass + 1))
+  else
+    echo "  FAIL: $desc"
+    fail=$((fail + 1))
+  fi
 }
 
 # Defaults the entrypoint expects (it ran `VAR="${VAR:-default}"` at source time,
@@ -134,7 +147,7 @@ check "missing image was pulled" grep -qx "alpine:3.20" "$DOCKER_PULLED"
 
 echo "== Case 4: DIND_PRELOAD_IMAGES skips an already-present image =="
 reset_state
-echo "alpine:3.20" > "$DOCKER_PRESENT"
+echo "alpine:3.20" >"$DOCKER_PRESENT"
 DIND_HOST_PASSTHROUGH=off DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="alpine:3.20" \
   DOCKER_INFO_OK=1 preload_into_daemon
 check "present image was NOT pulled" bash -c '! test -s "$DOCKER_PULLED"'
@@ -198,8 +211,8 @@ rm -f "$WORK/dead.sock"
 echo "== Case 9: public mode copies a Docker Hub image, skips a local one =="
 reset_state
 # A hub image (has a docker.io RepoDigest) and a locally-built one (no digest):
-printf '%s\n%s\n' "alpine:3.20" "myapp:latest" > "$HOST_IMAGES"
-echo "alpine:3.20|alpine@sha256:deadbeef " > "$HOST_DIGESTS"   # myapp has no digest line
+printf '%s\n%s\n' "alpine:3.20" "myapp:latest" >"$HOST_IMAGES"
+echo "alpine:3.20|alpine@sha256:deadbeef " >"$HOST_DIGESTS" # myapp has no digest line
 # host_docker_available requires [ -S sock ]; emulate by pointing at a real sock.
 make_sock "$HOST_SOCK"
 DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
@@ -212,8 +225,8 @@ rm -f "$HOST_SOCK"
 
 echo "== Case 10: all mode copies every host image including local =="
 reset_state
-printf '%s\n%s\n' "alpine:3.20" "myapp:latest" > "$HOST_IMAGES"
-echo "alpine:3.20|alpine@sha256:deadbeef " > "$HOST_DIGESTS"
+printf '%s\n%s\n' "alpine:3.20" "myapp:latest" >"$HOST_IMAGES"
+echo "alpine:3.20|alpine@sha256:deadbeef " >"$HOST_DIGESTS"
 make_sock "$HOST_SOCK"
 DIND_HOST_PASSTHROUGH=all DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=1 \
@@ -224,9 +237,9 @@ rm -f "$HOST_SOCK"
 
 echo "== Case 11: passthrough skips images already present in the inner daemon =="
 reset_state
-printf '%s\n' "alpine:3.20" > "$HOST_IMAGES"
-echo "alpine:3.20|alpine@sha256:deadbeef " > "$HOST_DIGESTS"
-echo "alpine:3.20" > "$DOCKER_PRESENT"   # already in the inner daemon
+printf '%s\n' "alpine:3.20" >"$HOST_IMAGES"
+echo "alpine:3.20|alpine@sha256:deadbeef " >"$HOST_DIGESTS"
+echo "alpine:3.20" >"$DOCKER_PRESENT" # already in the inner daemon
 make_sock "$HOST_SOCK"
 DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=1 \
@@ -236,8 +249,8 @@ rm -f "$HOST_SOCK"
 
 echo "== Case 12: off mode never touches the host even with a socket =="
 reset_state
-printf '%s\n' "alpine:3.20" > "$HOST_IMAGES"
-echo "alpine:3.20|alpine@sha256:deadbeef " > "$HOST_DIGESTS"
+printf '%s\n' "alpine:3.20" >"$HOST_IMAGES"
+echo "alpine:3.20|alpine@sha256:deadbeef " >"$HOST_DIGESTS"
 make_sock "$HOST_SOCK"
 DIND_HOST_PASSTHROUGH=off DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=1 \
@@ -249,43 +262,43 @@ echo "== Case 14: DIND_HOST_PASSTHROUGH_IMAGES allowlist scopes passthrough to n
 reset_state
 # Three Docker Hub images, all with a public RepoDigest so the mode gate passes;
 # the allowlist must narrow to only the two hive-mind repos.
-printf '%s\n%s\n%s\n' "konard/hive-mind:latest" "konard/hive-mind-dind:latest" "alpine:3.20" > "$HOST_IMAGES"
+printf '%s\n%s\n%s\n' "konard/hive-mind:latest" "konard/hive-mind-dind:latest" "alpine:3.20" >"$HOST_IMAGES"
 {
   echo "konard/hive-mind:latest|konard/hive-mind@sha256:aaa "
   echo "konard/hive-mind-dind:latest|konard/hive-mind-dind@sha256:bbb "
   echo "alpine:3.20|alpine@sha256:ccc "
-} > "$HOST_DIGESTS"
+} >"$HOST_DIGESTS"
 make_sock "$HOST_SOCK"
 DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
   DIND_HOST_PASSTHROUGH_IMAGES="konard/hive-mind konard/hive-mind-dind" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=1 \
   preload_into_daemon
-check "allowlisted hive-mind image saved"       grep -qx "konard/hive-mind:latest" "$DOCKER_SAVED"
-check "allowlisted hive-mind-dind image saved"  grep -qx "konard/hive-mind-dind:latest" "$DOCKER_SAVED"
-check "non-allowlisted alpine NOT saved"         bash -c '! grep -qx "alpine:3.20" "$DOCKER_SAVED"'
+check "allowlisted hive-mind image saved" grep -qx "konard/hive-mind:latest" "$DOCKER_SAVED"
+check "allowlisted hive-mind-dind image saved" grep -qx "konard/hive-mind-dind:latest" "$DOCKER_SAVED"
+check "non-allowlisted alpine NOT saved" bash -c '! grep -qx "alpine:3.20" "$DOCKER_SAVED"'
 rm -f "$HOST_SOCK"
 
 echo "== Case 15: allowlist composes with mode (public still drops a local image even if allowlisted) =="
 reset_state
-printf '%s\n%s\n' "konard/hive-mind:latest" "konard/hive-mind-dev:latest" > "$HOST_IMAGES"
+printf '%s\n%s\n' "konard/hive-mind:latest" "konard/hive-mind-dev:latest" >"$HOST_IMAGES"
 # hive-mind has a public digest; hive-mind-dev is locally built (no digest line).
-echo "konard/hive-mind:latest|konard/hive-mind@sha256:aaa " > "$HOST_DIGESTS"
+echo "konard/hive-mind:latest|konard/hive-mind@sha256:aaa " >"$HOST_DIGESTS"
 make_sock "$HOST_SOCK"
 DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
   DIND_HOST_PASSTHROUGH_IMAGES="konard/hive-mind*" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=1 \
   preload_into_daemon
-check "allowlisted public image saved"          grep -qx "konard/hive-mind:latest" "$DOCKER_SAVED"
-check "allowlisted local image dropped by mode"  bash -c '! grep -qx "konard/hive-mind-dev:latest" "$DOCKER_SAVED"'
+check "allowlisted public image saved" grep -qx "konard/hive-mind:latest" "$DOCKER_SAVED"
+check "allowlisted local image dropped by mode" bash -c '! grep -qx "konard/hive-mind-dev:latest" "$DOCKER_SAVED"'
 rm -f "$HOST_SOCK"
 
 echo "== Case 16: globs and docker.io-qualified / tagged patterns all match =="
 reset_state
-printf '%s\n%s\n' "konard/hive-mind:latest" "ghcr.io/owner/tool:v1" > "$HOST_IMAGES"
+printf '%s\n%s\n' "konard/hive-mind:latest" "ghcr.io/owner/tool:v1" >"$HOST_IMAGES"
 {
   echo "konard/hive-mind:latest|konard/hive-mind@sha256:aaa "
   echo "ghcr.io/owner/tool:v1|ghcr.io/owner/tool@sha256:ddd "
-} > "$HOST_DIGESTS"
+} >"$HOST_DIGESTS"
 make_sock "$HOST_SOCK"
 # A docker.io-qualified glob for the hub image and an exact tagged ghcr ref.
 DIND_HOST_PASSTHROUGH=all DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
@@ -293,40 +306,40 @@ DIND_HOST_PASSTHROUGH=all DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=1 \
   preload_into_daemon
 check "docker.io-qualified glob matched the hub image" grep -qx "konard/hive-mind:latest" "$DOCKER_SAVED"
-check "exact tagged ghcr ref matched"                  grep -qx "ghcr.io/owner/tool:v1" "$DOCKER_SAVED"
+check "exact tagged ghcr ref matched" grep -qx "ghcr.io/owner/tool:v1" "$DOCKER_SAVED"
 rm -f "$HOST_SOCK"
 
 echo "== Case 17: empty allowlist preserves prior behavior (all eligible images pass) =="
 reset_state
-printf '%s\n%s\n' "konard/hive-mind:latest" "alpine:3.20" > "$HOST_IMAGES"
+printf '%s\n%s\n' "konard/hive-mind:latest" "alpine:3.20" >"$HOST_IMAGES"
 {
   echo "konard/hive-mind:latest|konard/hive-mind@sha256:aaa "
   echo "alpine:3.20|alpine@sha256:ccc "
-} > "$HOST_DIGESTS"
+} >"$HOST_DIGESTS"
 make_sock "$HOST_SOCK"
 DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
   DIND_HOST_PASSTHROUGH_IMAGES="" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=1 \
   preload_into_daemon
 check "empty allowlist still saves hive-mind" grep -qx "konard/hive-mind:latest" "$DOCKER_SAVED"
-check "empty allowlist still saves alpine"    grep -qx "alpine:3.20" "$DOCKER_SAVED"
+check "empty allowlist still saves alpine" grep -qx "alpine:3.20" "$DOCKER_SAVED"
 rm -f "$HOST_SOCK"
 
 echo "== Case 19: concrete allowlisted image present after passthrough -> honest 'complete' (issue #106) =="
 reset_state
 # Host has the named image with a public RepoDigest; the socket is mounted, so
 # passthrough copies it and the mock `load` marks it present in the inner daemon.
-printf '%s\n' "konard/hive-mind-dind:2.0.6" > "$HOST_IMAGES"
-echo "konard/hive-mind-dind:2.0.6|konard/hive-mind-dind@sha256:aaa " > "$HOST_DIGESTS"
+printf '%s\n' "konard/hive-mind-dind:2.0.6" >"$HOST_IMAGES"
+echo "konard/hive-mind-dind:2.0.6|konard/hive-mind-dind@sha256:aaa " >"$HOST_DIGESTS"
 make_sock "$HOST_SOCK"
 DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
   DIND_HOST_PASSTHROUGH_IMAGES="konard/hive-mind-dind:2.0.6" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=1 \
   preload_into_daemon >"$OUT_LOG" 2>"$ERR_LOG"
 check "seeded concrete image was saved from host" grep -qx "konard/hive-mind-dind:2.0.6" "$DOCKER_SAVED"
-check "honest 'complete' marker printed"          grep -q "image preload/passthrough complete" "$OUT_LOG"
-check "no verification warning when present"       bash -c '! grep -q "did NOT seed" "$ERR_LOG"'
-check "no 'WITH WARNINGS' marker when present"     bash -c '! grep -q "finished WITH WARNINGS" "$OUT_LOG" "$ERR_LOG"'
+check "honest 'complete' marker printed" grep -q "image preload/passthrough complete" "$OUT_LOG"
+check "no verification warning when present" bash -c '! grep -q "did NOT seed" "$ERR_LOG"'
+check "no 'WITH WARNINGS' marker when present" bash -c '! grep -q "finished WITH WARNINGS" "$OUT_LOG" "$ERR_LOG"'
 rm -f "$HOST_SOCK"
 
 echo "== Case 20: concrete allowlisted image absent -> loud warning, no false 'complete' (issue #106) =="
@@ -338,9 +351,9 @@ DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$WORK/absent.sock" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 \
   preload_into_daemon >"$OUT_LOG" 2>"$ERR_LOG"
 check "verification warns it did NOT seed the image" grep -q "did NOT seed expected image(s) into the nested daemon: konard/hive-mind-dind:2.0.6" "$ERR_LOG"
-check "warning points at the missing -v mount"        grep -q -- "-v /var/run/docker.sock:" "$ERR_LOG"
-check "terminal marker is 'finished WITH WARNINGS'"   grep -q "image preload/passthrough finished WITH WARNINGS" "$ERR_LOG"
-check "misleading 'complete' is NOT printed"          bash -c '! grep -q "image preload/passthrough complete" "$OUT_LOG" "$ERR_LOG"'
+check "warning points at the missing -v mount" grep -q -- "-v /var/run/docker.sock:" "$ERR_LOG"
+check "terminal marker is 'finished WITH WARNINGS'" grep -q "image preload/passthrough finished WITH WARNINGS" "$ERR_LOG"
+check "misleading 'complete' is NOT printed" bash -c '! grep -q "image preload/passthrough complete" "$OUT_LOG" "$ERR_LOG"'
 
 echo "== Case 21: glob / bare-repo allowlist entries never raise a false verification alarm (issue #106) =="
 reset_state
@@ -351,14 +364,14 @@ DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$WORK/absent.sock" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 \
   preload_into_daemon >"$OUT_LOG" 2>"$ERR_LOG"
 check "no verification warning for non-concrete entries" bash -c '! grep -q "did NOT seed" "$ERR_LOG"'
-check "honest 'complete' still printed"                  grep -q "image preload/passthrough complete" "$OUT_LOG"
+check "honest 'complete' still printed" grep -q "image preload/passthrough complete" "$OUT_LOG"
 
 echo "== Case 22: ref_is_concrete classification (direct calls) =="
 reset_state
-check "explicit tag is concrete"        eval 'ref_is_concrete "konard/hive-mind-dind:2.0.6"'
-check "explicit digest is concrete"     eval 'ref_is_concrete "konard/hive-mind-dind@sha256:abc"'
-check "bare repo is NOT concrete"       eval '! ref_is_concrete "konard/hive-mind"'
-check "glob is NOT concrete"            eval '! ref_is_concrete "konard/hive-mind*"'
+check "explicit tag is concrete" eval 'ref_is_concrete "konard/hive-mind-dind:2.0.6"'
+check "explicit digest is concrete" eval 'ref_is_concrete "konard/hive-mind-dind@sha256:abc"'
+check "bare repo is NOT concrete" eval '! ref_is_concrete "konard/hive-mind"'
+check "glob is NOT concrete" eval '! ref_is_concrete "konard/hive-mind*"'
 check "registry port w/o tag NOT concrete" eval '! ref_is_concrete "registry.example.com:5000/repo"'
 check "registry port WITH tag is concrete" eval 'ref_is_concrete "registry.example.com:5000/repo:v1"'
 
@@ -386,12 +399,12 @@ reset_state
 # and `eval` keep them in scope, unlike a `bash -c` subshell).
 # shellcheck disable=SC2034  # consumed by registry_is_public, sourced above
 DIND_HOST_PASSTHROUGH_REGISTRIES="docker.io ghcr.io"
-check "bare name -> docker.io"      test "$(image_registry alpine)" = "docker.io"
-check "user/repo -> docker.io"      test "$(image_registry library/alpine)" = "docker.io"
-check "ghcr.io host detected"       test "$(image_registry ghcr.io/o/i)" = "ghcr.io"
-check "private registry host kept"  test "$(image_registry registry.example.com:5000/i)" = "registry.example.com:5000"
-check "docker.io is public"         eval 'registry_is_public docker.io'
-check "private host not public"     eval '! registry_is_public registry.example.com:5000'
+check "bare name -> docker.io" test "$(image_registry alpine)" = "docker.io"
+check "user/repo -> docker.io" test "$(image_registry library/alpine)" = "docker.io"
+check "ghcr.io host detected" test "$(image_registry ghcr.io/o/i)" = "ghcr.io"
+check "private registry host kept" test "$(image_registry registry.example.com:5000/i)" = "registry.example.com:5000"
+check "docker.io is public" eval 'registry_is_public docker.io'
+check "private host not public" eval '! registry_is_public registry.example.com:5000'
 
 # ---------------------------------------------------------------------------
 # issue #110: socket group access (#1), readiness signal (#2), DooD framing (#4)
@@ -403,10 +416,10 @@ make_sock "$HOST_SOCK"
 sock_gid="$(socket_gid "$HOST_SOCK")"
 self_gid="$(id -g)"
 check "socket_gid reports the socket's owning GID" test "$sock_gid" = "$self_gid"
-check "socket_gid on a non-socket fails"           eval '! socket_gid "$WORK/not-a-socket"'
-check "current_user_in_gid true for own GID"       eval 'current_user_in_gid "$self_gid"'
-check "current_user_in_gid false for foreign GID"  eval '! current_user_in_gid 4000001'
-check "current_user_in_gid false for empty GID"    eval '! current_user_in_gid ""'
+check "socket_gid on a non-socket fails" eval '! socket_gid "$WORK/not-a-socket"'
+check "current_user_in_gid true for own GID" eval 'current_user_in_gid "$self_gid"'
+check "current_user_in_gid false for foreign GID" eval '! current_user_in_gid 4000001'
+check "current_user_in_gid false for empty GID" eval '! current_user_in_gid ""'
 rm -f "$HOST_SOCK"
 
 echo "== Case 24: mounted-but-unreachable host socket -> --group-add hint + WITH WARNINGS, not 'complete' (issue #110 #1/#2) =="
@@ -424,11 +437,11 @@ DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=0 \
   preload_into_daemon >"$OUT_LOG" 2>"$ERR_LOG"
 eval "$orig_current_user_in_gid"
-check "unreachable-socket warning fires"            grep -q "is not accessible; skipping passthrough" "$ERR_LOG"
-check "warning names the socket's GID"              grep -q "owned by GID ${forced_gid}" "$ERR_LOG"
+check "unreachable-socket warning fires" grep -q "is not accessible; skipping passthrough" "$ERR_LOG"
+check "warning names the socket's GID" grep -q "owned by GID ${forced_gid}" "$ERR_LOG"
 check "warning prints the exact --group-add remedy" grep -q -- "--group-add ${forced_gid}" "$ERR_LOG"
 check "terminal marker is 'finished WITH WARNINGS'" grep -q "image preload/passthrough finished WITH WARNINGS" "$ERR_LOG"
-check "misleading 'complete' is NOT printed"        bash -c '! grep -q "image preload/passthrough complete" "$OUT_LOG" "$ERR_LOG"'
+check "misleading 'complete' is NOT printed" bash -c '! grep -q "image preload/passthrough complete" "$OUT_LOG" "$ERR_LOG"'
 rm -f "$HOST_SOCK"
 
 echo "== Case 25: DIND_READY_FILE records 'complete' on success and 'warnings' on failure (issue #110 #2) =="
@@ -436,15 +449,15 @@ reset_state
 READY="$WORK/ready"
 rm -f "$READY"
 # Success: a concrete allowlisted image is present after passthrough.
-printf '%s\n' "konard/hive-mind-dind:2.0.6" > "$HOST_IMAGES"
-echo "konard/hive-mind-dind:2.0.6|konard/hive-mind-dind@sha256:aaa " > "$HOST_DIGESTS"
+printf '%s\n' "konard/hive-mind-dind:2.0.6" >"$HOST_IMAGES"
+echo "konard/hive-mind-dind:2.0.6|konard/hive-mind-dind@sha256:aaa " >"$HOST_DIGESTS"
 make_sock "$HOST_SOCK"
 DIND_READY_FILE="$READY" DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$HOST_SOCK" \
   DIND_HOST_PASSTHROUGH_IMAGES="konard/hive-mind-dind:2.0.6" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 HOST_DOCKER_OK=1 \
   preload_into_daemon >"$OUT_LOG" 2>"$ERR_LOG"
-check "ready file written on success"    test -f "$READY"
-check "ready file says 'complete'"        grep -qx "complete" "$READY"
+check "ready file written on success" test -f "$READY"
+check "ready file says 'complete'" grep -qx "complete" "$READY"
 rm -f "$HOST_SOCK"
 # Failure: a concrete allowlisted image is missing (no socket mounted).
 reset_state
@@ -453,8 +466,8 @@ DIND_READY_FILE="$READY" DIND_HOST_PASSTHROUGH=public DIND_HOST_DOCKER_SOCK="$WO
   DIND_HOST_PASSTHROUGH_IMAGES="konard/hive-mind-dind:2.0.6" \
   DIND_PRELOAD_TARBALL="" DIND_PRELOAD_IMAGES="" DOCKER_INFO_OK=1 \
   preload_into_daemon >"$OUT_LOG" 2>"$ERR_LOG"
-check "ready file written on failure"    test -f "$READY"
-check "ready file says 'warnings'"        grep -qx "warnings" "$READY"
+check "ready file written on failure" test -f "$READY"
+check "ready file says 'warnings'" grep -qx "warnings" "$READY"
 
 echo "== Case 26: grant_socket_access warns with --group-add when it cannot fix a socket (issue #110 #1) =="
 reset_state
@@ -470,9 +483,9 @@ grant_socket_access "$HOST_SOCK" >"$OUT_LOG" 2>"$ERR_LOG" && ga_rc=0 || ga_rc=$?
 eval "$orig_as_root"
 eval "$orig_cuig"
 check "grant_socket_access returns non-zero when unfixable" test "$ga_rc" -ne 0
-check "grant_socket_access names the GID"                    grep -q "owned by GID ${ga_gid}" "$ERR_LOG"
-check "grant_socket_access prints --group-add remedy"        grep -q -- "--group-add ${ga_gid}" "$ERR_LOG"
-check "grant_socket_access on a missing socket is a no-op"   eval 'grant_socket_access "$WORK/nope.sock"'
+check "grant_socket_access names the GID" grep -q "owned by GID ${ga_gid}" "$ERR_LOG"
+check "grant_socket_access prints --group-add remedy" grep -q -- "--group-add ${ga_gid}" "$ERR_LOG"
+check "grant_socket_access on a missing socket is a no-op" eval 'grant_socket_access "$WORK/nope.sock"'
 rm -f "$HOST_SOCK"
 
 echo "== Case 27: 'keep' mode never chgrp's a shared socket (host socket safety, issue #110 #4) =="
@@ -486,17 +499,20 @@ chgrp_marker="$WORK/chgrp-was-called"
 rm -f "$chgrp_marker"
 orig_as_root="$(declare -f as_root)"
 orig_cuig="$(declare -f current_user_in_gid)"
-as_root() { if [ "$1" = "/usr/bin/chgrp" ]; then : >"$chgrp_marker"; fi; return 0; }
+as_root() {
+  if [ "$1" = "/usr/bin/chgrp" ]; then : >"$chgrp_marker"; fi
+  return 0
+}
 current_user_in_gid() { return 1; }
 grant_socket_access "$HOST_SOCK" keep >"$OUT_LOG" 2>"$ERR_LOG" && keep_rc=0 || keep_rc=$?
 check "keep mode never invokes chgrp on the shared socket" test ! -f "$chgrp_marker"
 check "keep mode returns non-zero (box still cannot reach it)" test "$keep_rc" -ne 0
-check "keep mode still prints the --group-add remedy"          grep -q -- "--group-add ${kg_gid}" "$ERR_LOG"
+check "keep mode still prints the --group-add remedy" grep -q -- "--group-add ${kg_gid}" "$ERR_LOG"
 # Contrast: 'adopt' mode (private DinD inner socket) DOES chgrp when box lacks access.
 rm -f "$chgrp_marker"
 grant_socket_access "$HOST_SOCK" adopt >"$OUT_LOG" 2>"$ERR_LOG" && adopt_rc=0 || adopt_rc=$?
-check "adopt mode does invoke chgrp on a private socket"       test -f "$chgrp_marker"
-check "adopt mode returns success once adopted"               test "$adopt_rc" -eq 0
+check "adopt mode does invoke chgrp on a private socket" test -f "$chgrp_marker"
+check "adopt mode returns success once adopted" test "$adopt_rc" -eq 0
 eval "$orig_as_root"
 eval "$orig_cuig"
 rm -f "$HOST_SOCK"

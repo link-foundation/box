@@ -25,8 +25,14 @@ MIRROR="scripts/release/mirror-to-dockerhub.sh"
 PASS=0
 FAIL=0
 
-pass() { echo "PASS: $1"; PASS=$((PASS + 1)); }
-fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
+pass() {
+  echo "PASS: $1"
+  PASS=$((PASS + 1))
+}
+fail() {
+  echo "FAIL: $1"
+  FAIL=$((FAIL + 1))
+}
 check() { if [ "$1" = "0" ]; then pass "$2"; else fail "$2"; fi; }
 
 echo "== Part 1: build steps push GHCR only =="
@@ -149,7 +155,7 @@ echo "== Part 5: the mirror script degrades instead of failing the release =="
 
 STUB_DIR="$(mktemp -d)"
 trap 'rm -rf "$STUB_DIR"' EXIT
-cat > "$STUB_DIR/docker" <<'STUB'
+cat >"$STUB_DIR/docker" <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >> "${DOCKER_STUB_CALLS:?}"
 case "${DOCKER_STUB_MODE:-ok}" in
@@ -165,15 +171,15 @@ run_mirror() {
   local mode="$1"
   shift
   env "DOCKER_STUB_MODE=$mode" "DOCKER_STUB_CALLS=$STUB_DIR/calls" \
-      "PATH=$STUB_DIR:$PATH" MAX_RETRIES=3 INITIAL_DELAY=0 "$@" \
-      bash "$MIRROR" ghcr.io/o/r:1.0.0-amd64 o/r:latest-amd64 o/r:1.0.0-amd64 \
-      >"$STUB_DIR/out" 2>&1
+    "PATH=$STUB_DIR:$PATH" MAX_RETRIES=3 INITIAL_DELAY=0 "$@" \
+    bash "$MIRROR" ghcr.io/o/r:1.0.0-amd64 o/r:latest-amd64 o/r:1.0.0-amd64 \
+    >"$STUB_DIR/out" 2>&1
 }
 
-: > "$STUB_DIR/calls"
+: >"$STUB_DIR/calls"
 run_mirror ok
 check "$?" "a successful mirror exits 0"
-CALLS=$(wc -l < "$STUB_DIR/calls" | tr -d '[:space:]')
+CALLS=$(wc -l <"$STUB_DIR/calls" | tr -d '[:space:]')
 if [ "$CALLS" = "1" ]; then pass "a successful mirror runs imagetools once"; else fail "expected 1 imagetools call, got $CALLS"; fi
 if grep -q -- '--tag o/r:latest-amd64 --tag o/r:1.0.0-amd64 ghcr.io/o/r:1.0.0-amd64' "$STUB_DIR/calls"; then
   pass "the mirror copies the GHCR ref to every Docker Hub tag"
@@ -181,10 +187,10 @@ else
   fail "unexpected imagetools arguments: $(cat "$STUB_DIR/calls")"
 fi
 
-: > "$STUB_DIR/calls"
+: >"$STUB_DIR/calls"
 run_mirror expired
 check "$?" "a permanent auth failure still exits 0 (GHCR release is already published)"
-CALLS=$(wc -l < "$STUB_DIR/calls" | tr -d '[:space:]')
+CALLS=$(wc -l <"$STUB_DIR/calls" | tr -d '[:space:]')
 if [ "$CALLS" = "1" ]; then
   pass "a permanent auth failure is not retried"
 else
@@ -201,17 +207,17 @@ else
   fail "the warning states that the GHCR release is unaffected"
 fi
 
-: > "$STUB_DIR/calls"
+: >"$STUB_DIR/calls"
 run_mirror transient
 check "$?" "a transient failure still exits 0"
-CALLS=$(wc -l < "$STUB_DIR/calls" | tr -d '[:space:]')
+CALLS=$(wc -l <"$STUB_DIR/calls" | tr -d '[:space:]')
 if [ "$CALLS" = "3" ]; then
   pass "a transient failure is retried MAX_RETRIES times"
 else
   fail "expected 3 attempts for a transient failure, got $CALLS"
 fi
 
-: > "$STUB_DIR/calls"
+: >"$STUB_DIR/calls"
 if run_mirror expired MIRROR_REQUIRED=1; then
   fail "MIRROR_REQUIRED=1 turns a mirror failure into a job failure"
 else

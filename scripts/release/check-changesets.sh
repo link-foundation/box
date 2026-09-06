@@ -18,11 +18,11 @@ echo "Found $CHANGESET_COUNT changeset file(s)"
 # Output for GitHub Actions
 if [ -n "$GITHUB_OUTPUT" ]; then
   if [ "$CHANGESET_COUNT" -gt 0 ]; then
-    echo "has_changesets=true" >> "$GITHUB_OUTPUT"
+    echo "has_changesets=true" >>"$GITHUB_OUTPUT"
   else
-    echo "has_changesets=false" >> "$GITHUB_OUTPUT"
+    echo "has_changesets=false" >>"$GITHUB_OUTPUT"
   fi
-  echo "changeset_count=$CHANGESET_COUNT" >> "$GITHUB_OUTPUT"
+  echo "changeset_count=$CHANGESET_COUNT" >>"$GITHUB_OUTPUT"
 fi
 
 echo "has_changesets=$([ "$CHANGESET_COUNT" -gt 0 ] && echo 'true' || echo 'false')"

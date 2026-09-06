@@ -131,7 +131,7 @@ while IFS= read -r line; do
   col="${rest%%:*}"
   message="${rest#*:}"
   echo "::error file=${file},line=${lineno},col=${col}::${message# }"
-done <<< "$OUTPUT"
+done <<<"$OUTPUT"
 
 COUNT="$(printf '%s\n' "$OUTPUT" | grep -c ':[0-9]*:[0-9]*: \(warning\|error\|note\|style\|info\):' || true)"
 echo ""

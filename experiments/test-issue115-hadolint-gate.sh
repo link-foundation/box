@@ -30,8 +30,14 @@ WORKFLOW=".github/workflows/dockerfiles.yml"
 PASS=0
 FAIL=0
 
-pass() { echo "PASS: $1"; PASS=$((PASS + 1)); }
-fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
+pass() {
+  echo "PASS: $1"
+  PASS=$((PASS + 1))
+}
+fail() {
+  echo "FAIL: $1"
+  FAIL=$((FAIL + 1))
+}
 
 # --- 1. the gate exists and is wired up ---------------------------------------
 
@@ -44,7 +50,9 @@ for f in "$RUNNER" "$CONFIG" "$WORKFLOW"; do
 done
 
 if [ "$FAIL" -gt 0 ]; then
-  echo; echo "$PASS passed, $FAIL failed"; exit 1
+  echo
+  echo "$PASS passed, $FAIL failed"
+  exit 1
 fi
 
 if grep -q "run-hadolint.sh" "$WORKFLOW"; then
@@ -86,14 +94,14 @@ else
 fi
 
 for expected in ubuntu/24.04/js/Dockerfile ubuntu/24.04/full-box/Dockerfile Dockerfile; do
-  if grep -Fqx -- "$expected" <<< "$LISTED"; then
+  if grep -Fqx -- "$expected" <<<"$LISTED"; then
     pass "$expected is in the checked set"
   else
     fail "$expected is not in the checked set"
   fi
 done
 
-if grep -Fq "dev/log/" <<< "$LISTED"; then
+if grep -Fq "dev/log/" <<<"$LISTED"; then
   fail "the checked set includes dev/log/"
 else
   pass "the checked set excludes dev/log/"
@@ -169,7 +177,7 @@ fi
 
 BARE_APT=""
 while IFS= read -r file; do
-  hits="$(strip_prose < "$file" \
+  hits="$(strip_prose <"$file" \
     | grep -nE '(^|[^-[:alnum:]_.])apt +(install|update|upgrade|remove|purge|autoremove)([ \t]|$)' \
     || true)"
   [ -n "$hits" ] || continue

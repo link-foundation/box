@@ -24,8 +24,14 @@ WORKFLOW=".github/workflows/release.yml"
 PASS=0
 FAIL=0
 
-pass() { echo "PASS: $1"; PASS=$((PASS + 1)); }
-fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
+pass() {
+  echo "PASS: $1"
+  PASS=$((PASS + 1))
+}
+fail() {
+  echo "FAIL: $1"
+  FAIL=$((FAIL + 1))
+}
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -41,7 +47,7 @@ DOCKER_LOG="$TMP/docker.log"
 #                            driven both ways
 # $TMP/fail-match makes any invocation whose argument list contains that string
 # exit 1, to prove a failing check is not swallowed.
-cat > "$BIN/docker" <<'FAKE'
+cat >"$BIN/docker" <<'FAKE'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$DOCKER_LOG"
 match="$(cat "$FAKE_STATE/fail-match" 2>/dev/null || true)"
@@ -62,10 +68,11 @@ chmod +x "$BIN/docker"
 # Everything before `--` is a NAME=VALUE override for this run; everything after
 # it is an argument to the script under test.
 run() {
-  : > "$DOCKER_LOG"
+  : >"$DOCKER_LOG"
   local overrides=()
   while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do
-    overrides+=("$1"); shift
+    overrides+=("$1")
+    shift
   done
   shift || true
 
@@ -80,7 +87,7 @@ run() {
   STATUS=$?
 }
 
-: > "$TMP/fail-match"
+: >"$TMP/fail-match"
 
 echo "=== Part 1: the script exists and rejects bad input ==="
 
@@ -96,7 +103,7 @@ else
   fail "the script parses"
 fi
 
-run -- 
+run --
 if [ "$STATUS" -eq 2 ] && [[ "$OUT" == *"::error"*"usage"* ]]; then
   pass "no arguments exits 2 with an ::error annotation"
 else
@@ -133,10 +140,10 @@ normalize_invocation() {
 }
 
 run BOX_CHECK_FRESHNESS=0 -- full box-test
-FULL_LOG="$(normalize_invocation < "$DOCKER_LOG")"
+FULL_LOG="$(normalize_invocation <"$DOCKER_LOG")"
 
 for language in python go rust java kotlin ruby php perl swift lean rocq \
-                cpp assembly dotnet r; do
+  cpp assembly dotnet r; do
   run BOX_CHECK_FRESHNESS=0 -- "$language" "box-$language"
   if [ "$STATUS" -ne 0 ]; then
     fail "the $language profile succeeds against the fake docker (out=$OUT)"
@@ -146,8 +153,8 @@ for language in python go rust java kotlin ruby php perl swift lean rocq \
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     cmd="$(printf '%s\n' "$line" | normalize_invocation)"
-    grep -Fqx -- "$cmd" <<< "$FULL_LOG" || missing="$missing\n    $cmd"
-  done < "$DOCKER_LOG"
+    grep -Fqx -- "$cmd" <<<"$FULL_LOG" || missing="$missing\n    $cmd"
+  done <"$DOCKER_LOG"
   if [ -z "$missing" ]; then
     pass "every $language check also runs in the full box"
   else
@@ -165,8 +172,7 @@ for expected in \
   "gh-setup-git-identity --version" "glab-setup-git-identity --version" \
   "expect -v" "Rscript --version" "dotnet --version" \
   "cat /home/box/.php-install-method" \
-  "assert_single_runtime_versions"
-do
+  "assert_single_runtime_versions"; do
   if grep -Fq -- "$expected" "$DOCKER_LOG"; then
     pass "full box runs: $expected"
   else
@@ -191,14 +197,14 @@ fi
 echo
 echo "=== Part 4: a failing check is not swallowed ==="
 
-echo "glab-setup-git-identity" > "$TMP/fail-match"
+echo "glab-setup-git-identity" >"$TMP/fail-match"
 run BOX_CHECK_FRESHNESS=0 -- full box-test
 if [ "$STATUS" -ne 0 ]; then
   pass "a failing tool check fails the run"
 else
   fail "a failing tool check fails the run (status=$STATUS)"
 fi
-: > "$TMP/fail-match"
+: >"$TMP/fail-match"
 
 echo
 echo "=== Part 5: freshness assertions (issue #112) ==="

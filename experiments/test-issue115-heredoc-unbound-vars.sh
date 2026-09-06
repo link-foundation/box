@@ -38,13 +38,22 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CHECK="$ROOT/scripts/ci/check-heredoc-vars.sh"
 
-[ -f "$CHECK" ] || { echo "ERR: $CHECK not found" >&2; exit 1; }
+[ -f "$CHECK" ] || {
+  echo "ERR: $CHECK not found" >&2
+  exit 1
+}
 
 pass=0
 fail=0
 
-ok()   { echo "  ok: $1"; pass=$((pass + 1)); }
-bad()  { echo "  FAIL: $1" >&2; fail=$((fail + 1)); }
+ok() {
+  echo "  ok: $1"
+  pass=$((pass + 1))
+}
+bad() {
+  echo "  FAIL: $1" >&2
+  fail=$((fail + 1))
+}
 
 check() {
   local label="$1" expected="$2" got="$3"
@@ -67,7 +76,7 @@ echo "=== Part 1: the failure mode, reproduced from scratch ==="
 # which likewise starts from a fresh environment.
 
 # heredoc-vars: ignore — this generator is the bug, reproduced on purpose.
-cat > "$TMP/broken-generator.sh" <<'GEN'
+cat >"$TMP/broken-generator.sh" <<'GEN'
 set -euo pipefail
 NODE_MAJOR="24"
 cat > "$TMPDIR_T/generated.sh" << 'EOF_BOX'
@@ -96,7 +105,7 @@ fi
 
 # The fix: pass the value in across the environment boundary, and assert it.
 # heredoc-vars: ignore — a fixture; its own inner heredoc is the fixed form.
-cat > "$TMP/fixed-generator.sh" <<'GEN'
+cat >"$TMP/fixed-generator.sh" <<'GEN'
 set -euo pipefail
 NODE_MAJOR="24"
 cat > "$TMPDIR_T/generated-fixed.sh" << 'EOF_BOX'
@@ -141,7 +150,7 @@ run_check() { # run_check FIXTURE -> prints findings, sets $rc
 # --- must be caught ----------------------------------------------------------
 # heredoc-vars: ignore — this fixture has to contain the bug to prove the
 # checker finds it; the assertions below are what verify it.
-cat > "$TMP/case-broken.sh" <<'FIX'
+cat >"$TMP/case-broken.sh" <<'FIX'
 cat > /tmp/out.sh << 'EOF'
 echo "${NODE_MAJOR}"
 echo "$JAVA_MAJOR"
@@ -149,12 +158,12 @@ EOF
 FIX
 run_check "$TMP/case-broken.sh"
 check "flags a leaked \${NODE_MAJOR}" "1" "$(grep -c 'NODE_MAJOR is expanded' <<<"$check_out" || true)"
-check "flags a leaked \$JAVA_MAJOR"   "1" "$(grep -c 'JAVA_MAJOR is expanded' <<<"$check_out" || true)"
-check "and exits non-zero"            "1" "$([ "$rc" -ne 0 ] && echo 1 || echo 0)"
+check "flags a leaked \$JAVA_MAJOR" "1" "$(grep -c 'JAVA_MAJOR is expanded' <<<"$check_out" || true)"
+check "and exits non-zero" "1" "$([ "$rc" -ne 0 ] && echo 1 || echo 0)"
 
 # --- must NOT be caught (false positives are the subject of this issue) ------
 # heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
-cat > "$TMP/case-clean.sh" <<'FIX'
+cat >"$TMP/case-clean.sh" <<'FIX'
 cat > /tmp/out.sh << 'EOF'
 # assigned in the body
 NODE_MAJOR="24"
@@ -189,7 +198,7 @@ done
 # An exported variable DOES survive into a plain child process, so the stub-script
 # pattern used by experiments/test-issue112-supersede.sh is legitimate.
 # heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
-cat > "$TMP/case-exported.sh" <<'FIX'
+cat >"$TMP/case-exported.sh" <<'FIX'
 export STUB_CALLS="/tmp/calls.txt"
 cat > /tmp/out.sh << 'EOF'
 echo "$STUB_CALLS"
@@ -201,7 +210,7 @@ check "an exported variable read by a plain child process is not a leak" "0" "$r
 
 # ...but it does NOT survive su -/sudo -i/env -i/ssh, which is the RC-1 shape.
 # heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
-cat > "$TMP/case-exported-barrier.sh" <<'FIX'
+cat >"$TMP/case-exported-barrier.sh" <<'FIX'
 export STUB_CALLS="/tmp/calls.txt"
 cat > /tmp/out.sh << 'EOF'
 echo "$STUB_CALLS"
@@ -218,7 +227,7 @@ fi
 
 # A quoted heredoc that is not a script may contain anything.
 # heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
-cat > "$TMP/case-prose.sh" <<'FIX'
+cat >"$TMP/case-prose.sh" <<'FIX'
 cat > /tmp/README.md << 'EOF'
 Set $NODE_MAJOR before running.
 EOF
@@ -231,7 +240,7 @@ check "does not police prose or JSON heredocs" "0" "$rc"
 
 # An UNquoted heredoc expands in the parent, which is the working pattern.
 # heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
-cat > "$TMP/case-unquoted.sh" <<'FIX'
+cat >"$TMP/case-unquoted.sh" <<'FIX'
 NODE_MAJOR=24
 cat > /tmp/out.sh << EOF
 echo "${NODE_MAJOR}"
@@ -259,7 +268,10 @@ fi
 # Both sites, explicitly — RC-1 exists twice, and a fix to one is not a fix.
 for rel in scripts/measure-disk-space.sh scripts/ubuntu-24-server-install.sh; do
   f="$ROOT/$rel"
-  [ -f "$f" ] || { bad "$rel is missing"; continue; }
+  [ -f "$f" ] || {
+    bad "$rel is missing"
+    continue
+  }
 
   for var in NODE_MAJOR NVM_INSTALL_VERSION JAVA_MAJOR; do
     if grep -qE "^[[:space:]]*: \"\\\$\{$var:\?" "$f"; then
@@ -313,7 +325,7 @@ echo "=== Part 4: the verbose mode (default off) ==="
 # documented no-argument invocation aborted with `$1: unbound variable`.
 prologue() {
   local src="$1" out="$2"
-  awk 'NR == 1, /^done$/' "$src" > "$out"
+  awk 'NR == 1, /^done$/' "$src" >"$out"
 }
 
 for rel in scripts/measure-disk-space.sh scripts/ubuntu-24-server-install.sh; do
@@ -340,7 +352,10 @@ for rel in scripts/measure-disk-space.sh scripts/ubuntu-24-server-install.sh; do
   pro="$TMP/prologue-$base"
   prologue "$f" "$pro"
   set +e
-  pro_out="$(bash "$pro" 2>&1; echo "rc=$?")"
+  pro_out="$(
+    bash "$pro" 2>&1
+    echo "rc=$?"
+  )"
   set -e
   check "$base parses an empty argument list without an unbound variable" \
     "" "$(grep -o 'unbound variable' <<<"$pro_out" || true)"

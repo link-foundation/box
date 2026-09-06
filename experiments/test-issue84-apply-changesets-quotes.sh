@@ -16,10 +16,10 @@ trap cleanup EXIT
 
 cd "$WORKDIR"
 mkdir -p .changeset
-printf '1.2.3\n' > VERSION
+printf '1.2.3\n' >VERSION
 
 CHANGESET_FILE=".changeset/quote test's file.md"
-cat > "$CHANGESET_FILE" <<'EOF'
+cat >"$CHANGESET_FILE" <<'EOF'
 ---
 bump: patch
 ---
@@ -28,7 +28,7 @@ The parser must keep buildx's apostrophe, "double quotes", and
 extra   whitespace without treating any of it as shell or xargs syntax.
 EOF
 
-DRY_RUN=true "$SCRIPT_UNDER_TEST" > output.log
+DRY_RUN=true "$SCRIPT_UNDER_TEST" >output.log
 
 grep -F "Processing: $CHANGESET_FILE" output.log
 grep -F "New version: 1.2.4" output.log

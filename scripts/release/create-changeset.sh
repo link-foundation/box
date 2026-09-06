@@ -45,7 +45,7 @@ CHANGESET_FILE=".changeset/manual-release-${RANDOM_ID}.md"
 # Create changeset file
 mkdir -p .changeset
 
-cat > "$CHANGESET_FILE" << EOF
+cat >"$CHANGESET_FILE" <<EOF
 ---
 bump: $BUMP_TYPE
 ---

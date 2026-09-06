@@ -51,7 +51,7 @@ fi
 
 printf '%s\n' "$output" >&2
 
-cat >&2 << MESSAGE
+cat >&2 <<MESSAGE
 
 === BASE IMAGE MISSING (build not attempted) ===
 

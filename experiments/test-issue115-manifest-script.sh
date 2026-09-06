@@ -26,8 +26,14 @@ SCRIPT="scripts/release/create-multiarch-manifest.sh"
 PASS=0
 FAIL=0
 
-pass() { echo "PASS: $1"; PASS=$((PASS + 1)); }
-fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
+pass() {
+  echo "PASS: $1"
+  PASS=$((PASS + 1))
+}
+fail() {
+  echo "FAIL: $1"
+  FAIL=$((FAIL + 1))
+}
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -39,7 +45,7 @@ mkdir -p "$BIN"
 # exit status from two files written by the caller:
 #   $TMP/fail-pushes   how many `manifest push` calls must fail (counted down)
 #   $TMP/fail-output   what a failing call prints (chooses transient vs permanent)
-cat > "$BIN/docker" <<'FAKE'
+cat >"$BIN/docker" <<'FAKE'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$DOCKER_LOG"
 if [ "$2" = "push" ]; then
@@ -66,9 +72,9 @@ STATUS=0
 run() {
   local fail_pushes="$1" fail_output="$2"
   shift 2
-  echo "$fail_pushes" > "$TMP/fail-pushes"
-  printf '%s\n' "$fail_output" > "$TMP/fail-output"
-  : > "$DOCKER_LOG"
+  echo "$fail_pushes" >"$TMP/fail-pushes"
+  printf '%s\n' "$fail_output" >"$TMP/fail-output"
+  : >"$DOCKER_LOG"
 
   # Everything before `--` is a NAME=VALUE override for this run; everything
   # after it is an argument to the script.
@@ -100,7 +106,7 @@ PERMANENT='denied: requested access to the resource is denied'
 
 echo "== Part 1: the happy path publishes every tag for every architecture =="
 
-: > "$TMP/summary.md"
+: >"$TMP/summary.md"
 run 0 "" -- ghcr.io/link-foundation/box-js latest 2.5.0
 
 if [ "$STATUS" -eq 0 ]; then
@@ -180,7 +186,10 @@ fi
 
 case "$OUT" in
   *"REGISTRY AUTHENTICATION FAILURE"*) pass "the auth failure prints actionable guidance" ;;
-  *) fail "the auth failure prints actionable guidance" ; echo "$OUT" | sed 's/^/      /' >&2 ;;
+  *)
+    fail "the auth failure prints actionable guidance"
+    echo "$OUT" | sed 's/^/      /' >&2
+    ;;
 esac
 
 echo ""
@@ -205,7 +214,7 @@ else
   fail "MAX_RETRIES attempts are made before giving up (pushes=$(pushes))"
 fi
 
-: > "$TMP/summary.md"
+: >"$TMP/summary.md"
 run 99 "$TRANSIENT" MANIFEST_REQUIRED=0 -- docker.io/example/box latest
 
 if [ "$STATUS" -eq 0 ]; then

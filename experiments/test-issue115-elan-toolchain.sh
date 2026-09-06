@@ -52,8 +52,14 @@ TEST_BOX="scripts/ci/test-box.sh"
 PASS=0
 FAIL=0
 
-pass() { echo "PASS: $1"; PASS=$((PASS + 1)); }
-fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
+pass() {
+  echo "PASS: $1"
+  PASS=$((PASS + 1))
+}
+fail() {
+  echo "FAIL: $1"
+  FAIL=$((FAIL + 1))
+}
 
 # --- 1. install.sh actually installs a toolchain ------------------------------
 
@@ -61,7 +67,9 @@ if [ -f "$INSTALL" ]; then
   pass "$INSTALL exists"
 else
   fail "$INSTALL is missing"
-  echo; echo "$PASS passed, $FAIL failed"; exit 1
+  echo
+  echo "$PASS passed, $FAIL failed"
+  exit 1
 fi
 
 SRC="$(cat "$INSTALL")"
@@ -130,7 +138,9 @@ if [ -f "$TEST_BOX" ]; then
   pass "$TEST_BOX exists"
 else
   fail "$TEST_BOX is missing"
-  echo; echo "$PASS passed, $FAIL failed"; exit 1
+  echo
+  echo "$PASS passed, $FAIL failed"
+  exit 1
 fi
 
 BOX_SRC="$(cat "$TEST_BOX")"

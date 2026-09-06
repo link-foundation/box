@@ -89,7 +89,7 @@ if ! command_exists swift; then
           echo ''
           echo '# Swift configuration'
           echo 'export PATH="$HOME/.swift/usr/bin:$PATH"'
-        } >> "$HOME/.bashrc"
+        } >>"$HOME/.bashrc"
       fi
 
       export PATH="$HOME/.swift/usr/bin:$PATH"

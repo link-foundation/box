@@ -7,7 +7,7 @@ set -euo pipefail
 JSON_OUTPUT_FILE="/tmp/test-disk-space-measurements.json"
 
 # Initialize JSON
-cat > "$JSON_OUTPUT_FILE" << 'EOF'
+cat >"$JSON_OUTPUT_FILE" <<'EOF'
 {
   "generated_at": "",
   "total_size_mb": 0,

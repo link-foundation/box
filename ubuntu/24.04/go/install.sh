@@ -52,7 +52,7 @@ if [ ! -d "$HOME/.go" ] && [ ! -d "/usr/local/go" ]; then
           echo 'export GOROOT="$HOME/.go"'
           echo 'export GOPATH="$HOME/.go/path"'
           echo 'export PATH="$GOROOT/bin:$GOPATH/bin:$PATH"'
-        } >> "$HOME/.bashrc"
+        } >>"$HOME/.bashrc"
       fi
 
       export GOROOT="$HOME/.go"

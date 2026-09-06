@@ -78,8 +78,15 @@ chmod +x "$WORK/bin/docker"
 PASS=0
 FAIL=0
 check() { # check <desc> <condition-cmd...>
-  local desc="$1"; shift
-  if "$@"; then echo "  ok: $desc"; PASS=$((PASS + 1)); else echo "  FAIL: $desc"; FAIL=$((FAIL + 1)); fi
+  local desc="$1"
+  shift
+  if "$@"; then
+    echo "  ok: $desc"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: $desc"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 run_case() { # run_case <name> <canonical_ok> <mirror_ok>
@@ -87,7 +94,9 @@ run_case() { # run_case <name> <canonical_ok> <mirror_ok>
   export DOCKER_CALLS="$WORK/calls.$name"
   export DOCKER_PULLED="$WORK/pulled.$name"
   export DOCKER_TAGGED="$WORK/tagged.$name"
-  : >"$DOCKER_CALLS"; : >"$DOCKER_PULLED"; : >"$DOCKER_TAGGED"
+  : >"$DOCKER_CALLS"
+  : >"$DOCKER_PULLED"
+  : >"$DOCKER_TAGGED"
   set +e
   PATH="$WORK/bin:$PATH" \
     BUILDKIT_IMAGE="moby/buildkit:buildx-stable-1" \

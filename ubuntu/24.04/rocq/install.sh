@@ -34,9 +34,9 @@ if ! command_exists opam; then
     # Fallback: download opam binary directly
     ARCH="$(uname -m)"
     case "$ARCH" in
-      x86_64)  OPAM_ARCH="x86_64" ;;
+      x86_64) OPAM_ARCH="x86_64" ;;
       aarch64) OPAM_ARCH="arm64" ;;
-      *)       OPAM_ARCH="$ARCH" ;;
+      *) OPAM_ARCH="$ARCH" ;;
     esac
     # /releases/latest/download/<asset> only works when <asset> exists in the
     # newest release — "opam-2.3.0-..." stopped existing the day 2.4 shipped, so
@@ -45,8 +45,8 @@ if ! command_exists opam; then
       resolve_opam_version() { echo "${OPAM_VERSION:-2.5.2}"; }
     fi
     OPAM_BIN_VERSION="$(resolve_opam_version)"
-    curl -fsSL "https://github.com/ocaml/opam/releases/download/${OPAM_BIN_VERSION}/opam-${OPAM_BIN_VERSION}-${OPAM_ARCH}-linux" -o "$OPAM_BIN_DIR/opam" && \
-      chmod +x "$OPAM_BIN_DIR/opam" || true
+    curl -fsSL "https://github.com/ocaml/opam/releases/download/${OPAM_BIN_VERSION}/opam-${OPAM_BIN_VERSION}-${OPAM_ARCH}-linux" -o "$OPAM_BIN_DIR/opam" \
+      && chmod +x "$OPAM_BIN_DIR/opam" || true
   }
 
   if command_exists opam; then
@@ -98,7 +98,7 @@ if command_exists opam; then
       echo ''
       echo '# Opam (OCaml/Rocq) configuration'
       echo 'test -r $HOME/.opam/opam-init/init.sh && . $HOME/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true'
-    } >> "$HOME/.bashrc"
+    } >>"$HOME/.bashrc"
   fi
 fi
 

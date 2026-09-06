@@ -48,7 +48,7 @@ cd "$REPO_ROOT"
 # `*.Dockerfile`, which are all three shapes present here.
 collect_files() {
   git ls-files -z --cached --others --exclude-standard --deduplicate \
-      'Dockerfile' '*/Dockerfile' 'Dockerfile.*' '*/Dockerfile.*' '*.Dockerfile' \
+    'Dockerfile' '*/Dockerfile' 'Dockerfile.*' '*/Dockerfile.*' '*.Dockerfile' \
     | tr '\0' '\n' | grep -v '^dev/log/' | sort -u || true
 }
 
@@ -101,7 +101,7 @@ FINDINGS=0
 FAILURES=0
 for file in "${FILES[@]}"; do
   set +e
-  out="$(run_hadolint < "$file")"
+  out="$(run_hadolint <"$file")"
   status=$?
   set -e
   [ "$status" -eq 0 ] || FAILURES=$((FAILURES + 1))
@@ -109,19 +109,22 @@ for file in "${FILES[@]}"; do
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     # `-:12 DL3027 warning: ...` -> `::warning file=path,line=12::DL3027 ...`
-    lineno="${line#-:}"; lineno="${lineno%% *}"
+    lineno="${line#-:}"
+    lineno="${lineno%% *}"
     rest="${line#*: }"
-    code="${line#* }"; code="${code%% *}"
-    level="${line#*"$code" }"; level="${level%%:*}"
+    code="${line#* }"
+    code="${code%% *}"
+    level="${line#*"$code" }"
+    level="${level%%:*}"
     # Only what hadolint itself would fail on becomes an error annotation; the
     # rest is advisory, so a style suggestion cannot be mistaken for a defect.
     case "$level" in
-      error|warning) gh_level="error" ;;
-      *)             gh_level="notice" ;;
+      error | warning) gh_level="error" ;;
+      *) gh_level="notice" ;;
     esac
     echo "::${gh_level} file=${file},line=${lineno}::${code} ${level}: ${rest}"
     FINDINGS=$((FINDINGS + 1))
-  done <<< "$out"
+  done <<<"$out"
 done
 
 if [ "$FAILURES" -gt 0 ]; then

@@ -37,7 +37,7 @@ if [ ! -d "$HOME/.sdkman" ]; then
       echo '# SDKMAN configuration'
       echo 'export SDKMAN_DIR="$HOME/.sdkman"'
       echo '[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ] && . "$HOME/.sdkman/bin/sdkman-init.sh"'
-    } >> "$HOME/.bashrc"
+    } >>"$HOME/.bashrc"
   fi
   log_success "SDKMAN installed and configured"
 else
@@ -55,9 +55,9 @@ if [ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
   log_info "Installing Java ${JAVA_MAJOR} LTS (OpenJDK via Eclipse Temurin)..."
   set +u
   if ! sdk list java 2>/dev/null | grep "${JAVA_MAJOR}.*tem.*installed" >/dev/null; then
-    sdk install java "${JAVA_MAJOR}-tem" < /dev/null || {
+    sdk install java "${JAVA_MAJOR}-tem" </dev/null || {
       log_warning "Eclipse Temurin installation failed, trying default OpenJDK..."
-      sdk install java "${JAVA_MAJOR}-open" < /dev/null || true
+      sdk install java "${JAVA_MAJOR}-open" </dev/null || true
     }
   else
     log_info "Java ${JAVA_MAJOR} (Temurin) already installed."
@@ -70,14 +70,16 @@ if [ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
   # whitespace and the alias is never mistaken for an installed JDK.
   while IFS= read -r installed; do
     case "$installed" in
-      "${JAVA_MAJOR}"*) sdk default java "$installed" < /dev/null || true ;;
+      "${JAVA_MAJOR}"*) sdk default java "$installed" </dev/null || true ;;
     esac
   done < <(list_installed_versions "$SDKMAN_DIR/candidates/java")
   while IFS= read -r installed; do
     case "$installed" in
       "${JAVA_MAJOR}"*) ;;
-      *) log_info "Removing extra JDK $installed (keeping ${JAVA_MAJOR})"
-         sdk uninstall java "$installed" < /dev/null || log_warning "Could not uninstall JDK $installed" ;;
+      *)
+        log_info "Removing extra JDK $installed (keeping ${JAVA_MAJOR})"
+        sdk uninstall java "$installed" </dev/null || log_warning "Could not uninstall JDK $installed"
+        ;;
     esac
   done < <(list_installed_versions "$SDKMAN_DIR/candidates/java")
   set -u

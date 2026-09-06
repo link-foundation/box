@@ -29,13 +29,33 @@ BOX_VERBOSE="${BOX_VERBOSE:-0}"
 while [ $# -gt 0 ]; do
   case "$1" in
     --json-output)
-      [ -n "${2:-}" ] || { echo "measure-disk-space.sh: --json-output needs a FILE" >&2; exit 2; }
-      JSON_OUTPUT_FILE="$2"; shift 2 ;;
-    -v|--verbose) BOX_VERBOSE=1; shift ;;
-    -h|--help)    sed -n '4,16p' "$0" | sed 's/^# \?//'; exit 0 ;;
-    --)           shift; break ;;
-    -*)           echo "measure-disk-space.sh: unknown option $1" >&2; exit 2 ;;
-    *)            JSON_OUTPUT_FILE="$1"; shift ;;   # bare path, as before
+      [ -n "${2:-}" ] || {
+        echo "measure-disk-space.sh: --json-output needs a FILE" >&2
+        exit 2
+      }
+      JSON_OUTPUT_FILE="$2"
+      shift 2
+      ;;
+    -v | --verbose)
+      BOX_VERBOSE=1
+      shift
+      ;;
+    -h | --help)
+      sed -n '4,16p' "$0" | sed 's/^# \?//'
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "measure-disk-space.sh: unknown option $1" >&2
+      exit 2
+      ;;
+    *)
+      JSON_OUTPUT_FILE="$1"
+      shift
+      ;; # bare path, as before
   esac
 done
 
@@ -116,7 +136,11 @@ box_resolve() {
   local fn="$1" fallback="$2" out=""
   if [ -n "$BOX_COMMON_SH" ]; then
     # shellcheck source=/dev/null  # resolved at runtime by locate_box_common_sh
-    out=$( (set +eu; . "$BOX_COMMON_SH" >/dev/null 2>&1; "$fn" 2>/dev/null) ) || out=""
+    out=$( (
+      set +eu
+      . "$BOX_COMMON_SH" >/dev/null 2>&1
+      "$fn" 2>/dev/null
+    )) || out=""
   fi
   if [ -n "$out" ]; then
     echo "$out"
@@ -181,7 +205,7 @@ cleanup_for_measurement() {
 
 # Initialize JSON output
 init_json_output() {
-  cat > "$JSON_OUTPUT_FILE" << 'EOF'
+  cat >"$JSON_OUTPUT_FILE" <<'EOF'
 {
   "generated_at": "",
   "total_size_mb": 0,
@@ -362,7 +386,11 @@ measure_apt_install "Assembly Tools (NASM, FASM)" "Build Tools" nasm fasm
 # CRAN carries a current R for every supported codename; the distro package is
 # frozen at whatever shipped with the release (issue #112).
 # shellcheck source=/dev/null  # resolved at runtime by locate_box_common_sh
-if [ -n "$BOX_COMMON_SH" ] && (set +eu; . "$BOX_COMMON_SH" >/dev/null 2>&1; add_cran_repo) >/dev/null 2>&1; then
+if [ -n "$BOX_COMMON_SH" ] && (
+  set +eu
+  . "$BOX_COMMON_SH" >/dev/null 2>&1
+  add_cran_repo
+) >/dev/null 2>&1; then
   apt_update_with_retry || true
 fi
 measure_apt_install "R Language" "Runtime" r-base
@@ -382,12 +410,12 @@ install_gh_cli() {
   local out
   out=$(mktemp)
   wget -nv -O"$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg
-  cat "$out" | maybe_sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
+  cat "$out" | maybe_sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
   maybe_sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
   rm -f "$out"
   maybe_sudo mkdir -p -m 755 /etc/apt/sources.list.d
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-    | maybe_sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+    | maybe_sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
   apt_update_with_retry
   maybe_sudo apt-get install -y gh
 }
@@ -420,7 +448,7 @@ fi
 log_step "Measuring Box User Installations"
 
 # Create measurement script for box user
-cat > /tmp/box-measure.sh << 'EOF_BOX'
+cat >/tmp/box-measure.sh <<'EOF_BOX'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -869,7 +897,7 @@ cp "$JSON_OUTPUT_FILE_ABS" "$JSON_TMP_COPY"
 chmod o+rw "$JSON_TMP_COPY"
 
 log_debug "Handing to the box user: NODE_MAJOR=$NODE_MAJOR NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION JAVA_MAJOR=$JAVA_MAJOR BOX_VERBOSE=$BOX_VERBOSE"
-log_debug "Generated script: /tmp/box-measure.sh ($(wc -l < /tmp/box-measure.sh) lines), JSON copy: $JSON_TMP_COPY"
+log_debug "Generated script: /tmp/box-measure.sh ($(wc -l </tmp/box-measure.sh) lines), JSON copy: $JSON_TMP_COPY"
 
 # Execute box user measurements against the /tmp copy.
 # `su -` and `sudo -i` both start a login shell with a fresh environment, so the

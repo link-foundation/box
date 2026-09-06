@@ -33,13 +33,22 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SCRIPT="$ROOT/scripts/ci/supersede.sh"
 WF="$ROOT/.github/workflows/release.yml"
 
-[ -f "$SCRIPT" ] || { echo "ERR: $SCRIPT not found" >&2; exit 1; }
+[ -f "$SCRIPT" ] || {
+  echo "ERR: $SCRIPT not found" >&2
+  exit 1
+}
 
 pass=0
 fail=0
 
-ok()   { echo "  ok: $1"; pass=$((pass + 1)); }
-bad()  { echo "  FAIL: $1" >&2; fail=$((fail + 1)); }
+ok() {
+  echo "  ok: $1"
+  pass=$((pass + 1))
+}
+bad() {
+  echo "  FAIL: $1" >&2
+  fail=$((fail + 1))
+}
 
 check() {
   local label="$1" expected="$2" got="$3"
@@ -57,7 +66,7 @@ trap 'rm -rf "$TMP"' EXIT
 # Stands in for `gh api`. GETs are answered from fixture files; every cancel POST
 # appends its path to $STUB_CALLS so assertions can look at exactly what the
 # script tried to cancel.
-cat > "$TMP/api-stub.sh" <<'STUB'
+cat >"$TMP/api-stub.sh" <<'STUB'
 #!/usr/bin/env bash
 set -u
 if [ "${1:-}" = "--method" ]; then
@@ -82,7 +91,7 @@ export STUB_PULL_JSON="$TMP/pull.json"
 
 # Fixture: this run is #40, commit dddd (the newest). Everything else is a
 # deliberate near-miss except runs 1001/1002.
-cat > "$STUB_RUNS_JSON" <<'JSON'
+cat >"$STUB_RUNS_JSON" <<'JSON'
 {
   "workflow_runs": [
     {"id": 1001, "run_number": 37, "status": "in_progress", "head_sha": "aaaaaaaaaaaa",
@@ -103,7 +112,7 @@ cat > "$STUB_RUNS_JSON" <<'JSON'
 }
 JSON
 
-cat > "$STUB_PULL_JSON" <<'JSON'
+cat >"$STUB_PULL_JSON" <<'JSON'
 {"number": 113, "head": {"sha": "dddddddddddd"}}
 JSON
 
@@ -130,7 +139,7 @@ pr_env() {
   # (a plain assignment only inherits the export flag a variable already has).
   export SUPERSEDE_WATCH_INTERVAL_SECONDS=1
   export SUPERSEDE_WATCH_MAX_SECONDS=4
-  : > "$STUB_CALLS"
+  : >"$STUB_CALLS"
 }
 
 cancelled_ids() {
@@ -170,7 +179,7 @@ for id in 1003 1004 1005 1006 1007; do
 done
 
 pr_env
-printf '{"workflow_runs": []}' > "$TMP/empty.json"
+printf '{"workflow_runs": []}' >"$TMP/empty.json"
 STUB_RUNS_JSON="$TMP/empty.json" out="$(bash "$SCRIPT" cancel-older 2>&1)"
 check "nothing to cancel when this is the only run" "" "$(cancelled_ids)"
 case "$out" in
@@ -239,7 +248,7 @@ STUB_GET_EXIT=1 bash "$SCRIPT" stop-if-superseded >/dev/null 2>&1 \
 check "an unreachable API cancels nothing" "" "$(cancelled_ids)"
 
 pr_env
-printf '{"number": 113}' > "$TMP/nohead.json"
+printf '{"number": 113}' >"$TMP/nohead.json"
 PR_HEAD_SHA=aaaaaaaaaaaa STUB_PULL_JSON="$TMP/nohead.json" \
   bash "$SCRIPT" stop-if-superseded >/dev/null 2>&1 \
   && ok "a payload without a head is not fatal (fails open)" \
@@ -345,7 +354,7 @@ for job in pr-test-version-policy pr-test-js pr-test-essentials pr-test-language
   second_step="$(grep -n '^      - \(name\|uses\):' <<<"$body" | sed -n '2p' | cut -d: -f1 || true)"
   guard_line="$(grep -n 'stop-if-superseded' <<<"$body" | head -n1 | cut -d: -f1 || true)"
   if [ -n "$second_step" ] && [ -n "$guard_line" ] && [ "$guard_line" -gt "$second_step" ] \
-     && [ "$((guard_line - second_step))" -le 6 ]; then
+    && [ "$((guard_line - second_step))" -le 6 ]; then
     ok "$job checks before it spends anything (guard is the first step after checkout)"
   else
     bad "$job checks too late (guard at line ${guard_line:-none} of the job, second step at ${second_step:-none})"

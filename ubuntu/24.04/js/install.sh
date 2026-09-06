@@ -84,7 +84,7 @@ if ! command_exists deno; then
       echo '# Deno configuration'
       echo 'export DENO_INSTALL="$HOME/.deno"'
       echo 'export PATH="$DENO_INSTALL/bin:$PATH"'
-    } >> "$HOME/.bashrc"
+    } >>"$HOME/.bashrc"
   fi
   log_success "Deno installed"
 else
@@ -154,7 +154,10 @@ run_with_retry npm install -g playwright @playwright/test @puppeteer/browsers --
 log_success "playwright, @playwright/test, and @puppeteer/browsers CLIs installed"
 
 # Verify installations
-command -v playwright || { echo "ERROR: playwright not found after install"; exit 1; }
+command -v playwright || {
+  echo "ERROR: playwright not found after install"
+  exit 1
+}
 log_success "playwright CLI verified"
 
 # --- Download Playwright browser binaries ---

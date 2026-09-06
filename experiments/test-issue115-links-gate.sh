@@ -35,8 +35,14 @@ ARCHIVE="scripts/ci/check-web-archive.mjs"
 PASS=0
 FAIL=0
 
-pass() { echo "PASS: $1"; PASS=$((PASS + 1)); }
-fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
+pass() {
+  echo "PASS: $1"
+  PASS=$((PASS + 1))
+}
+fail() {
+  echo "FAIL: $1"
+  FAIL=$((FAIL + 1))
+}
 
 for f in "$IGNORE" "$WORKFLOW" "$ARCHIVE"; do
   if [ -f "$f" ]; then
@@ -47,7 +53,9 @@ for f in "$IGNORE" "$WORKFLOW" "$ARCHIVE"; do
 done
 
 if [ "$FAIL" -gt 0 ]; then
-  echo; echo "$PASS passed, $FAIL failed"; exit 1
+  echo
+  echo "$PASS passed, $FAIL failed"
+  exit 1
 fi
 
 WORKFLOW_SRC="$(cat "$WORKFLOW")"
@@ -84,7 +92,7 @@ else
 fi
 
 if [[ "$WORKFLOW_SRC" == *"steps.lychee.outputs.exit_code != 0"* ]] \
-   && [[ "$WORKFLOW_SRC" == *"exit 1"* ]]; then
+  && [[ "$WORKFLOW_SRC" == *"exit 1"* ]]; then
   pass "a non-zero lychee exit code fails the job explicitly"
 else
   fail "nothing turns a non-zero lychee exit code into a failed job"
@@ -147,7 +155,10 @@ LOAD_BEARING=(
 for url in "${LOAD_BEARING[@]}"; do
   hit=""
   for p in "${PATTERNS[@]}"; do
-    if printf '%s' "$url" | grep -qE -- "$p"; then hit="$p"; break; fi
+    if printf '%s' "$url" | grep -qE -- "$p"; then
+      hit="$p"
+      break
+    fi
   done
   if [ -z "$hit" ]; then
     pass "no ignore pattern silences $url"
@@ -164,7 +175,7 @@ NODE_TESTS="$(mktemp -t links-gate-XXXXXX.mjs)"
 FIXTURE_DIR="$(mktemp -d -t links-gate-XXXXXX)"
 trap 'rm -f "$NODE_TESTS"; rm -rf "$FIXTURE_DIR"' EXIT
 
-cat > "$NODE_TESTS" <<'NODE'
+cat >"$NODE_TESTS" <<'NODE'
 const { extractBrokenLinks, extractErrorsSection, formatTimestamp } =
   await import(process.env.ARCHIVE_MODULE);
 
@@ -229,10 +240,10 @@ while IFS= read -r line; do
   case "$line" in
     PASS:*) pass "${line#PASS: }" ;;
     FAIL:*) fail "${line#FAIL: }" ;;
-    *)      [ -n "$line" ] && echo "      $line" ;;
+    *) [ -n "$line" ] && echo "      $line" ;;
   esac
-done <<< "$NODE_OUT"
-if [ "$NODE_STATUS" -ne 0 ] && ! grep -q '^FAIL:' <<< "$NODE_OUT"; then
+done <<<"$NODE_OUT"
+if [ "$NODE_STATUS" -ne 0 ] && ! grep -q '^FAIL:' <<<"$NODE_OUT"; then
   fail "the parser unit tests did not run: $NODE_OUT"
 fi
 
@@ -248,7 +259,7 @@ fi
 
 # A broken link the Wayback Machine cannot answer for has to fail, and this
 # path reaches the exit without any network access.
-cat > "$FIXTURE_DIR/local.md" <<'MD'
+cat >"$FIXTURE_DIR/local.md" <<'MD'
 ## Errors per input
 
 * [ERROR] <docs/missing.md> | Cannot find file
@@ -259,7 +270,7 @@ else
   pass "a broken local link fails the check (no archive can answer for it)"
 fi
 
-cat > "$FIXTURE_DIR/clean.md" <<'MD'
+cat >"$FIXTURE_DIR/clean.md" <<'MD'
 # Summary
 
 | Status | Count |
@@ -277,7 +288,7 @@ fi
 if [ "${LINKS_LIVE:-0}" = "1" ]; then
   echo "--- LINKS_LIVE=1: running lychee over the tracked markdown ---"
   if docker run --rm -v "$PWD:/repo" -w /repo lycheeverse/lychee:0.24.2 \
-       --no-progress --exclude-path dev/log './**/*.md'; then
+    --no-progress --exclude-path dev/log './**/*.md'; then
     pass "the live link check passes"
   else
     fail "the live link check found broken links"
