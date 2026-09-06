@@ -92,15 +92,15 @@ scripts, hooks and tool configuration.
 | 6 | Changeset-based versioning | **Pass** | **Pass** | `scripts/release/*changeset*.sh` |
 | 7 | Validate the actual merge result | **Fail** | **Fail** | No `simulate-fresh-merge.sh`; jobs check out `ref: main` or the merge preview |
 | 8 | Pre-commit hooks | **Fail** | **Skipped** | No `package.json` to hang husky off; see 1d |
-| 9 | Release automation | **Partial** | **Partial** | One registry can no longer fail another's push ([RC-3](ROOT-CAUSES.md#rc-3)), but `create-release` still `needs: docker-manifest`, so the release is still gated on an image push — principle #13 says it must not be |
+| 9 | Release automation | **Partial** | **Pass** | One registry can no longer fail another's push ([RC-3](ROOT-CAUSES.md#rc-3)), and `create-release` no longer requires `docker-manifest` to have succeeded — an expired Docker Hub token used to mean the tagged commit got no GitHub Release at all ([RC-18](ROOT-CAUSES.md#rc-18)). The notes now report which references the registries actually answer for |
 | 10 | Concurrency control | **Fail** | **Pass** | `always()` × 24 → × 0; `!cancelled()` × 0 → × 24 ([RC-7](ROOT-CAUSES.md#rc-7)). `measure-disk-space.yml` no longer cancels its own `contents: write` main-writer |
 | 11 | Secrets detection | **Fail** | **Pass** | `scripts/ci/run-secretlint.sh`, run by `security.yml`. It validates itself against a generated canary before it reports on the tree — a clean scan that proves nothing is the defect this check exists to avoid ([RC-16](ROOT-CAUSES.md#rc-16)) |
 | 12 | Documentation validation | **Fail** | **Pass** | `links.yml` runs lychee over every tracked markdown file on change, weekly and on demand. The first run found 113 failures over 16 files, 107 distinct URLs — 85 of them GHCR package pages for images that have never been pushed ([RC-17](ROOT-CAUSES.md#rc-17)); every one is fixed, `.lycheeignore` holds only correct-but-unverifiable URLs, and `scripts/ci/check-web-archive.mjs` suggests a Wayback replacement before the job fails |
-| 13 | Native runners, no QEMU, always cache, never gate release on image push, assert published manifests | **Partial** | **Partial** | Native runners: pass. Cache: no longer cancelled by a coupled push. Assert published manifests: pass — `assert-base-image.sh` checks a `FROM` exists before the build and is unit-tested. Never gate release on push: still fail (see #9) |
+| 13 | Native runners, no QEMU, always cache, never gate release on image push, assert published manifests | **Partial** | **Pass** | Native runners: pass. Cache: no longer cancelled by a coupled push. Never gate release on push: pass ([RC-18](ROOT-CAUSES.md#rc-18)). Assert published manifests: pass, in both directions — `assert-base-image.sh` checks a `FROM` exists before the build, and `VERIFY_IMAGES=1` makes the release notes state, per reference, whether it resolves, distinguishing *missing* from *the registry would not answer* |
 | 14 | Lint the workflows themselves | **Fail** | **Pass** | `workflows.yml`, both linters pinned by digest-bearing tag, both reproducible locally with the command the workflow prints |
 | 15 | Audit the dependency tree | **Fail** | **Partial** | CodeQL over `javascript-typescript`, `python` and `actions`, on every push, pull request and weekly. `dependency-review`/`npm audit` still do not transfer — no root `package.json`, no lockfile, so both would report green forever |
 
-**Score: 2 pass, 2 partial, 11 fail → 7 pass, 4 partial, 3 fail, 1 skipped-with-reason.**
+**Score: 2 pass, 2 partial, 11 fail → 9 pass, 2 partial, 3 fail, 1 skipped-with-reason.**
 
 ---
 
@@ -136,8 +136,8 @@ Every row of Parts 1 and 2 that moved, and the commit that moved it.
 | secretlint + CodeQL, with a canary that proves the scanner ran | `53dacc2` | `experiments/test-issue115-secretlint-gate.sh` |
 | CodeQL scoped to our own tree, not the vendored evidence | `c7c5350` | `experiments/test-issue115-secretlint-gate.sh` |
 | Link checking, with a Wayback fallback and an ignore file that may only hold false positives | `ee78f40` | `experiments/test-issue115-links-gate.sh` |
+| The GitHub Release is no longer gated on an image push, and the notes assert what was published | `PENDING` | `experiments/test-issue115-release-notes.sh` (Part 5) |
 
 Still open, in the order they will be taken: `release.yml` under 1500 lines and
 then `check-file-line-limits.sh` (#2); `simulate-fresh-merge.sh` (#7);
-decoupling `create-release` from `docker-manifest` (#9/#13); automated
-formatting, `shfmt` for a repository whose source is shell (#3).
+automated formatting, `shfmt` for a repository whose source is shell (#3).

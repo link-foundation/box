@@ -3010,16 +3010,26 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [detect-changes, docker-manifest, js-manifest, essentials-manifest, languages-manifest, dind-manifest]
+    # The release is created from the source state, not from the registry
+    # (issue #115; hive-mind principle #13, "never gate the release on an image
+    # push"). It waits for the manifest jobs so the notes can report what was
+    # published, but `needs.docker-manifest.result == 'success'` is deliberately
+    # NOT required: a Docker Hub outage or an expired registry token used to
+    # mean the tagged commit got no GitHub Release at all, and the release for
+    # that version then had to be created by hand. Only detect-changes is
+    # required, because its output is what decides there is anything to release.
+    # The notes say per image which references actually resolve, so a partial
+    # push produces an honest release instead of no release.
     if: |
       !cancelled() &&
       needs.detect-changes.result == 'success' &&
-      needs.docker-manifest.result == 'success' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
         (github.event_name == 'workflow_dispatch')
       )
     permissions:
       contents: write
+      packages: read
 
     steps:
       - name: Checkout repository
@@ -3035,6 +3045,18 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Creating release for version: $VERSION"
 
+      # Anonymous `docker manifest inspect` cannot tell "this package does not
+      # exist" from "you may not look at it" on GHCR, and the notes must not
+      # report a published image as missing. Logging in with the job's own token
+      # makes the distinction real. Docker Hub is public and needs no login;
+      # if it rate-limits, the check reports "unknown", never "missing".
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       # The notes are generated from one image list by
       # scripts/release/build-release-notes.sh. They used to be 106 lines of
       # inline heredoc with a hand-written row per image, split across two steps
@@ -3046,6 +3068,9 @@ jobs:
           REPO: ${{ github.repository }}
           GHCR_IMAGE: ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
           DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_IMAGE_NAME }}
+          # Ask the registries which of the advertised references exist. Off by
+          # default so the generator stays offline-testable.
+          VERIFY_IMAGES: '1'
         run: |
           bash scripts/release/build-release-notes.sh > /tmp/release-notes.md
           echo "=== release notes ($(wc -l < /tmp/release-notes.md) lines) ==="

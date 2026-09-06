@@ -248,7 +248,14 @@ echo "== Part 7: every release.yml manifest step calls this script =="
 
 # If any copy of the old inline pair survives, the defects above survive with
 # it in that one job - which is exactly how ten copies drifted apart before.
-LEFTOVER="$(grep -n 'docker manifest' .github/workflows/release.yml || true)"
+#
+# Comment lines are excluded: a comment that names `docker manifest inspect` -
+# create-release has one, explaining why the publication check logs in to GHCR
+# (issue #115) - is documentation, not a tenth divergent copy. Matching them
+# would make this assertion fail for a reason it does not mean, and an
+# assertion that cries wolf is the failure mode this suite exists to prevent.
+LEFTOVER="$(grep -n 'docker manifest' .github/workflows/release.yml \
+  | grep -v '^[0-9]*: *#' || true)"
 if [ -z "$LEFTOVER" ]; then
   pass "no inline 'docker manifest' invocation remains in release.yml"
 else

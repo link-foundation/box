@@ -41,10 +41,6 @@ done
 
 RELEASE_DATE="${RELEASE_DATE:-$(date -u +%Y-%m-%d)}"
 
-# The GHCR package page is addressed by the last path segment of the image
-# name ("box"), not by the full image reference.
-GHCR_PACKAGE="${GHCR_IMAGE##*/}"
-
 # label|suffix. The suffix is appended to both image names, so one list drives
 # Docker Hub, GHCR and their dind variants.
 COMBO_IMAGES=(
@@ -78,14 +74,23 @@ dockerhub_row() {
     "$VERSION" "$image" "$VERSION"
 }
 
-# ghcr_row LABEL SUFFIX - one table row of GHCR package links.
+# ghcr_row LABEL SUFFIX - one table row of GHCR tags.
+#
+# The tags are code spans, not links to the package page. Every
+# github.com/OWNER/REPO/pkgs/container/... URL these notes used to emit is a
+# 404 until that package exists, and 85 of them were 404ing in this
+# repository's documentation when issue #115 measured it (RC-17). A release
+# note that links a page that does not exist is the same defect as a check that
+# cannot fail: it looks like evidence and carries none. `docker pull` on the
+# reference below is the real test, and the publication section above says
+# which of them passed it.
 ghcr_row() {
   local label="$1" suffix="$2"
-  local image="${GHCR_IMAGE}${suffix}" package="${GHCR_PACKAGE}${suffix}"
-  printf '| %s | [`%s:%s`](https://github.com/%s/pkgs/container/%s?tag=%s) | [`%s-amd64`](https://github.com/%s/pkgs/container/%s?tag=%s-amd64) | [`%s-arm64`](https://github.com/%s/pkgs/container/%s?tag=%s-arm64) |\n' \
-    "$label" "$image" "$VERSION" "$REPO" "$package" "$VERSION" \
-    "$VERSION" "$REPO" "$package" "$VERSION" \
-    "$VERSION" "$REPO" "$package" "$VERSION"
+  local image="${GHCR_IMAGE}${suffix}"
+  printf '| %s | `%s:%s` | `%s:%s-amd64` | `%s:%s-arm64` |\n' \
+    "$label" "$image" "$VERSION" \
+    "$image" "$VERSION" \
+    "$image" "$VERSION"
 }
 
 # rows FIRST_COLUMN ROW_FN ENTRY... - a table header plus one row per entry.
@@ -119,7 +124,78 @@ dind_entries() {
 
 mapfile -t DIND_IMAGES < <(dind_entries)
 
-printf '## Docker Images\n'
+# --- publication check (issue #115, hive-mind principle #13) -------------------
+#
+# "Never gate the release on an image push, and assert the manifests that were
+# published." The GitHub Release is created from the source state and is no
+# longer blocked by a failed push (`create-release` used to require
+# `docker-manifest.result == 'success'`), so the notes have to say which images
+# actually exist rather than assume all of them do. The alternative is what
+# this repository shipped for a year: a release advertising 56 image
+# references, of which the 28 GHCR ones had never been pushed at all (RC-3,
+# RC-17).
+#
+# Off by default so the generator stays offline-testable; the workflow sets
+# VERIFY_IMAGES=1.
+#
+# published_state REF -> prints "published", "missing" or "unknown".
+# "unknown" matters: a rate-limited or unauthenticated registry must not be
+# reported as a missing image, or the notes trade one false claim for another.
+published_state() {
+  local ref="$1" err
+  if err="$(docker manifest inspect "$ref" 2>&1 >/dev/null)"; then
+    printf 'published'
+  elif printf '%s' "$err" | grep -qiE 'manifest unknown|not found|no such manifest|does not exist'; then
+    printf 'missing'
+  else
+    printf 'unknown'
+  fi
+}
+
+# all_refs - every multi-arch reference this release claims to publish, one per
+# line. The per-architecture tags are not checked separately: a multi-arch
+# manifest that resolves proves both of them.
+all_refs() {
+  local entry suffix
+  for entry in "${COMBO_IMAGES[@]}" "${LANGUAGE_IMAGES[@]}" "${DIND_IMAGES[@]}"; do
+    suffix="${entry#*|}"
+    printf '%s%s:%s\n' "$GHCR_IMAGE" "$suffix" "$VERSION"
+    printf '%s%s:%s\n' "$DOCKERHUB_IMAGE" "$suffix" "$VERSION"
+  done
+}
+
+publication_section() {
+  local ref state published=0 missing=() unknown=()
+  while IFS= read -r ref; do
+    state="$(published_state "$ref")"
+    case "$state" in
+      published) published=$((published + 1)) ;;
+      missing)   missing+=("$ref") ;;
+      *)         unknown+=("$ref") ;;
+    esac
+  done < <(all_refs)
+
+  printf '\n## Image publication\n\n'
+  printf '%s of %s image references resolve with `docker manifest inspect`.\n' \
+    "$published" "$((published + ${#missing[@]} + ${#unknown[@]}))"
+
+  if [ "${#missing[@]}" -gt 0 ]; then
+    printf '\nThe following are **not published**; the tables below list them for completeness, not as something you can pull today:\n\n'
+    printf -- '- `%s`\n' "${missing[@]}"
+    printf '\nRe-run the release workflow to publish them. The GitHub Release is deliberately not blocked on an image push.\n'
+  fi
+
+  if [ "${#unknown[@]}" -gt 0 ]; then
+    printf '\nThe registry did not answer for the following, so their state is unknown (not a claim that they are missing):\n\n'
+    printf -- '- `%s`\n' "${unknown[@]}"
+  fi
+}
+
+if [ "${VERIFY_IMAGES:-0}" = "1" ]; then
+  publication_section
+fi
+
+printf '\n## Docker Images\n'
 
 table "Docker Hub - Combo Boxes" "Image" dockerhub_row "${COMBO_IMAGES[@]}"
 table "Docker Hub - Language Boxes" "Language" dockerhub_row "${LANGUAGE_IMAGES[@]}"
@@ -169,7 +245,7 @@ docker pull ${GHCR_IMAGE}:${VERSION}
 
 ## Links
 - [Docker Hub](https://hub.docker.com/r/${DOCKERHUB_IMAGE})
-- [GHCR Package](https://github.com/${REPO}/pkgs/container/${GHCR_PACKAGE})
+- [GHCR packages](https://github.com/orgs/${REPO%%/*}/packages?repo_name=${REPO#*/})
 
 Released on ${RELEASE_DATE}
 NOTES

@@ -660,6 +660,7 @@ the CLI and the preset are pinned to the same exact version.
 
 ---
 
+<a id="rc-17"></a>
 ## RC-17 — 107 links in the documentation point at nothing, and 85 of them advertise images that were never published — **error, hidden by a missing check**
 
 **Symptom.** No tool in this repository had ever resolved a URL. Running one
@@ -747,3 +748,83 @@ link; a missing local file is unarchivable and must fail), that lychee's exit
 code still fails the job, and that no ignore pattern is broad enough to swallow
 a URL this repository depends on being right — the Docker Hub repositories, the
 repository itself, the hive-mind best-practices document.
+
+---
+
+<a id="rc-18"></a>
+## RC-18 — A failed push to the mirror registry means no GitHub Release at all — **error**
+
+**Symptom.** `create-release` did not run for the two failing runs on `main`
+that issue #115 names, even though the source it releases was fine:
+
+```yaml
+    needs: [detect-changes, docker-manifest, js-manifest, essentials-manifest, languages-manifest, dind-manifest]
+    if: |
+      !cancelled() &&
+      needs.detect-changes.result == 'success' &&
+      needs.docker-manifest.result == 'success' &&
+      ...
+```
+
+`docker-manifest` is the *full box* multi-arch manifest job. In run
+33972074755 it failed on 52 × `personal access token is expired`
+([RC-3](#rc-3)), so version 2.5.0 got no GitHub Release — not a partial one, not
+a draft, none. The tag exists in the repository and nothing announces it.
+
+**Mechanism.** Two separate things were fused into one condition:
+
+* *Is there something to release?* — that is `detect-changes`, and it is a real
+  precondition.
+* *Did the images reach a registry?* — that is a delivery outcome, and it is
+  **not** a property of the release. The notes describe a commit; the commit is
+  releasable whether or not a long-lived Docker Hub secret was still valid nine
+  months after it was minted.
+
+Fusing them makes the least reliable dependency in the pipeline — a
+third-party registry reachable with a credential that expires — a veto over the
+most durable artefact, and the failure mode is silent: a skipped job is a grey
+check, not a red one ([RC-4](#rc-4)).
+
+It also gets the coupling backwards. The release is what tells a human the
+push needs re-running; suppressing it removes the only notice.
+
+**Where it occurs.** `.github/workflows/release.yml`, the `create-release`
+job — one place, but with `dind-manifest` and four other manifest jobs listed
+in `needs:` alongside it, so any of them turning `failure` while
+`!cancelled()` holds could reach the same result through a different route.
+
+**Fix.** Two halves, because dropping the gate alone would trade a missing
+release for a lying one — notes that advertise 56 image references when 28 of
+them were never pushed is precisely [RC-17](#rc-17).
+
+1. `create-release` no longer requires `docker-manifest.result == 'success'`.
+   It still `needs:` the manifest jobs (so it runs after them and can see what
+   they did) and still requires `detect-changes`.
+2. `scripts/release/build-release-notes.sh` gained a publication section,
+   enabled in CI with `VERIFY_IMAGES=1`: it runs `docker manifest inspect` over
+   every reference the notes advertise and reports `N of M image references
+   resolve`, naming the ones that do not and telling the reader to re-run the
+   release workflow. The GHCR package links the notes used to emit are gone for
+   the same reason they left the README (RC-17) — a 404 dressed as evidence.
+
+The section distinguishes three answers, not two: *published*, *missing*
+(`manifest unknown` / `not found`), and *unknown* (anything else — a
+rate-limited or unreachable registry). A registry that will not answer is not
+evidence that an image is absent, and reporting it as missing would replace one
+false claim with another. `create-release` logs in to GHCR with the job's own
+`GITHUB_TOKEN` so that "does not exist" and "you may not look" stop being the
+same error.
+
+This is hive-mind best practice #13, *never gate the release on an image push,
+and assert the manifests that were published* — both clauses, which is why the
+gate and the assertion land together.
+
+**Pinned by.** `experiments/test-issue115-release-notes.sh` — 28 assertions.
+Part 5 reads `create-release`'s `if:` out of the workflow and fails if the
+`docker-manifest` clause returns, checks the workflow sets `VERIFY_IMAGES`, and
+drives the generator against a fake `docker` on `PATH` in three modes: every
+reference published (`56 of 56`, nothing listed as missing), none published
+(`0 of 56`, every reference named), and a rate-limited registry (reported as
+unknown, never as missing). It also asserts the generator makes no registry
+call at all when `VERIFY_IMAGES` is unset, so the notes stay reproducible
+offline.
