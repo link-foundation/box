@@ -181,7 +181,13 @@ jobs:
     name: Apply Changesets
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Gated on the preflight because this job writes the version. 2.5.0 has a
+    # version bump commit, no git tag and no GitHub Release: the release that
+    # was supposed to carry it could not publish anything, and the bump had
+    # already happened (issue #117, point 5). A version this run cannot release
+    # should not be created by it.
+    needs: [preflight]
+    if: needs.preflight.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
     outputs:
@@ -210,7 +216,10 @@ jobs:
   version-bump:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_mode == 'bump-and-release'
+    # Same reason as apply-changesets: do not mint a version this run has
+    # already proved it cannot publish.
+    needs: [preflight]
+    if: needs.preflight.result == 'success' && github.event_name == 'workflow_dispatch' && github.event.inputs.release_mode == 'bump-and-release'
     permissions:
       contents: write
     outputs:
@@ -276,6 +285,105 @@ jobs:
 
           echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           echo "bumped=true" >> "$GITHUB_OUTPUT"
+
+  # === RELEASE PREFLIGHT (issue #117) ===
+  #
+  # "In main branch our task is not to test the code, our task is to produce a
+  #  release, so if any token or auth is not configured or unavailable - and we
+  #  should be able to check it in advance - there is no need to do any resource
+  #  intensive calculations. If we are missing any credentials needed to produce
+  #  any of the planned releases, we should fail immediately."
+  #
+  # Run 33972074755 is what happens without this job. The Docker Hub token had
+  # expired before the first byte was built; the login step is tolerant of
+  # failure by design (issue #82), so the run logged one warning, built about
+  # forty images across five families, skipped every mirror step and finished
+  # green. 2.5.0 and 2.6.0 exist as git history and as GHCR blobs nobody can
+  # pull, and not at all on Docker Hub.
+  #
+  # This costs two HTTP requests per registry and gates everything expensive.
+  # It is not the same thing as gating the release on an image *push*, which
+  # issue #115 (RC-18) removed on purpose: fail before the compute, warn after
+  # it. Once the artifacts exist, a transient mirror error must never destroy
+  # the GitHub Release.
+  #
+  # On a pull request it runs in report mode: a PR tests code rather than
+  # producing a release, and a fork legitimately has no publishing secrets.
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    if: ${{ !cancelled() }}
+    permissions:
+      contents: read
+      # The write probe uses this job's GITHUB_TOKEN, so the scope it proves is
+      # the scope the build jobs will push with.
+      packages: write
+      # Only consumed when DOCKERHUB_OIDC_CONNECTIONID is set; without it the
+      # trusted-publishing login cannot mint a token and the step is skipped.
+      id-token: write
+    outputs:
+      ok: ${{ steps.preflight.outputs.ok }}
+      failures: ${{ steps.preflight.outputs.failures }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # Trusted publishing leaves a short-lived credential in the Docker CLI
+      # config and puts no token in the environment; preflight-credentials.sh
+      # reads it from there. Skipped entirely when the variable is unset, which
+      # is the current state of this repository.
+      #
+      # Tolerant for the same reason as every other login in this pipeline
+      # (issue #82) and for one more: this job exists to name *every* missing
+      # credential in one report. A login that aborts the job reports the first
+      # problem and hides the rest, which is the opposite of what a preflight is
+      # for. The failure is not swallowed - no credential reaches the Docker
+      # config, and preflight-credentials.sh fails the run over it in release
+      # mode.
+      - name: Log in to Docker Hub (trusted publishing)
+        id: dockerhub-login
+        if: vars.DOCKERHUB_OIDC_CONNECTIONID != ''
+        continue-on-error: true
+        uses: ./.github/actions/dockerhub-login
+        with:
+          registry: ${{ env.DOCKERHUB_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          oidc-connection-id: ${{ vars.DOCKERHUB_OIDC_CONNECTIONID }}
+          oidc-organization: ${{ vars.DOCKERHUB_ORGANIZATION }}
+
+      - name: "Check Docker Hub login (issue #82)"
+        if: vars.DOCKERHUB_OIDC_CONNECTIONID != '' && steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Trusted-publishing login to Docker Hub failed (outcome=${{ steps.dockerhub-login.outcome }}). The next step checks the credentials that reached this job and will name this as a release blocker; see docs/RELEASING.md for the OIDC connection setup."
+
+      - name: Verify every release target will accept a write
+        id: preflight
+        env:
+          GHCR_REGISTRY: ${{ env.GHCR_REGISTRY }}
+          GHCR_IMAGE_NAME: ${{ env.GHCR_IMAGE_NAME }}
+          GHCR_USERNAME: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKERHUB_REGISTRY: ${{ env.DOCKERHUB_REGISTRY }}
+          DOCKERHUB_IMAGE_NAME: ${{ env.DOCKERHUB_IMAGE_NAME }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          # Left empty when the OIDC login above ran: the credential is then in
+          # the Docker config and there is no token to pass.
+          DOCKERHUB_TOKEN: ${{ vars.DOCKERHUB_OIDC_CONNECTIONID == '' && secrets.DOCKERHUB_TOKEN || '' }}
+          # Docker Hub is a release target, not an optional extra: README.md and
+          # every release note advertise `docker pull konard/box`. Set the
+          # repository variable DOCKERHUB_REQUIRED=0 to release on GHCR alone.
+          DOCKERHUB_REQUIRED: ${{ vars.DOCKERHUB_REQUIRED || '1' }}
+          # A private GHCR package blocks a release, because publishing more
+          # versions of a package nobody can pull is exactly the work this job
+          # exists to skip (issue #117, point 3). Set ALLOW_PRIVATE_GHCR=1 to
+          # release anyway.
+          ALLOW_PRIVATE_GHCR: ${{ vars.ALLOW_PRIVATE_GHCR || '0' }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            bash scripts/release/preflight-credentials.sh --mode report
+          else
+            bash scripts/release/preflight-credentials.sh --mode release
+          fi
 
   # === DETECT CHANGES (per-image granularity) ===
   detect-changes:
@@ -377,9 +485,10 @@ jobs:
   # once. Its `!cancelled()` matters: a caller job whose `needs` failed still
   # runs, so a broken family does not silently skip create-release.
   js:
-    needs: [detect-changes]
+    needs: [detect-changes, preflight]
     if: |
       !cancelled() &&
+      needs.preflight.result == 'success' &&
       needs.detect-changes.result == 'success' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
@@ -396,9 +505,10 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
   essentials:
-    needs: [detect-changes, js]
+    needs: [detect-changes, preflight, js]
     if: |
       !cancelled() &&
+      needs.preflight.result == 'success' &&
       needs.detect-changes.result == 'success' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
@@ -419,9 +529,10 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
   languages:
-    needs: [detect-changes, essentials]
+    needs: [detect-changes, preflight, essentials]
     if: |
       !cancelled() &&
+      needs.preflight.result == 'success' &&
       needs.detect-changes.result == 'success' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
@@ -442,9 +553,10 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
   full:
-    needs: [detect-changes, essentials, languages]
+    needs: [detect-changes, preflight, essentials, languages]
     if: |
       !cancelled() &&
+      needs.preflight.result == 'success' &&
       needs.detect-changes.result == 'success' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
@@ -467,9 +579,10 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
   dind:
-    needs: [detect-changes, js, essentials, languages, full]
+    needs: [detect-changes, preflight, js, essentials, languages, full]
     if: |
       !cancelled() &&
+      needs.preflight.result == 'success' &&
       needs.detect-changes.result == 'success' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
@@ -512,7 +625,7 @@ jobs:
   create-release:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    needs: [detect-changes, js, essentials, languages, full, dind]
+    needs: [detect-changes, preflight, js, essentials, languages, full, dind]
     # The release is created from the source state, not from the registry
     # (issue #115; hive-mind principle #13, "never gate the release on an image
     # push"). It waits for the manifest jobs so the notes can report what was
@@ -525,6 +638,7 @@ jobs:
     # push produces an honest release instead of no release.
     if: |
       !cancelled() &&
+      needs.preflight.result == 'success' &&
       needs.detect-changes.result == 'success' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
@@ -548,17 +662,21 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Creating release for version: $VERSION"
 
-      # Anonymous `docker manifest inspect` cannot tell "this package does not
-      # exist" from "you may not look at it" on GHCR, and the notes must not
-      # report a published image as missing. Logging in with the job's own token
-      # makes the distinction real. Docker Hub is public and needs no login;
-      # if it rate-limits, the check reports "unknown", never "missing".
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      # There is deliberately no `docker login` in this job (issue #117).
+      #
+      # There used to be one, on the reasoning that an anonymous
+      # `docker manifest inspect` cannot tell "this package does not exist"
+      # from "you may not look at it". True, and it made the check useless: it
+      # then measured what the publisher could see. The notes for v2.6.0 said
+      # "28 of 56 image references resolve" while every one of the 56 was
+      # unreachable for everybody else - the GHCR packages private, Docker Hub
+      # empty behind an expired token.
+      #
+      # scripts/release/registry-probe.sh makes the distinction without a
+      # credential: on GHCR a private package refuses the anonymous *token*
+      # request with 401 while a missing one still issues a token and answers
+      # 404 on the manifest. So the notes are now written from the reader's
+      # view, which is the only view that decides whether a release happened.
 
       # The notes are generated from one image list by
       # scripts/release/build-release-notes.sh. They used to be 106 lines of
@@ -594,3 +712,17 @@ jobs:
           fi
 
           echo "GitHub Release v${VERSION} created/updated successfully"
+
+      # Deliberately after the release is published, never before it (issue
+      # #115 principle #13: never gate the release on an image push). An
+      # operator always gets the tag and the notes; what this step decides is
+      # whether the *run* is allowed to be green. A release nobody can pull is
+      # not a successful release, and run 33972074755 reporting success is the
+      # reason v2.5.0 and v2.6.0 went unnoticed for months (issue #117).
+      - name: Verify the release is reachable without credentials
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GHCR_IMAGE: ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
+          DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_IMAGE_NAME }}
+        run: |
+          bash scripts/release/check-publication.sh

@@ -1,0 +1,14 @@
+==> Checking v2.6.0 the way a reader does: no credentials, no docker login.
+ghcr.io/link-foundation/box:2.6.0                            private    ghcr.io/link-foundation/box does not issue an anonymous pull token (HTTP 401)
+konard/box:2.6.0                                             missing    the registry has no 2.6.0 tag for konard/box (HTTP 404)
+ghcr.io/link-foundation/box-essentials:2.6.0                 private    ghcr.io/link-foundation/box-essentials does not issue an anonymous pull token (HTTP 401)
+konard/box-essentials:2.6.0                                  missing    the registry has no 2.6.0 tag for konard/box-essentials (HTTP 404)
+ghcr.io/link-foundation/box-js:2.6.0                         private    ghcr.io/link-foundation/box-js does not issue an anonymous pull token (HTTP 401)
+konard/box-js:2.6.0                                          missing    the registry has no 2.6.0 tag for konard/box-js (HTTP 404)
+ghcr.io/link-foundation/box-dind:2.6.0                       private    ghcr.io/link-foundation/box-dind does not issue an anonymous pull token (HTTP 401)
+konard/box-dind:2.6.0                                        missing    the registry has no 2.6.0 tag for konard/box-dind (HTTP 404)
+
+==> GHCR (registry of record): 0/4 pullable anonymously.
+==> Docker Hub (mirror):       0/4 pullable anonymously.
+::error title=Release v2.6.0 is published to a private package::Every checked GHCR reference exists but is refused anonymously, so this release reaches nobody. Make the packages public: https://github.com/orgs/link-foundation/packages -> each box package -> Package settings -> Danger Zone -> Change visibility -> Public. See docs/RELEASING.md.
+::warning title=Docker Hub mirror is empty for v2.6.0::None of the checked Docker Hub references can be pulled anonymously. GHCR carries this release; re-run scripts/release/mirror-to-dockerhub.sh once the credential works.

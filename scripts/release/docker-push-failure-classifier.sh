@@ -84,10 +84,11 @@ Registry: ${registry}
 
 SOLUTION:
   1. If this is docker.io, the DOCKERHUB_TOKEN repository secret has most
-     likely expired. Create a new access token at
-     https://app.docker.com/settings/personal-access-tokens with Read & Write
-     scope, then update the DOCKERHUB_TOKEN secret in
-     Settings -> Secrets and variables -> Actions.
+     likely expired. Create a new access token with Read & Write scope in
+     Docker Hub under Account settings -> Personal access tokens, then update
+     the DOCKERHUB_TOKEN secret in Settings -> Secrets and variables ->
+     Actions. The runbook, including the trusted-publishing path that needs
+     no token at all, is in docs/RELEASING.md.
   2. If this is ghcr.io, check that the job requests
      'permissions: packages: write' and that the package's visibility allows
      this repository to push to it.

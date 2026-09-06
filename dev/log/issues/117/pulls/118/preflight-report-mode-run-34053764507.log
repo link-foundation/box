@@ -1,0 +1,40 @@
+=== preflight, report mode, PR run 34053764507 (commit 485e0e6), 2026-09-06 ===
+Extracted from: gh run view 34053764507 --repo link-foundation/box --log
+This is the preflight running for real on GitHub Actions, with the
+repository's own secrets, on a pull_request event.
+
+##[group]Run if [ "pull_request" = "pull_request" ]; then
+if [ "pull_request" = "pull_request" ]; then
+  bash scripts/release/preflight-credentials.sh --mode report
+else
+  bash scripts/release/preflight-credentials.sh --mode release
+fi
+shell: /usr/bin/bash -e {0}
+env:
+  DOCKER_BUILDKIT: 1
+  GHCR_REGISTRY: ghcr.io
+  GHCR_IMAGE_NAME: link-foundation/box
+  DOCKERHUB_REGISTRY: docker.io
+  DOCKERHUB_IMAGE_NAME: ***/box
+  GHCR_USERNAME: ***
+  GITHUB_TOKEN: ***
+  DOCKERHUB_USERNAME: ***
+  DOCKERHUB_TOKEN: ***
+  DOCKERHUB_REQUIRED: 1
+  ALLOW_PRIVATE_GHCR: 0
+##[endgroup]
+=== Release preflight (report mode) ===
+
+==> GHCR: OK - ghcr.io/link-foundation/box accepted a blob upload session (HTTP 202)
+==> Docker Hub: OK - docker.io/***/box accepted a blob upload session (HTTP 202)
+##[warning]ghcr.io/link-foundation/box:latest cannot be pulled by an anonymous user, so anything published to it is unreachable. Make it public: https://github.com/orgs/link-foundation/packages -> the package -> Package settings -> Change visibility -> Public. GitHub exposes no API for this (the packages REST API is GET/DELETE/restore only), so it is a one-time manual step. Set ALLOW_PRIVATE_GHCR=1 to release into a package nobody can pull.
+##[warning]ghcr.io/link-foundation/box-dind:latest cannot be pulled by an anonymous user, so anything published to it is unreachable. Make it public: https://github.com/orgs/link-foundation/packages -> the package -> Package settings -> Change visibility -> Public. GitHub exposes no API for this (the packages REST API is GET/DELETE/restore only), so it is a one-time manual step. Set ALLOW_PRIVATE_GHCR=1 to release into a package nobody can pull.
+
+| Target | Reference | State | Detail |
+|--------|-----------|-------|--------|
+| GHCR | ghcr.io/link-foundation/box | writable | ghcr.io/link-foundation/box accepted a blob upload session (HTTP 202) |
+| Docker Hub | docker.io/***/box | writable | docker.io/***/box accepted a blob upload session (HTTP 202) |
+| GHCR visibility | ghcr.io/link-foundation/box:latest | private | ghcr.io/link-foundation/box does not issue an anonymous pull token (HTTP 401) |
+| GHCR visibility | ghcr.io/link-foundation/box-dind:latest | private | ghcr.io/link-foundation/box-dind does not issue an anonymous pull token (HTTP 401) |
+
+==> 2 registry credential(s) accepted a write, 2 warning(s).
