@@ -1,0 +1,50 @@
+==> SKIP node-lts-integration-test.sh (needs network: resolves the live Node LTS feed (covered by the version-policy CI tier))
+==> RUN  preload-unit-test.sh
+==> SKIP rust-refresh-layer-test.sh (needs docker: builds layers to measure image size)
+==> RUN  test-add-measurement-fix.sh
+==> RUN  test-bashrc-merge-fix.sh
+==> RUN  test-bashrc-merge.sh
+==> RUN  test-du-exit-code-issue57.sh
+==> RUN  test-issue100-buildx-mirror-fallback.sh
+==> RUN  test-issue104-build-retry.sh
+==> RUN  test-issue104-logs-contain.sh
+==> RUN  test-issue104-vfs-warning.sh
+==> RUN  test-issue108-detect-changes.sh
+==> RUN  test-issue112-supersede.sh
+==> RUN  test-issue115-base-image-preflight.sh
+==> RUN  test-issue115-ci-policy.sh
+==> RUN  test-issue115-elan-toolchain.sh
+==> RUN  test-issue115-experiment-runner.sh
+==> RUN  test-issue115-fresh-merge.sh
+==> RUN  test-issue115-hadolint-gate.sh
+==> RUN  test-issue115-heredoc-unbound-vars.sh
+==> RUN  test-issue115-language-coverage.sh
+==> RUN  test-issue115-line-limits.sh
+==> RUN  test-issue115-links-gate.sh
+==> RUN  test-issue115-manifest-script.sh
+==> RUN  test-issue115-push-retry-classifier.sh
+==> RUN  test-issue115-registry-split.sh
+==> RUN  test-issue115-release-notes.sh
+==> RUN  test-issue115-secretlint-gate.sh
+==> RUN  test-issue115-shellcheck-gate.sh
+==> RUN  test-issue115-shfmt-gate.sh
+==> RUN  test-issue115-test-box.sh
+==> RUN  test-issue115-workflow-split.sh
+==> RUN  test-issue82-dockerhub-login-tolerance.sh
+==> RUN  test-issue82-pr-parallel-tests.sh
+==> RUN  test-issue84-apply-changesets-quotes.sh
+==> RUN  test-issue90-release-workflow-policy.sh
+==> RUN  test-issue92-apt-retry-policy.sh
+==> RUN  test-json-manipulation.sh
+==> RUN  test-language-installs.sh
+==> RUN  test-sed-fix.sh
+==> SKIP verify-full-box-tooling.sh (needs docker and a pulled full-box image (tens of GB); manual probe behind scripts/ci/test-box.sh)
+==> RUN  verify-script-syntax.sh
+==> RUN  version-policy-unit-test.sh
+
+================ experiment suites ================
+passed:  40
+failed:  0
+skipped: 3
+
+All 40 suites passed.

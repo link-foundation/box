@@ -1,0 +1,24 @@
+before: dev/log/issues/115/pulls/116/analysis/release.yml.pre-split (3135 lines, 29 jobs)
+after:  .github/workflows/release.yml (596 lines)
+after:  .github/workflows/pr-tests.yml (671 lines)
+after:  .github/workflows/release-js.yml (414 lines)
+after:  .github/workflows/release-essentials.yml (469 lines)
+after:  .github/workflows/release-languages.yml (604 lines)
+after:  .github/workflows/release-full.yml (626 lines)
+after:  .github/workflows/release-dind.yml (450 lines)
+
+  OK   job ids: 29 before, 36 after (+7 expected: ['dind', 'essentials', 'full', 'js', 'languages', 'pr-tests', 'status'])
+  OK   uses: references: 105 entries, identical
+  OK   step names: 222 entries, identical
+  OK   shell lines in run:: 723 entries, identical
+  OK   if: conditions: 97 entries, identical
+  OK   image tag literals: 8 entries, identical
+  OK   timeout-minutes: 29 entries, identical
+  OK   hoisted guard: removed from all 15 moved release-family jobs, and from no other job
+  OK   caller job 'js' carries the hoisted guard
+  OK   caller job 'essentials' carries the hoisted guard
+  OK   caller job 'languages' carries the hoisted guard
+  OK   caller job 'full' carries the hoisted guard
+  OK   caller job 'dind' carries the hoisted guard
+
+EQUIVALENT

@@ -253,7 +253,16 @@ else
 fi
 
 echo ""
-echo "== Part 7: every release.yml manifest step calls this script =="
+echo "== Part 7: every release manifest step calls this script =="
+
+# The manifest jobs used to live in release.yml; the split by image family
+# (issue #115, RC-8) moved them into release-<family>.yml. Resolve the files
+# from the caller's `uses:` graph instead of naming one: a grep over a file the
+# jobs have left finds zero inline copies and zero script calls, and "zero
+# occurrences of the bug" reads exactly like "fixed". That vacuous pass is the
+# false negative issue #115 exists to prevent.
+# shellcheck disable=SC2086 # deliberate word splitting: one path per grep arg
+WORKFLOWS="$(bash scripts/ci/list-release-workflows.sh)" || exit 1
 
 # If any copy of the old inline pair survives, the defects above survive with
 # it in that one job - which is exactly how ten copies drifted apart before.
@@ -263,20 +272,21 @@ echo "== Part 7: every release.yml manifest step calls this script =="
 # (issue #115) - is documentation, not a tenth divergent copy. Matching them
 # would make this assertion fail for a reason it does not mean, and an
 # assertion that cries wolf is the failure mode this suite exists to prevent.
-LEFTOVER="$(grep -n 'docker manifest' .github/workflows/release.yml \
-  | grep -v '^[0-9]*: *#' || true)"
+LEFTOVER="$(grep -n 'docker manifest' $WORKFLOWS \
+  | grep -v ':[0-9]*: *#' || true)"
 if [ -z "$LEFTOVER" ]; then
-  pass "no inline 'docker manifest' invocation remains in release.yml"
+  pass "no inline 'docker manifest' invocation remains in the release workflows"
 else
-  fail "no inline 'docker manifest' invocation remains in release.yml"
+  fail "no inline 'docker manifest' invocation remains in the release workflows"
   printf '%s\n' "$LEFTOVER" | sed 's/^/      /' >&2
 fi
 
-CALLS="$(grep -c 'create-multiarch-manifest.sh' .github/workflows/release.yml || true)"
+CALLS="$(grep -h 'create-multiarch-manifest.sh' $WORKFLOWS | wc -l)"
 if [ "$CALLS" -eq 10 ]; then
   pass "all ten manifest steps (five jobs x two registries) call the script"
 else
   fail "all ten manifest steps call the script (found $CALLS)"
+  grep -n 'create-multiarch-manifest.sh' $WORKFLOWS | sed 's/^/      /' >&2
 fi
 
 echo ""

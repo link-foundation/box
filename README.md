@@ -367,6 +367,22 @@ _Note: Sizes are measured after cleanup and may vary based on system state and p
 
 Releases are produced by `.github/workflows/release.yml`, which builds and pushes images to **both** the GitHub Container Registry (GHCR) and Docker Hub.
 
+That workflow is the entry point; the builds themselves live in one reusable
+workflow per image family, called with `uses:` (issue #115):
+
+| Workflow | Builds |
+|---|---|
+| `.github/workflows/release.yml` | change detection, version and changeset checks, the five family calls, the GitHub Release |
+| `.github/workflows/pr-tests.yml` | the pull-request test tier |
+| `.github/workflows/release-js.yml` | `box-js` |
+| `.github/workflows/release-essentials.yml` | `box-essentials` |
+| `.github/workflows/release-languages.yml` | the per-language images |
+| `.github/workflows/release-full.yml` | the full box |
+| `.github/workflows/release-dind.yml` | the Docker-in-Docker variants |
+
+`bash scripts/ci/list-release-workflows.sh` prints that list from the `uses:`
+graph, and `--job <id>` answers which file defines a given job.
+
 The workflow uses two sets of credentials:
 
 | Registry | Credential | Source |

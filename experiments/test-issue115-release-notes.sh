@@ -16,7 +16,13 @@ set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
 SCRIPT="scripts/release/build-release-notes.sh"
+
+# create-release lives in the entry workflow; the build matrices moved into
+# release-<family>.yml when release.yml was split (issue #115, RC-8). Resolving
+# the matrix file by job id keeps an "awk found nothing" from reading as "the
+# matrix is empty", which would make Part 1 check no images at all.
 WORKFLOW=".github/workflows/release.yml"
+LANGUAGES_WORKFLOW="$(bash scripts/ci/list-release-workflows.sh --job build-languages-amd64)" || exit 1
 PASS=0
 FAIL=0
 
@@ -61,13 +67,13 @@ echo "== Part 1: every image the release publishes has a row =="
 # including the ones that are tested but never published (cpp, assembly,
 # dotnet, r - issue #115), and the notes must list what was pushed.
 MATRIX_LINE="$(awk '/^  build-languages-amd64:$/ {injob=1}
-                    injob && /^        language: \[/ {print; exit}' "$WORKFLOW")"
+                    injob && /^        language: \[/ {print; exit}' "$LANGUAGES_WORKFLOW")"
 LANGUAGES="$(printf '%s\n' "$MATRIX_LINE" | sed 's/.*\[//; s/\].*//; s/,//g')"
 
 if [ -n "$LANGUAGES" ]; then
-  pass "read the language matrix from $WORKFLOW"
+  pass "read the language matrix from $LANGUAGES_WORKFLOW"
 else
-  fail "read the language matrix from $WORKFLOW"
+  fail "read the language matrix from $LANGUAGES_WORKFLOW"
 fi
 
 missing=""
@@ -214,10 +220,19 @@ else
   fail "read create-release's if: condition"
 fi
 
-if ! printf '%s' "$CREATE_RELEASE_IF" | grep -q "docker-manifest.result == 'success'"; then
+# Two spellings of the same gate: `docker-manifest` was the job before the
+# split, `full` is the caller job that now stands for it (and js/essentials/
+# languages/dind for the other families). Requiring any of them reintroduces
+# the defect, so all of them are checked.
+gate=""
+for job in docker-manifest js essentials languages full dind; do
+  printf '%s' "$CREATE_RELEASE_IF" | grep -q "needs\.${job}\.result == 'success'" \
+    && gate="${gate} ${job}"
+done
+if [ -z "$gate" ]; then
   pass "create-release does not require the image push to have succeeded"
 else
-  fail "create-release still requires docker-manifest to succeed; a registry outage means no release"
+  fail "create-release requires${gate} to succeed; a registry outage means no release"
 fi
 
 if printf '%s' "$CREATE_RELEASE_IF" | grep -q "detect-changes.result == 'success'"; then

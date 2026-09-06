@@ -20,7 +20,11 @@ set -uo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
-WORKFLOW=".github/workflows/release.yml"
+# The whole release pipeline, not one file. release.yml was split by image
+# family (RC-8), and every assertion here is about "no job anywhere does X" -
+# asking one file would answer for one seventh of the pipeline and pass.
+# shellcheck disable=SC2086 # deliberate word splitting: one path per line
+WORKFLOWS="$(bash scripts/ci/list-release-workflows.sh)" || exit 1
 MIRROR="scripts/release/mirror-to-dockerhub.sh"
 PASS=0
 FAIL=0
@@ -38,14 +42,14 @@ check() { if [ "$1" = "0" ]; then pass "$2"; else fail "$2"; fi; }
 echo "== Part 1: build steps push GHCR only =="
 
 # A Docker Hub name on its own line inside a `tags:` block is a direct push.
-if grep -nE '^\s+\$\{\{ env\.DOCKERHUB_IMAGE_NAME \}\}' "$WORKFLOW" >/dev/null; then
+if grep -nE '^\s+\$\{\{ env\.DOCKERHUB_IMAGE_NAME \}\}' $WORKFLOWS >/dev/null; then
   fail "no build step lists a Docker Hub tag as a push target"
-  grep -nE '^\s+\$\{\{ env\.DOCKERHUB_IMAGE_NAME \}\}' "$WORKFLOW" | sed 's/^/      /' >&2
+  grep -nE '^\s+\$\{\{ env\.DOCKERHUB_IMAGE_NAME \}\}' $WORKFLOWS | sed 's/^/      /' >&2
 else
   pass "no build step lists a Docker Hub tag as a push target"
 fi
 
-if grep -nE '^\s+--tag \$\{\{ env\.DOCKERHUB_IMAGE_NAME \}\}' "$WORKFLOW" >/dev/null; then
+if grep -nE '^\s+--tag \$\{\{ env\.DOCKERHUB_IMAGE_NAME \}\}' $WORKFLOWS >/dev/null; then
   fail "no buildx-retry invocation passes a Docker Hub --tag"
 else
   pass "no buildx-retry invocation passes a Docker Hub --tag"
@@ -54,7 +58,7 @@ fi
 # docker/metadata-action feeds `tags:`; a Docker Hub entry in `images:` puts the
 # Docker Hub names straight back into the coupled push.
 ruby -e '
-lines = File.read(ARGV[0], encoding: "UTF-8").lines
+lines = ARGV.flat_map { |f| File.read(f, encoding: "UTF-8").lines }
 bad = []
 lines.each_with_index do |l, i|
   next unless l =~ /^\s+images:\s*\|?\s*$/
@@ -70,23 +74,23 @@ else
   puts "FAIL: docker/metadata-action still emits Docker Hub names (lines #{bad.join(", ")})"
   exit 1
 end
-' "$WORKFLOW"
+' $WORKFLOWS
 check "$?" "metadata-action check completed"
 
 echo ""
 echo "== Part 2: base images resolve from GHCR =="
 
 # Every $GITHUB_OUTPUT write that names a base image for a downstream build.
-BASE_OUTPUTS=$(grep -cE 'echo "(image|essentials|base_image|\$\{lang\})=\$\{\{ env\.GHCR_REGISTRY \}\}' "$WORKFLOW")
+BASE_OUTPUTS=$(grep -hE 'echo "(image|essentials|base_image|\$\{lang\})=\$\{\{ env\.GHCR_REGISTRY \}\}' $WORKFLOWS | wc -l)
 if [ "$BASE_OUTPUTS" -ge 18 ]; then
   pass "all $BASE_OUTPUTS base-image outputs resolve from GHCR"
 else
   fail "expected >= 18 GHCR base-image outputs, found $BASE_OUTPUTS"
 fi
 
-if grep -nE 'echo "(image|essentials|base_image|\$\{lang\})=\$\{\{ env\.DOCKERHUB_IMAGE_NAME' "$WORKFLOW" >/dev/null; then
+if grep -nE 'echo "(image|essentials|base_image|\$\{lang\})=\$\{\{ env\.DOCKERHUB_IMAGE_NAME' $WORKFLOWS >/dev/null; then
   fail "no base-image output resolves from Docker Hub"
-  grep -nE 'echo "(image|essentials|base_image|\$\{lang\})=\$\{\{ env\.DOCKERHUB_IMAGE_NAME' "$WORKFLOW" | sed 's/^/      /' >&2
+  grep -nE 'echo "(image|essentials|base_image|\$\{lang\})=\$\{\{ env\.DOCKERHUB_IMAGE_NAME' $WORKFLOWS | sed 's/^/      /' >&2
 else
   pass "no base-image output resolves from Docker Hub"
 fi
@@ -95,7 +99,7 @@ echo ""
 echo "== Part 3: every Docker Hub write is guarded on the login outcome =="
 
 ruby -e '
-lines = File.read(ARGV[0], encoding: "UTF-8").lines
+lines = ARGV.flat_map { |f| File.read(f, encoding: "UTF-8").lines }
 writes = []
 lines.each_with_index do |l, i|
   writes << i if l =~ /docker (manifest push|push) \$\{\{ env\.DOCKERHUB_IMAGE_NAME/
@@ -119,14 +123,14 @@ else
   unguarded.each { |s| puts "      #{s}" }
   exit 1
 end
-' "$WORKFLOW"
+' $WORKFLOWS
 check "$?" "Docker Hub guard check completed"
 
 echo ""
 echo "== Part 4: every image-building job mirrors what it published =="
 
 ruby -e '
-lines = File.read(ARGV[0], encoding: "UTF-8").lines
+lines = ARGV.flat_map { |f| File.read(f, encoding: "UTF-8").lines }
 jobs = {}
 current = nil
 lines.each do |l|
@@ -147,7 +151,7 @@ else
   puts "FAIL: jobs with no Docker Hub mirror step: #{missing.join(", ")}"
   exit 1
 end
-' "$WORKFLOW"
+' $WORKFLOWS
 check "$?" "mirror coverage check completed"
 
 echo ""

@@ -30,7 +30,13 @@ bad() {
 check() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1 (expected '$3', got '$2')"; fi; }
 
 SCRIPT="scripts/release/assert-base-image.sh"
-WF=".github/workflows/release.yml"
+
+# Which file holds the dind jobs is not this suite's business, and naming one
+# would make it pass vacuously the day they move: `grep -c` over a file without
+# them returns 0, and "0 occurrences of the bug" reads exactly like "fixed".
+# They moved once already, when release.yml was split by family (RC-8), so ask
+# where they are now. The helper exits 3 if nothing defines the job.
+WF="$(bash scripts/ci/list-release-workflows.sh --job build-dind-amd64)" || exit 1
 
 STUB_DIR="$(mktemp -d)"
 trap 'rm -rf "$STUB_DIR"' EXIT

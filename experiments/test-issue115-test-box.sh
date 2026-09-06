@@ -20,7 +20,13 @@ set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
 SCRIPT="scripts/ci/test-box.sh"
-WORKFLOW=".github/workflows/release.yml"
+# Every file the release pipeline is made of: the test steps this suite counts
+# are spread over the caller and the per-family workflows since the split
+# (RC-8), and counting them in one file would find none and report "0 inline
+# copies survive" as a pass.
+# shellcheck disable=SC2086 # deliberate word splitting: one path per line
+WORKFLOWS="$(bash scripts/ci/list-release-workflows.sh)" || exit 1
+PR_WORKFLOW="$(bash scripts/ci/list-release-workflows.sh --job pr-test-language)" || exit 1
 PASS=0
 FAIL=0
 
@@ -252,14 +258,14 @@ fi
 echo
 echo "=== Part 7: the workflow uses the script everywhere the copies were ==="
 
-if ! grep -qE '^\s*docker run --rm (box-test|"\$\{IMAGE\}")' "$WORKFLOW"; then
+if ! grep -qE '^\s*docker run --rm (box-test|"\$\{IMAGE\}")' $WORKFLOWS; then
   pass "no inline full-box test commands survive in the workflow"
 else
   fail "inline full-box test commands survive in the workflow:
-$(grep -nE '^\s*docker run --rm (box-test|"\$\{IMAGE\}")' "$WORKFLOW")"
+$(grep -nE '^\s*docker run --rm (box-test|"\$\{IMAGE\}")' $WORKFLOWS)"
 fi
 
-CALLS="$(grep -c 'scripts/ci/test-box.sh' "$WORKFLOW")"
+CALLS="$(grep -h 'scripts/ci/test-box.sh' $WORKFLOWS | wc -l)"
 if [ "$CALLS" -eq 5 ]; then
   pass "all five test steps call the shared script"
 else
@@ -268,7 +274,7 @@ fi
 
 # The pre-merge test and the released-image smoke test must ask for the same
 # profile; a different profile would reintroduce the 22-of-29 subset.
-FULL_PROFILE_CALLS="$(grep -c 'scripts/ci/test-box.sh full ' "$WORKFLOW")"
+FULL_PROFILE_CALLS="$(grep -h 'scripts/ci/test-box.sh full ' $WORKFLOWS | wc -l)"
 if [ "$FULL_PROFILE_CALLS" -eq 2 ]; then
   pass "the pre-merge full-box test and the release smoke test run the same profile"
 else
@@ -284,7 +290,7 @@ fi
 
 # Anti-drift: the language matrix is the source of truth for which boxes exist,
 # so check_language must handle every entry in it.
-MATRIX_LINE="$(grep -m1 '^        language: \[' "$WORKFLOW")"
+MATRIX_LINE="$(grep -m1 '^        language: \[' "$PR_WORKFLOW")"
 MATRIX_LANGS="$(printf '%s\n' "$MATRIX_LINE" | sed 's/.*\[//; s/\].*//; s/,//g')"
 UNHANDLED=""
 for language in $MATRIX_LANGS; do

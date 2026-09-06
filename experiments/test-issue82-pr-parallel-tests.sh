@@ -30,12 +30,31 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-WF="${ROOT}/.github/workflows/release.yml"
 
-if [ ! -f "$WF" ]; then
-  echo "ERR: $WF not found" >&2
-  exit 1
-fi
+# The jobs checked below used to be in one file. release.yml was split by image
+# family (issue #115, RC-8), so they now live across seven workflows - the
+# pr-test-* jobs in pr-tests.yml, the build jobs in release-<family>.yml. Every
+# check here is "job X has property Y", which a per-file search answers with
+# "job X not found", so the checks read the concatenation of the whole
+# pipeline. Job ids are unique across it, and a job block still starts at
+# `^  <id>:`, so the parsing below is unchanged.
+#
+# The list is resolved from the caller's `uses:` graph rather than written out,
+# so the next split does not silently narrow what this suite reads.
+WORKFLOWS="$(cd "$ROOT" && bash scripts/ci/list-release-workflows.sh)" || exit 1
+
+WF="$(mktemp)"
+trap 'rm -f "$WF"' EXIT
+for workflow in $WORKFLOWS; do
+  if [ ! -f "$ROOT/$workflow" ]; then
+    echo "ERR: $ROOT/$workflow not found" >&2
+    exit 1
+  fi
+  cat "$ROOT/$workflow" >>"$WF"
+  # A file that does not end in a newline would glue its last line to the next
+  # file's `name:` and hide the first job of that file.
+  printf '\n' >>"$WF"
+done
 
 fail=0
 

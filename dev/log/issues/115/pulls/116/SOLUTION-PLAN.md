@@ -170,6 +170,21 @@ bulk mechanically, and the remaining flavour-specific build jobs move into a
 reusable workflow called with a matrix. Fast checks are ordered before the
 expensive builds while the file is open, satisfying principle #5.
 
+**Done, with one deviation.** 3432 → 596 lines. The families did not collapse
+into *one* matrixed reusable workflow: their build steps genuinely differ (the
+languages family carries a per-language matrix and a base-image preflight, the
+dind family fourteen variants and a nested-daemon smoke test, the full box the
+disk-space reclaim), so a single parameterised workflow would have re-created
+the duplication as `if:` conditions inside one file. Each family gets its own
+`on: workflow_call` file instead — `release-js.yml`, `release-essentials.yml`,
+`release-languages.yml`, `release-full.yml`, `release-dind.yml` — with the
+pull-request tier in `pr-tests.yml`. What the split had to be checked for is in
+[RC-8](ROOT-CAUSES.md#rc-8): equivalence to the original
+(`analysis/verify-split-equivalence.py`), the suites that read the workflows
+following the jobs (`scripts/ci/list-release-workflows.sh`), and the
+`workflow_call` contract itself
+(`experiments/test-issue115-workflow-split.sh`, 85 assertions).
+
 **Sequencing note.** Each linter is introduced together with the fixes that make
 it pass, so no step in the pull request lands a knowingly-red gate.
 

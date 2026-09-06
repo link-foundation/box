@@ -31,7 +31,14 @@ scripts, hooks and tool configuration.
 
 | Template | Lines | Box | As found | Now | State |
 | --- | --- | --- | --- | --- | --- |
-| `.github/workflows/release.yml` | 890 | `.github/workflows/release.yml` | **3432** | **3068** | Still 2.0× the 1500-line limit the template enforces on this exact file ([RC-8](ROOT-CAUSES.md#rc-8)). −364 lines so far, all by extraction (`create-multiarch-manifest.sh`, `build-release-notes.sh`, `test-box.sh`); the line-limit check is only worth porting once the file is under it |
+| `.github/workflows/release.yml` | 890 | `.github/workflows/release.yml` | **3432** | **596** | **Under the limit.** −364 lines by extraction (`create-multiarch-manifest.sh`, `build-release-notes.sh`, `test-box.sh`), then split along the seam the duplication followed: one `workflow_call` workflow per image family, plus `pr-tests.yml` ([RC-8](ROOT-CAUSES.md#rc-8)). Proved to be a move rather than a rewrite by `analysis/verify-split-equivalence.py` |
+| — | — | `.github/workflows/pr-tests.yml` | — | 671 | **Box-only, new** (from the split). The six `pr-test-*` jobs and the `docker-build-test` aggregator |
+| — | — | `.github/workflows/release-js.yml` | — | 414 | **Box-only, new** (from the split). `on: workflow_call` |
+| — | — | `.github/workflows/release-essentials.yml` | — | 469 | **Box-only, new** (from the split) |
+| — | — | `.github/workflows/release-languages.yml` | — | 604 | **Box-only, new** (from the split) |
+| — | — | `.github/workflows/release-full.yml` | — | 626 | **Box-only, new** (from the split) |
+| — | — | `.github/workflows/release-dind.yml` | — | 450 | **Box-only, new** (from the split) |
+| — | — | `.github/workflows/file-sizes.yml` | — | 91 | **Box-only, new.** Runs the ported line-limit gate. Its own workflow rather than a job in Scripts, because it checks Markdown and YAML too, and a gate that skips documentation-only pull requests has a hole in it |
 | `.github/workflows/workflows.yml` | 69 | `.github/workflows/workflows.yml` | — | 78 | **Adopted.** actionlint + zizmor, both pinned. Closes [RC-6](ROOT-CAUSES.md#rc-6) |
 | `.github/workflows/security.yml` | 93 | — | — | — | **Still missing.** CodeQL (`javascript-typescript` + `actions`) and secretlint transfer; `dependency-review` and `npm audit` do not — this repository has no root `package.json` |
 | `.github/workflows/links.yml` | 104 | — | — | — | **Still missing.** lychee link checking with Web-Archive fallback |
@@ -51,7 +58,7 @@ scripts, hooks and tool configuration.
 
 | Template script | Box equivalent | State |
 | --- | --- | --- |
-| `scripts/check-file-line-limits.sh` | — | **Still missing**, deliberately: it would fail on `release.yml` the day it lands. Ports once the extraction work brings the file under 1500 lines ([RC-8](ROOT-CAUSES.md#rc-8)) |
+| `scripts/check-file-line-limits.sh` | `scripts/ci/check-file-line-limits.sh` | **Adopted**, once the split brought `release.yml` under the limit ([RC-8](ROOT-CAUSES.md#rc-8)). Widened from the template's "JavaScript, Markdown and release.yml" to every `.sh`/`.md`/`.yml`/`.yaml`/`.mjs`/`.js`/`.cjs`/`.py`/`.rb` file, over `git ls-files` rather than `find` (an untracked build artefact must not be able to fail the gate), with the verbatim upstream copies under `dev/log/` and `docs/case-studies/*/data\|templates/` exempt. Two additions the template does not have: it exits 2 rather than 0 when it matches no files at all (RC-16), and the annotation names the remedy for the file kind — a workflow is told to extract a reusable workflow, a script to move code into `scripts/`. Pinned by `experiments/test-issue115-line-limits.sh`, including the case that matters: the real 3135-line pre-split `release.yml` fails it |
 | `scripts/simulate-fresh-merge.sh` | `scripts/ci/simulate-fresh-merge.sh` | **Adopted**, plus the two parts a shallow-by-default checkout needs: it deepens before merging (`--depth 1` leaves no common ancestor, and the resulting *unrelated histories* error is not a conflict) and separates a conflict, exit 1, from CI misuse, exit 2 ([RC-19](ROOT-CAUSES.md#rc-19)). Wrapped in `.github/actions/simulate-fresh-merge` and called by all sixteen pull-request jobs |
 | `scripts/publish-failure-classifier.mjs`, `scripts/push-failure-classifier.mjs` | `scripts/release/docker-push-failure-classifier.sh` | **Adopted**, as shell. Box retried an expired token three times; the classifier now refuses to retry `401`/`403`/`denied`/`unauthorized` and fails fast instead ([RC-5](ROOT-CAUSES.md#rc-5)). Pinned by `experiments/test-issue115-push-retry-classifier.sh` |
 | `scripts/detect-code-changes.mjs` | `scripts/ci/detect-changes.sh` | Present in both — box satisfies best practice #1 |
@@ -85,7 +92,7 @@ scripts, hooks and tool configuration.
 | # | Principle | As found | Now | Evidence |
 | --- | --- | --- | --- | --- |
 | 1 | Run checks only on relevant file changes | **Pass** | **Pass** | `scripts/ci/detect-changes.sh` + a `detect-changes` job feeding every build gate |
-| 2 | File size limits (1500 lines) | **Fail** | **Fail** | `release.yml` 3432 → 3068. Still over; no check enforces it yet ([RC-8](ROOT-CAUSES.md#rc-8)) |
+| 2 | File size limits (1500 lines) | **Fail** | **Pass** | `release.yml` 3432 → 596, split into seven workflows; every tracked file is under the limit and `.github/workflows/file-sizes.yml` keeps it that way ([RC-8](ROOT-CAUSES.md#rc-8)) |
 | 3 | Automated code formatting | **Fail** | **Pass** | `scripts/ci/run-shfmt.sh` and the `scripts / formatting` job; 73 of the 96 tracked scripts reformatted ([RC-20](ROOT-CAUSES.md#rc-20)). The reformat also silently disabled the skip list of the runner that runs every other check, which is recorded as its own root cause ([RC-21](ROOT-CAUSES.md#rc-21)) rather than quietly fixed |
 | 4 | Static analysis and linting | **Fail** | **Pass** | actionlint + zizmor (`workflows.yml`), shellcheck over 88 scripts (`scripts.yml`), hadolint over 23 Dockerfiles (`dockerfiles.yml`). The 83 + 173 + 15 findings that sat unreported are fixed and gated ([RC-6](ROOT-CAUSES.md#rc-6)) |
 | 5 | Fast-fail job ordering | **Fail** | **Partial** | The lint workflows are separate and finish in seconds, and `assert-base-image.sh` fails a build before it spends 22 minutes on a `FROM` that does not exist ([RC-4](ROOT-CAUSES.md#rc-4)). Within `release.yml` the build jobs still start off `detect-changes` alone |
@@ -138,8 +145,6 @@ Every row of Parts 1 and 2 that moved, and the commit that moved it.
 | Link checking, with a Wayback fallback and an ignore file that may only hold false positives | `ee78f40` | `experiments/test-issue115-links-gate.sh` |
 | The GitHub Release is no longer gated on an image push, and the notes assert what was published | `aa9f54e` | `experiments/test-issue115-release-notes.sh` (Part 5) |
 | Every pull-request check runs against the real merge result, not a stale preview | `aca301c` | `experiments/test-issue115-fresh-merge.sh` |
-| Automated formatting: `shfmt` over every tracked script, with a canary that proves the formatter looked | *this commit* | `experiments/test-issue115-shfmt-gate.sh` |
-| The runner that runs every other check is itself checked, and its skip list must name real files | *this commit* | `experiments/test-issue115-experiment-runner.sh` |
-
-Still open: `release.yml` under 1500 lines and then `check-file-line-limits.sh`
-(#2).
+| Automated formatting: `shfmt` over every tracked script, with a canary that proves the formatter looked | `7488af9` | `experiments/test-issue115-shfmt-gate.sh` |
+| The runner that runs every other check is itself checked, and its skip list must name real files | `7488af9` | `experiments/test-issue115-experiment-runner.sh` |
+| `release.yml` split by image family, and a line-limit gate so it cannot grow back | *this commit* | `experiments/test-issue115-workflow-split.sh`, `experiments/test-issue115-line-limits.sh`, `analysis/verify-split-equivalence.py` |

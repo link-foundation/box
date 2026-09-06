@@ -1,0 +1,604 @@
+name: "Release: language boxes"
+
+# Called by .github/workflows/release.yml. It is not triggered directly: a
+# `workflow_call` file has no other trigger, so it never starts a run of its own.
+#
+# Why it is a separate file (issue #115, RC-8). release.yml had grown to 3135
+# lines - more than twice the 1500-line limit the reference CI/CD template
+# enforces (scripts/check-file-line-limits.sh there, scripts/ci/check-file-line-limits.sh
+# here). At that size a defect fixed in one of the near-identical build jobs kept
+# surviving in the others, which is how RC-4 and RC-7 came back after being
+# fixed. The file is split by image family; the job graph is unchanged.
+
+on:
+  workflow_call:
+    inputs:
+      changes:
+        description: 'JSON object of the detect-changes job outputs'
+        required: true
+        type: string
+      essentials-built-amd64:
+        description: 'release-essentials.yml built-amd64 output'
+        required: false
+        type: string
+        default: ''
+      essentials-built-arm64:
+        description: 'release-essentials.yml built-arm64 output'
+        required: false
+        type: string
+        default: ''
+      essentials-amd64-result:
+        description: 'Result of the build-essentials-amd64 job'
+        required: false
+        type: string
+        default: ''
+      essentials-arm64-result:
+        description: 'Result of the build-essentials-arm64 job'
+        required: false
+        type: string
+        default: ''
+    outputs:
+      amd64-result:
+        description: 'Rollup result of the build-languages-amd64 matrix'
+        value: ${{ jobs.status.outputs.amd64-result }}
+      arm64-result:
+        description: 'Rollup result of the build-languages-arm64 matrix'
+        value: ${{ jobs.status.outputs.arm64-result }}
+      manifest-result:
+        description: 'Rollup result of the languages-manifest matrix'
+        value: ${{ jobs.status.outputs.manifest-result }}
+    secrets:
+      # Optional on purpose: Docker Hub is a mirror of GHCR, and every job that
+      # uses these tolerates a failed login (issue #82). A fork or a repository
+      # without the secrets set still publishes to GHCR.
+      DOCKERHUB_USERNAME:
+        required: false
+      DOCKERHUB_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+# Workflow-level `env` is NOT inherited by a called workflow (each `workflow_call`
+# file gets its own environment), so these five are re-declared here rather than
+# read from release.yml. experiments/test-issue115-workflow-split.sh asserts that
+# every release-*.yml carries the same set with the same values.
+env:
+  # The full-box Dockerfiles use `RUN --mount=type=bind,from=<stage>` to refresh
+  # the copied rustup toolchains inside the same layer (issue #112). buildx
+  # enables BuildKit implicitly; the plain `docker build` steps below need it
+  # switched on explicitly or that syntax is a parse error.
+  DOCKER_BUILDKIT: "1"
+  # GitHub Container Registry
+  GHCR_REGISTRY: ghcr.io
+  GHCR_IMAGE_NAME: ${{ github.repository }}
+  # Docker Hub
+  DOCKERHUB_REGISTRY: docker.io
+  DOCKERHUB_IMAGE_NAME: konard/box
+
+jobs:
+
+  # === BUILD LANGUAGE IMAGES (amd64) ===
+  # All language images are built in parallel on top of essentials box
+  build-languages-amd64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45    # Issue #53: Add timeout to fail fast on hangs (normal builds take ~10-15 min)
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq]
+    if: |
+      !cancelled() &&
+      (inputs.essentials-amd64-result == 'success' || inputs.essentials-amd64-result == 'skipped') &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main' && fromJSON(inputs.changes)['should-build'] == 'true') ||
+        (github.event_name == 'workflow_dispatch')
+      )
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Check if this language needs building
+        id: check-lang
+        run: |
+          LANG="${{ matrix.language }}"
+          LANG_CHANGED="${{ fromJSON(inputs.changes)[format('{0}-changed', matrix.language)] }}"
+          ESSENTIALS_CHANGED="${{ fromJSON(inputs.changes)['essentials-changed'] }}"
+          COMMON_CHANGED="${{ fromJSON(inputs.changes)['common-changed'] }}"
+          VERSION_CHANGED="${{ fromJSON(inputs.changes)['version-changed'] }}"
+          JS_CHANGED="${{ fromJSON(inputs.changes)['js-changed'] }}"
+
+          if [ "$LANG_CHANGED" = "true" ] || \
+             [ "$ESSENTIALS_CHANGED" = "true" ] || \
+             [ "$COMMON_CHANGED" = "true" ] || \
+             [ "$JS_CHANGED" = "true" ] || \
+             [ "$VERSION_CHANGED" = "true" ] || \
+             [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "Building ${LANG}: change detected or workflow_dispatch"
+          else
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping ${LANG}: no relevant changes"
+          fi
+
+      - name: Checkout repository
+        if: steps.check-lang.outputs.should_build == 'true'
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      # Issue #82: free disk space on every build job's runner before pulling
+      # base images / running buildx so that COPY --from=*-stage and large
+      # apt installs never hit "no space left on device" mid-build.
+      - name: Free disk space
+        if: steps.check-lang.outputs.should_build == 'true'
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Get latest version
+        if: steps.check-lang.outputs.should_build == 'true'
+        id: version
+        run: |
+          git pull origin main || true
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        if: steps.check-lang.outputs.should_build == 'true'
+        uses: ./.github/actions/setup-buildx-resilient
+
+      - name: Log in to GitHub Container Registry
+        if: steps.check-lang.outputs.should_build == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
+      - name: Log in to Docker Hub
+        id: dockerhub-login
+        if: steps.check-lang.outputs.should_build == 'true'
+        continue-on-error: true
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.DOCKERHUB_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: "Check Docker Hub login (issue #82)"
+        if: steps.check-lang.outputs.should_build == 'true' && steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
+
+      - name: Determine essentials base image
+        if: steps.check-lang.outputs.should_build == 'true'
+        id: essentials-base
+        env:
+          UPSTREAM_BUILT: ${{ inputs.essentials-built-amd64 }}
+        run: |
+          if [ "$UPSTREAM_BUILT" = "true" ]; then
+            echo "image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64" >> "$GITHUB_OUTPUT"
+          else
+            echo "image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-amd64" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and push ${{ matrix.language }} box (amd64)
+        id: build-push
+        continue-on-error: true
+        if: steps.check-lang.outputs.should_build == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ubuntu/24.04/${{ matrix.language }}/Dockerfile
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            ESSENTIALS_IMAGE=${{ steps.essentials-base.outputs.image }}
+          tags: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64
+          provenance: false
+          cache-from: type=gha,scope=${{ matrix.language }}-amd64
+          cache-to: type=gha,scope=${{ matrix.language }}-amd64,mode=max
+
+      # Retry push on transient GHCR 403 errors (Issue #78)
+      - name: Retry push ${{ matrix.language }} box (amd64) on failure
+        if: steps.check-lang.outputs.should_build == 'true' && steps.build-push.outcome == 'failure'
+        run: |
+          TAGS=(
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64"
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64"
+          )
+          TAG_ARGS=()
+          for tag in "${TAGS[@]}"; do
+            TAG_ARGS+=(--tag "$tag")
+          done
+          bash scripts/release/buildx-retry.sh \
+              --file ubuntu/24.04/${{ matrix.language }}/Dockerfile \
+              --platform linux/amd64 \
+              --build-arg ESSENTIALS_IMAGE=${{ steps.essentials-base.outputs.image }} \
+              "${TAG_ARGS[@]}" \
+              --provenance=false \
+              --cache-from type=gha,scope=${{ matrix.language }}-amd64 \
+              --push \
+              .
+
+      # Issue #115 (RC-3): GHCR is the registry of record - it is written with
+      # the per-run GITHUB_TOKEN, which cannot expire - and Docker Hub is a
+      # mirror of it. Pushing both registries in one `docker buildx build --push`
+      # meant a single expired DOCKERHUB_TOKEN destroyed the GHCR tags and the
+      # `cache-to: type=gha` export as collateral (run 33972074755).
+      - name: Mirror ${{ matrix.language }} box (amd64) to Docker Hub
+        if: |
+          steps.check-lang.outputs.should_build == 'true' &&
+          steps.dockerhub-login.outcome == 'success'
+        run: |
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64"
+
+      # PHP-specific: Add local/global suffix tags based on install method (Issue #44)
+      - name: Tag PHP image with install method suffix (amd64)
+        id: php-method
+        if: steps.check-lang.outputs.should_build == 'true' && matrix.language == 'php'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SRC="${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64"
+
+          # Pull the image just published to GHCR and inspect the marker file.
+          docker pull "$SRC"
+          PHP_METHOD=$(docker run --rm "$SRC" cat /home/box/.php-install-method 2>/dev/null || echo "unknown")
+          echo "PHP install method (amd64): $PHP_METHOD"
+          echo "method=${PHP_METHOD}" >> "$GITHUB_OUTPUT"
+
+          if [ "$PHP_METHOD" = "local" ] || [ "$PHP_METHOD" = "global" ]; then
+            docker tag "$SRC" "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}"
+            docker tag "$SRC" "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64-${PHP_METHOD}"
+            docker push "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}"
+            docker push "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64-${PHP_METHOD}"
+            echo "Tagged PHP image with -${PHP_METHOD} suffix"
+          fi
+
+      # Issue #115: the Docker Hub copies of the suffixed PHP tags are a mirror
+      # of the GHCR tags above. Pushing both registries from one step meant an
+      # expired DOCKERHUB_TOKEN failed a job whose real output (the GHCR image)
+      # had already been published successfully.
+      - name: Mirror suffixed PHP tags to Docker Hub (amd64)
+        if: |
+          steps.check-lang.outputs.should_build == 'true' &&
+          matrix.language == 'php' &&
+          steps.dockerhub-login.outcome == 'success' &&
+          (steps.php-method.outputs.method == 'local' || steps.php-method.outputs.method == 'global')
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          METHOD="${{ steps.php-method.outputs.method }}"
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64-${METHOD}" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-amd64-${METHOD}" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64-${METHOD}"
+
+  # === BUILD LANGUAGE IMAGES (arm64) ===
+  build-languages-arm64:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45    # Issue #53: Reduced from 120 to 45 min - fail fast on network hangs
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq]
+    if: |
+      !cancelled() &&
+      (inputs.essentials-arm64-result == 'success' || inputs.essentials-arm64-result == 'skipped') &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main' && fromJSON(inputs.changes)['should-build'] == 'true') ||
+        (github.event_name == 'workflow_dispatch')
+      )
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Check if this language needs building
+        id: check-lang
+        run: |
+          LANG="${{ matrix.language }}"
+          LANG_CHANGED="${{ fromJSON(inputs.changes)[format('{0}-changed', matrix.language)] }}"
+          ESSENTIALS_CHANGED="${{ fromJSON(inputs.changes)['essentials-changed'] }}"
+          COMMON_CHANGED="${{ fromJSON(inputs.changes)['common-changed'] }}"
+          VERSION_CHANGED="${{ fromJSON(inputs.changes)['version-changed'] }}"
+          JS_CHANGED="${{ fromJSON(inputs.changes)['js-changed'] }}"
+
+          if [ "$LANG_CHANGED" = "true" ] || \
+             [ "$ESSENTIALS_CHANGED" = "true" ] || \
+             [ "$COMMON_CHANGED" = "true" ] || \
+             [ "$JS_CHANGED" = "true" ] || \
+             [ "$VERSION_CHANGED" = "true" ] || \
+             [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "Building ${LANG}: change detected or workflow_dispatch"
+          else
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping ${LANG}: no relevant changes"
+          fi
+
+      - name: Checkout repository
+        if: steps.check-lang.outputs.should_build == 'true'
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      # Issue #82: free disk space on every build job's runner before pulling
+      # base images / running buildx so that COPY --from=*-stage and large
+      # apt installs never hit "no space left on device" mid-build.
+      - name: Free disk space
+        if: steps.check-lang.outputs.should_build == 'true'
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Get latest version
+        if: steps.check-lang.outputs.should_build == 'true'
+        id: version
+        run: |
+          git pull origin main || true
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        if: steps.check-lang.outputs.should_build == 'true'
+        uses: ./.github/actions/setup-buildx-resilient
+
+      - name: Log in to GitHub Container Registry
+        if: steps.check-lang.outputs.should_build == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
+      - name: Log in to Docker Hub
+        id: dockerhub-login
+        if: steps.check-lang.outputs.should_build == 'true'
+        continue-on-error: true
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.DOCKERHUB_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: "Check Docker Hub login (issue #82)"
+        if: steps.check-lang.outputs.should_build == 'true' && steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
+
+      - name: Determine essentials base image
+        if: steps.check-lang.outputs.should_build == 'true'
+        id: essentials-base
+        env:
+          UPSTREAM_BUILT: ${{ inputs.essentials-built-arm64 }}
+        run: |
+          if [ "$UPSTREAM_BUILT" = "true" ]; then
+            echo "image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64" >> "$GITHUB_OUTPUT"
+          else
+            echo "image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-arm64" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and push ${{ matrix.language }} box (arm64)
+        id: build-push
+        continue-on-error: true
+        if: steps.check-lang.outputs.should_build == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ubuntu/24.04/${{ matrix.language }}/Dockerfile
+          platforms: linux/arm64
+          push: true
+          build-args: |
+            ESSENTIALS_IMAGE=${{ steps.essentials-base.outputs.image }}
+          tags: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64
+          provenance: false
+          cache-from: type=gha,scope=${{ matrix.language }}-arm64
+          cache-to: type=gha,scope=${{ matrix.language }}-arm64,mode=max
+
+      # Retry push on transient GHCR 403 errors (Issue #78)
+      - name: Retry push ${{ matrix.language }} box (arm64) on failure
+        if: steps.check-lang.outputs.should_build == 'true' && steps.build-push.outcome == 'failure'
+        run: |
+          TAGS=(
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64"
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64"
+          )
+          TAG_ARGS=()
+          for tag in "${TAGS[@]}"; do
+            TAG_ARGS+=(--tag "$tag")
+          done
+          bash scripts/release/buildx-retry.sh \
+              --file ubuntu/24.04/${{ matrix.language }}/Dockerfile \
+              --platform linux/arm64 \
+              --build-arg ESSENTIALS_IMAGE=${{ steps.essentials-base.outputs.image }} \
+              "${TAG_ARGS[@]}" \
+              --provenance=false \
+              --cache-from type=gha,scope=${{ matrix.language }}-arm64 \
+              --push \
+              .
+
+      # Issue #115 (RC-3): GHCR is the registry of record - it is written with
+      # the per-run GITHUB_TOKEN, which cannot expire - and Docker Hub is a
+      # mirror of it. Pushing both registries in one `docker buildx build --push`
+      # meant a single expired DOCKERHUB_TOKEN destroyed the GHCR tags and the
+      # `cache-to: type=gha` export as collateral (run 33972074755).
+      - name: Mirror ${{ matrix.language }} box (arm64) to Docker Hub
+        if: |
+          steps.check-lang.outputs.should_build == 'true' &&
+          steps.dockerhub-login.outcome == 'success'
+        run: |
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64"
+
+      # PHP-specific: Add local/global suffix tags based on install method (Issue #44)
+      - name: Tag PHP image with install method suffix (arm64)
+        id: php-method
+        if: steps.check-lang.outputs.should_build == 'true' && matrix.language == 'php'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SRC="${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64"
+
+          # Pull the image just published to GHCR and inspect the marker file.
+          docker pull "$SRC"
+          PHP_METHOD=$(docker run --rm "$SRC" cat /home/box/.php-install-method 2>/dev/null || echo "unknown")
+          echo "PHP install method (arm64): $PHP_METHOD"
+          echo "method=${PHP_METHOD}" >> "$GITHUB_OUTPUT"
+
+          if [ "$PHP_METHOD" = "local" ] || [ "$PHP_METHOD" = "global" ]; then
+            docker tag "$SRC" "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}"
+            docker tag "$SRC" "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64-${PHP_METHOD}"
+            docker push "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}"
+            docker push "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64-${PHP_METHOD}"
+            echo "Tagged PHP image with -${PHP_METHOD} suffix"
+          fi
+
+      # Issue #115: the Docker Hub copies of the suffixed PHP tags are a mirror
+      # of the GHCR tags above. Pushing both registries from one step meant an
+      # expired DOCKERHUB_TOKEN failed a job whose real output (the GHCR image)
+      # had already been published successfully.
+      - name: Mirror suffixed PHP tags to Docker Hub (arm64)
+        if: |
+          steps.check-lang.outputs.should_build == 'true' &&
+          matrix.language == 'php' &&
+          steps.dockerhub-login.outcome == 'success' &&
+          (steps.php-method.outputs.method == 'local' || steps.php-method.outputs.method == 'global')
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          METHOD="${{ steps.php-method.outputs.method }}"
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64-${METHOD}" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-arm64-${METHOD}" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64-${METHOD}"
+
+  # === CREATE LANGUAGE MULTI-ARCH MANIFESTS ===
+  languages-manifest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: [build-languages-amd64, build-languages-arm64]
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq]
+    if: |
+      !cancelled() &&
+      needs.build-languages-amd64.result == 'success' &&
+      needs.build-languages-arm64.result == 'success'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Get latest version
+        id: version
+        run: |
+          git pull origin main || true
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
+      - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.DOCKERHUB_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: "Check Docker Hub login (issue #82)"
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
+
+      - name: Create and push ${{ matrix.language }} multi-arch manifests (GHCR)
+        run: |
+          bash scripts/release/create-multiarch-manifest.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}" \
+            latest "${{ steps.version.outputs.version }}"
+
+      - name: Create and push ${{ matrix.language }} multi-arch manifests (Docker Hub)
+        if: steps.dockerhub-login.outcome == 'success'
+        env:
+          # A Docker Hub manifest failure must not fail a release whose GHCR
+          # manifest is already published (issue #115, RC-3).
+          MANIFEST_REQUIRED: '0'
+        run: |
+          bash scripts/release/create-multiarch-manifest.sh \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}" \
+            latest "${{ steps.version.outputs.version }}"
+
+      - name: Skip ${{ matrix.language }} Docker Hub multi-arch manifests
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub manifest skipped::Skipping ${{ matrix.language }} Docker Hub multi-arch manifests because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
+
+  # === STATUS ===
+  #
+  # `needs.<job>.result` cannot leave a called workflow: only `jobs.<id>.outputs`
+  # can. Before the split, the language jobs read those results directly; this job
+  # copies them into workflow outputs so the caller can hand them to the next
+  # family and the per-job conditions stay exactly what they were (issue #115).
+  # `build-languages-amd64`, `build-languages-arm64`, `languages-manifest` includes matrix jobs, whose rollup result is what the
+  # conditions were written against - a per-leg step output could not reproduce it.
+  status:
+    name: languages / status
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [build-languages-amd64, build-languages-arm64, languages-manifest]
+    if: ${{ !cancelled() }}
+    outputs:
+      amd64-result: ${{ needs.build-languages-amd64.result }}
+      arm64-result: ${{ needs.build-languages-arm64.result }}
+      manifest-result: ${{ needs.languages-manifest.result }}
+    steps:
+      - name: Summarise
+        run: |
+          {
+            echo "### languages / status"
+            echo ""
+            echo "| job | result |"
+            echo "| --- | --- |"
+            echo "| build-languages-amd64 | ${{ needs.build-languages-amd64.result }} |"
+            echo "| build-languages-arm64 | ${{ needs.build-languages-arm64.result }} |"
+            echo "| languages-manifest | ${{ needs.languages-manifest.result }} |"
+          } >> "$GITHUB_STEP_SUMMARY"

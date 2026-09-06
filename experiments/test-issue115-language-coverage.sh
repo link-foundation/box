@@ -19,7 +19,13 @@ set -uo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
+# release.yml is the caller: detect-changes and its outputs stayed there when
+# the file was split by image family (RC-8). The matrices moved, so they are
+# looked up by job id rather than by file name - a suite that greps a file the
+# jobs have left counts zero occurrences and calls it a pass.
 WORKFLOW=".github/workflows/release.yml"
+PR_WORKFLOW="$(bash scripts/ci/list-release-workflows.sh --job pr-test-language)" || exit 1
+RELEASE_WORKFLOWS="$(bash scripts/ci/list-release-workflows.sh)" || exit 1
 DETECT="scripts/ci/detect-changes.sh"
 TEST_BOX="scripts/ci/test-box.sh"
 PASS=0
@@ -100,7 +106,7 @@ done
 echo
 echo "=== Part 3: every language is built and tested on pull requests ==="
 
-MATRIX_LINE="$(grep -m1 '^        language: \[' "$WORKFLOW")"
+MATRIX_LINE="$(grep -m1 '^        language: \[' "$PR_WORKFLOW")"
 MATRIX_LANGS="$(printf '%s\n' "$MATRIX_LINE" | sed 's/.*\[//; s/\].*//; s/,//g' | tr ' ' '\n' | grep -v '^$' | sort | tr '\n' ' ')"
 if [ "$MATRIX_LANGS" = "$DIRS" ]; then
   pass "the pr-test matrix equals the directory listing"
@@ -138,19 +144,32 @@ echo "=== Part 5: the published-image matrices are a documented subset ==="
 # not published as standalone images, so the release matrices are allowed to be
 # smaller than the pr-test matrix - but never larger, which would mean
 # publishing an image nothing tested.
-RELEASE_LINES="$(grep -n '^        language: \[' "$WORKFLOW" | tail -n +2 | cut -d: -f1)"
-for line in $RELEASE_LINES; do
-  langs="$(sed -n "${line}p" "$WORKFLOW" | sed 's/.*\[//; s/\].*//; s/,//g')"
-  extra=""
-  for language in $langs; do
-    printf '%s ' "$MATRIX_LANGS" | grep -q " $language " || extra="$extra $language"
+# Every language matrix in the release pipeline except the pull-request one,
+# wherever it now lives.
+RELEASE_MATRICES=0
+for workflow in $RELEASE_WORKFLOWS; do
+  [ "$workflow" = "$PR_WORKFLOW" ] && continue
+  for line in $(grep -n '^        language: \[' "$workflow" | cut -d: -f1); do
+    RELEASE_MATRICES=$((RELEASE_MATRICES + 1))
+    langs="$(sed -n "${line}p" "$workflow" | sed 's/.*\[//; s/\].*//; s/,//g')"
+    extra=""
+    for language in $langs; do
+      printf '%s ' "$MATRIX_LANGS" | grep -q " $language " || extra="$extra $language"
+    done
+    if [ -z "$extra" ]; then
+      pass "release matrix at ${workflow}:${line} publishes only tested languages"
+    else
+      fail "release matrix at ${workflow}:${line} publishes untested languages:$extra"
+    fi
   done
-  if [ -z "$extra" ]; then
-    pass "release matrix on line $line publishes only tested languages"
-  else
-    fail "release matrix on line $line publishes untested languages:$extra"
-  fi
 done
+
+# Finding no matrix at all would otherwise pass this part in silence.
+if [ "$RELEASE_MATRICES" -gt 0 ]; then
+  pass "found $RELEASE_MATRICES release language matrices to check"
+else
+  fail "found no release language matrix; the check above verified nothing"
+fi
 
 echo
 echo "=== Summary ==="

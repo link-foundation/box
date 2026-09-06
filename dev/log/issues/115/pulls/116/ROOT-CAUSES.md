@@ -288,6 +288,62 @@ Also over the limit: `scripts/ubuntu-24-server-install.sh` (1166 lines, and the
 second home of RC-1) — under the cap, but the largest shell file, and
 `scripts/measure-disk-space.sh` (872 lines).
 
+**Fix.** `release.yml` was split along the seam the duplication already
+followed — one workflow per image family, called with `uses:` — and the limit
+is now a gate, so the file cannot grow back:
+
+| File | Lines | Holds |
+| --- | --- | --- |
+| `.github/workflows/release.yml` | 596 | the entry point: triggers, `detect-changes`, the version/changeset checks, the five family calls, `create-release` |
+| `.github/workflows/pr-tests.yml` | 671 | the six `pr-test-*` jobs and the `docker-build-test` aggregator |
+| `.github/workflows/release-js.yml` | 414 | `build-js-{amd64,arm64}`, `js-manifest` |
+| `.github/workflows/release-essentials.yml` | 469 | the essentials family |
+| `.github/workflows/release-languages.yml` | 604 | the per-language matrices |
+| `.github/workflows/release-full.yml` | 626 | the full box |
+| `.github/workflows/release-dind.yml` | 450 | the 14 dind variants |
+
+Three things make the split safe to trust rather than merely smaller:
+
+1. **It is proved to be a move, not a rewrite.**
+   `analysis/verify-split-equivalence.py` compares the 3135-line original
+   (`analysis/release.yml.pre-split`, kept verbatim) with the seven files on
+   seven dimensions — `uses:` references, step names, shell lines, `if:`
+   conditions, image tag literals, `timeout-minutes`, job ids — and reports
+   them identical (105/222/723/97/8/29 entries). The two deliberate rewrites,
+   the cross-workflow data flow (`needs.X.outputs.y` → `inputs.y`) and the
+   zizmor `template-injection` `env:` bindings, are reversed as explicit
+   canonicalizations, so any *third* change would have shown up as a
+   difference. Output in `analysis/verify-split-equivalence.log`.
+2. **The checks that read the workflows follow the jobs.** Ten regression
+   suites grepped `release.yml` by name. A grep over a file the jobs have left
+   finds zero copies of a defect, and "zero occurrences" reads exactly like
+   "fixed" — the false negative this issue exists to prevent. They now resolve
+   the file from the caller's `uses:` graph through
+   `scripts/ci/list-release-workflows.sh` (`--job <id>` answers "which file
+   defines this job", exit 3 when nothing does).
+3. **The split itself is pinned.** `experiments/test-issue115-workflow-split.sh`
+   (85 assertions) checks the contract a `workflow_call` boundary introduces
+   and does not enforce: every callee is `on: workflow_call` only, every
+   required input is passed and every passed input is declared, the same for
+   secrets, `env:` is repeated in each file (workflow-level `env` is **not**
+   inherited across `workflow_call`), every `needs.<family>.outputs.X` the
+   caller reads is declared by the callee, each family exports its matrix
+   rollup through a `status` job whose `if:` starts with `!cancelled()`, the
+   caller grants at least the permissions the callee's jobs declare, and no
+   workflow exceeds 1500 lines.
+
+The limit is enforced by `scripts/ci/check-file-line-limits.sh` (ported from
+the template, widened from "JavaScript, Markdown and release.yml" to every
+`.sh`/`.md`/`.yml`/`.yaml`/`.mjs`/`.js`/`.cjs`/`.py`/`.rb` file the repository
+maintains, with the verbatim upstream copies under `dev/log/` and
+`docs/case-studies/*/data|templates/` exempt because a quotation reflowed to
+fit a limit is no longer evidence). It runs in `.github/workflows/file-sizes.yml`
+on every pull request that touches one of those extensions, warns at 1350
+lines, and exits 2 rather than 0 when it matches no files at all — a gate that
+examined nothing must not read like a clean tree (RC-16). Its own fixtures are
+`experiments/test-issue115-line-limits.sh` (24 assertions), including the case
+that matters: the real 3135-line pre-split `release.yml` fails it.
+
 ---
 
 <a id="rc-9"></a>

@@ -341,11 +341,34 @@ declare -A EXPECTED=(
   ['.github/workflows/scripts.yml']=4
   ['.github/workflows/security.yml']=2
   ['.github/workflows/workflows.yml']=2
-  ['.github/workflows/release.yml']=6
+  ['.github/workflows/file-sizes.yml']=1
+  ['.github/workflows/pr-tests.yml']=6
+  # The release family builds and publishes images; none of its jobs check the
+  # tree out to judge it, so none of them merges the base in. Listed with a 0
+  # rather than omitted, so a job added there without the action is a failure
+  # here instead of an absence nobody notices.
+  ['.github/workflows/release.yml']=0
+  ['.github/workflows/release-js.yml']=0
+  ['.github/workflows/release-essentials.yml']=0
+  ['.github/workflows/release-languages.yml']=0
+  ['.github/workflows/release-full.yml']=0
+  ['.github/workflows/release-dind.yml']=0
 )
+
+# Every workflow reachable from the release entry point must appear in the map
+# above, or the split that moves a job also silently drops its check.
+for wf in $(cd "$REPO_ROOT" && bash scripts/ci/list-release-workflows.sh); do
+  if [ -z "${EXPECTED[$wf]+set}" ]; then
+    fail "$wf is not in the expected-count map; add it with its count"
+  fi
+done
 
 for wf in "${!EXPECTED[@]}"; do
   want="${EXPECTED[$wf]}"
+  if [ ! -f "$REPO_ROOT/$wf" ]; then
+    fail "$wf is in the expected-count map but does not exist"
+    continue
+  fi
   got="$(grep -c 'uses: ./.github/actions/simulate-fresh-merge' "$REPO_ROOT/$wf")"
   if [ "$got" -eq "$want" ]; then
     pass "$(basename "$wf") calls the action in all $want of its checks"
@@ -354,10 +377,13 @@ for wf in "${!EXPECTED[@]}"; do
   fi
 done
 
-# release.yml's six are the pr-test tier. version-check, changeset-check and
-# detect-changes are deliberately excluded: they diff the pull request against
-# its base, and merging the base in first would change what they measure.
-if [ "$(grep -c '^  pr-test[a-z0-9-]*:' "$REPO_ROOT/.github/workflows/release.yml")" -eq 6 ]; then
+# The six are the pr-test tier, which lives in pr-tests.yml since release.yml
+# was split by image family (issue #115, RC-8). version-check, changeset-check
+# and detect-changes are deliberately excluded: they diff the pull request
+# against its base, and merging the base in first would change what they
+# measure.
+PR_WORKFLOW="$(cd "$REPO_ROOT" && bash scripts/ci/list-release-workflows.sh --job pr-test-js)" || exit 1
+if [ "$(grep -c '^  pr-test[a-z0-9-]*:' "$REPO_ROOT/$PR_WORKFLOW")" -eq 6 ]; then
   pass "the pr-test tier still has the six jobs the count above assumes"
 else
   fail "the pr-test tier changed size; update the expected count with it"
