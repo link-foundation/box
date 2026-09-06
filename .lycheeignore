@@ -1,0 +1,46 @@
+# lychee ignore patterns — regex matched against the URL.
+#
+# Ported from the reference template (issue #115, R5) and extended with the
+# hosts this repository actually links to.
+#
+# Every entry is a false positive: a URL that is correct but that a link
+# checker cannot verify - login-gated, rate-limited, bot-blocked, or served
+# over TLS lychee will not negotiate. A URL that is genuinely broken belongs in
+# the diff, not in this file; the first run of this gate found 111 of those and
+# every one was fixed. Each pattern below carries the reason it is here.
+
+# Localhost and local development URLs
+http://localhost
+https://localhost
+http://127\.0\.0\.1
+https://127\.0\.0\.1
+
+# Example/placeholder URLs commonly used in documentation
+https://example\.com
+http://example\.com
+
+# npmjs.com returns 403 to link checkers (bot protection)
+https://www\.npmjs\.com
+
+# medium.com returns 403 to link checkers (bot protection)
+https://medium\.com
+
+# web.archive.org returns 502 to link checkers (bot protection)
+https://web\.archive\.org
+
+# GitHub repository settings pages require admin authentication; an anonymous
+# GET is 404 by design, for a URL the maintainer needs and that is correct.
+https://github\.com/[^/]+/[^/]+/settings/
+
+# Docker Hub account settings redirect to the login flow, which lychee follows
+# in a loop and rejects. Same reason as the GitHub settings pages above.
+https://hub\.docker\.com/settings/
+
+# manpages.ubuntu.com answers 503 under any load, and gnu.org rate-limits
+# link checkers with 429. Both hosts are correct; their availability is not.
+https://manpages\.ubuntu\.com
+https://www\.gnu\.org
+
+# flatassembler.net offers no TLS suite lychee's rustls build will negotiate
+# ("received fatal alert: HandshakeFailure"). The site is up in a browser.
+https://(arm\.)?flatassembler\.net

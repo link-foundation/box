@@ -177,4 +177,6 @@ The Cyrillic 'с' (U+0441) is visually indistinguishable from ASCII 'c' (U+0063)
 - [NVM README — NVM is a shell function](https://github.com/nvm-sh/nvm/blob/master/README.md)
 - [Docker ENTRYPOINT documentation](https://docs.docker.com/engine/containers/run/#entrypoint-default-command-to-execute-at-runtime)
 - [Unicode Confusables — Unicode.org](https://www.unicode.org/reports/tr39/#Confusable_Detection)
-- [OWASP: Homoglyph Attacks](https://owasp.org/www-community/attacks/Unicode_Characters)
+- [CAPEC-632: Homograph Attack via Homoglyphs](https://capec.mitre.org/data/definitions/632.html)
+  (this entry used to cite `owasp.org/www-community/attacks/Unicode_Characters`,
+  which OWASP has removed; CAPEC-632 is the same attack, catalogued)

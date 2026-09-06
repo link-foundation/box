@@ -215,5 +215,5 @@ This also explains the issue title: "We should not run `bash` inside `bash`" —
 - [PR #67: Fix .bashrc merge algorithm and SDKMAN POSIX syntax](https://github.com/link-foundation/box/pull/67)
 - [Bash manual: Bash startup files](https://www.gnu.org/software/bash/manual/bash.html#Bash-Startup-Files)
 - [POSIX Shell Grammar](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html)
-- [experiments/test-bashrc-merge.sh](../../experiments/test-bashrc-merge.sh) — bug reproduction
-- [experiments/test-bashrc-merge-fix.sh](../../experiments/test-bashrc-merge-fix.sh) — fix verification
+- [experiments/test-bashrc-merge.sh](../../../experiments/test-bashrc-merge.sh) — bug reproduction
+- [experiments/test-bashrc-merge-fix.sh](../../../experiments/test-bashrc-merge-fix.sh) — fix verification

@@ -22,7 +22,11 @@ on the Docker Hub manifest transaction.
 - CI run summaries: [`ci-logs/run-summary.txt`](./ci-logs/run-summary.txt),
   [`ci-logs/pr-89-runs.json`](./ci-logs/pr-89-runs.json),
   [`ci-logs/recent-main-runs.json`](./ci-logs/recent-main-runs.json)
-- Linked failing job log: [`ci-logs/job-79583415202-dind-manifest-perl.log`](./ci-logs/job-79583415202-dind-manifest-perl.log)
+- Linked failing job: job 79583415202 (`dind-manifest-perl`), metadata in
+  [`ci-logs/job-79583415202.json`](./ci-logs/job-79583415202.json). The step log
+  itself was not committed and GitHub's 90-day retention has since removed it;
+  the failure lines are in
+  [`ci-logs/error-extracts.txt`](./ci-logs/error-extracts.txt).
 - Focused failure extract: [`ci-logs/error-extracts.txt`](./ci-logs/error-extracts.txt)
 - PR #91 follow-up CI check: [`ci-logs/pr-91-run-26976940117-check-for-changesets.log`](./ci-logs/pr-91-run-26976940117-check-for-changesets.log)
 - Template comparison files: [`templates/template-ci-files.txt`](./templates/template-ci-files.txt),
@@ -162,8 +166,10 @@ custom release workflow, not present in the templates.
 6. Quoted `Check Docker Hub login (issue #82)` step names so GitHub logs retain the full issue reference.
 7. Added [`experiments/test-issue90-release-workflow-policy.sh`](../../../experiments/test-issue90-release-workflow-policy.sh)
    to enforce the manifest guard and action-version policy.
-8. Added [`issue-90-guard-dockerhub-manifests.md`](../../../.changeset/issue-90-guard-dockerhub-manifests.md)
-   after PR #91 CI correctly reported that workflow code changes require a patch changeset.
+8. Added the changeset `.changeset/issue-90-guard-dockerhub-manifests.md` after
+   PR #91 CI correctly reported that workflow code changes require a patch
+   changeset. (Changesets are consumed by the release that publishes them, so
+   the file no longer exists on `main` — see the 1.7.0 entry in `CHANGELOG.md`.)
 
 ## Verification
 

@@ -180,8 +180,12 @@ Implement **Solution 1** (Free Disk Space Action) as the primary fix, with **Sol
 
 ## Logs and Artifacts
 
-- [Full workflow run logs](./logs/run-21997899227.log)
-- [Failed job logs](./logs/job-docker-build-push-63564368345.log)
+- Full workflow run: `link-foundation/box` run 21997899227 — **log expired**
+- Failed job: `docker-build-push` job 63564368345 — **log expired**
+
+GitHub retains Actions logs for 90 days; both were already gone when this was
+checked (`gh run view 21997899227 --log` → `HTTP 410`), and neither was
+committed at the time. The failure they showed is quoted in full above.
 
 ## Revision History
 
