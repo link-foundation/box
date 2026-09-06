@@ -310,3 +310,122 @@ Present in the template, absent here:
 `jlumbroso/free-disk-space@main` is used unpinned in every build job of
 `release.yml` — a third-party action tracked by mutable branch, running before
 the build on a runner that holds registry credentials.
+
+---
+
+<a id="rc-10"></a>
+## RC-10 — Four hand-maintained copies of the box acceptance checks — **false negative**
+
+`release.yml` contained the box checks four times: `pr-test-js`,
+`pr-test-essentials`, `pr-test-language`, `pr-test-full`, and once more as the
+smoke test of the *pushed* image. Copies drift, and these had: the released-image
+smoke test ran **22 of the 29** checks the pre-merge full-box test ran.
+
+Absent from the test of the artifact users actually pull:
+
+| Missing from the released-image test | Where it existed |
+| --- | --- |
+| `gh-setup-git-identity`, `glab-setup-git-identity` | pre-merge full-box test |
+| `cat /home/box/.php-install-method` | pre-merge full-box test |
+| Node/Rust freshness + one-version-per-language invariants (issue #112) | pre-merge full-box test |
+| `rocq` / `opam` | nowhere — see [RC-12](#rc-12) |
+
+Nothing compared the two lists, so the difference was invisible: every job was
+green while the published image was the least-tested thing in the pipeline.
+
+**Fix.** `scripts/ci/test-box.sh PROFILE IMAGE` is the single definition; all
+five steps call it, and the release smoke test calls the *same* `full` profile
+the candidate passed. The `full` profile is composed from the same per-language
+functions the `language` profile uses, so a check cannot exist for the
+standalone box and be forgotten in the composed one.
+
+**Pinned by.** `experiments/test-issue115-test-box.sh` (41 assertions) asserts,
+among other things, that every per-language check reappears in the `full`
+profile, that no inline `docker run --rm box-test` survives in the workflow, and
+that exactly two steps run the `full` profile.
+
+---
+
+<a id="rc-11"></a>
+## RC-11 — Four language directories that no job builds — **false negative**
+
+`ubuntu/24.04/{cpp,assembly,dotnet,r}/` each ship a `Dockerfile` and an
+`install.sh`, and README tells users to run those `install.sh` scripts directly
+(`curl -fsSL … | bash`). No CI job built any of them. A broken `install.sh` there
+reached users with every check green.
+
+The gap was reproduced at four layers, each of which listed the languages by
+hand:
+
+| Layer | Listed | Should list |
+| --- | --- | --- |
+| `scripts/ci/detect-changes.sh` `LANGUAGES` | 11 | 15 |
+| `release.yml` `<language>-changed` outputs | 11 | 15 |
+| `pr-test-language` matrix | 11 | 15 |
+| `scripts/ci/test-box.sh` `check_language()` | 11 | 15 |
+
+**Fix.** All four extended to the 15 directories, and the assertions that pin
+them derive the expected list from the directory listing
+(`ubuntu/24.04/*/Dockerfile` minus `js`, `essentials-box`, `full-box`, `dind`)
+rather than restating it — adding `ubuntu/24.04/<new>/Dockerfile` without wiring
+it up now fails.
+
+The *publish* matrices (`build-languages-amd64`, `build-languages-arm64`,
+`languages-manifest`) deliberately stay at the 11 published images; the release
+notes generator is pinned to that matrix, and
+`experiments/test-issue115-language-coverage.sh` asserts the published set is a
+subset of the tested set.
+
+**Pinned by.** `experiments/test-issue115-language-coverage.sh` (51 assertions)
+and `experiments/test-issue82-pr-parallel-tests.sh`.
+
+---
+
+<a id="rc-12"></a>
+## RC-12 — `opam` is not on PATH in the rocq box or the full box — **error, hidden by a false negative**
+
+The product bug RC-10/RC-11 were hiding. Both published images ship a working
+`rocq` and no reachable `opam`:
+
+```console
+$ docker run --rm konard/box:latest opam --version
+/usr/local/bin/entrypoint.sh: line 57: exec: opam: not found
+$ docker run --rm konard/box-rocq:latest bash -c 'command -v opam; echo "exit=$?"'
+exit=1
+```
+
+Two independent causes, one per image:
+
+1. `ubuntu/24.04/rocq/install.sh` installs the binary to `$HOME/.local/bin` (it
+   runs as the unprivileged `box` user), while `ubuntu/24.04/rocq/Dockerfile`
+   put only the *switch* — `~/.opam/default/bin` — on `PATH`. `opam` resolved
+   only in a shell that had sourced `~/.bashrc`, which `docker run`,
+   `docker exec` and CI steps do not.
+2. `ubuntu/24.04/full-box/Dockerfile` copied `~/.opam` out of the rocq stage and
+   nothing else. `COPY --from` copies the paths it is given; the binary lives
+   outside `~/.opam`.
+
+**Fix.** `ENV PATH="/home/box/.local/bin:…"` in the rocq box, and
+`COPY --from=rocq-stage /home/box/.local/bin/opam /usr/local/bin/opam` in the
+full box. Both verified against the live images before being committed —
+build log and Dockerfile in
+[`analysis/opam-path-verification.md`](analysis/opam-path-verification.md).
+
+**Pinned by.** `box opam --version` in the `rocq` profile of
+`scripts/ci/test-box.sh`, which the `full` profile also runs.
+
+---
+
+<a id="rc-13"></a>
+## RC-13 — An assertion that forks to check its own output — **false positive**
+
+`experiments/test-issue115-shellcheck-gate.sh` matched the linter's output with
+`echo "$OUT" | grep -q …` under `set -o pipefail`. Observed once while the suite
+ran beside a docker build: the gate *did* report `[SC2045]` and the assertion
+still failed, because a pipeline is two forks and a fork can fail for reasons
+that have nothing to do with the thing under test. A check that fails when the
+machine is busy is a false positive, and the flake trains people to re-run.
+
+**Fix.** Match with bash's own `==` / `=~`, which cannot fork. The suite's three
+`echo … | grep -q` assertions are gone; the remaining pipes are diagnostics
+inside failure branches, where a fork failure cannot flip a verdict.

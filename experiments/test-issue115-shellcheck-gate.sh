@@ -30,6 +30,10 @@ fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
+# Assertions below match $OUT with bash's own == / =~ instead of piping it
+# into grep: a pipeline forks, and a fork that fails under load (this suite
+# runs beside docker builds) reports "the gate did not catch SC2045" when the
+# gate caught it - a false positive of exactly the kind issue #115 is about.
 # run_on FILE - lint a single file, capturing combined output in $OUT.
 OUT=""
 run_on() {
@@ -74,7 +78,7 @@ for fixture in "${FIXTURES[@]}"; do
 
   if run_on "$file"; then
     fail "$code ($label) is rejected"
-  elif echo "$OUT" | grep -q "\[$code\]"; then
+  elif [[ "$OUT" == *"[$code]"* ]]; then
     pass "$code ($label) is rejected"
   else
     fail "$code ($label) is rejected with the expected code"
@@ -116,14 +120,14 @@ echo ""
 echo "== Part 4: findings are reported as GitHub annotations =="
 
 run_on "$TMP/fixture-SC2045.sh"
-if echo "$OUT" | grep -qE '^::error file=[^,]+,line=[0-9]+,col=[0-9]+::'; then
+if [[ "$OUT" =~ (^|$'\n')::error\ file=[^,]+,line=[0-9]+,col=[0-9]+:: ]]; then
   pass "each finding is emitted as ::error file=...,line=...,col=..."
 else
   fail "each finding is emitted as ::error file=...,line=...,col=..."
   echo "$OUT" | sed 's/^/      /' >&2
 fi
 
-if echo "$OUT" | grep -q 'Reproduce locally with: bash scripts/ci/run-shellcheck.sh'; then
+if [[ "$OUT" == *"Reproduce locally with: bash scripts/ci/run-shellcheck.sh"* ]]; then
   pass "the failure message names the command that reproduces it"
 else
   fail "the failure message names the command that reproduces it"

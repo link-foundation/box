@@ -47,7 +47,13 @@ echo "== Part 1: every image the release publishes has a row =="
 # The languages that are actually built and pushed, read from the workflow's
 # matrix rather than restated here - restating it is the drift this suite
 # exists to catch.
-MATRIX_LINE="$(grep -m1 '^        language: \[' "$WORKFLOW")"
+#
+# Specifically build-languages-amd64's matrix, not the first `language: [` in
+# the file: pr-test-language builds every language directory there is,
+# including the ones that are tested but never published (cpp, assembly,
+# dotnet, r - issue #115), and the notes must list what was pushed.
+MATRIX_LINE="$(awk '/^  build-languages-amd64:$/ {injob=1}
+                    injob && /^        language: \[/ {print; exit}' "$WORKFLOW")"
 LANGUAGES="$(printf '%s\n' "$MATRIX_LINE" | sed 's/.*\[//; s/\].*//; s/,//g')"
 
 if [ -n "$LANGUAGES" ]; then

@@ -151,6 +151,12 @@ COPY --from=lean-stage --chown=box:box /home/box/.elan /home/box/.elan
 
 # Rocq/Coq (Opam)
 COPY --from=rocq-stage --chown=box:box /home/box/.opam /home/box/.opam
+# The opam binary lives outside ~/.opam - ubuntu/24.04/rocq/install.sh puts it
+# in ~/.local/bin - so copying only ~/.opam produced a box where `rocq
+# --version` worked and `opam --version` said "not found" (issue #115, verified
+# against konard/box:latest). /usr/local/bin is on PATH for every user and every
+# kind of shell, including `docker exec`.
+COPY --from=rocq-stage /home/box/.local/bin/opam /usr/local/bin/opam
 
 # --- Copy bashrc configurations from language stages ---
 COPY --from=python-stage --chown=box:box /home/box/.bashrc /tmp/.bashrc-python

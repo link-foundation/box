@@ -118,12 +118,38 @@ check_language() {
     rocq)
       # Rocq 9 renamed the binary; older images only ship coqc.
       box_sh 'rocq --version 2>/dev/null || coqc --version'
+      # The box advertises "Opam, Rocq prover": a Rocq box that cannot install
+      # another Rocq package is half an image. konard/box:latest shipped exactly
+      # that - `rocq --version` worked, `opam --version` said "not found",
+      # because the full box COPYs ~/.opam but not the binary in ~/.local/bin
+      # (issue #115).
+      box opam --version
       ;;
     dotnet)
       box dotnet --version
       ;;
     r)
       box Rscript --version
+      ;;
+    cpp)
+      box gcc --version
+      box g++ --version
+      box cmake --version
+      box clang --version
+      box ld.lld --version
+      ;;
+    assembly)
+      box nasm -v
+      # fasm exists on x86_64 only, and prints its banner with exit status 1,
+      # so neither `fasm` alone nor a bare pipeline would report its absence.
+      # shellcheck disable=SC2016  # $(uname -m) must run inside the container
+      box_sh 'if [ "$(uname -m)" = x86_64 ]; then
+                fasm 2>&1 | head -1 | grep -q "flat assembler" \
+                  || { echo "::error::fasm is missing from an x86_64 image"; exit 1; }
+                fasm 2>&1 | head -1
+              else
+                echo "fasm is not packaged for $(uname -m); NASM only"
+              fi'
       ;;
     *)
       fail "unknown language: $1"
@@ -243,7 +269,11 @@ case "$PROFILE" in
     box bun --version
     box deno --version
 
-    for language in python go rust java kotlin ruby php perl swift lean rocq dotnet r; do
+    # Every language the full box composes - including the four whose
+    # standalone boxes are tested but never published (issue #115); the full
+    # box installs their toolchains, so it has to answer for them.
+    for language in python go rust java kotlin ruby php perl swift lean rocq \
+                    cpp assembly dotnet r; do
       echo "--- $language ---"
       check_language "$language"
     done

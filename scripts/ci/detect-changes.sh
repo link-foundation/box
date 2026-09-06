@@ -41,7 +41,7 @@
 
 set -euo pipefail
 
-LANGUAGES="python go rust java kotlin ruby php perl swift lean rocq cpp assembly"
+LANGUAGES="python go rust java kotlin ruby php perl swift lean rocq cpp assembly dotnet r"
 
 log() { echo "$@"; }
 

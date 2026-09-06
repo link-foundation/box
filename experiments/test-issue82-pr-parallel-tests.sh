@@ -122,8 +122,22 @@ if [ "$disk_status" -ne 0 ]; then
   fail=1
 fi
 
-# 3. pr-test-language matrix lists all 11 languages.
-EXPECTED_LANGS="python go rust java kotlin ruby php perl swift lean rocq"
+# 3. pr-test-language matrix builds every language directory there is.
+#
+# This list used to be the 11 published languages, hand-written here. cpp,
+# assembly, dotnet and r ship a Dockerfile and an install.sh, are documented in
+# README, and were built by no job at all - so it is derived from the directory
+# listing now, and adding ubuntu/24.04/<new>/Dockerfile without a matrix entry
+# fails here (issue #115).
+EXPECTED_LANGS=""
+for dockerfile in "$ROOT"/ubuntu/24.04/*/Dockerfile; do
+  dir="$(basename "$(dirname "$dockerfile")")"
+  case "$dir" in
+    js|essentials-box|full-box|dind) continue ;;
+  esac
+  EXPECTED_LANGS="$EXPECTED_LANGS $dir"
+done
+EXPECTED_LANGS="${EXPECTED_LANGS# }"
 python3 - "$WF" "$EXPECTED_LANGS" <<'PY'
 import re, sys
 text = open(sys.argv[1]).read()

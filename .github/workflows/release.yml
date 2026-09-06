@@ -305,6 +305,8 @@ jobs:
       rocq-changed: ${{ steps.detect.outputs.rocq }}
       cpp-changed: ${{ steps.detect.outputs.cpp }}
       assembly-changed: ${{ steps.detect.outputs.assembly }}
+      dotnet-changed: ${{ steps.detect.outputs.dotnet }}
+      r-changed: ${{ steps.detect.outputs.r }}
       # dind-box change detection (issue #80)
       dind-changed: ${{ steps.detect.outputs.dind }}
 
@@ -576,7 +578,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq]
+        # Every directory under ubuntu/24.04/ that ships a standalone
+        # Dockerfile, not just the ones that get published as images: cpp,
+        # assembly, dotnet and r were documented in README and built by nobody,
+        # so a broken install.sh there reached users unreported (issue #115).
+        # experiments/test-issue115-language-coverage.sh keeps this list equal
+        # to the directory listing.
+        language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, cpp, assembly, dotnet, r]
     # The guard below cancels this run when its commit is superseded, which
     # needs write access to the Actions API (issue #112 follow-up).
     permissions:
