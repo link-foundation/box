@@ -128,6 +128,22 @@ curl -fsSL https://raw.githubusercontent.com/link-foundation/box/main/ubuntu/24.
 
 ## Docker Images
 
+> **Which registry carries which version.** GitHub Container Registry is the
+> registry of record: it is written with each run's own `GITHUB_TOKEN`, which
+> cannot expire. Docker Hub is a mirror of it, and the mirror is currently
+> behind — its access token expired, so nothing newer than `2.4.0`
+> (2026-06-21) has reached it. Everything the tables below list under
+> `konard/...` is that June image until the credential is restored; in
+> particular `konard/box:latest` predates the runtime refresh of issue #112
+> (it still carries Node 20). Every `ghcr.io/link-foundation/...` reference is
+> the same image name with the registry prefix added.
+>
+> Whether a given release can actually be pulled is checked anonymously and
+> printed in that release's notes, per registry. See
+> [`docs/RELEASING.md`](docs/RELEASING.md) for the credential runbook and
+> [`docs/case-studies/issue-117/CASE-STUDY.md`](docs/case-studies/issue-117/CASE-STUDY.md)
+> for how a release reached nobody under a green check.
+
 ### Docker Hub - Combo Boxes
 
 | Image | Multi-arch | AMD64 | ARM64 |
@@ -407,6 +423,7 @@ See [`docs/case-studies/issue-82/CASE-STUDY.md`](docs/case-studies/issue-82/CASE
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and design decisions
 - [REQUIREMENTS.md](REQUIREMENTS.md) - Project requirements and constraints
+- [docs/RELEASING.md](docs/RELEASING.md) - Release credentials, trusted publishing, and package visibility
 - [docs/case-studies/](docs/case-studies/) - Case studies and incident analysis
 
 ## License

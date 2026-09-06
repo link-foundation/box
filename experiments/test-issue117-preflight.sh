@@ -62,6 +62,11 @@ cat >"$WORK/scripts/release/registry-probe.sh" <<'STUB'
 # Fixture lines are "push REGISTRY/REPOSITORY STATE DETAIL..." or
 # "pull REFERENCE STATE DETAIL...". A request with no fixture is a test bug and
 # says so, rather than defaulting to a state that might accidentally pass.
+#
+# Both are read from the environment run_preflight() sets, so they are asserted
+# here rather than expanded by the parent (issue #115, RC-1).
+: "${STUB_FIXTURES:?must be passed in by the test}"
+: "${STUB_LOG:?must be passed in by the test}"
 REGISTRY_PROBE_STATE=""
 REGISTRY_PROBE_DETAIL=""
 REGISTRY_PROBE_REPOSITORY=""

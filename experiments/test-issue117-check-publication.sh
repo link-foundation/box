@@ -42,6 +42,12 @@ cp scripts/release/check-publication.sh "$WORK/scripts/release/"
 
 cat >"$WORK/scripts/release/registry-probe.sh" <<'STUB'
 #!/usr/bin/env bash
+# The stub reads its fixtures from its own environment, which run() sets - the
+# same deferred-expansion pattern the quoted heredoc exists for, so the
+# variables are asserted here rather than expanded by the parent (issue #115,
+# RC-1, enforced by scripts/ci/check-heredoc-vars.sh).
+: "${STUB_STATE:?must be passed in by the test}"
+: "${STUB_LOG:?must be passed in by the test}"
 REGISTRY_PROBE_STATE=""
 REGISTRY_PROBE_DETAIL=""
 registry_probe_pull() {

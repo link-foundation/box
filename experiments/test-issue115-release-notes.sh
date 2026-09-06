@@ -268,7 +268,10 @@ cp "$SCRIPT" "$SANDBOX/scripts/release/"
 cat >"$SANDBOX/scripts/release/registry-probe.sh" <<'STUB'
 #!/usr/bin/env bash
 # Stub probe: answers every reference with $STUB_STATE, or with the per-prefix
-# override in $STUB_GHCR_STATE / $STUB_DOCKERHUB_STATE when they are set.
+# override in $STUB_GHCR_STATE / $STUB_DOCKERHUB_STATE when they are set. Those
+# are read from the environment verified() sets, so they are asserted here
+# instead of being expanded by the parent (issue #115, RC-1).
+: "${STUB_STATE?must be passed in by the test}"
 REGISTRY_PROBE_STATE=""
 REGISTRY_PROBE_DETAIL=""
 registry_probe_pull() {
