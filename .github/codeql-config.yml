@@ -1,0 +1,12 @@
+# CodeQL configuration — https://docs.github.com/code-security/code-scanning
+#
+# dev/log/ holds verbatim copies of other projects' source, collected as issue
+# evidence (see dev/log/issues/115/pulls/116/templates/.../PROVENANCE.txt).
+# Analysing them produces findings this repository cannot act on and cannot
+# fix, which is exactly the noise that trains a reviewer to skip the tool.
+# Every other linter here draws the same line: scripts/ci/run-shellcheck.sh and
+# run-hadolint.sh exclude dev/log/, and zizmor is scoped to .github/workflows.
+name: box CodeQL
+
+paths-ignore:
+  - dev/log

@@ -144,6 +144,25 @@ else
   fail "there is no schedule; a dependency can rot without a push"
 fi
 
+# dev/log/ is verbatim third-party source kept as issue evidence. CodeQL
+# findings in it cannot be acted on, and a tool that reports what nobody can fix
+# is a tool reviewers learn to skip - so it is excluded, exactly as it is for
+# the shellcheck, hadolint and zizmor runners.
+# (The line above deliberately does not begin with the word shellcheck: a
+# comment that starts with it is parsed as a shellcheck directive, SC1073.)
+CODEQL_CONFIG=".github/codeql-config.yml"
+if grep -q 'config-file: .github/codeql-config.yml' "$WORKFLOW"; then
+  pass "CodeQL is initialised with a config file"
+else
+  fail "CodeQL has no config-file; it would analyse the vendored evidence tree"
+fi
+
+if [ -f "$CODEQL_CONFIG" ] && grep -qE '^\s*-\s*dev/log\s*$' "$CODEQL_CONFIG"; then
+  pass "the CodeQL config excludes dev/log"
+else
+  fail "$CODEQL_CONFIG does not exclude dev/log"
+fi
+
 # The languages CodeQL analyses have to exist, or the job is a green check over
 # nothing - the same failure mode as the missing canary.
 for pattern in '\.mjs$' '\.py$'; do

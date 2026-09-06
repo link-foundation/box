@@ -56,6 +56,7 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
+          config-file: .github/codeql-config.yml
 
       # No build step: every analysed language here is interpreted. Autobuild
       # would be a no-op that can still fail on a repository whose root is a
