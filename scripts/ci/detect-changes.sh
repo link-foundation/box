@@ -68,7 +68,7 @@ resolve_range() {
       echo "$PR_BASE_SHA HEAD"
       return
     fi
-    echo "HEAD~1 HEAD"
+    last_resort_range
     return
   fi
 
@@ -81,7 +81,21 @@ resolve_range() {
     echo "$before HEAD"
     return
   fi
-  echo "HEAD~1 HEAD"
+  last_resort_range
+}
+
+# HEAD~1..HEAD, but only if HEAD~1 is actually reachable. It is not in a
+# shallow checkout - actions/checkout defaults to fetch-depth: 1 - nor on a
+# repository's root commit. Printing a range that cannot be resolved used to
+# take the whole script down: `git diff` exits 128, and the `|| git diff
+# --name-only HEAD~1 HEAD` fallback below re-ran the identical failing command,
+# so under `set -euo pipefail` the script died with `error: Could not access
+# HEAD~1` and wrote not one output. Print nothing instead and let the caller
+# degrade (issue #115).
+last_resort_range() {
+  if git rev-parse --verify -q "HEAD~1" >/dev/null 2>&1; then
+    echo "HEAD~1 HEAD"
+  fi
 }
 
 # Print the newline-separated list of changed file paths for this event.
@@ -90,11 +104,25 @@ get_changed_files() {
     printf '%s\n' "$CHANGED_FILES_OVERRIDE"
     return
   fi
-  local range
+  local range files
   range=$(resolve_range)
-  log "Comparing range: ${range}" >&2
-  # shellcheck disable=SC2086
-  git diff --name-only $range 2>/dev/null || git diff --name-only HEAD~1 HEAD
+
+  if [ -n "$range" ]; then
+    log "Comparing range: ${range}" >&2
+    # shellcheck disable=SC2086
+    if files="$(git diff --name-only $range 2>/dev/null)"; then
+      printf '%s\n' "$files"
+      return
+    fi
+    log "Range ${range} did not resolve; falling back to every tracked file" >&2
+  else
+    log "No diff range available (shallow checkout or root commit); falling back to every tracked file" >&2
+  fi
+
+  # Never under-build. With no usable range the safe classification is "all of
+  # it changed": a build that was not needed costs runner minutes, a build that
+  # was needed and skipped ships an unbuilt image.
+  git ls-files
 }
 
 # matches REGEX < files -> echoes "true"/"false"
