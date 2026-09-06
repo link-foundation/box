@@ -918,3 +918,132 @@ ever have passed by accident. The fixture now clones over `file://` and carries
 a control that performs the same merge without deepening and asserts it fails —
 so the assertion is evidence that the deepening step does something, not just
 that a string appears in a log.
+
+---
+
+## RC-20 — Nothing formats the shell this repository is written in — **warning**
+
+**What it is.** Template best practice #3 is automated code formatting: the
+reference template runs prettier over its JavaScript and fails the build on a
+diff. The source of *this* repository is shell — 96 tracked `*.sh` files, 24k
+lines — and nothing formatted any of it. 74 of the 96 disagreed with any single
+consistent style: four-space indents beside two-space ones, `a; b` on one line
+beside one statement per line, `&&` at the end of a continued line beside `&&`
+at the start of the next. Files edited in the same week were formatted
+differently from each other.
+
+That is a warning, not an error: no build was broken by it. What it cost is
+review attention — formatting is the cheapest comment to write and the least
+valuable to read — and diff noise, because a two-line change inside a
+differently-indented block shows up as a twelve-line hunk.
+
+**Fix.** `scripts/ci/run-shfmt.sh`, wired as the `scripts / formatting` job.
+`shfmt -i 2 -ci -bn`, chosen by measuring all six candidate styles against the
+tree and taking the one that moved the fewest lines:
+
+| style | lines moved | files touched |
+|---|---|---|
+| `-i 2` | 5491 | 77 |
+| `-i 2 -ci` | 4590 | 76 |
+| `-i 2 -bn` | 5203 | 76 |
+| **`-i 2 -ci -bn`** | **4301** | **75** |
+| `-i 2 -ci -bn -sr` | 5631 | 84 |
+| `-i 4` | 17257 | 94 |
+
+The file set is discovered from git rather than listed, so a script added in a
+later pull request is covered from the moment it lands; `dev/log/` is excluded
+because it holds verbatim copies of other projects' files collected as
+evidence, which are not ours to reformat.
+
+The runner carries the same self-check as every other gate here: shfmt exits 0
+and prints nothing when it examines no files at all — a wrong mount path, a
+missing tool, an empty file set all look identical to a clean tree (RC-16) — so
+it first hands the formatter a deliberately misformatted canary and fails with
+exit 2 if the formatter does not object.
+
+**Pinned by.** `experiments/test-issue115-shfmt-gate.sh` — 37 assertions: each
+style that was actually in the tree is rejected and annotated; already-formatted
+shell passes; `--fix` is idempotent and does not change what a script prints;
+a formatter replaced by one that reports nothing exits 2 rather than 0, and so
+does no formatter at all; the discovered file set matches git's.
+
+Two defects the suite found while being written, both in the gate itself:
+
+* The container ran as root, so `--fix` returned every file owned by root and
+  the next edit failed with *Permission denied* on a machine where the checkout
+  is not root's. Fixed with `--user "$(id -u):$(id -g)"`, asserted after every
+  `--fix`.
+* The first canary piped `shfmt -d` into `grep -q`. `shfmt -d` exits 1 when it
+  finds a difference, and under `set -o pipefail` that status wins, so the
+  self-check reported "no difference found" precisely when a difference *was*
+  found — a false positive produced by the check that exists to rule out false
+  negatives.
+
+---
+
+## RC-21 — The formatter silently disabled the skip list of the runner that runs every check — **false negative, caused by the fix for RC-20**
+
+**What happened.** `scripts/ci/run-experiments.sh` excludes three suites from
+the default run, each with a reason (needs the network; needs docker; needs a
+tens-of-gigabytes image). The exclusions live in an associative array keyed by
+filename:
+
+```bash
+declare -A SKIP_SUITES=(
+  [node-lts-integration-test.sh]="needs network: ..."
+  [rust-refresh-layer-test.sh]="needs docker: ..."
+  [verify-full-box-tooling.sh]="needs docker and a pulled full-box image ..."
+)
+```
+
+shfmt formats an array subscript as an **arithmetic expression**, so it
+rewrote each key with spaces around what it read as subtraction:
+
+```bash
+  [node - lts - integration - test.sh]="needs network: ..."
+```
+
+Bash does not evaluate the subscript of an associative array — it is a literal
+string — so the key became `node - lts - integration - test.sh`, which nothing
+ever looks up. All three exclusions stopped applying. Nothing warned: a lookup
+that misses is indistinguishable from an entry that was never there.
+
+**How it surfaced.** The run that was supposed to report `skipped: 3` reported
+`skipped: 0` and `failed: 2` instead — the two environment-dependent suites ran
+and failed, as they were excluded for doing. The interesting part is what it
+proves about the claim in RC-20: "a reformat cannot change behaviour, because
+shfmt parses and prints the syntax tree" is **false**, and the only reason it
+was caught is that the 39 regression suites were re-run over the reformatted
+tree. Had they not been, the repository would have kept a skip list that
+skipped nothing, and the first symptom would have been two unrelated failures
+in someone else's pull request.
+
+**Fix.** Three parts:
+
+1. Quote every associative-array subscript — a quoted key is not an arithmetic
+   expression, and shfmt leaves it alone.
+2. `run-experiments.sh` now validates its own skip list: an entry naming a file
+   that does not exist under `experiments/` exits 2 with
+   `::error title=run-experiments::`. A skip entry that matches nothing is
+   exactly as invisible as a renamed suite nobody updated the list for; both
+   are now loud.
+3. The comment in the runner and in `scripts.yml` no longer claims a reformat
+   is behaviour-preserving. It says what is true: it is *nearly always* inert,
+   and the evidence that a particular reformat was safe is that the suites pass
+   over the rewritten tree.
+
+**Pinned by.** `experiments/test-issue115-experiment-runner.sh` — 18 assertions
+over the script that runs every other check and had, until now, no check of its
+own: the skip list applies (a fixture named after a skipped suite writes a
+marker file and the marker must not appear), an entry that names nothing exits
+2, a failing suite fails the run and is annotated with its file and status, a
+hanging suite is killed and reported as a timeout rather than a failure, and an
+empty suite directory is an error rather than a silent pass.
+`experiments/test-issue115-shfmt-gate.sh` additionally asserts that no unquoted
+subscript is left anywhere in the tree, and demonstrates the rewrite on a
+fixture so the paragraph above stays checkable rather than becoming folklore.
+
+**To report upstream.** mvdan/sh. A formatter is allowed to change how a
+script looks; rewriting an associative-array subscript changes what it does,
+and shfmt does it silently. Queued in [`SOLUTION-PLAN.md`](SOLUTION-PLAN.md#s7)
+with the reproducer from the gate suite.

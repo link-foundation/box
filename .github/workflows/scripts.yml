@@ -109,6 +109,54 @@ jobs:
       - name: The runner's own fixtures still hold
         run: bash experiments/test-issue115-shellcheck-gate.sh
 
+  # Issue #115, template best practice #3 ("automated code formatting"). The
+  # template runs prettier over a JavaScript repository; the source of this one
+  # is shell, and nothing formatted it. 74 of the 98 tracked scripts disagreed
+  # with any single consistent style - four-space indents next to two-space
+  # ones, `a; b` on one line next to one statement per line - which makes every
+  # diff noisier than the change it carries and turns formatting into a review
+  # comment nobody should have to write.
+  #
+  # A reformat is nearly always inert - shfmt parses the script and prints the
+  # syntax tree back out - but "nearly" is doing work: shfmt formats an array
+  # subscript as arithmetic, and it silently rewrote the key
+  # `[node-lts-integration-test.sh]` in run-experiments.sh into a different
+  # string, disabling three skip entries. The regression suites caught it. So
+  # the evidence that a reformat is safe is that the suites pass over the
+  # rewritten tree, never the parse-and-print argument on its own.
+  #
+  # Reproduce locally with the identical command:
+  #   bash scripts/ci/run-shfmt.sh          # check
+  #   bash scripts/ci/run-shfmt.sh --fix    # rewrite
+  shfmt:
+    name: scripts / formatting
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-shfmt
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      - name: Every shell script is formatted
+        run: bash scripts/ci/run-shfmt.sh
+
+      # Including the check that the formatter cannot pass by examining
+      # nothing: a wrong mount or a missing tool exits 0 with no output, which
+      # is indistinguishable from a clean tree (RC-16).
+      - name: The formatter gate's own fixtures still hold
+        run: bash experiments/test-issue115-shfmt-gate.sh
+
   # Issue #115 (RC-9). The repository had 27 regression suites under
   # experiments/ and the workflows referenced 5 of them. The remaining 22 ran
   # only when someone remembered to — so two of them had been crashing on any

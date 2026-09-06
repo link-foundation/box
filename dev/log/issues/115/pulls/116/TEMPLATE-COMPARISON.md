@@ -71,7 +71,7 @@ scripts, hooks and tool configuration.
 | — | `.hadolint.yaml` | **Box-only, new.** `failure-threshold: warning`, one documented ignore (`DL3008`, for the issue-#112 reason). No template counterpart |
 | `.husky/pre-commit` + `lint-staged` | — | **Skipped with reason.** husky installs from `package.json`'s `prepare` script; this repository has no root `package.json` and adding npm to a Docker-image factory to gain a hook is a worse trade than the hook is worth. The checks a hook would run (shellcheck, actionlint, hadolint) all run in CI and are all reproducible locally with the single command each workflow prints |
 | `.secretlintrc.json` | — | **Still missing.** Best practice #11 |
-| `.prettierrc`, `.prettierignore` | — | **Still missing.** Best practice #3. `shfmt` is the transferable equivalent for an 80.9 %-shell repository |
+| `.prettierrc`, `.prettierignore` | `scripts/ci/run-shfmt.sh` (style in the script, not a dotfile) | **Adopted**, in the language this repository is written in. `shfmt -i 2 -ci -bn`, chosen by measuring all six candidate styles against the tree; the style lives with the runner so CI and a developer cannot disagree about it |
 | `.jscpd.json` | — | **Skipped with reason.** jscpd is npm-only and its target here — the ten copied retry blocks and the duplicated manifest steps — has been removed by extraction rather than measured |
 | `.lycheeignore` | — | Still missing, follows from `links.yml` |
 | `.changeset/config.json` | `.changeset/config.json` | Present in both |
@@ -86,7 +86,7 @@ scripts, hooks and tool configuration.
 | --- | --- | --- | --- | --- |
 | 1 | Run checks only on relevant file changes | **Pass** | **Pass** | `scripts/ci/detect-changes.sh` + a `detect-changes` job feeding every build gate |
 | 2 | File size limits (1500 lines) | **Fail** | **Fail** | `release.yml` 3432 → 3068. Still over; no check enforces it yet ([RC-8](ROOT-CAUSES.md#rc-8)) |
-| 3 | Automated code formatting | **Fail** | **Fail** | No prettier/shfmt, no `format:check` job |
+| 3 | Automated code formatting | **Fail** | **Pass** | `scripts/ci/run-shfmt.sh` and the `scripts / formatting` job; 73 of the 96 tracked scripts reformatted ([RC-20](ROOT-CAUSES.md#rc-20)). The reformat also silently disabled the skip list of the runner that runs every other check, which is recorded as its own root cause ([RC-21](ROOT-CAUSES.md#rc-21)) rather than quietly fixed |
 | 4 | Static analysis and linting | **Fail** | **Pass** | actionlint + zizmor (`workflows.yml`), shellcheck over 88 scripts (`scripts.yml`), hadolint over 23 Dockerfiles (`dockerfiles.yml`). The 83 + 173 + 15 findings that sat unreported are fixed and gated ([RC-6](ROOT-CAUSES.md#rc-6)) |
 | 5 | Fast-fail job ordering | **Fail** | **Partial** | The lint workflows are separate and finish in seconds, and `assert-base-image.sh` fails a build before it spends 22 minutes on a `FROM` that does not exist ([RC-4](ROOT-CAUSES.md#rc-4)). Within `release.yml` the build jobs still start off `detect-changes` alone |
 | 6 | Changeset-based versioning | **Pass** | **Pass** | `scripts/release/*changeset*.sh` |
@@ -100,7 +100,7 @@ scripts, hooks and tool configuration.
 | 14 | Lint the workflows themselves | **Fail** | **Pass** | `workflows.yml`, both linters pinned by digest-bearing tag, both reproducible locally with the command the workflow prints |
 | 15 | Audit the dependency tree | **Fail** | **Partial** | CodeQL over `javascript-typescript`, `python` and `actions`, on every push, pull request and weekly. `dependency-review`/`npm audit` still do not transfer — no root `package.json`, no lockfile, so both would report green forever |
 
-**Score: 2 pass, 2 partial, 11 fail → 10 pass, 2 partial, 2 fail, 1 skipped-with-reason.**
+**Score: 2 pass, 2 partial, 11 fail → 11 pass, 2 partial, 1 fail, 1 skipped-with-reason.**
 
 ---
 
@@ -138,7 +138,8 @@ Every row of Parts 1 and 2 that moved, and the commit that moved it.
 | Link checking, with a Wayback fallback and an ignore file that may only hold false positives | `ee78f40` | `experiments/test-issue115-links-gate.sh` |
 | The GitHub Release is no longer gated on an image push, and the notes assert what was published | `aa9f54e` | `experiments/test-issue115-release-notes.sh` (Part 5) |
 | Every pull-request check runs against the real merge result, not a stale preview | `aca301c` | `experiments/test-issue115-fresh-merge.sh` |
+| Automated formatting: `shfmt` over every tracked script, with a canary that proves the formatter looked | *this commit* | `experiments/test-issue115-shfmt-gate.sh` |
+| The runner that runs every other check is itself checked, and its skip list must name real files | *this commit* | `experiments/test-issue115-experiment-runner.sh` |
 
-Still open, in the order they will be taken: `release.yml` under 1500 lines and
-then `check-file-line-limits.sh` (#2); automated formatting, `shfmt` for a
-repository whose source is shell (#3).
+Still open: `release.yml` under 1500 lines and then `check-file-line-limits.sh`
+(#2).

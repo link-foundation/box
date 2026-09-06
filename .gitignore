@@ -137,3 +137,9 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Scratch files written by scripts/ci/run-shfmt.sh and its test suite; both
+# delete their own, this is the safety net for an interrupted run.
+.shfmt-canary-*.sh
+.shfmt-fixture-*.sh
+.runner-fixture-*.sh
