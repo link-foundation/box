@@ -165,10 +165,13 @@ for file in "${FILES[@]}"; do
         }
 
         # A quoted delimiter is what suppresses expansion; <<EOF is fine.
-        if (match($0, /<<-?[ \t]*(\47[A-Za-z_][A-Za-z0-9_]*\47|"[A-Za-z_][A-Za-z0-9_]*")/)) {
-          d = substr($0, RSTART, RLENGTH)
-          sub(/^<<-?[ \t]*/, "", d)
-          gsub(/[\47"]/, "", d)
+        # find_opener() skips a quoted-delimiter opener that is inside a string
+        # literal - a test that builds a fixture with printf "cat >x.sh <<EOF" is
+        # writing data, not opening a heredoc, and reading it as one used to
+        # swallow the rest of the file and report every variable in it as a leak
+        # (issue #115, RC-23).
+        d = find_opener($0)
+        if (d != "") {
 
           # Only bodies that become a shell script are checked; a quoted heredoc
           # holding prose, JSON or a config file is not a script and may
@@ -202,6 +205,54 @@ for file in "${FILES[@]}"; do
         if (in_doc) finish()
         if (suppressed > 0) printf "SUPPRESSED\t%s\t%d\n", FILE, suppressed
         exit (findings > 0 ? 1 : 0)
+      }
+
+      # ----------------------------------------------------------------------
+      # The first heredoc opener on the line that the shell would actually
+      # execute, or "" if there is none. Returns the delimiter with its quotes
+      # removed.
+      #
+      # Two things disqualify a textual match: it sits inside a string literal
+      # (so it is data - a fixture, an echo, a comment in a generated file), or
+      # it is the tail of a `<<<` herestring, which shares two characters with a
+      # heredoc and is not one.
+      function find_opener(line,   off, abs, txt) {
+        off = 0
+        while (1) {
+          if (!match(substr(line, off + 1), /<<-?[ \t]*(\47[A-Za-z_][A-Za-z0-9_]*\47|"[A-Za-z_][A-Za-z0-9_]*")/))
+            return ""
+          abs = off + RSTART
+          txt = substr(line, abs, RLENGTH)
+          off = abs + RLENGTH - 1
+          if (abs > 1 && substr(line, abs - 1, 1) == "<") continue     # a herestring, <<< quoted-delim
+          if (quoted_at(line, abs)) continue                           # an opener inside a string literal
+          sub(/^<<-?[ \t]*/, "", txt)
+          gsub(/[\47"]/, "", txt)
+          return txt
+        }
+      }
+
+      # Is character `pos` of `line` inside a quoted string? Line-local on
+      # purpose: an opener is a command line, and a command line that leaves a
+      # quote open is continued with a backslash.
+      #
+      # `$( ... )` starts a fresh quoting context - in "$(f "x <<\47EOF\47")" the
+      # inner quotes open a new string, they do not close the outer one - so the
+      # state is stacked rather than toggled. Without the stack that line reads
+      # as unquoted and the fixture inside it becomes a heredoc.
+      function quoted_at(line, pos,   i, c, state, sp, stack) {
+        state = 0                                  # 0 bare, 1 single, 2 double
+        sp = 0
+        for (i = 1; i < pos; i++) {
+          c = substr(line, i, 1)
+          if (state == 1) { if (c == "\47") state = 0; continue }
+          if (c == "\\") { i++; continue }
+          if (state == 0 && c == "\47") { state = 1; continue }
+          if (c == "\"") { state = (state == 2 ? 0 : 2); continue }
+          if (c == "$" && substr(line, i + 1, 1) == "(") { stack[++sp] = state; state = 0; i++; continue }
+          if (c == ")" && sp > 0 && state == 0) { state = stack[sp--]; continue }
+        }
+        return (state != 0)
       }
 
       # ----------------------------------------------------------------------

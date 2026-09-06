@@ -1103,3 +1103,162 @@ fixture so the paragraph above stays checkable rather than becoming folklore.
 script looks; rewriting an associative-array subscript changes what it does,
 and shfmt does it silently. Queued in [`SOLUTION-PLAN.md`](SOLUTION-PLAN.md#s7)
 with the reproducer from the gate suite.
+
+---
+
+## RC-22 — A workflow that matched a script by its formatting, and the formatter changed it — **error, caused by the fix for RC-20**
+
+**Evidence.** Run
+[34009149532](https://github.com/link-foundation/box/actions/runs/34009149532)
+(*Measure Disk Space and Update README*, commit `7af5cf5` on this branch), job
+*Validate measurement scripts*, step *Syntax-check the generated box-user
+script*:
+
+```
+##[error]could not extract the generated script
+##[error]Process completed with exit code 1.
+```
+
+The two preceding steps passed. Nothing about the measurement scripts was
+wrong.
+
+**Mechanism.** `scripts/measure-disk-space.sh` cannot be syntax-checked in one
+piece. The half that runs as the unprivileged `box` user is written from a
+**quoted** heredoc, so to the parser of the outer script it is data, and
+`bash -n` on the parent says nothing about it. The workflow therefore cut the
+body out and checked it separately:
+
+```yaml
+awk '/^cat > \/tmp\/box-measure\.sh <</{flag=1; next} /^EOF_BOX/{flag=0} flag' \
+  scripts/measure-disk-space.sh > /tmp/generated-measure.sh
+test -s /tmp/generated-measure.sh || { echo "::error::could not extract the generated script"; exit 1; }
+```
+
+That pattern is not a description of a heredoc. It is a description of one way
+of *typing* a heredoc — `cat`, one space, `>`, one space, the path, one space,
+`<<`. Commit `55416af` of this pull request (the RC-20 fix) ran shfmt over
+every script in the repository, and shfmt writes redirections without those
+spaces:
+
+```diff
+-cat > /tmp/box-measure.sh << 'EOF_BOX'
++cat >/tmp/box-measure.sh <<'EOF_BOX'
+```
+
+Same program, same heredoc, same delimiter. The regex stopped matching, awk
+printed nothing, and the job failed on every push from that commit onward.
+
+**Why this is the interesting failure and not a typo.** The `test -s` guard did
+its job — this is an *error*, loudly reported, not one of the silent passes the
+rest of this document is about. What it could not say is **which** of four very
+different situations it had hit: the heredoc was renamed, the heredoc was
+deleted, the heredoc is unterminated, or the heredoc is exactly where it always
+was and only its whitespace moved. All four produce an empty file and the same
+sentence. Diagnosing it meant reading the script and comparing it, character by
+character, against a regex in another file.
+
+The general defect is the coupling: a workflow asserted something about the
+*formatting* of a file that this repository has just committed to letting a
+formatter rewrite. RC-21 was the same collision from the other side — there,
+the reformat changed a script's behaviour; here, it changed a different file's
+ability to read it. Adopting a formatter makes every "match this source line"
+check in the tree a latent break, and a grep of the workflows found this was
+the only one: `release.yml:165` filters `git diff --name-only` output by path
+prefix, which is a property of the repository layout, not of anyone's spacing.
+
+**Fix.** `scripts/ci/extract-quoted-heredoc.sh <file> <delimiter>` prints the
+body of a quoted heredoc, matching the redirection **bash parses** rather than
+the way it happens to be written: `<<` or `<<-`, any spacing, the delimiter
+quoted with `'`, with `"`, or bare. `<<<` is excluded, because a herestring
+shares two characters with a heredoc and reading one as an opener would swallow
+the rest of the file and report success. Each formerly indistinguishable
+failure now has its own message and a distinct exit code: no opener, more than
+one opener with that delimiter (ambiguous — the old awk would have silently
+taken the first), an unterminated heredoc, an empty body (exit 1); a missing
+file, a wrong argument count, or a delimiter containing regex metacharacters
+(exit 2). `measure-disk-space.yml` calls it, and the extraction it does is
+identical for the old spelling and the new one.
+
+**Pinned by.** `experiments/test-issue115-heredoc-extraction.sh` — 29
+assertions. It extracts from the real `scripts/measure-disk-space.sh` and
+`bash -n`s the result (426 lines); it runs **the historical awk expression**
+against the same file and asserts it produces nothing, so the reproduction of
+the bug stays in the repository rather than becoming a story about it; it feeds
+the extractor every opener spelling bash accepts, including `<<-` with a
+tab-indented terminator and an opener indented inside a function; it asserts a
+`<<<'EOF_BOX'` herestring is *not* an opener; it drives each of the four
+failure modes and checks the message names the delimiter and the file; and it
+reads the workflow to confirm the step **runs** the script (a `run:` line, not
+a comment mentioning it) and that no workflow greps the opener by its
+formatting again.
+
+**Lesson for the tree.** Any check whose input is another file's source text
+should match what the language parses, or read the file through the tool that
+owns it. Where that is impractical, the check must distinguish "I looked and
+found nothing" from "I could not look", which is the same invariant RC-16
+established for gates that examine an empty file set.
+
+---
+
+## RC-23 — The heredoc gate read an example *of* a heredoc as a heredoc — **false positive, found by the fix for RC-22**
+
+**Evidence.** `scripts/ci/check-heredoc-vars.sh`, run over the tree with
+`experiments/test-issue115-heredoc-extraction.sh` (RC-22) added:
+
+```
+check-heredoc-vars.sh: FAILED — 8 variable(s) leak out of a quoted heredoc.
+  experiments/test-issue115-heredoc-extraction.sh:296: ROOT is expanded inside the quoted heredoc EOF_BOX (opened at line 134) ...
+  experiments/test-issue115-heredoc-extraction.sh:177: ERR is expanded inside the quoted heredoc EOF_BOX (opened at line 134) ...
+  ... six more
+```
+
+That file contains no heredoc named `EOF_BOX`. Line 134 is a *fixture*:
+
+```bash
+check_two_lines "shfmt spelling: cat >file <<'EOF_BOX'" \
+  "$(fixture shfmt.sh "cat >/tmp/box-measure.sh <<'EOF_BOX'")"
+```
+
+**Mechanism.** The gate found openers with a regex applied to the raw line, so
+`<<'EOF_BOX'` inside a string literal looked exactly like a redirection. It
+opened a heredoc whose terminator never arrives — no line of that file is
+`EOF_BOX` on its own — so **the rest of the file was consumed as a body**, and
+every `$NAME` in the remaining 200 lines was reported as a variable leaking out
+of a heredoc that does not exist. One misread line produced eight findings, all
+of them false, on a file whose subject is *how to read a heredoc correctly*.
+
+Two narrower cases sat behind the same regex: `cmd <<<'EOF'` — a herestring,
+which shares two characters with a heredoc opener and is not one — and any line
+where the state of the quotes is what decides. `"$(f "x")"` is the case that
+matters here: the inner `"` opens a new string inside the command substitution,
+it does not close the outer one, so a scanner that merely toggles a flag has the
+quote state exactly inverted by the time it reaches the `<<`.
+
+**Why it counts as a false positive and not a rough edge.** It fails a gate on a
+file that is correct, and the message tells the reader to fix something that is
+not there. A developer who trusts it edits working code; a developer who does
+not trust it stops reading the gate's output, which is how a real leak gets
+merged later. RC-13 is the same disease in another organ — a check whose
+finding is an artefact of how the check works — and the cure is the same: the
+check has to model what the shell does, not what the text looks like.
+
+**Fix.** Opener detection is now `find_opener()`, which walks the candidates on
+a line and rejects each one that is (a) preceded by a third `<`, or (b) inside a
+string according to `quoted_at()`, a character scan that **stacks** the quoting
+context across `$( … )` instead of toggling a flag. A line may still contain a
+real opener after a quoted example, and it is found: the walk continues past a
+rejected candidate rather than giving up on the line.
+
+**Pinned by.** `experiments/test-issue115-heredoc-unbound-vars.sh` grew four
+assertions in Part 2 — the fixture that produced the eight findings must
+produce none; nothing after it may be reported (the swallow); a `<<<'EOF'`
+herestring is not an opener; and, so the narrowing cannot become a hole, a
+genuine opener *after* a quoted example in the same file is still analysed and
+its leak still reported. The suite is 60 assertions.
+
+**How it was found.** Not by review: by writing the RC-22 regression suite,
+committing it, and running every gate over the tree it changed. That is the
+second time in this pull request that a new test file found a defect in an
+existing check by being an input nobody had given it (the first was RC-21). It
+is the argument for keeping the gates cheap enough to run over the whole tree on
+every push rather than over the diff.

@@ -147,4 +147,6 @@ Every row of Parts 1 and 2 that moved, and the commit that moved it.
 | Every pull-request check runs against the real merge result, not a stale preview | `aca301c` | `experiments/test-issue115-fresh-merge.sh` |
 | Automated formatting: `shfmt` over every tracked script, with a canary that proves the formatter looked | `7488af9` | `experiments/test-issue115-shfmt-gate.sh` |
 | The runner that runs every other check is itself checked, and its skip list must name real files | `7488af9` | `experiments/test-issue115-experiment-runner.sh` |
-| `release.yml` split by image family, and a line-limit gate so it cannot grow back | *this commit* | `experiments/test-issue115-workflow-split.sh`, `experiments/test-issue115-line-limits.sh`, `analysis/verify-split-equivalence.py` |
+| `release.yml` split by image family, and a line-limit gate so it cannot grow back | `7af5cf5` | `experiments/test-issue115-workflow-split.sh`, `experiments/test-issue115-line-limits.sh`, `analysis/verify-split-equivalence.py` |
+| Workflows read a script through a parser instead of matching its formatting, so the formatter cannot break them | *this commit* | `experiments/test-issue115-heredoc-extraction.sh` |
+| The heredoc gate no longer reads an example of a heredoc as a heredoc (quote- and herestring-aware) | *this commit* | `experiments/test-issue115-heredoc-unbound-vars.sh` (Part 2) |

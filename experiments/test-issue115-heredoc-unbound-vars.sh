@@ -249,6 +249,47 @@ FIX
 run_check "$TMP/case-unquoted.sh"
 check "does not flag an unquoted heredoc (it expands at write time)" "0" "$rc"
 
+# A `<<'EOF'` inside a string literal is data, not a redirection. Reading one as
+# an opener starts a heredoc whose terminator never comes, so the rest of the
+# file is swallowed as a body and every variable in it is reported as a leak -
+# eight of them, in a file with no heredoc at all (issue #115, RC-23). The
+# fixture below is the shape that found it: a test that builds another script
+# by passing the opener text as an argument.
+# heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
+cat >"$TMP/case-literal-opener.sh" <<'FIX'
+fixture() { printf '%s\n' "$2" > "/tmp/$1"; }
+fixture shfmt.sh "cat >/tmp/box-measure.sh <<'EOF_BOX'"
+describe "the shfmt spelling: cat >file <<'EOF_BOX'"
+NAME="$(fixture other.sh "cat >/tmp/x.sh <<'EOF_BOX'")"
+echo "$UNRELATED_VARIABLE"
+FIX
+run_check "$TMP/case-literal-opener.sh"
+check "a <<'EOF' inside a string literal is not an opener" "0" "$rc"
+check "  (and nothing after it is reported as a leaked variable)" "0" \
+  "$(grep -c 'UNRELATED_VARIABLE' <<<"$check_out" || true)"
+
+# `<<<` is a herestring. It shares two characters with a heredoc and is not one.
+# heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
+cat >"$TMP/case-herestring.sh" <<'FIX'
+grep -q x <<<'EOF'
+echo "$UNRELATED_VARIABLE"
+FIX
+run_check "$TMP/case-herestring.sh"
+check "a <<<'EOF' herestring is not an opener" "0" "$rc"
+
+# The narrowing above must not cost a real detection: a genuine opener on a
+# later line of the same file is still analysed.
+# heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
+cat >"$TMP/case-literal-then-real.sh" <<'FIX'
+echo "an example: cat >x.sh <<'EOF'"
+cat > /tmp/out.sh << 'EOF'
+echo "$NODE_MAJOR"
+EOF
+FIX
+run_check "$TMP/case-literal-then-real.sh"
+check "a real opener after a quoted example is still caught" "1" \
+  "$(grep -c 'NODE_MAJOR is expanded' <<<"$check_out" || true)"
+
 # =============================================================================
 echo ""
 echo "=== Part 3: the real tree ==="

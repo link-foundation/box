@@ -77,11 +77,18 @@ jobs:
 
       # The generated script is written from a quoted heredoc, so `bash -n` on
       # the parent says nothing about it. Extract it and check it separately.
+      #
+      # The extraction used to be an inline awk pattern that hardcoded the
+      # spacing of the opener (`cat > /tmp/box-measure.sh <<`). shfmt then
+      # reformatted the script to `cat >/tmp/box-measure.sh <<'EOF_BOX'` and the
+      # pattern matched nothing, failing this job on every push (issue #115,
+      # RC-22). The extraction now matches what bash parses rather than how the
+      # line happens to be formatted, and says which of "no opener", "no
+      # terminator" and "empty body" it hit.
       - name: Syntax-check the generated box-user script
         run: |
-          awk '/^cat > \/tmp\/box-measure\.sh <</{flag=1; next} /^EOF_BOX/{flag=0} flag' \
-            scripts/measure-disk-space.sh > /tmp/generated-measure.sh
-          test -s /tmp/generated-measure.sh || { echo "::error::could not extract the generated script"; exit 1; }
+          bash scripts/ci/extract-quoted-heredoc.sh \
+            scripts/measure-disk-space.sh EOF_BOX > /tmp/generated-measure.sh
           echo "extracted $(wc -l < /tmp/generated-measure.sh) lines"
           bash -n /tmp/generated-measure.sh
 
