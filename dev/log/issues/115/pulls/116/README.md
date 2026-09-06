@@ -23,10 +23,28 @@ Everything in this folder was collected from the live repository and its CI on
 ```
 meta/     issue #115, pull request #116, and every comment on both, as returned by the GitHub API
 runs/     run and job metadata for the two failing runs named in the issue, plus the 60 most recent runs
-logs/     the full CI logs of both failing runs
-analysis/ linter baselines measured against the tree at the branch point
+logs/     the full CI logs of both failing runs, and of the runs this branch itself turned red
+analysis/ linter baselines measured against the tree at the branch point, plus per-defect probes
 templates/ snapshots of the reference template and the best-practices document the issue points at
 ```
+
+| Log | Run | What it proves |
+| --- | --- | --- |
+| `logs/release-33972074755.log.gz` | 33972074755, `main` @ `42be663` | R2's first failing run, in full (19 MB uncompressed). |
+| `logs/release-33972074755-failures.log` | same | Every error, warning, retry and authorization line extracted from it. |
+| `logs/measure-disk-space-33972074753.log` | 33972074753, `main` @ `42be663` | R2's second failing run. |
+| `logs/release-33997488721.log.gz` | 33997488721, this branch @ `30801ee` | The base-image preflight firing on a branch whose `konard/box-*` bases did not exist yet. |
+| `logs/scripts-34003004420.log` | 34003004420, this branch @ `46f80a5` | `test-issue108-detect-changes.sh` dying with git exit 128 in a shallow checkout — the defect ROOT-CAUSES.md records as RC-15. |
+
+Analysis probes:
+
+| File | What it proves |
+| --- | --- |
+| `analysis/{actionlint,zizmor,shellcheck}-baseline.txt` | What each linter reported against the tree at the branch point. |
+| `analysis/zizmor-template-baseline.txt` | zizmor run against the *vendored template*, i.e. the findings reported upstream under R4. |
+| `analysis/lean-toolchain-verification.*` | elan setting a default toolchain it never installed (RC-14). |
+| `analysis/lean-install-clean-container.log` | The patched Lean install script in a clean `ubuntu:24.04`: one toolchain, resolved, present. |
+| `analysis/opam-path-verification.*` | opam's binary directory missing from `PATH` in a built box. |
 
 ### Reproducing the log collection
 

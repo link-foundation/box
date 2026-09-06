@@ -1,0 +1,305 @@
+scripts / regression suites	UNKNOWN STEP	﻿2026-09-06T01:05:59.7618944Z Current runner version: '2.337.0'
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7655791Z ##[group]Runner Image Provisioner
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7657154Z Hosted Compute Agent
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7658235Z Version: 20260828.587
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7659352Z Commit: abac92662cab4cc7352de4f9f9d2e2419aad9c29
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7660542Z Build Date: 2026-08-28T16:44:25Z
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7661804Z Worker ID: {fa199dd1-a3b2-490c-8608-020b55cc78e3}
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7663016Z Azure Region: eastus
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7664388Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7667224Z ##[group]Operating System
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7668213Z Ubuntu
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7669178Z 24.04.4
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7670098Z LTS
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7671008Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7671862Z ##[group]Runner Image
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7672864Z Image: ubuntu-24.04
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7674188Z Version: 20260831.293.1
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7676310Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260831.293/images/ubuntu/Ubuntu2404-Readme.md
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7679130Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260831.293
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7680860Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7682714Z ##[group]GITHUB_TOKEN Permissions
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7686135Z Contents: read
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7687145Z Metadata: read
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7688047Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7691240Z Secret source: Actions
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.7693247Z Prepare workflow directory
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.8175460Z Prepare all required actions
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:05:59.8247525Z Getting action download info
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.0201733Z Download action repository 'actions/checkout@v6' (SHA:d23441a48e516b6c34aea4fa41551a30e30af803)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.1301083Z Download action repository 'actions/upload-artifact@v7' (SHA:043fb46d1a93c77aae656e7c1c64a875d1fc6a0a)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3172072Z Complete job name: scripts / regression suites
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3938706Z ##[group]Run actions/checkout@v6
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3939599Z with:
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3940072Z   persist-credentials: false
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3940620Z   repository: link-foundation/box
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3944681Z   token: ***
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3945130Z   ssh-strict: true
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3945573Z   ssh-user: git
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3946003Z   clean: true
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3946454Z   sparse-checkout-cone-mode: true
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3946982Z   fetch-depth: 1
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3947439Z   fetch-tags: false
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3947885Z   show-progress: true
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3948331Z   lfs: false
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3948738Z   submodules: false
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3949183Z   set-safe-directory: true
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3949684Z   allow-unsafe-pr-checkout: false
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.3950472Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.4982030Z Syncing repository: link-foundation/box
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.4984887Z ##[group]Getting Git version info
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.4986449Z Working directory is '/home/runner/work/box/box'
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.4987550Z [command]/usr/bin/git version
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5103970Z git version 2.55.0
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5128378Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5151760Z Temporarily overriding HOME='/home/runner/work/_temp/206c4d5a-db57-4728-9e6d-83af6f8b5b8c' before making global git config changes
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5154757Z Adding repository directory to the temporary git global config as a safe directory
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5158323Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/box/box
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5216943Z Deleting the contents of '/home/runner/work/box/box'
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5219892Z ##[group]Determining repository object format
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5223177Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5224630Z ##[group]Initializing the repository
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5227801Z [command]/usr/bin/git init /home/runner/work/box/box
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5363773Z hint: Using 'master' as the name for the initial branch. This default branch name
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5365644Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5367708Z hint: to use in all of your new repositories, which will suppress this warning,
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5369309Z hint: call:
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5370443Z hint:
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5371579Z hint: 	git config --global init.defaultBranch <name>
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5372857Z hint:
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5374188Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5376033Z hint: 'development'. The just-created branch can be renamed via this command:
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5377528Z hint:
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5378419Z hint: 	git branch -m <name>
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5379367Z hint:
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5380557Z hint: Disable this message with "git config set advice.defaultBranchName false"
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5382541Z Initialized empty Git repository in /home/runner/work/box/box/.git/
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5385961Z [command]/usr/bin/git remote add origin https://github.com/link-foundation/box
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5445557Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5446841Z ##[group]Disabling automatic garbage collection
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5447720Z [command]/usr/bin/git config --local gc.auto 0
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5481136Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5483102Z ##[group]Setting up auth
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5484593Z Removing SSH command configuration
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5491415Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5530987Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5929339Z Removing HTTP extra header
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5936270Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.5974347Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.6190388Z Removing includeIf entries pointing to credentials config files
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.6198327Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.6235653Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.6462465Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-ea7970eb-473c-4604-99c7-40be7b46098d.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.6503448Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/box/box/.git.path /home/runner/work/_temp/git-credentials-ea7970eb-473c-4604-99c7-40be7b46098d.config
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.6539487Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/box/box/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-ea7970eb-473c-4604-99c7-40be7b46098d.config
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.6600087Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-ea7970eb-473c-4604-99c7-40be7b46098d.config
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.6634610Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-ea7970eb-473c-4604-99c7-40be7b46098d.config
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.6664598Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.6666009Z ##[group]Fetching the repository
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:00.6674239Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +68f0f5c80ab51e746575fdb92f31bf07123b62b3:refs/remotes/pull/116/merge
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.2920653Z From https://github.com/link-foundation/box
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.2923009Z  * [new ref]         68f0f5c80ab51e746575fdb92f31bf07123b62b3 -> pull/116/merge
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.2928707Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.2929916Z ##[group]Determining the checkout info
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.2931277Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.2934327Z [command]/usr/bin/git sparse-checkout disable
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.2997235Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.3028232Z ##[group]Checking out the ref
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.3031614Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/116/merge
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5178058Z Note: switching to 'refs/remotes/pull/116/merge'.
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5178636Z 
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5179053Z You are in 'detached HEAD' state. You can look around, make experimental
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5179999Z changes and commit them, and you can discard any commits you make in this
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5180920Z state without impacting any branches by switching back to a branch.
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5181470Z 
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5181815Z If you want to create a new branch to retain commits you create, you may
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5182409Z do so (now or later) by using -c with the switch command. Example:
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5182713Z 
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5182870Z   git switch -c <new-branch-name>
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5183092Z 
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5183231Z Or undo this operation with:
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5183428Z 
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5183940Z   git switch -
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5184147Z 
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5184399Z Turn off this advice by setting config variable advice.detachedHead to false
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5184760Z 
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5185145Z HEAD is now at 68f0f5c Merge 46f80a532d88af85b5f057755e22d82c1d4a9e47 into 7ac36f401f37d3cd9edf974222544ec6abd4c250
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5208117Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5261852Z [command]/usr/bin/git log -1 --format=%H
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5290126Z 68f0f5c80ab51e746575fdb92f31bf07123b62b3
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5300843Z ##[group]Removing auth
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5301322Z Removing SSH command configuration
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5306481Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5342078Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5563668Z Removing HTTP extra header
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5569135Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5606941Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5829980Z Removing includeIf entries pointing to credentials config files
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5833308Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5865175Z includeif.gitdir:/home/runner/work/box/box/.git.path
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5866039Z includeif.gitdir:/home/runner/work/box/box/.git/worktrees/*.path
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5866638Z includeif.gitdir:/github/workspace/.git.path
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5867155Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5875229Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/box/box/.git.path
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5901944Z /home/runner/work/_temp/git-credentials-ea7970eb-473c-4604-99c7-40be7b46098d.config
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5912743Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/box/box/.git.path /home/runner/work/_temp/git-credentials-ea7970eb-473c-4604-99c7-40be7b46098d.config
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5948040Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/box/box/.git/worktrees/*.path
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5973215Z /home/runner/work/_temp/git-credentials-ea7970eb-473c-4604-99c7-40be7b46098d.config
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.5982284Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/box/box/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-ea7970eb-473c-4604-99c7-40be7b46098d.config
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6017604Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6042430Z /github/runner_temp/git-credentials-ea7970eb-473c-4604-99c7-40be7b46098d.config
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6058680Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-ea7970eb-473c-4604-99c7-40be7b46098d.config
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6096516Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6121333Z /github/runner_temp/git-credentials-ea7970eb-473c-4604-99c7-40be7b46098d.config
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6135908Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-ea7970eb-473c-4604-99c7-40be7b46098d.config
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6166079Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6383070Z Removing credentials config '/home/runner/work/_temp/git-credentials-ea7970eb-473c-4604-99c7-40be7b46098d.config'
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6391900Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6599079Z ##[group]Run bash scripts/ci/run-experiments.sh --list
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6599645Z ^[[36;1mbash scripts/ci/run-experiments.sh --list^[[0m
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6640677Z shell: /usr/bin/bash -e {0}
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6641030Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6862466Z SKIP  node-lts-integration-test.sh                   needs network: resolves the live Node LTS feed (covered by the version-policy CI tier)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6873885Z RUN   preload-unit-test.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6885650Z SKIP  rust-refresh-layer-test.sh                     needs docker: builds layers to measure image size
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6897373Z RUN   test-add-measurement-fix.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6909280Z RUN   test-bashrc-merge-fix.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6920716Z RUN   test-bashrc-merge.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6932155Z RUN   test-du-exit-code-issue57.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6943846Z RUN   test-issue100-buildx-mirror-fallback.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6955253Z RUN   test-issue104-build-retry.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6966906Z RUN   test-issue104-logs-contain.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6978411Z RUN   test-issue104-vfs-warning.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.6989996Z RUN   test-issue108-detect-changes.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7001568Z RUN   test-issue112-supersede.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7013871Z RUN   test-issue115-base-image-preflight.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7025302Z RUN   test-issue115-ci-policy.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7036776Z RUN   test-issue115-elan-toolchain.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7048281Z RUN   test-issue115-hadolint-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7060665Z RUN   test-issue115-heredoc-unbound-vars.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7072187Z RUN   test-issue115-language-coverage.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7083848Z RUN   test-issue115-manifest-script.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7095574Z RUN   test-issue115-push-retry-classifier.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7110502Z RUN   test-issue115-registry-split.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7123207Z RUN   test-issue115-release-notes.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7135514Z RUN   test-issue115-shellcheck-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7147166Z RUN   test-issue115-test-box.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7159640Z RUN   test-issue82-dockerhub-login-tolerance.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7171267Z RUN   test-issue82-pr-parallel-tests.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7182906Z RUN   test-issue84-apply-changesets-quotes.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7194921Z RUN   test-issue90-release-workflow-policy.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7207586Z RUN   test-issue92-apt-retry-policy.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7219275Z RUN   test-json-manipulation.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7231179Z RUN   test-language-installs.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7242644Z RUN   test-sed-fix.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7256141Z SKIP  verify-full-box-tooling.sh                     needs docker and a pulled full-box image (tens of GB); manual probe behind scripts/ci/test-box.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7267632Z RUN   verify-script-syntax.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7279196Z RUN   version-policy-unit-test.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7330470Z ##[group]Run bash scripts/ci/run-experiments.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7330947Z ^[[36;1mbash scripts/ci/run-experiments.sh^[[0m
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7369490Z shell: /usr/bin/bash -e {0}
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7369810Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7505664Z ==> SKIP node-lts-integration-test.sh (needs network: resolves the live Node LTS feed (covered by the version-policy CI tier))
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:03.7516931Z ==> RUN  preload-unit-test.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:04.6360579Z ==> SKIP rust-refresh-layer-test.sh (needs docker: builds layers to measure image size)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:04.6373083Z ==> RUN  test-add-measurement-fix.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:05.1031638Z ==> RUN  test-bashrc-merge-fix.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:05.7435375Z ==> RUN  test-bashrc-merge.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:05.8178316Z ==> RUN  test-du-exit-code-issue57.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:05.8365525Z ==> RUN  test-issue100-buildx-mirror-fallback.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:09.4757184Z ==> RUN  test-issue104-build-retry.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:09.4933268Z ==> RUN  test-issue104-logs-contain.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:12.1384639Z ==> RUN  test-issue104-vfs-warning.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:12.1735896Z ==> RUN  test-issue108-detect-changes.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1606956Z ##[group]test-issue108-detect-changes.sh failed (exit 128)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1618122Z     === Part 1: pure classification (CHANGED_FILES_OVERRIDE) ===
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1618910Z       ok: .gitkeep only (should-build=false)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1621963Z       ok: README.md only (should-build=false)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1622584Z       ok: docs-only changes (should-build=false)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1623218Z       ok: experiments/examples only (should-build=false)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1624030Z       ok: changeset only (should-build=false)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1624737Z       ok: Dockerfile (should-build=true)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1625356Z       ok: scripts/ change (should-build=true)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1625996Z       ok: js image change (should-build=true)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1626716Z       ok: rust image change (should-build=true)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1627525Z       ok: dind image change (should-build=true)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1628296Z       ok: dind CI test change (should-build=true)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1629003Z       ok: workflow change (should-build=true)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1629664Z       ok: VERSION change (should-build=true)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1631581Z       ok: docs/dind/ does not set dind=true (dind=false)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1632223Z       ok: go flag set for go image change (go=true)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1632831Z       ok: mixed .gitkeep + js change (should-build=true)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1633934Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1657931Z ##[error]Suite failed with exit status 128
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:13.1666007Z ==> RUN  test-issue112-supersede.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:24.1470936Z ==> RUN  test-issue115-base-image-preflight.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:24.2058146Z ==> RUN  test-issue115-ci-policy.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:28.0884450Z ==> RUN  test-issue115-elan-toolchain.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:28.1043886Z ==> RUN  test-issue115-hadolint-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:28.5242838Z ==> RUN  test-issue115-heredoc-unbound-vars.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:29.1945400Z ==> RUN  test-issue115-language-coverage.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:30.3794545Z ==> RUN  test-issue115-manifest-script.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:30.5700064Z ==> RUN  test-issue115-push-retry-classifier.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:30.6700872Z ==> RUN  test-issue115-registry-split.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:30.9488333Z ==> RUN  test-issue115-release-notes.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:31.0691627Z ==> RUN  test-issue115-shellcheck-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:38.4325284Z ==> RUN  test-issue115-test-box.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:39.8933816Z ==> RUN  test-issue82-dockerhub-login-tolerance.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:39.9383305Z ==> RUN  test-issue82-pr-parallel-tests.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:40.0801572Z ==> RUN  test-issue84-apply-changesets-quotes.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:40.1091972Z ==> RUN  test-issue90-release-workflow-policy.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:40.2048446Z ==> RUN  test-issue92-apt-retry-policy.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:40.2780943Z ==> RUN  test-json-manipulation.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:06:40.6707680Z ==> RUN  test-language-installs.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:11.6583055Z ==> RUN  test-sed-fix.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:11.6960415Z ==> SKIP verify-full-box-tooling.sh (needs docker and a pulled full-box image (tens of GB); manual probe behind scripts/ci/test-box.sh)
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:11.6971803Z ==> RUN  verify-script-syntax.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:11.7117917Z ==> RUN  version-policy-unit-test.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1797276Z 
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1799555Z ================ experiment suites ================
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1800488Z passed:  32
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1800819Z failed:  1
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1801123Z skipped: 3
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1801301Z 
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1801614Z Failing suites (full output above, logs in /tmp/experiment-logs):
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1802272Z   test-issue108-detect-changes.sh
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1809570Z ##[error]Process completed with exit code 1.
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1914238Z ##[group]Run actions/upload-artifact@v7
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1914575Z with:
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1914782Z   name: experiment-logs
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1915024Z   path: /tmp/experiment-logs/
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1915278Z   if-no-files-found: warn
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1915503Z   retention-days: 7
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1915709Z   compression-level: 6
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1915917Z   overwrite: false
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1916134Z   include-hidden-files: false
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1916363Z   archive: true
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.1916557Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.3411334Z With the provided path, there will be 33 files uploaded
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.3417818Z Artifact name is valid!
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.3418239Z Root directory input is valid!
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.5714404Z Uploading artifact: experiment-logs.zip
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.5760238Z Beginning upload of artifact content to blob storage
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.7597918Z Uploaded bytes 68341
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.7741200Z Finished uploading artifact content to blob storage!
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.7742591Z SHA256 digest of uploaded artifact is 51bc53fc031f61dc32a5bf71924b19e048752a79071b279d445cc739c5b4eeea
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.7744232Z Finalizing artifact upload
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.9671931Z Artifact experiment-logs successfully finalized. Artifact ID 9980063527
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.9673309Z Artifact experiment-logs has been successfully uploaded! Final size is 68341 bytes. Artifact ID is 9980063527
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.9676936Z Artifact download URL: https://github.com/link-foundation/box/actions/runs/34003004420/artifacts/9980063527
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:12.9879653Z Post job cleanup.
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:13.0731082Z [command]/usr/bin/git version
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:13.0775587Z git version 2.55.0
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:13.0818654Z Temporarily overriding HOME='/home/runner/work/_temp/c4aea1c4-1939-43a2-a1b9-ecb4b8e6d2f8' before making global git config changes
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:13.0820312Z Adding repository directory to the temporary git global config as a safe directory
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:13.0824278Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/box/box
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:13.0856257Z Removing SSH command configuration
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:13.0863060Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:13.0900010Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:13.1154412Z Removing HTTP extra header
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:13.1155389Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:13.1191673Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:13.1454667Z Removing includeIf entries pointing to credentials config files
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:13.1464605Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:13.1510698Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+scripts / regression suites	UNKNOWN STEP	2026-09-06T01:07:13.1930166Z Cleaning up orphan processes

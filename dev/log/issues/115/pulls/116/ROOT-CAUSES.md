@@ -520,3 +520,140 @@ run in the full profile too.
 **Pinned by.** `experiments/test-issue115-elan-toolchain.sh` (static assertions in
 the default run; `ELAN_LIVE=1` adds the live docker reproduction) and the two
 offline checks in the `lean` profile of `scripts/ci/test-box.sh`.
+
+---
+
+<a id="rc-15"></a>
+
+## RC-15 — A regression suite that dies before its first assertion — **error, hidden by a false negative**
+
+**Symptom.** The `Scripts` workflow had been red on this branch since `149f807`
+— eight commits — and nothing in its log named an assertion
+([`logs/scripts-34003004420.log`](logs/scripts-34003004420.log)):
+
+```
+==> RUN  test-issue108-detect-changes.sh
+fatal: ambiguous argument 'HEAD~1': unknown revision or path not in the working tree.
+error: Could not access 'HEAD~1'
+Error: Process completed with exit code 128
+```
+
+No `FAIL:` line, no count, no suite summary. The run was not reporting a failed
+assertion; it was reporting that the suite never got far enough to make one.
+
+**Mechanism — two defects, one visible.**
+
+*The production defect.* `scripts/ci/detect-changes.sh` ends `resolve_range()`
+with `echo "HEAD~1 HEAD"` as its last-resort fallback, and `get_changed_files()`
+then ran
+
+```bash
+git diff --name-only $range 2>/dev/null || git diff --name-only HEAD~1 HEAD
+```
+
+`actions/checkout` clones with `fetch-depth: 1`, so `HEAD~1` does not exist in a
+CI checkout. `git diff` exits 128; the `||` fallback re-runs the *identical*
+failing command; `set -euo pipefail` takes the script down before it prints one
+`should-build=` line. The same happens on a repository's root commit. So
+`detect-changes.sh` was not merely untested in that state — it was *broken* in
+it, for any caller without full history.
+
+*The detector defect.* `experiments/test-issue108-detect-changes.sh` invoked the
+script inside a command substitution:
+
+```bash
+run_detect() { bash "$SCRIPT" | sed -n 's/^should-build=//p' | tail -n1; }
+```
+
+Under `set -euo pipefail` a command substitution whose command exits non-zero
+kills the calling suite on the spot. An assertion that cannot fail and say so is
+not an assertion — which is why eight commits of red produced no diagnostic.
+
+**Why it was not caught locally.** Local git is 2.43 (Ubuntu 24.04), the runner's
+is 2.55, and the local clone has full history. Reproduced with the runner's git
+and a genuinely shallow tree:
+
+```bash
+docker run --rm -v "$PWD:/repo" alpine:edge sh -c \
+  'apk add -q git bash && git clone -q --depth 1 file:///repo /tmp/r && cd /tmp/r &&
+   GITHUB_EVENT_NAME=push bash scripts/ci/detect-changes.sh; echo "exit=$?"'
+# exit=128
+```
+
+**Where it occurs.** One script, `scripts/ci/detect-changes.sh`, called from
+`.github/workflows/dockerfiles.yml` and `release.yml`; and one suite,
+`experiments/test-issue108-detect-changes.sh`. Every other suite in
+`experiments/` was audited for the same command-substitution shape — no other
+suite invokes a script under test that way.
+
+**Fix.**
+
+1. `resolve_range()`'s last resort becomes `last_resort_range()`, which prints
+   `HEAD~1 HEAD` **only if `git rev-parse --verify -q HEAD~1` succeeds**, and
+   prints nothing otherwise.
+2. `get_changed_files()` degrades instead of dying: with no usable range it logs
+   the reason and falls back to `git ls-files`. *Never under-build* — a build
+   that was not needed costs runner minutes, a build that was needed and skipped
+   ships an unbuilt image.
+3. The suite's `run_detect` swallows the exit status (`|| true`) so an assertion
+   can fail and print `FAIL:` rather than aborting the process.
+
+**Pinned by.** `experiments/test-issue108-detect-changes.sh`, Part 2b: two
+generated fixtures — a repository with only a root commit, and a
+`git clone --depth 1` that the suite first *verifies* is shallow (a fixture that
+is not shallow proves nothing) — each asserted under both `push` and
+`workflow_dispatch`. 26 assertions → 31.
+
+---
+
+<a id="rc-16"></a>
+
+## RC-16 — A secret scanner that finds a planted secret nowhere — **false negative**
+
+**Symptom.** The pipeline template runs secretlint and box does not (RC-9), so
+the obvious port is a `secretlint` job. Run against this repository it exits 0.
+Run against a file containing AWS's own documented example credentials it *also*
+exits 0:
+
+```
+$ printf 'aws_access_key_id = AKIAIOSFODNN7EXAMPLE\naws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\n' > /tmp/c/canary.txt
+$ npx --yes -p secretlint@13.0.5 -p @secretlint/secretlint-rule-preset-recommend secretlint /tmp/c/canary.txt
+$ echo $?
+0
+```
+
+**Mechanism.** `@secretlint/secretlint-rule-aws` allow-lists exactly that key
+pair, because it appears verbatim throughout AWS's documentation. The allow-list
+is correct; the *test* was wrong. A randomly generated `AKIA` + 40-character
+pair is flagged immediately.
+
+The general shape is the one this whole issue is about: **a green check whose
+green is indistinguishable from "the check did not run"**. A misconfigured
+`.secretlintrc.json`, a preset that failed to resolve, a CLI that silently
+skipped every file — all of them produce the same exit 0 as a genuinely clean
+tree.
+
+**Where it occurs.** Not yet in the tree: this was found while writing the port,
+before it shipped. The same shape *is* the reason RC-6, RC-9, RC-11, RC-12 and
+RC-14 went unnoticed for so long, so the fix is stated as a rule rather than a
+patch.
+
+**Fix.** Every scanner is validated against a planted positive in the same
+invocation that scans the repository. `scripts/ci/run-secretlint.sh` writes a
+canary to a temporary directory, scans it first, and **fails loudly if the canary
+is not flagged** — before it reports anything about the repository:
+
+```
+==> Canary detected (secretlint exit 1); the rules are live
+==> No secrets found
+```
+
+The canary key is generated from `/dev/urandom` at run time, never written down.
+A literal 40-character key in the script would be found by the very scan it
+exists to validate — the first version of the script failed on itself — and a
+constant would eventually become an allow-listed one, which is the bug.
+
+**Pinned by.** `experiments/test-issue115-secretlint-gate.sh` — 20 static
+assertions (21 with `SECRETLINT_LIVE=1`), including that the canary is generated
+rather than literal, that a missing canary detection is a hard failure, and that
+the CLI and the preset are pinned to the same exact version.
