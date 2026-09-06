@@ -255,35 +255,51 @@ else
   fail "the generator queried a registry without being asked to"
 fi
 
-# A fake docker on PATH, so the three registry answers can be tested without
-# one. $TMP/bin/docker prints what FAKE_DOCKER_MODE says and exits accordingly.
-mkdir -p "$TMP/bin"
-cat >"$TMP/bin/docker" <<'FAKE'
+# The registry answers are stubbed, not faked with a `docker` binary on PATH:
+# the generator asks the registry over HTTP now, through
+# scripts/release/registry-probe.sh, because a `docker manifest inspect` run
+# inside create-release measures the publisher's access and not the reader's
+# (issue #117). The stub is a sibling of a sandboxed copy of the generator, so
+# it is picked up by the same `source "${SCRIPT_DIR}/registry-probe.sh"` line
+# production uses - no test seam in the shipped script.
+SANDBOX="$TMP/sandbox"
+mkdir -p "$SANDBOX/scripts/release"
+cp "$SCRIPT" "$SANDBOX/scripts/release/"
+cat >"$SANDBOX/scripts/release/registry-probe.sh" <<'STUB'
 #!/usr/bin/env bash
-case "${FAKE_DOCKER_MODE}" in
-  ok)      exit 0 ;;
-  missing) echo "manifest unknown" >&2; exit 1 ;;
-  ratelimited) echo "toomanyrequests: rate limit exceeded" >&2; exit 1 ;;
-esac
-FAKE
-chmod +x "$TMP/bin/docker"
+# Stub probe: answers every reference with $STUB_STATE, or with the per-prefix
+# override in $STUB_GHCR_STATE / $STUB_DOCKERHUB_STATE when they are set.
+REGISTRY_PROBE_STATE=""
+REGISTRY_PROBE_DETAIL=""
+registry_probe_pull() {
+  case "$1" in
+    ghcr.io/*) REGISTRY_PROBE_STATE="${STUB_GHCR_STATE:-$STUB_STATE}" ;;
+    *) REGISTRY_PROBE_STATE="${STUB_DOCKERHUB_STATE:-$STUB_STATE}" ;;
+  esac
+  REGISTRY_PROBE_DETAIL="stub answered ${REGISTRY_PROBE_STATE}"
+}
+STUB
 
-# verified MODE - regenerate the notes with the fake registry answering MODE.
+# verified STATE [GHCR_STATE DOCKERHUB_STATE] - regenerate the notes with the
+# registries answering STATE.
 verified() {
-  PATH="$TMP/bin:$PATH" FAKE_DOCKER_MODE="$1" VERIFY_IMAGES=1 \
+  STUB_STATE="$1" STUB_GHCR_STATE="${2:-}" STUB_DOCKERHUB_STATE="${3:-}" \
+    VERIFY_IMAGES=1 \
     VERSION="$VERSION" REPO="$REPO" GHCR_IMAGE="$GHCR_IMAGE" \
     DOCKERHUB_IMAGE="$DOCKERHUB_IMAGE" RELEASE_DATE="2026-01-01" \
-    bash "$SCRIPT"
+    bash "$SANDBOX/scripts/release/build-release-notes.sh"
 }
 
 TOTAL_REFS="$EXPECTED"
+PER_REGISTRY=$((TOTAL_REFS / 2))
 
-verified ok >"$TMP/ok.md" 2>"$TMP/ok.err"
-if grep -q "^${TOTAL_REFS} of ${TOTAL_REFS} image references resolve" "$TMP/ok.md"; then
+verified published >"$TMP/ok.md" 2>"$TMP/ok.err"
+if grep -q "${TOTAL_REFS} of ${TOTAL_REFS} image references can be pulled" "$TMP/ok.md"; then
   pass "every reference is checked, and a full push reports $TOTAL_REFS of $TOTAL_REFS"
 else
   fail "a full push does not report $TOTAL_REFS of $TOTAL_REFS"
-  grep -n 'image references resolve' "$TMP/ok.md" | sed 's/^/      /' >&2
+  grep -n 'image references' "$TMP/ok.md" | sed 's/^/      /' >&2
+  sed 's/^/      /' "$TMP/ok.err" >&2
 fi
 
 if ! grep -q 'not published' "$TMP/ok.md"; then
@@ -293,7 +309,7 @@ else
 fi
 
 verified missing >"$TMP/missing.md" 2>"$TMP/missing.err"
-if grep -q "^0 of ${TOTAL_REFS} image references resolve" "$TMP/missing.md"; then
+if grep -q "0 of ${TOTAL_REFS} image references can be pulled" "$TMP/missing.md"; then
   pass "an unpushed release reports 0 of $TOTAL_REFS, instead of advertising them all"
 else
   fail "an unpushed release does not report 0 of $TOTAL_REFS"
@@ -308,17 +324,99 @@ fi
 
 # The distinction that keeps the check honest: a registry that will not answer
 # is not evidence that the image is absent.
-verified ratelimited >"$TMP/unknown.md" 2>"$TMP/unknown.err"
+verified unknown >"$TMP/unknown.md" 2>"$TMP/unknown.err"
 if grep -q 'state is unknown' "$TMP/unknown.md" && ! grep -q 'not published' "$TMP/unknown.md"; then
   pass "a rate-limited registry is reported as unknown, never as missing"
 else
   fail "a rate-limited registry is reported as missing; the notes would libel a published image"
 fi
 
-if grep -q "^0 of ${TOTAL_REFS} image references resolve" "$TMP/unknown.md"; then
+if grep -q "0 of ${TOTAL_REFS} image references can be pulled" "$TMP/unknown.md"; then
   pass "the unknown references still count towards the total"
 else
   fail "the unknown references are dropped from the total"
+fi
+
+echo ""
+echo "== Part 6 (issue #117): the notes report the reader's view, per registry =="
+
+# The v2.6.0 notes said "28 of 56 image references resolve" while both GHCR
+# packages were private and Docker Hub had received nothing: 0 of 56 for every
+# reader. Two defects, and this part pins both. First, a private package is
+# its own state - an image that exists and cannot be pulled is not published,
+# and calling it "missing" would be the same false claim in the other
+# direction.
+verified private >"$TMP/private.md" 2>"$TMP/private.err"
+if grep -q "0 of ${TOTAL_REFS} image references can be pulled" "$TMP/private.md"; then
+  pass "a private package counts as unreachable, not as published"
+else
+  fail "a private package is counted as published; this is the v2.6.0 false positive"
+fi
+
+if grep -q 'not readable anonymously' "$TMP/private.md" \
+  && ! grep -q 'are \*\*not published\*\*' "$TMP/private.md"; then
+  pass "a private package is named as private, not as missing"
+else
+  fail "a private package is not distinguished from a missing one"
+fi
+
+# Second, the per-registry split. "28 of 56" was true of no reader and hid
+# which half was gone; the exact shape of v2.6.0 - GHCR private, Docker Hub
+# empty - has to be legible from the notes alone.
+verified '' private missing >"$TMP/v260.md" 2>"$TMP/v260.err"
+if grep -q "0 of ${TOTAL_REFS} image references can be pulled" "$TMP/v260.md" \
+  && grep -q "^| GitHub Container Registry (registry of record) | 0 | ${PER_REGISTRY} |" "$TMP/v260.md" \
+  && grep -q "^| Docker Hub (mirror) | 0 | ${PER_REGISTRY} |" "$TMP/v260.md"; then
+  pass "the v2.6.0 shape (GHCR private, Docker Hub empty) reports 0 in both registries"
+else
+  fail "the v2.6.0 shape is not reported per registry"
+  grep -n '^| ' "$TMP/v260.md" | head -5 | sed 's/^/      /' >&2
+fi
+
+if grep -q 'Nothing in this release can be pulled from the registry of record' "$TMP/v260.md"; then
+  pass "a release with nothing pullable says so at the top, not only in a table"
+else
+  fail "a release with nothing pullable does not say so"
+fi
+
+# A mirror that lagged is not the same failure as a release that reached
+# nobody, and the notes must not flatten them together.
+verified '' published missing >"$TMP/mirror.md" 2>"$TMP/mirror.err"
+if grep -q "${PER_REGISTRY} of ${TOTAL_REFS} image references can be pulled" "$TMP/mirror.md" \
+  && grep -q "^| GitHub Container Registry (registry of record) | ${PER_REGISTRY} | ${PER_REGISTRY} |" "$TMP/mirror.md" \
+  && ! grep -q 'Nothing in this release can be pulled' "$TMP/mirror.md"; then
+  pass "a lagging Docker Hub mirror does not read as a failed release"
+else
+  fail "a lagging mirror is reported as a failed release"
+fi
+
+# Quick Start told everyone to `docker pull konard/box:VERSION` - the registry
+# that had nothing. GHCR is the registry of record (issue #115, RC-3), so it
+# is what the first command pulls.
+FIRST_PULL="$(sed -n '/^## Quick Start/,$p' "$NOTES" | grep -m1 'docker pull ')"
+if [ "$FIRST_PULL" = "docker pull ${GHCR_IMAGE}:${VERSION}" ]; then
+  pass "the first pull command in Quick Start names the registry of record"
+else
+  fail "the first pull command in Quick Start is not the registry of record"
+  echo "      got: ${FIRST_PULL}" >&2
+fi
+
+# And the check must not be the publisher checking itself: create-release is
+# where the authenticated `docker login` used to sit, and its presence there is
+# the whole root cause of issue #117 claim 4.
+CREATE_RELEASE_BLOCK="$(awk '/^  create-release:$/ {injob=1}
+                             injob && /^  [a-z][a-z0-9-]*:$/ && !/^  create-release:$/ {exit}
+                             injob {print}' "$WORKFLOW")"
+if printf '%s' "$CREATE_RELEASE_BLOCK" | grep -q 'docker/login-action'; then
+  fail "create-release logs in to a registry before checking publication; it would measure its own access"
+else
+  pass "create-release holds no registry credential, so the publication check is the reader's view"
+fi
+
+if printf '%s' "$CREATE_RELEASE_BLOCK" | grep -q 'scripts/release/check-publication.sh'; then
+  pass "create-release asserts, after publishing, that the release is reachable"
+else
+  fail "nothing asserts that the published release can be pulled"
 fi
 
 echo ""

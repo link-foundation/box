@@ -21,6 +21,7 @@
 #   REPO              owner/name of this repository (required)
 #   GHCR_IMAGE        Full GHCR image, registry/owner/name (required)
 #   DOCKERHUB_IMAGE   Docker Hub image, namespace/name (required)
+#   VERIFY_IMAGES=1   Ask the registries which references a reader can pull
 #   RELEASE_DATE      Date printed at the end (default: today, UTC)
 #   BOX_VERBOSE=1     Trace every command this script runs
 #
@@ -40,6 +41,10 @@ for var in VERSION REPO GHCR_IMAGE DOCKERHUB_IMAGE; do
 done
 
 RELEASE_DATE="${RELEASE_DATE:-$(date -u +%Y-%m-%d)}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./registry-probe.sh
+source "${SCRIPT_DIR}/registry-probe.sh"
 
 # label|suffix. The suffix is appended to both image names, so one list drives
 # Docker Hub, GHCR and their dind variants.
@@ -124,33 +129,28 @@ dind_entries() {
 
 mapfile -t DIND_IMAGES < <(dind_entries)
 
-# --- publication check (issue #115, hive-mind principle #13) -------------------
+# --- publication check (issue #115 principle #13, corrected by issue #117) ----
 #
 # "Never gate the release on an image push, and assert the manifests that were
-# published." The GitHub Release is created from the source state and is no
-# longer blocked by a failed push (`create-release` used to require
-# `docker-manifest.result == 'success'`), so the notes have to say which images
-# actually exist rather than assume all of them do. The alternative is what
-# this repository shipped for a year: a release advertising 56 image
-# references, of which the 28 GHCR ones had never been pushed at all (RC-3,
-# RC-17).
+# published." The GitHub Release is created from the source state and is not
+# blocked by a failed push, so the notes have to say which images actually
+# exist rather than assume all of them do.
+#
+# What issue #117 found wrong with the first version of this check: it ran
+# `docker manifest inspect` inside `create-release`, immediately after
+# `docker/login-action` had authenticated that job to ghcr.io. It therefore
+# measured *the publisher's* view. The notes for v2.6.0 say "28 of 56 image
+# references resolve"; for anybody reading them the number was 0 of 56, because
+# both GHCR packages are private and Docker Hub had received nothing at all.
+#
+# The check is now anonymous - the same request a reader of these notes makes -
+# and it reports per registry, because "28 of 56" also hid *which* half was
+# missing. `private` is a state of its own: an image that exists and cannot be
+# pulled is not a published image, and saying "missing" about it would be the
+# same kind of false claim in the other direction.
 #
 # Off by default so the generator stays offline-testable; the workflow sets
 # VERIFY_IMAGES=1.
-#
-# published_state REF -> prints "published", "missing" or "unknown".
-# "unknown" matters: a rate-limited or unauthenticated registry must not be
-# reported as a missing image, or the notes trade one false claim for another.
-published_state() {
-  local ref="$1" err
-  if err="$(docker manifest inspect "$ref" 2>&1 >/dev/null)"; then
-    printf 'published'
-  elif printf '%s' "$err" | grep -qiE 'manifest unknown|not found|no such manifest|does not exist'; then
-    printf 'missing'
-  else
-    printf 'unknown'
-  fi
-}
 
 # all_refs - every multi-arch reference this release claims to publish, one per
 # line. The per-architecture tags are not checked separately: a multi-arch
@@ -164,34 +164,82 @@ all_refs() {
   done
 }
 
-publication_section() {
-  local ref state published=0 missing=() unknown=()
+declare -A REF_STATE=()
+GHCR_PULLABLE=0
+GHCR_TOTAL=0
+DOCKERHUB_PULLABLE=0
+DOCKERHUB_TOTAL=0
+
+# probe_all - fill REF_STATE and the per-registry counters.
+probe_all() {
+  local ref
   while IFS= read -r ref; do
-    state="$(published_state "$ref")"
-    case "$state" in
-      published) published=$((published + 1)) ;;
-      missing) missing+=("$ref") ;;
-      *) unknown+=("$ref") ;;
+    registry_probe_pull "$ref"
+    REF_STATE["$ref"]="$REGISTRY_PROBE_STATE"
+    case "$ref" in
+      "$GHCR_IMAGE"*)
+        GHCR_TOTAL=$((GHCR_TOTAL + 1))
+        if [ "$REGISTRY_PROBE_STATE" = "published" ]; then
+          GHCR_PULLABLE=$((GHCR_PULLABLE + 1))
+        fi
+        ;;
+      *)
+        DOCKERHUB_TOTAL=$((DOCKERHUB_TOTAL + 1))
+        if [ "$REGISTRY_PROBE_STATE" = "published" ]; then
+          DOCKERHUB_PULLABLE=$((DOCKERHUB_PULLABLE + 1))
+        fi
+        ;;
     esac
   done < <(all_refs)
+}
+
+# refs_in_state STATE - the references currently in STATE, one per line.
+refs_in_state() {
+  local wanted="$1" ref
+  while IFS= read -r ref; do
+    if [ "${REF_STATE[$ref]:-}" = "$wanted" ]; then
+      printf '%s\n' "$ref"
+    fi
+  done < <(all_refs)
+}
+
+# state_list HEADING STATE - a bullet list, or nothing when the state is empty.
+state_list() {
+  local heading="$1" state="$2"
+  local refs
+  mapfile -t refs < <(refs_in_state "$state")
+  [ "${#refs[@]}" -gt 0 ] || return 0
+  printf '\n%s\n\n' "$heading"
+  printf -- '- `%s`\n' "${refs[@]}"
+}
+
+publication_section() {
+  local total=$((GHCR_TOTAL + DOCKERHUB_TOTAL))
+  local pullable=$((GHCR_PULLABLE + DOCKERHUB_PULLABLE))
 
   printf '\n## Image publication\n\n'
-  printf '%s of %s image references resolve with `docker manifest inspect`.\n' \
-    "$published" "$((published + ${#missing[@]} + ${#unknown[@]}))"
+  printf 'Checked **anonymously**, the way a reader of these notes pulls them: %s of %s image references can be pulled without credentials.\n\n' \
+    "$pullable" "$total"
+  printf '| Registry | Pullable | Checked |\n'
+  printf '|----------|----------|--------|\n'
+  printf '| GitHub Container Registry (registry of record) | %s | %s |\n' "$GHCR_PULLABLE" "$GHCR_TOTAL"
+  printf '| Docker Hub (mirror) | %s | %s |\n' "$DOCKERHUB_PULLABLE" "$DOCKERHUB_TOTAL"
 
-  if [ "${#missing[@]}" -gt 0 ]; then
-    printf '\nThe following are **not published**; the tables below list them for completeness, not as something you can pull today:\n\n'
-    printf -- '- `%s`\n' "${missing[@]}"
-    printf '\nRe-run the release workflow to publish them. The GitHub Release is deliberately not blocked on an image push.\n'
+  if [ "$GHCR_PULLABLE" -eq 0 ] && [ "$GHCR_TOTAL" -gt 0 ]; then
+    printf '\n> **Nothing in this release can be pulled from the registry of record.** The tables below list what the build was supposed to publish, not what you can run today. See the run that produced this release.\n'
   fi
 
-  if [ "${#unknown[@]}" -gt 0 ]; then
-    printf '\nThe registry did not answer for the following, so their state is unknown (not a claim that they are missing):\n\n'
-    printf -- '- `%s`\n' "${unknown[@]}"
+  state_list 'These references are **not published**; the tables below list them for completeness, not as something you can pull today:' missing
+  state_list 'These exist but are **not readable anonymously** - the package is private, so publishing to it reaches nobody:' private
+  state_list 'The registry did not answer for these, so their state is unknown (this is not a claim that they are missing):' unknown
+
+  if [ "$((GHCR_TOTAL - GHCR_PULLABLE))" -gt 0 ] || [ "$((DOCKERHUB_TOTAL - DOCKERHUB_PULLABLE))" -gt 0 ]; then
+    printf '\nRe-run the release workflow to publish the missing references. The GitHub Release is deliberately not blocked on an image push (issue #115), and a run that ends with nothing published fails on its own publication check rather than by withholding these notes (issue #117).\n'
   fi
 }
 
 if [ "${VERIFY_IMAGES:-0}" = "1" ]; then
+  probe_all
   publication_section
 fi
 
@@ -224,23 +272,28 @@ JS box (${DOCKERHUB_IMAGE}-js)
 
 ## Quick Start
 
+GitHub Container Registry is the registry of record: it is written with the
+run's own GITHUB_TOKEN, which cannot expire (issue #115, RC-3). Docker Hub is a
+mirror of it, and the publication section above says which of the two actually
+carries this version.
+
 Pull multi-arch (auto-selects your platform):
 \`\`\`sh
-docker pull ${DOCKERHUB_IMAGE}:${VERSION}
+docker pull ${GHCR_IMAGE}:${VERSION}
 \`\`\`
 
 Pull specific architecture:
 \`\`\`sh
 # AMD64
-docker pull ${DOCKERHUB_IMAGE}:${VERSION}-amd64
+docker pull ${GHCR_IMAGE}:${VERSION}-amd64
 
 # ARM64 (Apple Silicon, Raspberry Pi, etc.)
-docker pull ${DOCKERHUB_IMAGE}:${VERSION}-arm64
+docker pull ${GHCR_IMAGE}:${VERSION}-arm64
 \`\`\`
 
-Pull from GHCR:
+Pull from the Docker Hub mirror:
 \`\`\`sh
-docker pull ${GHCR_IMAGE}:${VERSION}
+docker pull ${DOCKERHUB_IMAGE}:${VERSION}
 \`\`\`
 
 ## Links

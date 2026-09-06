@@ -647,17 +647,21 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Creating release for version: $VERSION"
 
-      # Anonymous `docker manifest inspect` cannot tell "this package does not
-      # exist" from "you may not look at it" on GHCR, and the notes must not
-      # report a published image as missing. Logging in with the job's own token
-      # makes the distinction real. Docker Hub is public and needs no login;
-      # if it rate-limits, the check reports "unknown", never "missing".
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      # There is deliberately no `docker login` in this job (issue #117).
+      #
+      # There used to be one, on the reasoning that an anonymous
+      # `docker manifest inspect` cannot tell "this package does not exist"
+      # from "you may not look at it". True, and it made the check useless: it
+      # then measured what the publisher could see. The notes for v2.6.0 said
+      # "28 of 56 image references resolve" while every one of the 56 was
+      # unreachable for everybody else - the GHCR packages private, Docker Hub
+      # empty behind an expired token.
+      #
+      # scripts/release/registry-probe.sh makes the distinction without a
+      # credential: on GHCR a private package refuses the anonymous *token*
+      # request with 401 while a missing one still issues a token and answers
+      # 404 on the manifest. So the notes are now written from the reader's
+      # view, which is the only view that decides whether a release happened.
 
       # The notes are generated from one image list by
       # scripts/release/build-release-notes.sh. They used to be 106 lines of
@@ -693,3 +697,17 @@ jobs:
           fi
 
           echo "GitHub Release v${VERSION} created/updated successfully"
+
+      # Deliberately after the release is published, never before it (issue
+      # #115 principle #13: never gate the release on an image push). An
+      # operator always gets the tag and the notes; what this step decides is
+      # whether the *run* is allowed to be green. A release nobody can pull is
+      # not a successful release, and run 33972074755 reporting success is the
+      # reason v2.5.0 and v2.6.0 went unnoticed for months (issue #117).
+      - name: Verify the release is reachable without credentials
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GHCR_IMAGE: ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
+          DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_IMAGE_NAME }}
+        run: |
+          bash scripts/release/check-publication.sh
