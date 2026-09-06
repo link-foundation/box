@@ -84,7 +84,6 @@ REGISTRY_PROBE_STATE=""
 REGISTRY_PROBE_DETAIL=""
 REGISTRY_PROBE_TOKEN=""
 REGISTRY_PROBE_TOKEN_STATE=""
-REGISTRY_PROBE_RESPONSE_HEADERS=""
 REGISTRY_PROBE_REGISTRY=""
 REGISTRY_PROBE_REPOSITORY=""
 REGISTRY_PROBE_TAG=""
@@ -96,11 +95,24 @@ REGISTRY_PROBE_ACCEPT='application/vnd.oci.image.index.v1+json, application/vnd.
 
 # registry_probe_http METHOD URL [HEADER...] - one HTTP request.
 #
-# Prints the status code on the first line and the body on the rest, and leaves
-# the response headers in REGISTRY_PROBE_RESPONSE_HEADERS. This is the single
-# choke point every probe goes through, so the test suite can replace it with a
-# fixture table and run entirely offline
-# (experiments/test-issue117-registry-probe.sh does exactly that).
+# Prints a self-contained response document:
+#
+#   line 1        the HTTP status code, or 000 when curl could not ask
+#   lines 2..n    the response headers of the final response
+#   a blank line
+#   the rest      the response body
+#
+# One document rather than a status plus a global, because every caller reads
+# this through `response="$(registry_probe_http ...)"`. A command substitution
+# is a subshell: a header left in a global by the callee is discarded when that
+# subshell exits, and the caller then reads whatever the *previous* request
+# left behind. The push probe was doing exactly that, and its `Location` lookup
+# silently found nothing, so the blob upload session it opened was never
+# cancelled (caught by experiments/test-issue117-registry-probe.sh).
+#
+# This is the single choke point every probe goes through, so the test suite
+# can replace this one function with a fixture table and drive the whole state
+# machine offline.
 #
 # Credentials go through a curl config file rather than `-u`, because argv is
 # world-readable on the runner.
@@ -126,41 +138,55 @@ registry_probe_http() {
     args+=(--config "$config")
   fi
 
-  local response status
+  local response headers status
   response="$(curl "${args[@]}" "$url" 2>/dev/null)"
   local curl_status=$?
   [ -n "$config" ] && rm -f "$config"
-  REGISTRY_PROBE_RESPONSE_HEADERS="$(cat "$headers_file" 2>/dev/null)"
+
+  # Only the last block: --location dumps one header block per hop, and the
+  # Location of a 302 the client already followed is not the Location the
+  # registry handed us for an upload session.
+  headers="$(tr -d '\r' <"$headers_file" 2>/dev/null \
+    | awk '/^HTTP\//{block=""; next} NF{block = block $0 "\n"} END{printf "%s", block}')"
   rm -f "$headers_file"
 
   if [ "$curl_status" -ne 0 ]; then
-    printf '000\n'
+    printf '000\n\n'
     return 0
   fi
 
+  # Printed line by line rather than as one format string: `$(...)` strips the
+  # trailing newline off $headers, and without it the blank line that separates
+  # headers from body disappears and every body reads as empty.
   status="${response##*$'\n'}"
-  printf '%s\n%s\n' "$status" "${response%$'\n'*}"
+  printf '%s\n' "$status"
+  [ -n "$headers" ] && printf '%s\n' "$headers"
+  printf '\n%s' "${response%$'\n'*}"
 }
 
-# registry_probe_header NAME - one header from the last response, or "".
+# registry_probe_status RESPONSE - the status code.
+registry_probe_status() { printf '%s' "${1%%$'\n'*}"; }
+
+# registry_probe_headers RESPONSE - the header block, one header per line.
+registry_probe_headers() {
+  local rest="${1#*$'\n'}"
+  printf '%s' "${rest%%$'\n\n'*}"
+}
+
+# registry_probe_header NAME RESPONSE - one header value, or "".
 registry_probe_header() {
-  printf '%s\n' "${REGISTRY_PROBE_RESPONSE_HEADERS:-}" \
-    | tr -d '\r' \
+  registry_probe_headers "$2" \
     | awk -v name="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" '
         { line = $0; sub(/:.*/, "", line); if (tolower(line) == name) { sub(/^[^:]*:[[:space:]]*/, "", $0); print; exit } }'
 }
 
-# registry_probe_status RESPONSE - the status line of a registry_probe_http result.
-registry_probe_status() { printf '%s' "${1%%$'\n'*}"; }
-
-# registry_probe_body RESPONSE - everything after the status line.
+# registry_probe_body RESPONSE - everything after the blank line.
 registry_probe_body() {
   local response="$1"
-  if [ "$response" = "${response#*$'\n'}" ]; then
-    printf ''
-  else
-    printf '%s' "${response#*$'\n'}"
-  fi
+  case "$response" in
+    *$'\n\n'*) printf '%s' "${response#*$'\n\n'}" ;;
+    *) printf '' ;;
+  esac
 }
 
 # registry_probe_endpoints REGISTRY - the token and API base URLs, space separated.
@@ -390,7 +416,7 @@ registry_probe_push() {
     200 | 201 | 202)
       REGISTRY_PROBE_DETAIL="${registry}/${repository} accepted a blob upload session (HTTP ${status})"
       # Best effort: hand the session back rather than leaving it to expire.
-      location="$(registry_probe_header Location)"
+      location="$(registry_probe_header Location "$response")"
       case "$location" in
         /*) location="${api}${location}" ;;
       esac
