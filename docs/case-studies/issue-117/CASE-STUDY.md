@@ -216,3 +216,26 @@ Proposed for `docs/CI-CD-BEST-PRACTICES.md` in link-assistant/hive-mind:
 > Prefer trusted publishing (OIDC). A stored token is a secret that must be
 > rotated by a human who will not be reminded until a release has already
 > failed.
+
+## 8. Reported upstream
+
+The principle above was filed as
+[link-assistant/hive-mind#2221](https://github.com/link-assistant/hive-mind/issues/2221),
+drafted as principle #16 of its `docs/CI-CD-BEST-PRACTICES.md` (which ends at
+#15), together with hive-mind's own instance of the defect.
+
+All seven `link-foundation/*-ai-driven-development-pipeline-template`
+repositories were then read for the same defect. Four have it and were filed
+against; three publish with `GITHUB_TOKEN` alone, which is minted per run and
+cannot expire, so filing against them would have been a false positive:
+
+| Template | Report | The credential that can expire |
+| --- | --- | --- |
+| js | [#176](https://github.com/link-foundation/js-ai-driven-development-pipeline-template/issues/176) | `DOCKERHUB_TOKEN`, first used after the npm publish |
+| rust | [#163](https://github.com/link-foundation/rust-ai-driven-development-pipeline-template/issues/163) | `CARGO_REGISTRY_TOKEN`, `DOCKERHUB_TOKEN`, both after the full build matrix |
+| python | [#74](https://github.com/link-foundation/python-ai-driven-development-pipeline-template/issues/74) | `DOCKERHUB_TOKEN`; when it is absent the run is green and publishes no image |
+| csharp | [#51](https://github.com/link-foundation/csharp-ai-driven-development-pipeline-template/issues/51) | `NUGET_API_KEY`; a `Validate NuGet API key` step tests `-z` and prints the length |
+| go, java, php | *not filed* | none — `GITHUB_TOKEN` only |
+
+The evidence behind each decision, including the three not filed, is in
+[`dev/log/issues/117/pulls/118/UPSTREAM-REPORTS.md`](../../../dev/log/issues/117/pulls/118/UPSTREAM-REPORTS.md).
