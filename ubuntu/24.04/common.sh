@@ -492,6 +492,12 @@ assert_single_runtime_versions() {
     "rust:$home/.rustup/toolchains"
     "python:$home/.pyenv/versions"
     "ruby:$home/.rbenv/versions"
+    # elan keeps every Lean it has ever been asked for here. It is also the
+    # directory whose *absence* meant "the box ships no Lean at all" before
+    # issue #115 - a root that does not exist is skipped below, so this entry
+    # bounds the count from above only; ubuntu/24.04/lean/install.sh is what
+    # asserts a toolchain is present.
+    "lean:$home/.elan/toolchains"
   )
   for candidate in "$home"/.sdkman/candidates/*; do
     [ -d "$candidate" ] || continue

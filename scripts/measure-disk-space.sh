@@ -294,7 +294,7 @@ measure_apt_install() {
   shift 2
   local packages="$*"
 
-  measure_install "$name" "$category" maybe_sudo apt install -y $packages
+  measure_install "$name" "$category" maybe_sudo apt-get install -y $packages
 }
 
 # ============================================================================
@@ -389,7 +389,7 @@ install_gh_cli() {
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
     | maybe_sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
   apt_update_with_retry
-  maybe_sudo apt install -y gh
+  maybe_sudo apt-get install -y gh
 }
 
 measure_install "GitHub CLI" "Development Tools" install_gh_cli
@@ -697,8 +697,8 @@ measure_install "Lean (via elan)" "Runtime" install_lean
 
 # --- Opam + Rocq ---
 install_opam_rocq() {
-  sudo apt install -y bubblewrap 2>/dev/null || true
-  bash -c "sh <(curl -fsSL https://opam.ocaml.org/install.sh) --no-backup" <<< "y" || sudo apt install -y opam || true
+  sudo apt-get install -y bubblewrap 2>/dev/null || true
+  bash -c "sh <(curl -fsSL https://opam.ocaml.org/install.sh) --no-backup" <<< "y" || sudo apt-get install -y opam || true
 
   if command -v opam &>/dev/null; then
     opam init --disable-sandboxing --auto-setup -y || true

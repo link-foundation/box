@@ -25,10 +25,10 @@ apt_update_with_retry
 
 ARCH=$(uname -m)
 if [ "$ARCH" = "x86_64" ]; then
-  maybe_sudo apt install -y nasm fasm
+  maybe_sudo apt-get install -y nasm fasm
   log_success "Assembly tools installed (NASM + FASM)"
 else
-  maybe_sudo apt install -y nasm
+  maybe_sudo apt-get install -y nasm
   log_success "Assembly tools installed (NASM only - FASM not available for $ARCH)"
 fi
 

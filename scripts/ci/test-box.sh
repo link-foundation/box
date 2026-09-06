@@ -73,6 +73,17 @@ box_sh() {
   docker run --rm "$IMAGE" bash -c "$1"
 }
 
+# Same, with the network taken away. A `<tool> --version` that passes only
+# because the tool downloads itself on first use is a false negative: CI sees a
+# version string, the user sees a 200 MB download, and offline or behind a
+# proxy the box simply does not work. Anything checked through this helper has
+# to be *in the image* (issue #115).
+box_offline_sh() {
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  vlog "docker run --rm --network none $IMAGE bash -c $1"
+  docker run --rm --network none "$IMAGE" bash -c "$1"
+}
+
 # --- per-language checks -----------------------------------------------------
 # Used by both the per-language boxes and the full box, so a language can never
 # be verified in one and forgotten in the other.
@@ -113,7 +124,27 @@ check_language() {
       box swift --version
       ;;
     lean)
-      box lean --version
+      # Offline on purpose. elan-init records the default toolchain without
+      # installing it, so every box built before issue #115 shipped elan and no
+      # Lean: `lean --version` printed a version only after downloading
+      # lean-4.33.1-linux.tar.zst at test time, and CI called that a pass.
+      # Verified against konard/box:latest and konard/box-lean:latest, whose
+      # ~/.elan/toolchains does not exist at all.
+      box_offline_sh 'lean --version'
+      # ... and the toolchain is registered with elan, not just unpacked
+      # somewhere: `elan toolchain list` prints "no installed toolchains" in
+      # exactly the broken images above.
+      box_offline_sh 'elan toolchain list | grep -qv "no installed toolchains" \
+        || { echo "::error::elan has no installed toolchain; the image downloads Lean on first use"; exit 1; }
+        elan toolchain list'
+      # The default has to be the resolved toolchain, not the `stable` alias:
+      # an alias is looked up over the network on every invocation, so a box
+      # defaulting to one prints "warning: failed to query latest release" at
+      # every `lean` run without connectivity.
+      box_offline_sh 'out="$(lean --version 2>&1)"; printf "%s\n" "$out"
+        case "$out" in
+          *warning:*) echo "::error::lean warns offline; the default toolchain is an unresolved alias"; exit 1 ;;
+        esac'
       ;;
     rocq)
       # Rocq 9 renamed the binary; older images only ship coqc.

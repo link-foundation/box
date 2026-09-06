@@ -1,0 +1,100 @@
+=== Testing full box: issue115-opam-verify ===
+The image's entrypoint initialises every language environment.
+--- JavaScript/TypeScript runtimes ---
+v20.20.2
+1.3.14
+deno 2.8.3 (stable, release, x86_64-unknown-linux-gnu)
+v8 14.9.207.2-rusty
+typescript 6.0.3
+--- python ---
+Python 3.14.6
+pip 26.1.2 from /home/box/.pyenv/versions/3.14.6/lib/python3.14/site-packages/pip (python 3.14)
+--- go ---
+go version go1.26.4 linux/amd64
+--- rust ---
+rustc 1.96.0 (ac68faa20 2026-05-25)
+cargo 1.96.0 (30a34c682 2026-05-25)
+rustup 1.29.0 (28d1352db 2026-03-05)
+info: This is the version for the rustup toolchain manager, not the rustc compiler.
+info: the currently active `rustc` version is `rustc 1.96.0 (ac68faa20 2026-05-25)`
+--- java ---
+openjdk version "21" 2023-09-19 LTS
+OpenJDK Runtime Environment Temurin-21+35 (build 21+35-LTS)
+OpenJDK 64-Bit Server VM Temurin-21+35 (build 21+35-LTS, mixed mode, sharing)
+--- kotlin ---
+Kotlin version 2.4.0-release-281 (JRE 21+35-LTS)
+--- ruby ---
+ruby 3.4.9 (2026-03-11 revision 76cca827ab) +PRISM [x86_64-linux]
+3.6.9
+--- php ---
+PHP 8.3.31 (cli) (built: May  5 2026 13:35:55) (NTS)
+Copyright (c) The PHP Group
+Zend Engine v4.3.31, Copyright (c) Zend Technologies
+    with Zend OPcache v8.3.31, Copyright (c), by Zend Technologies
+--- PHP install method ---
+local
+--- perl ---
+
+This is perl 5, version 42, subversion 2 (v5.42.2) built for x86_64-linux-thread-multi
+
+Copyright 1987-2026, Larry Wall
+
+Perl may be copied only under the terms of either the Artistic License or the
+GNU General Public License, which may be found in the Perl 5 source kit.
+
+Complete documentation for Perl, including FAQ lists, should be found on
+this system using "man perl" or "perldoc perl".  If you have access to the
+Internet, point your browser at https://www.perl.org/, the Perl Home Page.
+
+--- swift ---
+Swift version 6.0.3 (swift-6.0.3-RELEASE)
+Target: x86_64-unknown-linux-gnu
+--- lean ---
+warning: could not canonicalize path: '/home/box/.elan/toolchains'
+warning: could not canonicalize path: '/home/box/.elan/toolchains'
+warning: could not canonicalize path: '/home/box/.elan/toolchains'
+info: Version 4.2.4 of elan is available! Use `elan self update` to update.
+info: downloading https://releases.lean-lang.org/lean4/v4.33.1/lean-4.33.1-linux.tar.zst
+info: installing /home/box/.elan/toolchains/leanprover--lean4---v4.33.1
+Lean (version 4.33.1, x86_64-unknown-linux-gnu, commit 819816b2e0a3bf405af45ae5c7af2491d8f5bee6, Release)
+--- rocq ---
+The Rocq Prover, version 9.2
+compiled with OCaml 5.5.0
+2.5.1
+--- cpp ---
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+Copyright (C) 2023 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+Copyright (C) 2023 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+cmake version 3.28.3
+
+CMake suite maintained and supported by Kitware (kitware.com/cmake).
+clang version 17.0.0 (https://github.com/swiftlang/llvm-project.git 2e6139970eda445d9c6872c0ca293088b4e63dd2)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /home/box/.swift/usr/bin
+LLD 17.0.0 (compatible with GNU linkers)
+--- assembly ---
+NASM version 2.16.01
+flat assembler  version 1.73.32
+--- dotnet ---
+8.0.128
+--- r ---
+Rscript (R) version 4.3.3 (2024-02-29)
+--- CLI tools ---
+gh version 2.95.0 (2026-06-17)
+https://github.com/cli/cli/releases/tag/v2.95.0
+glab version 1.36.0
+0.1.0
+0.6.2
+expect version 5.45.4
+
+--- Runtime freshness and one-version-per-language invariant (issue #112) ---
+image ships Node v20.20.2, expected major 24
+::error title=test-box.sh (full)::image ships Node v20.20.2, expected Node 24

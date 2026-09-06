@@ -31,7 +31,7 @@ if ! command_exists dotnet; then
     DOTNET_SDK_CHANNEL="${DOTNET_CHANNEL:-10.0}"
   fi
   log_info "Installing .NET SDK ${DOTNET_SDK_CHANNEL}..."
-  maybe_sudo apt install -y "dotnet-sdk-${DOTNET_SDK_CHANNEL}"
+  maybe_sudo apt-get install -y "dotnet-sdk-${DOTNET_SDK_CHANNEL}"
   log_success ".NET SDK ${DOTNET_SDK_CHANNEL} installed"
 else
   log_info ".NET SDK already installed."

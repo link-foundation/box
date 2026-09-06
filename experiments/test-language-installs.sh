@@ -43,15 +43,15 @@ echo "FASM: Available as apt package 'fasm' or download from flatassembler.net"
 echo ""
 
 echo "Summary of installation approaches:"
-echo "1. R: apt install r-base"
+echo "1. R: apt-get install r-base"
 echo "2. Swift: Download from swift.org (architecture-specific)"
 echo "3. Ruby: rbenv (version manager)"
 echo "4. Kotlin: SDKMAN (already available)"
 echo "5. Assembly:"
 echo "   - GNU Assembler: Already installed (part of binutils)"
-echo "   - nasm: apt install nasm"
+echo "   - nasm: apt-get install nasm"
 echo "   - llvm-mc: Already installed (part of llvm)"
-echo "   - FASM: apt install fasm"
+echo "   - FASM: apt-get install fasm"
 echo ""
 
 # Check what's already installed

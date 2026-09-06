@@ -304,12 +304,12 @@ apt_update_safe
 # own archive, so the install still succeeds without the version helpers.
 DOTNET_SDK_CHANNEL="$(box_resolve resolve_dotnet_apt_channel 8.0)"
 log_info "Installing essential development tools (.NET SDK ${DOTNET_SDK_CHANNEL})..."
-maybe_sudo apt install -y wget curl unzip zip git sudo ca-certificates gnupg "dotnet-sdk-${DOTNET_SDK_CHANNEL}" build-essential expect screen
+maybe_sudo apt-get install -y wget curl unzip zip git sudo ca-certificates gnupg "dotnet-sdk-${DOTNET_SDK_CHANNEL}" build-essential expect screen
 log_success "Essential tools installed"
 
 # --- Install C/C++ Development Tools ---
 log_info "Installing C/C++ development tools (CMake, Clang/LLVM)..."
-sudo apt install -y cmake clang llvm lld
+sudo apt-get install -y cmake clang llvm lld
 log_success "C/C++ development tools installed"
 
 # --- Install Assembly Tools ---
@@ -319,12 +319,12 @@ log_info "Installing Assembly tools..."
 ARCH=$(uname -m)
 if [ "$ARCH" = "x86_64" ]; then
   # FASM (Flat Assembler) is only available for x86-64 architecture
-  maybe_sudo apt install -y nasm fasm
+  maybe_sudo apt-get install -y nasm fasm
   log_success "Assembly tools installed (NASM + FASM)"
 else
   # On non-x86 architectures (ARM64, etc.), only install NASM
   # FASM is not available as it's a self-compiling x86 assembler
-  maybe_sudo apt install -y nasm
+  maybe_sudo apt-get install -y nasm
   log_success "Assembly tools installed (NASM only - FASM not available for $ARCH)"
 fi
 
@@ -337,17 +337,17 @@ if [ -n "$BOX_COMMON_SH" ] && (set +eu; . "$BOX_COMMON_SH" >/dev/null 2>&1; add_
   log_success "CRAN repository configured"
   apt_update_safe
 fi
-maybe_sudo apt install -y r-base
+maybe_sudo apt-get install -y r-base
 log_success "R language installed"
 
 # --- Install Ruby build dependencies ---
 log_info "Installing Ruby build dependencies..."
-maybe_sudo apt install -y libyaml-dev
+maybe_sudo apt-get install -y libyaml-dev
 log_success "Ruby build dependencies installed"
 
 # --- Install Python build dependencies (required for pyenv) ---
 log_info "Installing Python build dependencies..."
-maybe_sudo apt install -y \
+maybe_sudo apt-get install -y \
   libssl-dev \
   zlib1g-dev \
   libbz2-dev \
@@ -378,7 +378,7 @@ if ! command -v gh &>/dev/null; then
     | maybe_sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
 
   apt_update_with_retry
-  maybe_sudo apt install -y gh
+  maybe_sudo apt-get install -y gh
   log_success "GitHub CLI installed"
 else
   log_success "GitHub CLI already installed"
@@ -388,7 +388,7 @@ fi
 log_step "Installing GitLab CLI (system-wide)"
 if ! command -v glab &>/dev/null; then
   log_info "Installing GitLab CLI..."
-  maybe_sudo apt install -y glab
+  maybe_sudo apt-get install -y glab
   log_success "GitLab CLI installed"
 else
   log_success "GitLab CLI already installed"
@@ -728,10 +728,10 @@ fi
 # --- Opam + Rocq (Coq theorem prover) ---
 if ! command -v opam &>/dev/null; then
   log_info "Installing Opam (OCaml package manager)..."
-  sudo apt install -y bubblewrap || true
+  sudo apt-get install -y bubblewrap || true
 
   bash -c "sh <(curl -fsSL https://opam.ocaml.org/install.sh) --no-backup" <<< "y" || {
-    sudo apt install -y opam || true
+    sudo apt-get install -y opam || true
   }
 
   if command -v opam &>/dev/null; then

@@ -429,3 +429,94 @@ machine is busy is a false positive, and the flake trains people to re-run.
 **Fix.** Match with bash's own `==` / `=~`, which cannot fork. The suite's three
 `echo … | grep -q` assertions are gone; the remaining pipes are diagnostics
 inside failure branches, where a fork failure cannot flip a verdict.
+
+---
+
+<a id="rc-14"></a>
+## RC-14 — Every Lean box ships elan and no Lean — **error, hidden by a false negative**
+
+**Symptom.** Running the extended `full` profile against the patched image
+(`bash scripts/ci/test-box.sh full …`, [log](analysis/lean-toolchain-verification.log)):
+
+```
+--- lean ---
+warning: could not canonicalize path: '/home/box/.elan/toolchains'
+info: downloading https://releases.lean-lang.org/lean4/v4.33.1/lean-4.33.1-linux.tar.zst
+info: installing /home/box/.elan/toolchains/leanprover--lean4---v4.33.1
+Lean (version 4.33.1, x86_64-unknown-linux-gnu, …)
+```
+
+The check printed a version — and passed — *because it downloaded Lean while the
+check was running*. In both published images the toolchain directory does not
+exist at all:
+
+```
+$ docker run --rm konard/box-lean:latest ls /home/box/.elan/toolchains
+ls: cannot access '/home/box/.elan/toolchains': No such file or directory
+$ docker run --rm konard/box-lean:latest du -sh /home/box/.elan
+13M     /home/box/.elan
+```
+
+13 MB is elan itself. A Lean toolchain is ~200 MB.
+
+**Mechanism.** elan's installer records the default toolchain and exits 0
+*without installing it*. Reproduced in a clean `ubuntu:24.04`:
+
+```
+$ curl https://elan.lean-lang.org/elan-init.sh -sSf | sh -s -- -y --default-toolchain stable
+info: downloading installer
+info: default toolchain set to 'stable'
+$ echo $?
+0
+$ elan toolchain list
+no installed toolchains
+```
+
+`ubuntu/24.04/lean/install.sh` ran exactly that line, checked only that
+`~/.elan/env` exists, and logged `Lean installed successfully`. `~/.elan/bin/lean`
+is a *shim*: on first use it resolves the default toolchain and, if it is not
+installed, fetches it. So the box is not broken in a way anything looks at — it
+is broken for the user who is offline, behind a proxy, on a metered link, or
+simply expects `docker run box lean --version` not to pull 200 MB.
+
+**Why CI could not see it.** The check was `docker run --rm "$IMAGE" lean
+--version` with the network up. A `<tool> --version` that the tool can satisfy by
+downloading itself proves nothing about the image — the same false-negative shape
+as RC-11 (nobody built the directory) and RC-12 (nobody ran the binary).
+
+**Where it occurs — every image that advertises Lean:**
+
+| Image | `~/.elan` | `~/.elan/toolchains` | `lean --version` offline |
+| --- | --- | --- | --- |
+| `konard/box-lean:latest` | 13 MB | absent | fails |
+| `konard/box:latest` (full) | copied from lean-stage | absent | fails |
+| `ubuntu/24.04/lean/Dockerfile` | runs `install.sh` | never created | — |
+| `ubuntu/24.04/full-box/Dockerfile` | `COPY --from=lean-stage … /home/box/.elan` | copies the absence | — |
+
+One cause, one file: `ubuntu/24.04/lean/install.sh`. The full box inherits the
+defect through `COPY`, so fixing the language box fixes both — which is only true
+because the full box composes the same script; it is checked by
+`experiments/test-issue115-test-box.sh`, which requires every language check to
+run in the full profile too.
+
+**Fix.**
+
+1. `ubuntu/24.04/lean/install.sh` installs the toolchain explicitly
+   (`elan toolchain install "$LEAN_TOOLCHAIN"`, `elan default …`, with
+   `LEAN_VERSION` as the override the issue #112 version policy requires) and
+   **fails the build** when `elan toolchain list` still says
+   `no installed toolchains`. A silent no-op cannot ship again.
+2. `scripts/ci/test-box.sh` gains `box_offline_sh()` —
+   `docker run --rm --network none …` — and checks Lean through it, so
+   "it downloads itself" can never again be read as "it is installed".
+3. `~/.elan/toolchains` joins the one-version-per-language-root invariant in
+   `assert_single_runtime_versions()` (elan keeps every toolchain it is ever
+   asked for, at ~200 MB each).
+
+**Verified.** `elan toolchain install stable` on top of the published
+`konard/box-lean:latest`, then `docker run --network none` — see
+[`analysis/lean-toolchain-verification.md`](analysis/lean-toolchain-verification.md).
+
+**Pinned by.** `experiments/test-issue115-elan-toolchain.sh` (static assertions in
+the default run; `ELAN_LIVE=1` adds the live docker reproduction) and the two
+offline checks in the `lean` profile of `scripts/ci/test-box.sh`.

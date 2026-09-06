@@ -123,10 +123,20 @@ echo "=== Part 2: the full box runs every per-language box's checks ==="
 # The per-language commands, recorded from the language profile itself, must all
 # reappear in the full profile. This is the assertion that keeps the composed
 # image from skipping a language the standalone image checks.
-run BOX_CHECK_FRESHNESS=0 -- full box-test
-FULL_LOG="$(sed 's/^run --rm box-test //; s/^run --rm -e [^ ]* box-test //' "$DOCKER_LOG")"
+# Both sides are compared with the image name replaced, so that a check reads
+# the same whichever box ran it - and with the docker flags kept, so that an
+# offline check in one box and an online check for the same tool in the other
+# read as different checks (issue #115: `lean --version` passes on a Lean-less
+# image if the network is up).
+normalize_invocation() {
+  sed -E 's/^run //; s/ (box-[A-Za-z0-9._-]+) / <image> /; s/-e [^ ]+ //'
+}
 
-for language in python go rust java kotlin ruby php perl swift lean rocq; do
+run BOX_CHECK_FRESHNESS=0 -- full box-test
+FULL_LOG="$(normalize_invocation < "$DOCKER_LOG")"
+
+for language in python go rust java kotlin ruby php perl swift lean rocq \
+                cpp assembly dotnet r; do
   run BOX_CHECK_FRESHNESS=0 -- "$language" "box-$language"
   if [ "$STATUS" -ne 0 ]; then
     fail "the $language profile succeeds against the fake docker (out=$OUT)"
@@ -135,7 +145,7 @@ for language in python go rust java kotlin ruby php perl swift lean rocq; do
   missing=""
   while IFS= read -r line; do
     [ -n "$line" ] || continue
-    cmd="${line#run --rm "box-$language" }"
+    cmd="$(printf '%s\n' "$line" | normalize_invocation)"
     grep -Fqx -- "$cmd" <<< "$FULL_LOG" || missing="$missing\n    $cmd"
   done < "$DOCKER_LOG"
   if [ -z "$missing" ]; then

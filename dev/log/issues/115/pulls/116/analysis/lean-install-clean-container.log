@@ -1,0 +1,26 @@
+debconf: delaying package configuration, since apt-utils is not installed
+
+==> Installing Lean via elan
+
+[*] Installing Lean (via elan)...
+info: downloading installer
+info: default toolchain set to 'stable'
+[*] Installing Lean toolchain 'stable'...
+info: downloading https://releases.lean-lang.org/lean4/v4.33.1/lean-4.33.1-linux.tar.zst
+info: installing /root/.elan/toolchains/leanprover--lean4---v4.33.1
+
+leanprover/lean4:v4.33.1 installed - Lean (version 4.33.1, x86_64-unknown-linux-gnu, commit 819816b2e0a3bf405af45ae5c7af2491d8f5bee6, Release)
+
+info: default toolchain set to 'leanprover/lean4:v4.33.1'
+[✓] Lean installation complete: Lean (version 4.33.1, x86_64-unknown-linux-gnu, commit 819816b2e0a3bf405af45ae5c7af2491d8f5bee6, Release)
+=== install exit=0 ===
+--- settings.toml ---
+default_toolchain = "leanprover/lean4:v4.33.1"
+telemetry = false
+version = "12"
+
+[overrides]
+--- toolchains ---
+leanprover--lean4---v4.33.1
+--- one-version invariant ---
+[✓] lean: 1 version (leanprover--lean4---v4.33.1)

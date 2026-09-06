@@ -226,6 +226,20 @@ rmdir "$BOX_HOME/.rustup/toolchains/stable-x86_64-unknown-linux-gnu"
 mkdir -p "$BOX_HOME/.nvm/versions/node/v20.19.5"
 check "two node versions fail the invariant" \
   bash -c '. "'"$COMMON"'"; BOX_HOME="'"$BOX_HOME"'" assert_single_runtime_versions >/dev/null 2>&1 && exit 1; exit 0'
+rm -rf "$BOX_HOME/.nvm/versions/node/v20.19.5"
+
+# Lean joined the invariant in issue #115: elan keeps every toolchain it has
+# ever installed under ~/.elan/toolchains, so a box that installed `stable` and
+# then a pinned version would carry both (a Lean toolchain is ~200 MB).
+mkdir -p "$BOX_HOME/.elan/toolchains/leanprover--lean4---v4.33.1"
+check "one lean toolchain satisfies the invariant" \
+  bash -c '. "'"$COMMON"'"; BOX_HOME="'"$BOX_HOME"'" assert_single_runtime_versions >/dev/null 2>&1'
+mkdir -p "$BOX_HOME/.elan/toolchains/leanprover--lean4---v4.32.0"
+check "two lean toolchains fail the invariant" \
+  bash -c '. "'"$COMMON"'"; BOX_HOME="'"$BOX_HOME"'" assert_single_runtime_versions >/dev/null 2>&1 && exit 1; exit 0'
+check "the violation names the lean root" \
+  bash -c '. "'"$COMMON"'"; out=$(BOX_HOME="'"$BOX_HOME"'" assert_single_runtime_versions 2>&1 || true); case "$out" in *"lean: expected exactly 1 version"*) exit 0 ;; *) exit 1 ;; esac'
+rm -rf "$BOX_HOME/.elan"
 
 echo "== Case 8: the .NET channel is intersected with what apt can actually install =="
 # Mock apt-cache: APT_CHANNELS lists the dotnet-sdk channels this archive has.
@@ -270,7 +284,7 @@ check "apt_has_package is false for a missing package" \
 echo "== Case 9: the CRAN repository is added before installing R =="
 # Ubuntu freezes r-base at whatever shipped with the release (4.3.3 on 24.04);
 # CRAN carries the current R for the same codename. add_cran_repo() is what
-# makes `apt install r-base` deliver the fresh one (issue #112).
+# makes `apt-get install r-base` deliver the fresh one (issue #112).
 export CRAN_APT_ROOT="$WORK/cran-root"
 CRAN_LIST="$CRAN_APT_ROOT/etc/apt/sources.list.d/cran.list"
 CRAN_KEY="$CRAN_APT_ROOT/etc/apt/keyrings/cran_ubuntu_key.asc"

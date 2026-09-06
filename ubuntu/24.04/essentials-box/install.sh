@@ -75,13 +75,13 @@ done
 apt_update_with_retry
 
 # Core system tools
-maybe_sudo apt install -y \
+maybe_sudo apt-get install -y \
   wget curl unzip zip git sudo ca-certificates gnupg \
   build-essential expect screen
 
 # Common development libraries used by multiple language runtimes
 # (Python, Ruby, Rust, Go, etc. all benefit from these)
-maybe_sudo apt install -y \
+maybe_sudo apt-get install -y \
   libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
   libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev \
   libffi-dev liblzma-dev libyaml-dev
@@ -107,7 +107,7 @@ if ! command_exists gh; then
     | maybe_sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
 
   apt_update_with_retry
-  maybe_sudo apt install -y gh
+  maybe_sudo apt-get install -y gh
   log_success "GitHub CLI installed"
 else
   log_success "GitHub CLI already installed"
@@ -116,7 +116,7 @@ fi
 # --- GitLab CLI ---
 log_step "Installing GitLab CLI"
 if ! command_exists glab; then
-  maybe_sudo apt install -y glab
+  maybe_sudo apt-get install -y glab
   log_success "GitLab CLI installed"
 else
   log_success "GitLab CLI already installed"

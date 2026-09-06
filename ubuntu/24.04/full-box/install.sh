@@ -38,22 +38,22 @@ apt_update_with_retry
 # .NET SDK — channel resolved at build time (issue #112), not hardcoded
 DOTNET_SDK_CHANNEL="$(resolve_dotnet_apt_channel 2>/dev/null || echo "${DOTNET_CHANNEL:-10.0}")"
 log_info "Installing .NET SDK ${DOTNET_SDK_CHANNEL}..."
-maybe_sudo apt install -y "dotnet-sdk-${DOTNET_SDK_CHANNEL}"
+maybe_sudo apt-get install -y "dotnet-sdk-${DOTNET_SDK_CHANNEL}"
 log_success ".NET SDK installed"
 
 # C/C++ tools
 log_info "Installing C/C++ development tools..."
-maybe_sudo apt install -y cmake clang llvm lld
+maybe_sudo apt-get install -y cmake clang llvm lld
 log_success "C/C++ tools installed"
 
 # Assembly tools
 log_info "Installing Assembly tools..."
 ARCH=$(uname -m)
 if [ "$ARCH" = "x86_64" ]; then
-  maybe_sudo apt install -y nasm fasm
+  maybe_sudo apt-get install -y nasm fasm
   log_success "Assembly tools installed (NASM + FASM)"
 else
-  maybe_sudo apt install -y nasm
+  maybe_sudo apt-get install -y nasm
   log_success "Assembly tools installed (NASM only)"
 fi
 
@@ -62,12 +62,12 @@ log_info "Installing R statistical language..."
 if command -v add_cran_repo >/dev/null 2>&1 && add_cran_repo; then
   apt_update_with_retry
 fi
-maybe_sudo apt install -y r-base
+maybe_sudo apt-get install -y r-base
 log_success "R language installed"
 
 # expect (interactive automation tool, used by hive-mind workflows)
 log_info "Installing expect..."
-maybe_sudo apt install -y expect
+maybe_sudo apt-get install -y expect
 log_success "expect installed"
 
 # Note: Common build dependencies (build-essential, libssl-dev, zlib1g-dev,
@@ -75,7 +75,7 @@ log_success "expect installed"
 
 # Bubblewrap (needed by Rocq/Opam)
 log_info "Installing bubblewrap..."
-maybe_sudo apt install -y bubblewrap
+maybe_sudo apt-get install -y bubblewrap
 log_success "Bubblewrap installed"
 
 # --- Prepare Homebrew directory ---
@@ -244,7 +244,7 @@ fi
 log_step "Installing Rocq/Coq"
 if ! command_exists opam; then
   bash -c "sh <(curl -fsSL https://opam.ocaml.org/install.sh) --no-backup" <<< "y" || {
-    sudo apt install -y opam || true
+    sudo apt-get install -y opam || true
   }
 fi
 
