@@ -26,7 +26,31 @@ release_text = release_workflow_paths
   .join("\n")
 measure_text = File.read(measure_workflow_path, encoding: "UTF-8")
 
+# Pinned versions moved out of the workflows and into composite actions
+# (issue #117). A version ban that only reads .github/workflows would stop
+# seeing the pins it bans.
+composite_action_text = Dir.glob(".github/actions/*/action.yml")
+  .sort
+  .map { |path| File.read(path, encoding: "UTF-8") }
+  .join("\n")
+
 errors = []
+
+DOCKERHUB_LOGIN_ACTION = "docker/login-action@v4"
+COMPOSITE_LOGIN_ACTION = "./.github/actions/dockerhub-login"
+COMPOSITE_LOGIN_PATH = ".github/actions/dockerhub-login/action.yml"
+
+# The composite action is where the login action is actually pinned now. If it
+# stops using the pinned version - or stops existing - every check above would
+# still pass, because the calling steps would be unchanged.
+if File.exist?(COMPOSITE_LOGIN_PATH)
+  composite_text = File.read(COMPOSITE_LOGIN_PATH, encoding: "UTF-8")
+  unless composite_text.include?("uses: #{DOCKERHUB_LOGIN_ACTION}")
+    errors << "#{COMPOSITE_LOGIN_PATH} must use #{DOCKERHUB_LOGIN_ACTION}"
+  end
+else
+  errors << "#{COMPOSITE_LOGIN_PATH} is missing, but jobs still reference #{COMPOSITE_LOGIN_ACTION}"
+end
 
 manifest_jobs = %w[
   js-manifest
@@ -62,8 +86,14 @@ manifest_jobs.each do |job_name|
       errors << "#{job_name}: dockerhub-login must use continue-on-error"
     end
 
-    unless dockerhub_login["uses"] == "docker/login-action@v4"
-      errors << "#{job_name}: dockerhub-login should use docker/login-action@v4"
+    # The 15 copies of this login block became one composite action (issue
+    # #117), so the calling step now says `uses: ./.github/actions/...`. The
+    # policy is about which login action the pipeline ends up running, not
+    # about where the `uses:` line is written, so both spellings are accepted -
+    # and when it is the composite action, the pin is checked inside it below.
+    unless [DOCKERHUB_LOGIN_ACTION, COMPOSITE_LOGIN_ACTION].include?(dockerhub_login["uses"])
+      errors << "#{job_name}: dockerhub-login should use #{DOCKERHUB_LOGIN_ACTION} " \
+                "or #{COMPOSITE_LOGIN_ACTION}, found #{dockerhub_login["uses"].inspect}"
     end
   end
 
@@ -148,7 +178,9 @@ forbidden_actions = {
 }
 
 forbidden_actions.each do |old_action, new_action|
-  if release_text.include?(old_action) || measure_text.include?(old_action)
+  if release_text.include?(old_action) ||
+     measure_text.include?(old_action) ||
+     composite_action_text.include?(old_action)
     errors << "found #{old_action}; use #{new_action}"
   end
 end

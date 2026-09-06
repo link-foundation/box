@@ -332,14 +332,29 @@ jobs:
       # config and puts no token in the environment; preflight-credentials.sh
       # reads it from there. Skipped entirely when the variable is unset, which
       # is the current state of this repository.
+      #
+      # Tolerant for the same reason as every other login in this pipeline
+      # (issue #82) and for one more: this job exists to name *every* missing
+      # credential in one report. A login that aborts the job reports the first
+      # problem and hides the rest, which is the opposite of what a preflight is
+      # for. The failure is not swallowed - no credential reaches the Docker
+      # config, and preflight-credentials.sh fails the run over it in release
+      # mode.
       - name: Log in to Docker Hub (trusted publishing)
+        id: dockerhub-login
         if: vars.DOCKERHUB_OIDC_CONNECTIONID != ''
+        continue-on-error: true
         uses: ./.github/actions/dockerhub-login
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           oidc-connection-id: ${{ vars.DOCKERHUB_OIDC_CONNECTIONID }}
           oidc-organization: ${{ vars.DOCKERHUB_ORGANIZATION }}
+
+      - name: "Check Docker Hub login (issue #82)"
+        if: vars.DOCKERHUB_OIDC_CONNECTIONID != '' && steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Trusted-publishing login to Docker Hub failed (outcome=${{ steps.dockerhub-login.outcome }}). The next step checks the credentials that reached this job and will name this as a release blocker; see docs/RELEASING.md for the OIDC connection setup."
 
       - name: Verify every release target will accept a write
         id: preflight
