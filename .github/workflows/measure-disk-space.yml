@@ -10,6 +10,22 @@ on:
       - 'scripts/update-readme-sizes.sh'
       - 'Dockerfile'
       - '.github/workflows/measure-disk-space.yml'
+  # The measurement itself takes ~3 hours and pushes to main, so it cannot run
+  # on a pull request. What CAN run on a pull request is everything that decides
+  # whether the measurement is going to work at all — and it has to, because
+  # this workflow only ever ran after the merge. Run 33972074753 (main, commit
+  # 42be663) is the case in point: `NODE_MAJOR: unbound variable` was
+  # introduced, reviewed and merged without a single job ever executing the
+  # changed script (issue #115).
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'scripts/ubuntu-24-server-install.sh'
+      - 'scripts/measure-disk-space.sh'
+      - 'scripts/update-readme-sizes.sh'
+      - 'ubuntu/24.04/common.sh'
+      - 'data/disk-space-measurements.json'
+      - '.github/workflows/measure-disk-space.yml'
   # Allow manual trigger
   workflow_dispatch:
     inputs:
@@ -18,20 +34,105 @@ on:
         required: false
         type: boolean
         default: false
+      verbose:
+        description: 'Trace what the measurement script resolves, generates and hands to the box user (BOX_VERBOSE=1)'
+        required: false
+        type: boolean
+        default: false
 
-# Only run one instance at a time
-concurrency:
-  group: measure-disk-space-${{ github.ref }}
-  cancel-in-progress: true
+# Least-privilege default; the measurement job escalates to `contents: write`
+# for its push. The validation job never needs more than a read.
+permissions:
+  contents: read
 
 jobs:
+  # Fast pre-merge gate. Nothing here installs anything, so it finishes in
+  # under a minute and can run on every pull request that touches the scripts.
+  validate:
+    name: Validate measurement scripts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-validate
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      - name: Syntax-check the scripts
+        run: |
+          for f in scripts/measure-disk-space.sh scripts/ubuntu-24-server-install.sh scripts/update-readme-sizes.sh; do
+            echo "bash -n $f"
+            bash -n "$f"
+          done
+
+      # The generated script is written from a quoted heredoc, so `bash -n` on
+      # the parent says nothing about it. Extract it and check it separately.
+      #
+      # The extraction used to be an inline awk pattern that hardcoded the
+      # spacing of the opener (`cat > /tmp/box-measure.sh <<`). shfmt then
+      # reformatted the script to `cat >/tmp/box-measure.sh <<'EOF_BOX'` and the
+      # pattern matched nothing, failing this job on every push (issue #115,
+      # RC-22). The extraction now matches what bash parses rather than how the
+      # line happens to be formatted, and says which of "no opener", "no
+      # terminator" and "empty body" it hit.
+      - name: Syntax-check the generated box-user script
+        run: |
+          bash scripts/ci/extract-quoted-heredoc.sh \
+            scripts/measure-disk-space.sh EOF_BOX > /tmp/generated-measure.sh
+          echo "extracted $(wc -l < /tmp/generated-measure.sh) lines"
+          bash -n /tmp/generated-measure.sh
+
+      - name: Check for variables leaking out of quoted heredocs
+        run: bash scripts/ci/check-heredoc-vars.sh
+
+      - name: Regression tests for issue #115
+        run: bash experiments/test-issue115-heredoc-unbound-vars.sh
+
+      # Argument handling is the other half of what broke: the documented
+      # no-argument invocation used to abort on `$1: unbound variable`.
+      - name: Check the command line interface
+        run: |
+          ./scripts/measure-disk-space.sh --help > /dev/null
+          if ./scripts/measure-disk-space.sh --not-an-option 2>/dev/null; then
+            echo "::error::an unknown option must be rejected"; exit 1
+          fi
+
+      # The committed measurements feed the README table; a malformed file
+      # would only be noticed three hours into the next measurement run.
+      - name: Validate the committed measurements
+        run: python3 scripts/ci/validate-measurements.py data/disk-space-measurements.json
+
   measure-disk-space:
     name: Measure Component Disk Space
+    # Pull requests stop at `validate`; measuring takes three hours and ends in
+    # a push to main.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 180  # 3 hours max for full installation measurement
+    # This job commits to main. Cancelling it mid-`git push` is worse than
+    # letting a superseded run finish, so it queues instead of cancelling —
+    # unlike the pre-merge checks above.
+    concurrency:
+      group: measure-disk-space-${{ github.ref }}
+      cancel-in-progress: false
 
     permissions:
       contents: write
+
+    env:
+      # Off by default. `workflow_dispatch` can turn it on without editing the
+      # workflow, which is the whole point of having it (issue #115).
+      BOX_VERBOSE: ${{ inputs.verbose && '1' || '0' }}
 
     steps:
       - name: Checkout repository
@@ -78,20 +179,23 @@ jobs:
           # Make script executable
           chmod +x scripts/measure-disk-space.sh
 
-          # Run measurement script with sudo (pipefail ensures script failures propagate through tee)
-          sudo ./scripts/measure-disk-space.sh --json-output data/disk-space-measurements.json 2>&1 | tee measurement.log
+          # sudo resets the environment (env_reset), so BOX_VERBOSE has to be
+          # handed over explicitly rather than merely exported here.
+          # pipefail ensures script failures propagate through tee.
+          sudo env "BOX_VERBOSE=$BOX_VERBOSE" ./scripts/measure-disk-space.sh \
+            --json-output data/disk-space-measurements.json 2>&1 | tee measurement.log
 
           echo "=== Measurement complete ==="
 
           # Check if JSON was created
           if [ -f data/disk-space-measurements.json ]; then
-            echo "json_created=true" >> $GITHUB_OUTPUT
+            echo "json_created=true" >> "$GITHUB_OUTPUT"
             echo ""
             echo "=== Measurements JSON ==="
             cat data/disk-space-measurements.json
           else
-            echo "json_created=false" >> $GITHUB_OUTPUT
-            echo "ERROR: JSON file was not created"
+            echo "json_created=false" >> "$GITHUB_OUTPUT"
+            echo "::error::JSON file was not created"
             exit 1
           fi
 
@@ -112,38 +216,27 @@ jobs:
         id: changes
         run: |
           if git diff --quiet README.md data/disk-space-measurements.json 2>/dev/null; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
             echo "No changes detected"
           else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
             echo "Changes detected:"
             git diff --stat README.md data/disk-space-measurements.json 2>/dev/null || true
           fi
 
+      # The thresholds used to be compared with `[ -lt ]`, but total_size_mb is
+      # a float ("7286.0"), so that test never once evaluated: bash printed
+      # "integer expression expected", returned 2, and the `||` fell through to
+      # "valid". A measurement reporting 5 MB with a plausible component count
+      # would have been committed as good. The checks live in a script now, so
+      # they are testable and shared with the pull request gate (issue #115).
       - name: Validate measurements
         id: validate
         run: |
-          TOTAL_SIZE=$(python3 -c "import json; print(json.load(open('data/disk-space-measurements.json'))['total_size_mb'])" 2>/dev/null || echo "0")
-          COMPONENT_COUNT=$(python3 -c "import json; print(len(json.load(open('data/disk-space-measurements.json'))['components']))" 2>/dev/null || echo "0")
-
-          echo "Total size: ${TOTAL_SIZE}MB"
-          echo "Component count: ${COMPONENT_COUNT}"
-
-          # Validate that measurements are reasonable
-          # Total size should be at least 1000MB (1GB) for a full installation
-          # Should have at least 10 components measured
-          if [ "$TOTAL_SIZE" -lt 1000 ] || [ "$COMPONENT_COUNT" -lt 10 ]; then
-            echo "WARNING: Measurements appear incomplete or invalid!"
-            echo "  - Total size: ${TOTAL_SIZE}MB (expected >= 1000MB)"
-            echo "  - Components: ${COMPONENT_COUNT} (expected >= 10)"
-            echo ""
-            echo "This likely indicates a problem with the measurement script."
-            echo "See docs/case-studies/issue-29 for common causes."
-            echo ""
-            echo "valid=false" >> $GITHUB_OUTPUT
+          if python3 scripts/ci/validate-measurements.py data/disk-space-measurements.json; then
+            echo "valid=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Measurements look valid"
-            echo "valid=true" >> $GITHUB_OUTPUT
+            echo "valid=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Commit and push changes
@@ -169,14 +262,23 @@ jobs:
 
           echo "Changes committed and pushed successfully"
 
+      # Deliberately NOT gated on has_changes. It used to be, which meant a
+      # measurement that was invalid AND identical to the committed one passed
+      # the workflow silently — the failure mode that keeps a broken number in
+      # the README for as long as it stays broken.
       - name: Fail on invalid measurements
-        if: steps.changes.outputs.has_changes == 'true' && steps.validate.outputs.valid != 'true'
+        if: steps.validate.outputs.valid != 'true'
         run: |
-          echo "ERROR: Invalid measurements detected. Not committing to prevent data corruption."
+          echo "::error::Invalid measurements detected. Not committing to prevent data corruption."
           echo "Please investigate the measurement logs and fix the underlying issue."
           exit 1
 
+      # Always upload, especially on failure: measurement.log is the only record
+      # of what the three-hour run did, and a plain step without `if:` is
+      # skipped as soon as anything above it fails — which is exactly when the
+      # log is wanted (issue #115).
       - name: Upload measurement artifacts
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: disk-space-measurements
@@ -184,29 +286,18 @@ jobs:
             data/disk-space-measurements.json
             measurement.log
           retention-days: 30
+          if-no-files-found: warn
 
       - name: Summary
+        if: ${{ !cancelled() }}
         run: |
-          echo "## Disk Space Measurement Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Disk Space Measurement Results"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
 
           if [ -f data/disk-space-measurements.json ]; then
-            python3 -c "
-          import json
-          with open('data/disk-space-measurements.json', 'r') as f:
-              data = json.load(f)
-          print(f\"**Generated at:** {data['generated_at']}\")
-          print()
-          print(f\"**Total Installation Size:** {data['total_size_mb']} MB\")
-          print()
-          print('### Components by Size')
-          print()
-          print('| Component | Category | Size (MB) |')
-          print('|-----------|----------|-----------|')
-          components = sorted(data['components'], key=lambda x: x['size_mb'], reverse=True)
-          for comp in components:
-              print(f\"| {comp['name']} | {comp['category']} | {comp['size_mb']} |\")
-          " >> $GITHUB_STEP_SUMMARY
+            python3 scripts/ci/summarize-measurements.py data/disk-space-measurements.json >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Measurement JSON not found" >> $GITHUB_STEP_SUMMARY
+            echo "Measurement JSON not found" >> "$GITHUB_STEP_SUMMARY"
           fi

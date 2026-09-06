@@ -75,13 +75,13 @@ done
 apt_update_with_retry
 
 # Core system tools
-maybe_sudo apt install -y \
+maybe_sudo apt-get install -y \
   wget curl unzip zip git sudo ca-certificates gnupg \
   build-essential expect screen
 
 # Common development libraries used by multiple language runtimes
 # (Python, Ruby, Rust, Go, etc. all benefit from these)
-maybe_sudo apt install -y \
+maybe_sudo apt-get install -y \
   libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
   libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev \
   libffi-dev liblzma-dev libyaml-dev
@@ -98,16 +98,16 @@ if ! command_exists gh; then
   maybe_sudo mkdir -p -m 755 /etc/apt/keyrings
   out=$(mktemp)
   wget -nv -O"$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg
-  cat "$out" | maybe_sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
+  cat "$out" | maybe_sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
   maybe_sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
   rm -f "$out"
 
   maybe_sudo mkdir -p -m 755 /etc/apt/sources.list.d
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-    | maybe_sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+    | maybe_sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
 
   apt_update_with_retry
-  maybe_sudo apt install -y gh
+  maybe_sudo apt-get install -y gh
   log_success "GitHub CLI installed"
 else
   log_success "GitHub CLI already installed"
@@ -116,7 +116,7 @@ fi
 # --- GitLab CLI ---
 log_step "Installing GitLab CLI"
 if ! command_exists glab; then
-  maybe_sudo apt install -y glab
+  maybe_sudo apt-get install -y glab
   log_success "GitLab CLI installed"
 else
   log_success "GitLab CLI already installed"
@@ -125,7 +125,7 @@ fi
 # --- Install git identity tools as box user (using Bun from JS box) ---
 log_step "Installing git identity tools"
 
-cat > /tmp/essentials-identity-setup.sh <<'EOF_IDENTITY'
+cat >/tmp/essentials-identity-setup.sh <<'EOF_IDENTITY'
 #!/usr/bin/env bash
 set -euo pipefail
 

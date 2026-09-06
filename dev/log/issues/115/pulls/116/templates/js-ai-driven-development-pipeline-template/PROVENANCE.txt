@@ -1,0 +1,20 @@
+338fafa7b428637a18fe06a114d446a5cfb23ae7
+2026-09-05 09:54:55 +0000 0.11.30
+source: https://github.com/link-foundation/js-ai-driven-development-pipeline-template
+
+Vendored subset (issue #115, R5 - "We should compare all files"):
+  .github/           workflows and composite actions
+  scripts/           the template's CI/CD scripts
+  .husky/            git hooks
+  .jscpd.json .lycheeignore .prettierignore .prettierrc .secretlintrc.json
+  .gitignore eslint.config.js package.json
+
+Everything else in the template (the demo application, its tests, docs and
+lockfiles) is not part of the CI/CD surface being compared.
+
+These files are copies of another project's work, kept verbatim as evidence.
+Nothing in this directory is executed by this repository, and the linters skip
+it: scripts/ci/run-shellcheck.sh excludes dev/log/, and actionlint only reads
+.github/workflows/ at the repository root.
+
+The file-by-file adopt/skip decision is in ../../TEMPLATE-COMPARISON.md.

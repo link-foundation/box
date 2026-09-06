@@ -93,4 +93,4 @@ The release notes format can be validated by:
 - [v1.3.0 Release](https://github.com/link-foundation/box/releases/tag/v1.3.0) - Original incomplete format
 - [v1.3.2 Release](https://github.com/link-foundation/box/releases/tag/v1.3.2) - Partially improved format
 - [Docker Hub box](https://hub.docker.com/r/konard/box)
-- [GHCR box](https://github.com/link-foundation/box/pkgs/container/box)
+- GHCR box — `https://github.com/link-foundation/box/pkgs/container/box` (404 today: the package has never been pushed, see the note above the GHCR tables in `README.md`)

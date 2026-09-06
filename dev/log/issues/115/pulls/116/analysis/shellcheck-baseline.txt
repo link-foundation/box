@@ -1,0 +1,26 @@
+Unable to find image 'koalaman/shellcheck-alpine:stable' locally
+stable: Pulling from koalaman/shellcheck-alpine
+9824c27679d3: Pulling fs layer
+57754aa1e2fd: Pulling fs layer
+9824c27679d3: Verifying Checksum
+9824c27679d3: Download complete
+57754aa1e2fd: Download complete
+9824c27679d3: Pull complete
+57754aa1e2fd: Pull complete
+Digest: sha256:c82fe42504fbc9fc68f15d36638e5ee2324ebb8b94e96a3c4e395bf361c49183
+Status: Downloaded newer image for koalaman/shellcheck-alpine:stable
+./experiments/test-bashrc-merge-fix.sh:10:14: warning: Use single quotes, otherwise this expands now rather than when signalled. [SC2064]
+./experiments/test-bashrc-merge.sh:8:14: warning: Use single quotes, otherwise this expands now rather than when signalled. [SC2064]
+./scripts/measure-disk-space.sh:91:24: warning: ShellCheck can't follow non-constant source. Use a directive to specify location. [SC1090]
+./scripts/measure-disk-space.sh:335:43: warning: ShellCheck can't follow non-constant source. Use a directive to specify location. [SC1090]
+./scripts/release/validate-changeset.sh:13:1: warning: CHANGESET_DIR appears unused. Verify use (or export if used externally). [SC2034]
+./scripts/ubuntu-24-server-install.sh:58:11: warning: Declare and assign separately to avoid masking return values. [SC2155]
+./scripts/ubuntu-24-server-install.sh:105:24: warning: ShellCheck can't follow non-constant source. Use a directive to specify location. [SC1090]
+./scripts/ubuntu-24-server-install.sh:308:43: warning: ShellCheck can't follow non-constant source. Use a directive to specify location. [SC1090]
+./ubuntu/24.04/common.sh:41:11: warning: Declare and assign separately to avoid masking return values. [SC2155]
+./ubuntu/24.04/common.sh:491:40: warning: Don't use ls | grep. Use a glob or a for loop with a condition to allow non-alphanumeric filenames. [SC2010]
+./ubuntu/24.04/java/install.sh:68:22: warning: Don't use ls | grep. Use a glob or a for loop with a condition to allow non-alphanumeric filenames. [SC2010]
+./ubuntu/24.04/java/install.sh:73:22: warning: Don't use ls | grep. Use a glob or a for loop with a condition to allow non-alphanumeric filenames. [SC2010]
+./ubuntu/24.04/js/install.sh:133:18: warning: Iterating over ls output is fragile. Use globs. [SC2045]
+./ubuntu/24.04/php/install.sh:62:9: warning: Declare and assign separately to avoid masking return values. [SC2155]
+./ubuntu/24.04/php/install.sh:162:19: warning: Declare and assign separately to avoid masking return values. [SC2155]

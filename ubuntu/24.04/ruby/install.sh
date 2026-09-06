@@ -34,7 +34,7 @@ if [ ! -d "$HOME/.rbenv" ]; then
       echo '# rbenv configuration'
       echo 'export PATH="$HOME/.rbenv/bin:$PATH"'
       echo 'eval "$(rbenv init - bash)"'
-    } >> "$HOME/.bashrc"
+    } >>"$HOME/.bashrc"
   fi
   log_success "rbenv installed and configured"
 else

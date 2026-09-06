@@ -1,0 +1,130 @@
+name: Links
+
+# Ported from the template's links.yml (issue #115, R3/R5; hive-mind principle
+# #12, "documentation validation"). Nothing in this repository had ever checked
+# a URL. Reproduced against the tree as it was at 024dd6a, the run reports 113
+# failures over 16 files (107 distinct URLs, log in
+# dev/log/issues/115/pulls/116/logs/lychee-baseline-024dd6a.log): 85 GHCR
+# package pages the README advertised for images that have never been pushed,
+# 14 relative links to files that are not there - CI logs GitHub's 90-day
+# retention had already removed, and paths off by one `../` - three dead
+# upstream URLs, and a handful of hosts that answer a link checker with 429,
+# 503 or a TLS handshake failure.
+#
+# Reproduce locally with the same image and the same arguments:
+#
+#   docker run --rm -v "$PWD:/repo" -w /repo lycheeverse/lychee:0.24.2 \
+#     --no-progress --max-retries 2 --timeout 30 --exclude-path dev/log \
+#     './**/*.md'
+#
+# dev/log/ is excluded because it holds verbatim copies of other projects'
+# documentation, collected as issue evidence; their links are not ours to fix.
+# Known false positives - login-gated pages, rate-limiting hosts - are in
+# .lycheeignore, each with the reason it is there.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.md'
+      - '.lycheeignore'
+      - '.github/workflows/links.yml'
+      - 'scripts/ci/check-web-archive.mjs'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**.md'
+      - '.lycheeignore'
+      - '.github/workflows/links.yml'
+      - 'scripts/ci/check-web-archive.mjs'
+  # Weekly: a link rots without anyone touching this repository. The three dead
+  # upstream URLs this port found had all been correct when they were written.
+  schedule:
+    - cron: '0 6 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  link-checker:
+    name: links / lychee
+    runs-on: ubuntu-24.04
+    # A full run is ~10s cached, ~30s cold. 10 minutes is the ceiling that stops
+    # one slow external host from holding a runner.
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-link-checker
+      cancel-in-progress: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      - name: Check links with lychee
+        id: lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress
+            --cache
+            --max-cache-age 1d
+            --max-retries 2
+            --timeout 30
+            --exclude-path dev/log
+            './**/*.md'
+          # Not a failure yet: a broken link that the Wayback Machine has
+          # archived gets a concrete replacement suggested below, which is more
+          # use to the author than a bare red X.
+          fail: false
+          output: lychee/out.md
+          jobSummary: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node
+        if: steps.lychee.outputs.exit_code != 0
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Look for Web Archive replacements
+        if: steps.lychee.outputs.exit_code != 0
+        run: node scripts/ci/check-web-archive.mjs
+        env:
+          LYCHEE_OUTPUT: lychee/out.md
+
+      - name: Fail if broken links were found
+        if: ${{ !cancelled() && steps.lychee.outputs.exit_code != 0 }}
+        run: |
+          echo "::error title=links::lychee found broken links."
+          echo
+          echo "An archive URL is a suggested replacement; it does not make the"
+          echo "live link valid. For each broken link, in order of preference:"
+          echo "  1. Point at the current location of the same content."
+          echo "  2. Point at the archive.org snapshot suggested above."
+          echo "  3. Pin a GitHub link to the commit that still holds the file."
+          echo "  4. Delete the link if the content is gone and not worth citing."
+          echo "  5. Add the URL to .lycheeignore *with a reason* - but only if"
+          echo "     the link is correct and merely unverifiable (login-gated,"
+          echo "     rate-limited, bot-blocked). A dead link is not a false"
+          echo "     positive, and silencing it is the defect issue #115 is about."
+          echo
+          echo "Reproduce locally:"
+          echo "  docker run --rm -v \"\$PWD:/repo\" -w /repo lycheeverse/lychee:0.24.2 \\"
+          echo "    --no-progress --max-retries 2 --timeout 30 --exclude-path dev/log './**/*.md'"
+          exit 1
+
+      - name: The gate's own fixtures still hold
+        if: ${{ !cancelled() }}
+        run: bash experiments/test-issue115-links-gate.sh

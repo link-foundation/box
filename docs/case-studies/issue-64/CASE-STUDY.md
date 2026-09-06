@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This case study documents a systematic comparison between the box's `full-box` Docker image and the general-purpose development tools required by the [hive-mind system](https://github.com/link-assistant/hive-mind/blob/main/scripts/ubuntu-24-server-install.sh). The analysis identifies what general-purpose (non-AI-specific) tools are missing from the box.
+This case study documents a systematic comparison between the box's `full-box` Docker image and the general-purpose development tools required by the [hive-mind system](https://github.com/link-assistant/hive-mind/blob/ed3225f24ecd0a1614c1c6433f2ab548e4443eab/scripts/ubuntu-24-server-install.sh). The analysis identifies what general-purpose (non-AI-specific) tools are missing from the box.
 
 **Key finding**: The full-box is already a superset of the general-purpose development stack that hive-mind requires. The only missing general-purpose tool is `expect`, used for interactive TTY scripting automation. AI-specific tools (Claude Code, Codex, Gemini CLI, Playwright, Hive Mind workflow utilities) belong in the hive-mind image, not in the universal box.
 
@@ -12,7 +12,7 @@ This case study documents a systematic comparison between the box's `full-box` D
 
 ### 1.1 Hive Mind Install Script Analysis
 
-Source: `https://github.com/link-assistant/hive-mind/blob/main/scripts/ubuntu-24-server-install.sh`
+Source: `https://github.com/link-assistant/hive-mind/blob/ed3225f24ecd0a1614c1c6433f2ab548e4443eab/scripts/ubuntu-24-server-install.sh`
 
 The hive-mind install script installs two categories of tools:
 
@@ -183,7 +183,11 @@ This way, the box remains a clean, universal development environment that any pr
 
 ## 5. References
 
-- [Hive Mind Install Script](https://github.com/link-assistant/hive-mind/blob/main/scripts/ubuntu-24-server-install.sh)
+- [Hive Mind Install Script](https://github.com/link-assistant/hive-mind/blob/ed3225f24ecd0a1614c1c6433f2ab548e4443eab/scripts/ubuntu-24-server-install.sh) — pinned to `ed3225f`, the last
+  commit that held the file. hive-mind replaced the script with
+  [`docs/UBUNTU-SERVER.md`](https://github.com/link-assistant/hive-mind/blob/main/docs/UBUNTU-SERVER.md)
+  in `ee6233a` (2026-03-06), so the `main` link this study was written against
+  now 404s. A case study cites what it actually read, so it cites the commit.
 - [expect(1) man page](https://linux.die.net/man/1/expect)
 - [Issue #44: PHP installation strategy](../../case-studies/issue-44/CASE-STUDY.md)
 - [Issue #62: CI toolchain tests](../../case-studies/issue-62/CASE-STUDY.md)

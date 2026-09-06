@@ -47,7 +47,8 @@ echo "Reading measurements from: $JSON_FILE"
 echo "Updating README at: $README_FILE"
 
 # Generate the markdown table using Python
-MARKDOWN_TABLE=$(python3 << 'PYTHON_SCRIPT'
+MARKDOWN_TABLE=$(
+  python3 <<'PYTHON_SCRIPT'
 import json
 import sys
 import os
@@ -123,14 +124,14 @@ if grep -q "<!-- COMPONENT_SIZES_START -->" "$README_FILE"; then
     !skip {
       print
     }
-  ' "$README_FILE" > "$README_FILE.tmp"
+  ' "$README_FILE" >"$README_FILE.tmp"
 
   # Actually, let's use a simpler approach with sed
   # First, let's create the content to insert
-  echo "$MARKDOWN_TABLE" > /tmp/markdown_table_content.txt
+  echo "$MARKDOWN_TABLE" >/tmp/markdown_table_content.txt
 
   # Use Python for reliable replacement
-  python3 << PYTHON_REPLACE
+  python3 <<PYTHON_REPLACE
 import re
 import os
 
@@ -160,7 +161,7 @@ else
   echo "Adding component sizes section..."
 
   # Find where to insert (before ## License or at end)
-  python3 << PYTHON_INSERT
+  python3 <<PYTHON_INSERT
 import os
 
 readme_file = os.environ.get('README_FILE', 'README.md')
@@ -193,10 +194,10 @@ with open(readme_file, 'w') as f:
 print(f"Added component sizes section to {readme_file}")
 PYTHON_INSERT
 
-  echo "$MARKDOWN_TABLE" > /tmp/markdown_table_content.txt
+  echo "$MARKDOWN_TABLE" >/tmp/markdown_table_content.txt
 
   # Re-run the insert script
-  python3 << PYTHON_INSERT
+  python3 <<PYTHON_INSERT
 import os
 
 readme_file = os.environ.get('README_FILE', 'README.md')

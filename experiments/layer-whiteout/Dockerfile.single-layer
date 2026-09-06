@@ -1,6 +1,9 @@
 # syntax=docker/dockerfile:1
 # What refresh-rust.sh does: bind the stage and copy only what is kept, so the
 # stale toolchain is never committed to a layer in the first place.
+# whiteout-stage is built by experiments/rust-refresh-layer-test.sh right before
+# this file, in the local daemon; there is no tag to pin.
+# hadolint ignore=DL3006
 FROM whiteout-stage AS rust-stage
 FROM ubuntu:24.04
 RUN --mount=type=bind,from=rust-stage,source=/opt/toolchains,target=/mnt/toolchains \

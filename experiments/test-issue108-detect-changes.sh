@@ -31,14 +31,20 @@ fail=0
 pass=0
 
 # run_detect: prints the should-build value for the current env/cwd.
+#
+# The script's exit status is swallowed deliberately. Under `set -euo pipefail`
+# a command substitution that exits non-zero kills the whole suite on the spot,
+# which is how the shallow-checkout defect below used to surface in CI: exit
+# 128, no FAIL line, no clue which assertion died. An assertion must be able to
+# fail and say so.
 run_detect() {
-  bash "$SCRIPT" 2>/dev/null | sed -n 's/^should-build=//p' | tail -n1
+  bash "$SCRIPT" 2>/dev/null | sed -n 's/^should-build=//p' | tail -n1 || true
 }
 
 # assert_build EXPECTED LABEL  (reads GITHUB_EVENT_NAME / overrides from env)
 assert_build() {
   local expected="$1" label="$2" got
-  got="$(run_detect)"
+  got="$(run_detect || true)"
   if [ "$got" = "$expected" ]; then
     echo "  ok: $label (should-build=$got)"
     pass=$((pass + 1))
@@ -123,8 +129,11 @@ ubuntu/24.04/js/Dockerfile" \
   assert_build true "mixed .gitkeep + js change"
 
 # --- workflow_dispatch always builds ---
-GITHUB_EVENT_NAME=workflow_dispatch CHANGED_FILES_OVERRIDE="" \
+GITHUB_EVENT_NAME=workflow_dispatch CHANGED_FILES_OVERRIDE="ubuntu/24.04/js/Dockerfile" \
   assert_build true "workflow_dispatch always builds"
+# Its ambient-repository counterpart - no override, so the script has to resolve
+# a real git range - is in Part 2b, where it runs against a throwaway repository
+# instead of whatever history this checkout happens to have.
 
 echo ""
 echo "=== Part 2: git range resolution (synthetic merge commit) ==="
@@ -144,8 +153,8 @@ setup_repo() {
   git_quiet config user.email t@t.t
   git_quiet config user.name t
   mkdir -p "$REPO/ubuntu/24.04/js" "$REPO/docs"
-  echo "base" > "$REPO/ubuntu/24.04/js/Dockerfile"
-  echo "readme" > "$REPO/README.md"
+  echo "base" >"$REPO/ubuntu/24.04/js/Dockerfile"
+  echo "readme" >"$REPO/README.md"
   git_quiet add -A
   git_quiet commit -m "base commit"
 }
@@ -168,9 +177,9 @@ assert_repo_build() {
 #     image: per-commit detection => should NOT build. ---
 setup_repo pr-trailing-gitkeep
 git_quiet checkout -b prhead
-echo "changed by PR" > "$REPO/ubuntu/24.04/js/Dockerfile"
+echo "changed by PR" >"$REPO/ubuntu/24.04/js/Dockerfile"
 git_quiet add -A && git_quiet commit -m "real image change (already tested when pushed)"
-echo "# placeholder" > "$REPO/.gitkeep"
+echo "# placeholder" >"$REPO/.gitkeep"
 git_quiet add -A && git_quiet commit -m "add .gitkeep (trivial synchronize)"
 git_quiet checkout main
 git_quiet merge --no-ff prhead -m "Merge pull request"
@@ -179,9 +188,9 @@ EVENT=pull_request assert_repo_build false "PR trailing .gitkeep skips build (pe
 # --- PR whose latest commit changes an image => should build. ---
 setup_repo pr-trailing-code
 git_quiet checkout -b prhead
-echo "# doc" > "$REPO/docs/x.md"
+echo "# doc" >"$REPO/docs/x.md"
 git_quiet add -A && git_quiet commit -m "docs commit"
-echo "changed" > "$REPO/ubuntu/24.04/js/Dockerfile"
+echo "changed" >"$REPO/ubuntu/24.04/js/Dockerfile"
 git_quiet add -A && git_quiet commit -m "real image change as latest commit"
 git_quiet checkout main
 git_quiet merge --no-ff prhead -m "Merge pull request"
@@ -190,20 +199,81 @@ EVENT=pull_request assert_repo_build true "PR trailing image change builds"
 # --- push event spanning code + trivial commits => whole range builds. ---
 setup_repo push-range
 BEFORE="$(git -C "$REPO" rev-parse HEAD)"
-echo "changed" > "$REPO/ubuntu/24.04/js/Dockerfile"
+echo "changed" >"$REPO/ubuntu/24.04/js/Dockerfile"
 git_quiet add -A && git_quiet commit -m "image change mid-range"
-echo "# placeholder" > "$REPO/.gitkeep"
+echo "# placeholder" >"$REPO/.gitkeep"
 git_quiet add -A && git_quiet commit -m "trailing .gitkeep"
 EVENT=push PUSH_BEFORE_SHA="$BEFORE" assert_repo_build true "push range with image change builds"
 
 # --- push event that only touches docs across the whole range => no build. ---
 setup_repo push-docs-only
 BEFORE="$(git -C "$REPO" rev-parse HEAD)"
-echo "# doc" > "$REPO/docs/y.md"
+echo "# doc" >"$REPO/docs/y.md"
 git_quiet add -A && git_quiet commit -m "docs only"
-echo "# placeholder" > "$REPO/.gitkeep"
+echo "# placeholder" >"$REPO/.gitkeep"
 git_quiet add -A && git_quiet commit -m "trailing .gitkeep"
 EVENT=push PUSH_BEFORE_SHA="$BEFORE" assert_repo_build false "push range docs-only skips build"
+
+echo ""
+echo "=== Part 2b: histories the script cannot diff (issue #115) ==="
+
+# actions/checkout defaults to fetch-depth: 1. In that checkout HEAD~1 does not
+# exist, and the script used to print `HEAD~1 HEAD` anyway, `git diff` exited
+# 128, the `|| git diff --name-only HEAD~1 HEAD` fallback re-ran the identical
+# failing command, and under `set -euo pipefail` the script died before writing
+# a single output. This is what made `scripts / regression suites` red from the
+# moment it was added: the suite ran the real script against its own shallow
+# checkout of this repository.
+#
+# The rule the fallback has to satisfy: never under-build. With no usable range,
+# classify every tracked file as changed.
+
+# assert_repo_output EXPECTED_LINE LABEL — asserts a name=value line from a run
+# inside $REPO, and that the script exited 0 while producing it.
+assert_repo_output() {
+  local expected="$1" label="$2" out status
+  set +e
+  out="$(cd "$REPO" && GITHUB_EVENT_NAME="$EVENT" bash "$SCRIPT" 2>/dev/null)"
+  status=$?
+  set -e
+  if [ "$status" -ne 0 ]; then
+    echo "  FAIL: $label — the script exited $status"
+    fail=$((fail + 1))
+    return
+  fi
+  if grep -qx "$expected" <<<"$out"; then
+    echo "  ok: $label ($expected)"
+    pass=$((pass + 1))
+  else
+    echo "  FAIL: $label — expected line '$expected' in output"
+    fail=$((fail + 1))
+  fi
+}
+
+# --- root commit: HEAD~1 does not exist ---
+setup_repo root-commit-only
+EVENT=workflow_dispatch assert_repo_output "should-build=true" "workflow_dispatch on a root commit still decides"
+EVENT=push assert_repo_output "ubuntu=true" "root commit classifies every tracked file rather than dying"
+
+# --- shallow clone: the actions/checkout default ---
+setup_repo shallow-source
+git_quiet checkout -b prhead
+echo "changed" >"$REPO/ubuntu/24.04/js/Dockerfile"
+git_quiet add -A && git_quiet commit -m "image change"
+SOURCE="$REPO"
+REPO="$TMP/shallow-clone"
+git clone --quiet --depth 1 "file://$SOURCE" "$REPO" >/dev/null 2>&1
+git_quiet config user.email t@t.t
+git_quiet config user.name t
+if git -C "$REPO" rev-parse --verify -q "HEAD~1" >/dev/null 2>&1; then
+  echo "  FAIL: the clone is not shallow — the fixture proves nothing"
+  fail=$((fail + 1))
+else
+  echo "  ok: the fixture clone is shallow (HEAD~1 unreachable)"
+  pass=$((pass + 1))
+fi
+EVENT=workflow_dispatch assert_repo_output "should-build=true" "workflow_dispatch survives a shallow checkout"
+EVENT=push assert_repo_output "should-build=true" "a shallow push event builds rather than exiting 128"
 
 echo ""
 echo "=== Part 3: release.yml is wired to the script (regression guard) ==="

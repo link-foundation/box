@@ -5,6 +5,36 @@ set -euo pipefail
 # This script installs common language runtimes for a development box.
 # It is AI-agnostic - no AI tools or assistants are included.
 # Based on: https://github.com/link-assistant/hive-mind/blob/main/scripts/ubuntu-24-server-install.sh
+#
+# Usage: ./ubuntu-24-server-install.sh [--verbose]
+#
+#   --verbose  trace what the script resolves, generates and hands to the box
+#              user, and run the generated box-user script under `set -x`.
+#              Off by default. Also settable with BOX_VERBOSE=1, which is the
+#              only way to reach it through `curl ... | bash`.
+
+BOX_VERBOSE="${BOX_VERBOSE:-0}"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -v | --verbose)
+      BOX_VERBOSE=1
+      shift
+      ;;
+    -h | --help)
+      sed -n '4,14p' "$0" | sed 's/^# \?//'
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "ubuntu-24-server-install.sh: unknown argument $1" >&2
+      exit 2
+      ;;
+  esac
+done
 
 # Color codes for enhanced output (disabled in non-TTY)
 if [ -t 1 ]; then
@@ -48,6 +78,11 @@ log_step() {
   echo -e "\n${GREEN}==>${NC} ${BLUE}$1${NC}\n"
 }
 
+# Debug output, silent unless --verbose / BOX_VERBOSE=1 (issue #115).
+log_debug() {
+  [ "$BOX_VERBOSE" = "1" ] && echo -e "${CYAN}[debug]${NC} $1" || true
+}
+
 # Verification helper
 verify_command() {
   local tool_name="$1"
@@ -55,7 +90,9 @@ verify_command() {
   local version_flag="${3:---version}"
 
   if command -v "$command_name" &>/dev/null; then
-    local version=$("$command_name" $version_flag 2>/dev/null | head -n1 || echo "installed")
+    local version
+    # shellcheck disable=SC2086  # $version_flag is deliberately word-split
+    version=$("$command_name" $version_flag 2>/dev/null | head -n1 || echo "installed")
     log_success "$tool_name: $version"
     return 0
   else
@@ -102,7 +139,12 @@ locate_box_common_sh() {
 box_resolve() {
   local fn="$1" fallback="$2" out=""
   if [ -n "$BOX_COMMON_SH" ]; then
-    out=$( (set +eu; . "$BOX_COMMON_SH" >/dev/null 2>&1; "$fn" 2>/dev/null) ) || out=""
+    # shellcheck source=/dev/null  # resolved at runtime by locate_box_common_sh
+    out=$( (
+      set +eu
+      . "$BOX_COMMON_SH" >/dev/null 2>&1
+      "$fn" 2>/dev/null
+    )) || out=""
   fi
   if [ -n "$out" ]; then
     echo "$out"
@@ -237,15 +279,15 @@ cleanup_duplicate_apt_sources() {
   log_info "Checking for duplicate APT sources..."
   local duplicates_found=false
 
-  if [ -f /etc/apt/sources.list.d/microsoft-edge.list ] && \
-     [ -f /etc/apt/sources.list.d/microsoft-edge-stable.list ]; then
+  if [ -f /etc/apt/sources.list.d/microsoft-edge.list ] \
+    && [ -f /etc/apt/sources.list.d/microsoft-edge-stable.list ]; then
     log_info "Found duplicate Microsoft Edge APT sources"
     maybe_sudo rm -f /etc/apt/sources.list.d/microsoft-edge.list
     duplicates_found=true
   fi
 
-  if [ -f /etc/apt/sources.list.d/google-chrome.list ] && \
-     [ -f /etc/apt/sources.list.d/google-chrome-stable.list ]; then
+  if [ -f /etc/apt/sources.list.d/google-chrome.list ] \
+    && [ -f /etc/apt/sources.list.d/google-chrome-stable.list ]; then
     log_info "Found duplicate Google Chrome APT sources"
     maybe_sudo rm -f /etc/apt/sources.list.d/google-chrome-stable.list
     duplicates_found=true
@@ -267,6 +309,7 @@ NODE_MAJOR="$(box_resolve resolve_node_lts_major 24)"
 NVM_INSTALL_VERSION="$(box_resolve resolve_nvm_version v0.40.7)"
 JAVA_MAJOR="$(box_resolve resolve_java_lts_major 25)"
 log_info "Resolved versions: Node ${NODE_MAJOR} LTS, nvm ${NVM_INSTALL_VERSION}, Java ${JAVA_MAJOR} LTS"
+log_debug "Version policy source: ${BOX_COMMON_SH:-<none, using pinned fallbacks>}"
 
 cleanup_duplicate_apt_sources
 apt_update_safe
@@ -277,12 +320,12 @@ apt_update_safe
 # own archive, so the install still succeeds without the version helpers.
 DOTNET_SDK_CHANNEL="$(box_resolve resolve_dotnet_apt_channel 8.0)"
 log_info "Installing essential development tools (.NET SDK ${DOTNET_SDK_CHANNEL})..."
-maybe_sudo apt install -y wget curl unzip zip git sudo ca-certificates gnupg "dotnet-sdk-${DOTNET_SDK_CHANNEL}" build-essential expect screen
+maybe_sudo apt-get install -y wget curl unzip zip git sudo ca-certificates gnupg "dotnet-sdk-${DOTNET_SDK_CHANNEL}" build-essential expect screen
 log_success "Essential tools installed"
 
 # --- Install C/C++ Development Tools ---
 log_info "Installing C/C++ development tools (CMake, Clang/LLVM)..."
-sudo apt install -y cmake clang llvm lld
+sudo apt-get install -y cmake clang llvm lld
 log_success "C/C++ development tools installed"
 
 # --- Install Assembly Tools ---
@@ -292,12 +335,12 @@ log_info "Installing Assembly tools..."
 ARCH=$(uname -m)
 if [ "$ARCH" = "x86_64" ]; then
   # FASM (Flat Assembler) is only available for x86-64 architecture
-  maybe_sudo apt install -y nasm fasm
+  maybe_sudo apt-get install -y nasm fasm
   log_success "Assembly tools installed (NASM + FASM)"
 else
   # On non-x86 architectures (ARM64, etc.), only install NASM
   # FASM is not available as it's a self-compiling x86 assembler
-  maybe_sudo apt install -y nasm
+  maybe_sudo apt-get install -y nasm
   log_success "Assembly tools installed (NASM only - FASM not available for $ARCH)"
 fi
 
@@ -305,21 +348,26 @@ fi
 # CRAN keeps a current R for every supported Ubuntu codename; the distro package
 # is frozen at whatever shipped with the release (issue #112).
 log_info "Installing R statistical language..."
-if [ -n "$BOX_COMMON_SH" ] && (set +eu; . "$BOX_COMMON_SH" >/dev/null 2>&1; add_cran_repo) >/dev/null 2>&1; then
+# shellcheck source=/dev/null  # resolved at runtime by locate_box_common_sh
+if [ -n "$BOX_COMMON_SH" ] && (
+  set +eu
+  . "$BOX_COMMON_SH" >/dev/null 2>&1
+  add_cran_repo
+) >/dev/null 2>&1; then
   log_success "CRAN repository configured"
   apt_update_safe
 fi
-maybe_sudo apt install -y r-base
+maybe_sudo apt-get install -y r-base
 log_success "R language installed"
 
 # --- Install Ruby build dependencies ---
 log_info "Installing Ruby build dependencies..."
-maybe_sudo apt install -y libyaml-dev
+maybe_sudo apt-get install -y libyaml-dev
 log_success "Ruby build dependencies installed"
 
 # --- Install Python build dependencies (required for pyenv) ---
 log_info "Installing Python build dependencies..."
-maybe_sudo apt install -y \
+maybe_sudo apt-get install -y \
   libssl-dev \
   zlib1g-dev \
   libbz2-dev \
@@ -341,16 +389,16 @@ if ! command -v gh &>/dev/null; then
   maybe_sudo mkdir -p -m 755 /etc/apt/keyrings
   out=$(mktemp)
   wget -nv -O"$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg
-  cat "$out" | maybe_sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
+  cat "$out" | maybe_sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
   maybe_sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
   rm -f "$out"
 
   maybe_sudo mkdir -p -m 755 /etc/apt/sources.list.d
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-    | maybe_sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+    | maybe_sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
 
   apt_update_with_retry
-  maybe_sudo apt install -y gh
+  maybe_sudo apt-get install -y gh
   log_success "GitHub CLI installed"
 else
   log_success "GitHub CLI already installed"
@@ -360,7 +408,7 @@ fi
 log_step "Installing GitLab CLI (system-wide)"
 if ! command -v glab &>/dev/null; then
   log_info "Installing GitLab CLI..."
-  maybe_sudo apt install -y glab
+  maybe_sudo apt-get install -y glab
   log_success "GitLab CLI installed"
 else
   log_success "GitLab CLI already installed"
@@ -403,9 +451,27 @@ else
 fi
 
 # --- Switch to box user for language tools setup ---
-cat > /tmp/box-user-setup.sh <<'EOF_BOX_SCRIPT'
+cat >/tmp/box-user-setup.sh <<'EOF_BOX_SCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
+
+# This script is written from a QUOTED heredoc (<<'EOF_BOX_SCRIPT'), so nothing
+# below was expanded when the file was created, and it runs under `su - box` /
+# `sudo -i -u box` — a login shell that starts from a clean environment. Every
+# version the parent resolved therefore has to be handed in explicitly at the
+# call site. Assert them here so an omission fails by name rather than as a bare
+# "unbound variable" line number. The identical bug in the sibling script
+# scripts/measure-disk-space.sh is what failed run 33972074753 on main; here it
+# was invisible because no CI job runs this script (issue #115).
+: "${NODE_MAJOR:?must be passed in by scripts/ubuntu-24-server-install.sh}"
+: "${NVM_INSTALL_VERSION:?must be passed in by scripts/ubuntu-24-server-install.sh}"
+: "${JAVA_MAJOR:?must be passed in by scripts/ubuntu-24-server-install.sh}"
+
+BOX_VERBOSE="${BOX_VERBOSE:-0}"
+# Trace every command when asked. Off by default: this install log already runs
+# to thousands of lines, and `set -x` over it is unreadable unless you are
+# specifically chasing something (issue #115).
+[ "$BOX_VERBOSE" = "1" ] && set -x || true
 
 # Define logging functions for box user session
 if [ -t 1 ]; then
@@ -682,10 +748,10 @@ fi
 # --- Opam + Rocq (Coq theorem prover) ---
 if ! command -v opam &>/dev/null; then
   log_info "Installing Opam (OCaml package manager)..."
-  sudo apt install -y bubblewrap || true
+  sudo apt-get install -y bubblewrap || true
 
   bash -c "sh <(curl -fsSL https://opam.ocaml.org/install.sh) --no-backup" <<< "y" || {
-    sudo apt install -y opam || true
+    sudo apt-get install -y opam || true
   }
 
   if command -v opam &>/dev/null; then
@@ -1145,11 +1211,18 @@ EOF_BOX_SCRIPT
 # Make the script executable
 chmod +x /tmp/box-user-setup.sh
 
-# Execute as box user
+log_debug "Handing to the box user: NODE_MAJOR=$NODE_MAJOR NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION JAVA_MAJOR=$JAVA_MAJOR BOX_VERBOSE=$BOX_VERBOSE"
+log_debug "Generated script: /tmp/box-user-setup.sh ($(wc -l </tmp/box-user-setup.sh) lines)"
+
+# Execute as box user.
+# `su -` and `sudo -i` both start a login shell with a fresh environment, so the
+# versions resolved above are passed explicitly; /tmp/box-user-setup.sh asserts
+# each one (issue #115). `env` is used rather than a bare VAR=value prefix
+# because sudo's env_reset policy rejects unlisted variables.
 if [ "$EUID" -eq 0 ]; then
-  su - box -c "bash /tmp/box-user-setup.sh"
+  su - box -c "env NODE_MAJOR='$NODE_MAJOR' NVM_INSTALL_VERSION='$NVM_INSTALL_VERSION' JAVA_MAJOR='$JAVA_MAJOR' BOX_VERBOSE='$BOX_VERBOSE' bash /tmp/box-user-setup.sh"
 else
-  sudo -i -u box bash /tmp/box-user-setup.sh
+  sudo -i -u box env "NODE_MAJOR=$NODE_MAJOR" "NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION" "JAVA_MAJOR=$JAVA_MAJOR" "BOX_VERBOSE=$BOX_VERBOSE" bash /tmp/box-user-setup.sh
 fi
 
 # Clean up the temporary script

@@ -7,10 +7,16 @@ set -u
 PASS=0
 FAIL=0
 WORKDIR=$(mktemp -d)
-trap "rm -rf $WORKDIR" EXIT
+trap 'rm -rf "$WORKDIR"' EXIT
 
-pass() { echo "  [PASS] $1"; PASS=$((PASS+1)); }
-fail() { echo "  [FAIL] $1"; FAIL=$((FAIL+1)); }
+pass() {
+  echo "  [PASS] $1"
+  PASS=$((PASS + 1))
+}
+fail() {
+  echo "  [FAIL] $1"
+  FAIL=$((FAIL + 1))
+}
 
 echo "=== Issue #66: .bashrc merge fix verification ==="
 echo ""
@@ -18,7 +24,7 @@ echo ""
 # ─────────────────────────────────────────────────
 # 1. Create realistic base .bashrc (like Ubuntu /etc/skel/.bashrc after essentials)
 # ─────────────────────────────────────────────────
-cat > "$WORKDIR/.bashrc-base" << 'EOF'
+cat >"$WORKDIR/.bashrc-base" <<'EOF'
 # ~/.bashrc: executed by bash(1) for non-login shells.
 
 # If not running interactively, don't do anything
@@ -71,7 +77,7 @@ echo ""
 
 # Python (adds pyenv section)
 cp "$WORKDIR/.bashrc-base" "$WORKDIR/.bashrc-python"
-cat >> "$WORKDIR/.bashrc-python" << 'EOF'
+cat >>"$WORKDIR/.bashrc-python" <<'EOF'
 
 # Pyenv configuration
 export PYENV_ROOT="$HOME/.pyenv"
@@ -82,7 +88,7 @@ EOF
 
 # Go (adds Go section)
 cp "$WORKDIR/.bashrc-base" "$WORKDIR/.bashrc-go"
-cat >> "$WORKDIR/.bashrc-go" << 'EOF'
+cat >>"$WORKDIR/.bashrc-go" <<'EOF'
 
 # Go configuration
 export GOROOT="$HOME/.go"
@@ -92,7 +98,7 @@ EOF
 
 # Java (adds SDKMAN section with fixed POSIX syntax)
 cp "$WORKDIR/.bashrc-base" "$WORKDIR/.bashrc-java"
-cat >> "$WORKDIR/.bashrc-java" << 'EOF'
+cat >>"$WORKDIR/.bashrc-java" <<'EOF'
 
 # SDKMAN configuration
 export SDKMAN_DIR="$HOME/.sdkman"
@@ -101,7 +107,7 @@ EOF
 
 # Kotlin (same SDKMAN section - should be SKIPPED by merge as already present)
 cp "$WORKDIR/.bashrc-base" "$WORKDIR/.bashrc-kotlin"
-cat >> "$WORKDIR/.bashrc-kotlin" << 'EOF'
+cat >>"$WORKDIR/.bashrc-kotlin" <<'EOF'
 
 # SDKMAN configuration
 export SDKMAN_DIR="$HOME/.sdkman"
@@ -110,7 +116,7 @@ EOF
 
 # Perl (adds Perlbrew section WITH if/fi block - this was the bug trigger)
 cp "$WORKDIR/.bashrc-base" "$WORKDIR/.bashrc-perl"
-cat >> "$WORKDIR/.bashrc-perl" << 'EOF'
+cat >>"$WORKDIR/.bashrc-perl" <<'EOF'
 
 # Perlbrew configuration
 if [ -n "$PS1" ]; then
@@ -121,7 +127,7 @@ EOF
 
 echo "Language .bashrc files syntax:"
 for f in python go java kotlin perl; do
-    bash -n "$WORKDIR/.bashrc-$f" 2>&1 && pass "$f .bashrc is valid" || fail "$f .bashrc is invalid"
+  bash -n "$WORKDIR/.bashrc-$f" 2>&1 && pass "$f .bashrc is valid" || fail "$f .bashrc is invalid"
 done
 echo ""
 
@@ -132,22 +138,22 @@ echo "=== Testing OLD merge algorithm (expected to FAIL) ==="
 cp "$WORKDIR/.bashrc-base" "$WORKDIR/.bashrc-old-merged"
 
 for lang_bashrc in "$WORKDIR/.bashrc-python" "$WORKDIR/.bashrc-go" "$WORKDIR/.bashrc-java" \
-                   "$WORKDIR/.bashrc-kotlin" "$WORKDIR/.bashrc-perl"; do
-    if [ -f "$lang_bashrc" ]; then
-        while IFS= read -r line; do
-            if [ -n "$line" ] && ! grep -qxF "$line" "$WORKDIR/.bashrc-old-merged" 2>/dev/null; then
-                echo "$line" >> "$WORKDIR/.bashrc-old-merged"
-            fi
-        done < "$lang_bashrc"
-    fi
+  "$WORKDIR/.bashrc-kotlin" "$WORKDIR/.bashrc-perl"; do
+  if [ -f "$lang_bashrc" ]; then
+    while IFS= read -r line; do
+      if [ -n "$line" ] && ! grep -qxF "$line" "$WORKDIR/.bashrc-old-merged" 2>/dev/null; then
+        echo "$line" >>"$WORKDIR/.bashrc-old-merged"
+      fi
+    done <"$lang_bashrc"
+  fi
 done
 
 echo "Old merge result syntax:"
 bash -n "$WORKDIR/.bashrc-old-merged" 2>&1
 if bash -n "$WORKDIR/.bashrc-old-merged" 2>/dev/null; then
-    fail "Old algorithm unexpectedly produced valid .bashrc (test assumption wrong)"
+  fail "Old algorithm unexpectedly produced valid .bashrc (test assumption wrong)"
 else
-    pass "Old algorithm produces syntax error (as expected - bug confirmed)"
+  pass "Old algorithm produces syntax error (as expected - bug confirmed)"
 fi
 echo ""
 
@@ -163,32 +169,32 @@ echo "=== Testing NEW merge algorithm (expected to PASS) ==="
 cp "$WORKDIR/.bashrc-base" "$WORKDIR/.bashrc-new-merged"
 
 for lang_bashrc in "$WORKDIR/.bashrc-python" "$WORKDIR/.bashrc-go" "$WORKDIR/.bashrc-java" \
-                   "$WORKDIR/.bashrc-kotlin" "$WORKDIR/.bashrc-perl"; do
-    if [ -f "$lang_bashrc" ]; then
-        in_new_section=0
-        section_header=""
-        while IFS= read -r line; do
-            if echo "$line" | grep -qE '^# .+ configuration$'; then
-                section_header="$line"
-                if grep -qxF "$section_header" "$WORKDIR/.bashrc-new-merged" 2>/dev/null; then
-                    in_new_section=0
-                else
-                    in_new_section=1
-                    echo "" >> "$WORKDIR/.bashrc-new-merged"
-                    echo "$section_header" >> "$WORKDIR/.bashrc-new-merged"
-                fi
-            elif [ "$in_new_section" = "1" ]; then
-                echo "$line" >> "$WORKDIR/.bashrc-new-merged"
-            fi
-        done < "$lang_bashrc"
-    fi
+  "$WORKDIR/.bashrc-kotlin" "$WORKDIR/.bashrc-perl"; do
+  if [ -f "$lang_bashrc" ]; then
+    in_new_section=0
+    section_header=""
+    while IFS= read -r line; do
+      if echo "$line" | grep -qE '^# .+ configuration$'; then
+        section_header="$line"
+        if grep -qxF "$section_header" "$WORKDIR/.bashrc-new-merged" 2>/dev/null; then
+          in_new_section=0
+        else
+          in_new_section=1
+          echo "" >>"$WORKDIR/.bashrc-new-merged"
+          echo "$section_header" >>"$WORKDIR/.bashrc-new-merged"
+        fi
+      elif [ "$in_new_section" = "1" ]; then
+        echo "$line" >>"$WORKDIR/.bashrc-new-merged"
+      fi
+    done <"$lang_bashrc"
+  fi
 done
 
 echo "New merge result syntax:"
 if bash -n "$WORKDIR/.bashrc-new-merged" 2>&1; then
-    pass "New algorithm produces valid .bashrc (bug is fixed)"
+  pass "New algorithm produces valid .bashrc (bug is fixed)"
 else
-    fail "New algorithm still produces syntax error"
+  fail "New algorithm still produces syntax error"
 fi
 echo ""
 
@@ -203,16 +209,16 @@ echo ""
 echo "=== Checking section deduplication ==="
 SDKMAN_COUNT=$(grep -c "# SDKMAN configuration" "$WORKDIR/.bashrc-new-merged" 2>/dev/null || echo "0")
 if [ "$SDKMAN_COUNT" = "1" ]; then
-    pass "SDKMAN section appears exactly once (kotlin dedup worked)"
+  pass "SDKMAN section appears exactly once (kotlin dedup worked)"
 else
-    fail "SDKMAN section count: $SDKMAN_COUNT (expected 1)"
+  fail "SDKMAN section count: $SDKMAN_COUNT (expected 1)"
 fi
 
 PERLBREW_COUNT=$(grep -c "# Perlbrew configuration" "$WORKDIR/.bashrc-new-merged" 2>/dev/null || echo "0")
 if [ "$PERLBREW_COUNT" = "1" ]; then
-    pass "Perlbrew section appears exactly once"
+  pass "Perlbrew section appears exactly once"
 else
-    fail "Perlbrew section count: $PERLBREW_COUNT (expected 1)"
+  fail "Perlbrew section count: $PERLBREW_COUNT (expected 1)"
 fi
 
 # ─────────────────────────────────────────────────
@@ -226,9 +232,9 @@ echo "  'if [ -n \"\$PS1\" ]' count: $IF_COUNT"
 echo "  Standalone 'fi' count: $FI_COUNT"
 echo "  (Note: fi count includes all if blocks in base .bashrc + Perlbrew)"
 if [ "$IF_COUNT" -le "$FI_COUNT" ]; then
-    pass "if/fi blocks are balanced (every 'if' has a matching 'fi')"
+  pass "if/fi blocks are balanced (every 'if' has a matching 'fi')"
 else
-    fail "if/fi blocks are NOT balanced (unclosed 'if' detected)"
+  fail "if/fi blocks are NOT balanced (unclosed 'if' detected)"
 fi
 
 # ─────────────────────────────────────────────────
@@ -237,16 +243,16 @@ fi
 echo ""
 echo "=== POSIX syntax check ==="
 if grep -q '\[\[' "$WORKDIR/.bashrc-new-merged" 2>/dev/null; then
-    fail "Found bash-specific [[ ]] in merged .bashrc"
-    grep -n '\[\[' "$WORKDIR/.bashrc-new-merged"
+  fail "Found bash-specific [[ ]] in merged .bashrc"
+  grep -n '\[\[' "$WORKDIR/.bashrc-new-merged"
 else
-    pass "No bash-specific [[ ]] found in merged .bashrc (POSIX compatible)"
+  pass "No bash-specific [[ ]] found in merged .bashrc (POSIX compatible)"
 fi
 
 if grep -q ']] && source' "$WORKDIR/.bashrc-new-merged" 2>/dev/null; then
-    fail "Found 'source' command (should use '.' for POSIX compatibility)"
+  fail "Found 'source' command (should use '.' for POSIX compatibility)"
 else
-    pass "No 'source' command in SDKMAN section (uses '.' for POSIX compat)"
+  pass "No 'source' command in SDKMAN section (uses '.' for POSIX compat)"
 fi
 
 # ─────────────────────────────────────────────────
@@ -258,9 +264,9 @@ echo "  Tests passed: $PASS"
 echo "  Tests failed: $FAIL"
 echo ""
 if [ "$FAIL" = "0" ]; then
-    echo "ALL TESTS PASSED - Fix is verified!"
-    exit 0
+  echo "ALL TESTS PASSED - Fix is verified!"
+  exit 0
 else
-    echo "SOME TESTS FAILED - Please investigate."
-    exit 1
+  echo "SOME TESTS FAILED - Please investigate."
+  exit 1
 fi

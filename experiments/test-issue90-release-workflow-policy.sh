@@ -4,15 +4,27 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-ruby <<'RUBY'
+# The manifest jobs used to all live in release.yml; the split by image family
+# (issue #115, RC-8) put each one in its own release-<family>.yml. The list is
+# resolved from the caller's `uses:` graph, so a policy suite cannot end up
+# reading a file the jobs have left - which would make every check below pass
+# on zero jobs.
+# shellcheck disable=SC2046 # deliberate word splitting: one path per argument
+ruby - $(bash scripts/ci/list-release-workflows.sh) <<'RUBY'
 require "yaml"
 
-release_workflow_path = ".github/workflows/release.yml"
+release_workflow_paths = ARGV
 measure_workflow_path = ".github/workflows/measure-disk-space.yml"
 
-release_workflow = YAML.load_file(release_workflow_path)
-release_text = File.read(release_workflow_path)
-measure_text = File.read(measure_workflow_path)
+if release_workflow_paths.empty?
+  warn "no release workflows to check; the checks below would verify nothing"
+  exit 1
+end
+
+release_text = release_workflow_paths
+  .map { |path| File.read(path, encoding: "UTF-8") }
+  .join("\n")
+measure_text = File.read(measure_workflow_path, encoding: "UTF-8")
 
 errors = []
 
@@ -24,7 +36,20 @@ manifest_jobs = %w[
   dind-manifest
 ]
 
-jobs = release_workflow.fetch("jobs")
+# One job map across the whole pipeline. Job ids are unique across it (pinned by
+# experiments/test-issue115-workflow-split.sh), so which file a job is in does
+# not matter here - only that it exists somewhere.
+jobs = {}
+release_workflow_paths.each do |path|
+  workflow = YAML.load(File.read(path, encoding: "UTF-8"), aliases: true)
+  (workflow["jobs"] || {}).each { |id, job| jobs[id] = job }
+end
+
+missing = manifest_jobs.reject { |job_name| jobs.key?(job_name) }
+unless missing.empty?
+  warn "missing manifest job(s): #{missing.join(", ")} (searched #{release_workflow_paths.join(", ")})"
+  exit 1
+end
 
 manifest_jobs.each do |job_name|
   steps = jobs.fetch(job_name).fetch("steps")
@@ -42,8 +67,14 @@ manifest_jobs.each do |job_name|
     end
   end
 
+  # Issue #115: the ten byte-identical `docker manifest create --amend` blocks
+  # were replaced by scripts/release/create-multiarch-manifest.sh. Match both
+  # forms - a policy suite that only knows the old spelling passes vacuously on
+  # the new one, which is the exact false negative this file exists to prevent.
   manifest_steps = steps.select do |step|
-    step.is_a?(Hash) && step["run"].to_s.include?("docker manifest")
+    next false unless step.is_a?(Hash)
+    run = step["run"].to_s
+    run.include?("docker manifest") || run.include?("create-multiarch-manifest.sh")
   end
 
   dockerhub_steps = manifest_steps.select do |step|
@@ -70,11 +101,27 @@ manifest_jobs.each do |job_name|
     unless step["if"] == "steps.dockerhub-login.outcome == 'success'"
       errors << "#{job_name}: #{step["name"]} is not guarded by successful Docker Hub login"
     end
+
+    # Issue #115 RC-3: GHCR is the registry of record (written with the run's
+    # own GITHUB_TOKEN, which cannot expire); Docker Hub is a mirror written
+    # with a long-lived secret that can. A mirror failure must degrade to a
+    # warning, never fail a release whose GHCR side already published.
+    next unless step["run"].to_s.include?("create-multiarch-manifest.sh")
+    if step.dig("env", "MANIFEST_REQUIRED").to_s != "0"
+      errors << "#{job_name}: #{step["name"]} must set MANIFEST_REQUIRED: '0' so an expired Docker Hub token cannot fail the release"
+    end
   end
 
   ghcr_steps.each do |step|
     if step["run"].to_s.include?("DOCKERHUB_IMAGE_NAME")
       errors << "#{job_name}: #{step["name"]} mixes GHCR and Docker Hub manifest commands"
+    end
+
+    # The converse of the Docker Hub rule above: the registry of record must
+    # stay required, or a failed release would report success.
+    next unless step["run"].to_s.include?("create-multiarch-manifest.sh")
+    if step.dig("env", "MANIFEST_REQUIRED").to_s == "0"
+      errors << "#{job_name}: #{step["name"]} must not make the GHCR manifest optional"
     end
   end
 

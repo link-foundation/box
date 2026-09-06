@@ -1,0 +1,22 @@
+# hadolint configuration (issue #115).
+#
+# The 24 tracked Dockerfiles are the thing this repository ships, and no linter
+# had ever read one. `apt install` (rather than `apt-get`) was sitting in
+# ubuntu/24.04/js/Dockerfile, printing "WARNING: apt does not have a stable CLI
+# interface" into every JS box build.
+#
+# Reproduce locally: bash scripts/ci/run-hadolint.sh
+
+failure-threshold: warning
+
+ignored:
+  # DL3008 "Pin versions in apt get install".
+  #
+  # Deliberate, and the opposite of what this repository wants. Issue #112 made
+  # "resolve every runtime version at build time instead of hardcoding it" the
+  # policy: the boxes follow their upstreams, and an apt pin would freeze a
+  # package at a version Ubuntu stops shipping, which is a build that fails on
+  # a security update. The versions that do need pinning are pinned where the
+  # policy says - see resolve_* in ubuntu/24.04/common.sh and the
+  # NODE_VERSION / JAVA_VERSION / DOTNET_CHANNEL / ... overrides.
+  - DL3008

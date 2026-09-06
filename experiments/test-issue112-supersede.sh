@@ -22,8 +22,12 @@
 #   - non-pull_request events do nothing at all;
 #   - every failure mode (API down, read-only fork token) fails OPEN.
 #
-# Part 2 asserts the wiring in .github/workflows/release.yml, so a new expensive
-# job cannot be added without the guard.
+# Part 2 asserts the wiring in the release workflows, so a new expensive job
+# cannot be added without the guard. The expensive jobs moved out of release.yml
+# when it was split by image family (issue #115, RC-8), so each job's file is
+# resolved by job id rather than assumed - a grep for a guard in a file the job
+# has left finds nothing and passes vacuously in exactly the direction that
+# hides a missing guard.
 #
 # Exit non-zero on the first failed assertion.
 
@@ -31,15 +35,39 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SCRIPT="$ROOT/scripts/ci/supersede.sh"
+
+# The entry workflow: `concurrency:` is a property of the run, so it is declared
+# here even for jobs that a called workflow provides.
 WF="$ROOT/.github/workflows/release.yml"
 
-[ -f "$SCRIPT" ] || { echo "ERR: $SCRIPT not found" >&2; exit 1; }
+# wf_for JOB - absolute path of the workflow that defines JOB. Exits the suite
+# when no workflow defines it, so a renamed or deleted job is a failure rather
+# than a silently skipped check.
+wf_for() {
+  local rel
+  rel="$(cd "$ROOT" && bash scripts/ci/list-release-workflows.sh --job "$1")" || {
+    echo "ERR: no workflow defines job '$1'" >&2
+    exit 1
+  }
+  echo "$ROOT/$rel"
+}
+
+[ -f "$SCRIPT" ] || {
+  echo "ERR: $SCRIPT not found" >&2
+  exit 1
+}
 
 pass=0
 fail=0
 
-ok()   { echo "  ok: $1"; pass=$((pass + 1)); }
-bad()  { echo "  FAIL: $1" >&2; fail=$((fail + 1)); }
+ok() {
+  echo "  ok: $1"
+  pass=$((pass + 1))
+}
+bad() {
+  echo "  FAIL: $1" >&2
+  fail=$((fail + 1))
+}
 
 check() {
   local label="$1" expected="$2" got="$3"
@@ -57,7 +85,7 @@ trap 'rm -rf "$TMP"' EXIT
 # Stands in for `gh api`. GETs are answered from fixture files; every cancel POST
 # appends its path to $STUB_CALLS so assertions can look at exactly what the
 # script tried to cancel.
-cat > "$TMP/api-stub.sh" <<'STUB'
+cat >"$TMP/api-stub.sh" <<'STUB'
 #!/usr/bin/env bash
 set -u
 if [ "${1:-}" = "--method" ]; then
@@ -82,7 +110,7 @@ export STUB_PULL_JSON="$TMP/pull.json"
 
 # Fixture: this run is #40, commit dddd (the newest). Everything else is a
 # deliberate near-miss except runs 1001/1002.
-cat > "$STUB_RUNS_JSON" <<'JSON'
+cat >"$STUB_RUNS_JSON" <<'JSON'
 {
   "workflow_runs": [
     {"id": 1001, "run_number": 37, "status": "in_progress", "head_sha": "aaaaaaaaaaaa",
@@ -103,7 +131,7 @@ cat > "$STUB_RUNS_JSON" <<'JSON'
 }
 JSON
 
-cat > "$STUB_PULL_JSON" <<'JSON'
+cat >"$STUB_PULL_JSON" <<'JSON'
 {"number": 113, "head": {"sha": "dddddddddddd"}}
 JSON
 
@@ -130,7 +158,7 @@ pr_env() {
   # (a plain assignment only inherits the export flag a variable already has).
   export SUPERSEDE_WATCH_INTERVAL_SECONDS=1
   export SUPERSEDE_WATCH_MAX_SECONDS=4
-  : > "$STUB_CALLS"
+  : >"$STUB_CALLS"
 }
 
 cancelled_ids() {
@@ -170,7 +198,7 @@ for id in 1003 1004 1005 1006 1007; do
 done
 
 pr_env
-printf '{"workflow_runs": []}' > "$TMP/empty.json"
+printf '{"workflow_runs": []}' >"$TMP/empty.json"
 STUB_RUNS_JSON="$TMP/empty.json" out="$(bash "$SCRIPT" cancel-older 2>&1)"
 check "nothing to cancel when this is the only run" "" "$(cancelled_ids)"
 case "$out" in
@@ -239,7 +267,7 @@ STUB_GET_EXIT=1 bash "$SCRIPT" stop-if-superseded >/dev/null 2>&1 \
 check "an unreachable API cancels nothing" "" "$(cancelled_ids)"
 
 pr_env
-printf '{"number": 113}' > "$TMP/nohead.json"
+printf '{"number": 113}' >"$TMP/nohead.json"
 PR_HEAD_SHA=aaaaaaaaaaaa STUB_PULL_JSON="$TMP/nohead.json" \
   bash "$SCRIPT" stop-if-superseded >/dev/null 2>&1 \
   && ok "a payload without a head is not fatal (fails open)" \
@@ -298,7 +326,7 @@ bash "$SCRIPT" nonsense >/dev/null 2>&1 \
   || ok "an unknown mode is a usage error"
 
 echo ""
-echo "=== Part 2: release.yml wiring ==="
+echo "=== Part 2: release workflow wiring ==="
 
 wf_check() {
   local label="$1" cmd="$2"
@@ -311,18 +339,18 @@ wf_check "pull_request runs get a per-run concurrency group" \
   "grep -q 'pr-{1}-run-{2}' '$WF'"
 wf_check "non-PR runs keep the one-run-per-ref group" \
   "grep -q \"format('{0}-{1}', github.workflow, github.ref)\" '$WF'"
-wf_check "cancel-superseded job is defined" \
-  "grep -q '^  cancel-superseded:\$' '$WF'"
+CANCEL_WF="$(wf_for cancel-superseded)"
+ok "cancel-superseded job is defined (in $(basename "$CANCEL_WF"))"
 wf_check "cancel-superseded calls the script" \
-  "grep -q 'supersede.sh cancel-older' '$WF'"
+  "grep -q 'supersede.sh cancel-older' '$CANCEL_WF'"
 wf_check "cancel-superseded has no needs (it must start immediately)" \
-  "! sed -n '/^  cancel-superseded:\$/,/^  [a-z]/p' '$WF' | grep -q '^    needs:'"
+  "! sed -n '/^  cancel-superseded:\$/,/^  [a-z]/p' '$CANCEL_WF' | grep -q '^    needs:'"
 
 # Every expensive PR job must self-check, because a matrix job can start long
 # after the run was created (run 33959630651 started `pr-test / full` 26 minutes
 # in, for a commit superseded 22 minutes earlier).
 for job in pr-test-version-policy pr-test-js pr-test-essentials pr-test-language pr-test-full pr-test-dind; do
-  body="$(sed -n "/^  ${job}:\$/,/^  [a-z0-9-]*:\$/p" "$WF")"
+  body="$(sed -n "/^  ${job}:\$/,/^  [a-z0-9-]*:\$/p" "$(wf_for "$job")")"
   if grep -q 'supersede.sh stop-if-superseded' <<<"$body"; then
     ok "$job guards against a superseded commit"
   else
@@ -345,7 +373,7 @@ for job in pr-test-version-policy pr-test-js pr-test-essentials pr-test-language
   second_step="$(grep -n '^      - \(name\|uses\):' <<<"$body" | sed -n '2p' | cut -d: -f1 || true)"
   guard_line="$(grep -n 'stop-if-superseded' <<<"$body" | head -n1 | cut -d: -f1 || true)"
   if [ -n "$second_step" ] && [ -n "$guard_line" ] && [ "$guard_line" -gt "$second_step" ] \
-     && [ "$((guard_line - second_step))" -le 6 ]; then
+    && [ "$((guard_line - second_step))" -le 6 ]; then
     ok "$job checks before it spends anything (guard is the first step after checkout)"
   else
     bad "$job checks too late (guard at line ${guard_line:-none} of the job, second step at ${second_step:-none})"

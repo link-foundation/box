@@ -1,0 +1,107 @@
+name: Security
+
+# Ported from the template's security.yml (issue #115, R3/R5) with the parts
+# that transfer to a Docker-image factory:
+#
+#   codeql (javascript-typescript, python, actions)  ported - this repository
+#       has 14 .mjs/.py scripts and 5 workflows, and CodeQL's `actions` pack is
+#       the only tool here that reads a workflow for injection and untrusted
+#       checkout, which actionlint and zizmor do not.
+#   secretlint                                        ported, with a canary.
+#   dependency-review / npm audit                     NOT ported: there is no
+#       root package.json and no lockfile, so both would run against nothing and
+#       report green forever. A check that cannot fail is worse than no check.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+  # Weekly, because a dependency becomes vulnerable without anyone touching this
+  # repository. Monday 06:00 UTC, same slot the template uses.
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+# Least-privilege default; the CodeQL job escalates on its own.
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    name: security / CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-codeql-${{ matrix.language }}
+      cancel-in-progress: true
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, python, actions]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # CodeQL analyses the checked-out tree and uploads results with the
+          # job's own token; the checkout credential is not needed.
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          config-file: .github/codeql-config.yml
+
+      # No build step: every analysed language here is interpreted. Autobuild
+      # would be a no-op that can still fail on a repository whose root is a
+      # Dockerfile.
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+
+  secretlint:
+    name: security / secretlint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-secretlint
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      # The runner plants a generated key first and fails if secretlint does not
+      # find it, because "no findings" and "no rules loaded" are the same exit
+      # code. Reproduce locally with the identical command:
+      #   bash scripts/ci/run-secretlint.sh
+      - name: secretlint, canary first
+        run: bash scripts/ci/run-secretlint.sh
+
+      - name: The gate's own fixtures still hold
+        run: bash experiments/test-issue115-secretlint-gate.sh

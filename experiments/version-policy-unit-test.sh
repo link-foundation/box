@@ -21,13 +21,13 @@ mkdir -p "$FIXTURES" "$WORK/bin"
 
 # nodejs.org/dist/index.json: newest first; LTS lines carry a codename, current
 # releases carry "lts":false.
-cat > "$FIXTURES/node-index.json" <<'JSON'
+cat >"$FIXTURES/node-index.json" <<'JSON'
 [{"version":"v25.1.0","date":"2026-08-20","lts":false,"security":false},{"version":"v24.20.0","date":"2026-08-12","lts":"Krypton","security":false},{"version":"v22.21.1","date":"2026-07-30","lts":"Jod","security":false},{"version":"v20.19.5","date":"2026-05-01","lts":"Iron","security":false}]
 JSON
 
 # api.sdkman.io java vendor list: Temurin publishes a non-LTS feature release
 # (26) alongside the LTS lines, and versions carry a build suffix (25.0.4+1.1).
-cat > "$FIXTURES/sdkman-java.txt" <<'TXT'
+cat >"$FIXTURES/sdkman-java.txt" <<'TXT'
 ================================================================================
  Vendor        | Use | Version      | Dist    | Status     | Identifier
 --------------------------------------------------------------------------------
@@ -42,7 +42,7 @@ cat > "$FIXTURES/sdkman-java.txt" <<'TXT'
 TXT
 
 # releases-index.json: several channels, only one is active LTS.
-cat > "$FIXTURES/dotnet-index.json" <<'JSON'
+cat >"$FIXTURES/dotnet-index.json" <<'JSON'
 {
   "releases-index": [
     {
@@ -69,12 +69,12 @@ cat > "$FIXTURES/dotnet-index.json" <<'JSON'
 }
 JSON
 
-cat > "$FIXTURES/swift-releases.json" <<'JSON'
+cat >"$FIXTURES/swift-releases.json" <<'JSON'
 [{"name":"6.2.4","tag":"swift-6.2.4-RELEASE","platforms":[{"name":"Ubuntu 24.04"}]},{"name":"6.3","tag":"swift-6.3-RELEASE","platforms":[{"name":"Ubuntu 24.04"}]},{"name":"6.3.1","tag":"swift-6.3.1-RELEASE","platforms":[{"name":"Ubuntu 24.04"}]},{"name":"6.3.2","tag":"swift-6.3.2-RELEASE","platforms":[{"name":"Ubuntu 24.04"}]},{"name":"6.3.3","tag":"swift-6.3.3-RELEASE","platforms":[{"name":"Ubuntu 24.04"}]}]
 JSON
 
 # --- Mock curl: serves the fixtures, or fails when CURL_FAIL=1 ---
-cat > "$WORK/bin/curl" <<'MOCK'
+cat >"$WORK/bin/curl" <<'MOCK'
 #!/usr/bin/env bash
 url=""
 for arg in "$@"; do case "$arg" in http*) url="$arg" ;; esac; done
@@ -118,7 +118,7 @@ chmod +x "$WORK/bin/curl"
 # maybe_sudo. Running the real sudo here would create root-owned files in the
 # temporary tree (which the test could then neither inspect nor clean up), so
 # the mock simply runs the command as the test user.
-cat > "$WORK/bin/sudo" <<'MOCK'
+cat >"$WORK/bin/sudo" <<'MOCK'
 #!/usr/bin/env bash
 exec "$@"
 MOCK
@@ -128,22 +128,35 @@ export PATH="$WORK/bin:$PATH"
 # shellcheck disable=SC1090
 . "$COMMON"
 
-pass=0; fail=0
+pass=0
+fail=0
 check() { # check <description> <condition-cmd...>
-  desc="$1"; shift
-  if "$@"; then echo "  PASS: $desc"; pass=$((pass+1)); else echo "  FAIL: $desc"; fail=$((fail+1)); fi
+  desc="$1"
+  shift
+  if "$@"; then
+    echo "  PASS: $desc"
+    pass=$((pass + 1))
+  else
+    echo "  FAIL: $desc"
+    fail=$((fail + 1))
+  fi
 }
 eq() { # eq <description> <expected> <actual>
-  if [ "$2" = "$3" ]; then echo "  PASS: $1"; pass=$((pass+1));
-  else echo "  FAIL: $1 (expected '$2', got '$3')"; fail=$((fail+1)); fi
+  if [ "$2" = "$3" ]; then
+    echo "  PASS: $1"
+    pass=$((pass + 1))
+  else
+    echo "  FAIL: $1 (expected '$2', got '$3')"
+    fail=$((fail + 1))
+  fi
 }
 
 echo "== Case 1: resolvers read the upstream feeds =="
 eq "node resolves the newest LTS major, not the newest release" "24" "$(resolve_node_lts_major)"
-eq "nvm resolves the latest installer tag"                      "v0.40.7" "$(resolve_nvm_version)"
-eq "java resolves the newest LTS, skipping non-LTS 26"          "25" "$(resolve_java_lts_major)"
-eq "dotnet resolves the active LTS channel"                     "10.0" "$(resolve_dotnet_lts_channel)"
-eq "swift resolves newest-first"                                "6.3.3 6.3.2 6.3.1 6.3 6.2.4" "$(resolve_swift_versions | tr '\n' ' ' | sed 's/ $//')"
+eq "nvm resolves the latest installer tag" "v0.40.7" "$(resolve_nvm_version)"
+eq "java resolves the newest LTS, skipping non-LTS 26" "25" "$(resolve_java_lts_major)"
+eq "dotnet resolves the active LTS channel" "10.0" "$(resolve_dotnet_lts_channel)"
+eq "swift resolves newest-first" "6.3.3 6.3.2 6.3.1 6.3 6.2.4" "$(resolve_swift_versions | tr '\n' ' ' | sed 's/ $//')"
 
 # The Swift installers walk that list and probe each candidate's tarball, which
 # only tells them anything if the probe follows redirects (issue #112).
@@ -151,38 +164,40 @@ swift_url() { echo "https://download.swift.org/swift-$1-release/$2/swift-$1-RELE
 check "remote_file_exists accepts a tarball that is published" \
   remote_file_exists "$(swift_url 6.3.3 ubuntu2404 ubuntu24.04)"
 if remote_file_exists "$(swift_url 6.3.3 ubuntu2604 ubuntu26.04)"; then
-  echo "  FAIL: remote_file_exists accepted a redirect to swift.org/404.html"; fail=$((fail+1))
+  echo "  FAIL: remote_file_exists accepted a redirect to swift.org/404.html"
+  fail=$((fail + 1))
 else
-  echo "  PASS: remote_file_exists rejects a redirect to swift.org/404.html"; pass=$((pass+1))
+  echo "  PASS: remote_file_exists rejects a redirect to swift.org/404.html"
+  pass=$((pass + 1))
 fi
-eq "opam resolves the latest release"                           "2.5.2" "$(resolve_opam_version)"
+eq "opam resolves the latest release" "2.5.2" "$(resolve_opam_version)"
 
 echo "== Case 2: an unreachable feed degrades to the pinned fallback, never fails the build =="
-eq "node falls back"   "$NODE_LTS_FALLBACK"       "$(CURL_FAIL=1 resolve_node_lts_major)"
-eq "nvm falls back"    "$NVM_VERSION_FALLBACK"    "$(CURL_FAIL=1 resolve_nvm_version)"
-eq "java falls back"   "$JAVA_LTS_FALLBACK"       "$(CURL_FAIL=1 resolve_java_lts_major)"
+eq "node falls back" "$NODE_LTS_FALLBACK" "$(CURL_FAIL=1 resolve_node_lts_major)"
+eq "nvm falls back" "$NVM_VERSION_FALLBACK" "$(CURL_FAIL=1 resolve_nvm_version)"
+eq "java falls back" "$JAVA_LTS_FALLBACK" "$(CURL_FAIL=1 resolve_java_lts_major)"
 eq "dotnet falls back" "$DOTNET_CHANNEL_FALLBACK" "$(CURL_FAIL=1 resolve_dotnet_lts_channel)"
-eq "swift falls back"  "$SWIFT_VERSION_FALLBACK"  "$(CURL_FAIL=1 resolve_swift_versions)"
-eq "opam falls back"   "$OPAM_VERSION_FALLBACK"   "$(CURL_FAIL=1 resolve_opam_version)"
+eq "swift falls back" "$SWIFT_VERSION_FALLBACK" "$(CURL_FAIL=1 resolve_swift_versions)"
+eq "opam falls back" "$OPAM_VERSION_FALLBACK" "$(CURL_FAIL=1 resolve_opam_version)"
 check "resolvers exit 0 even when every feed is down" \
   bash -c 'set -euo pipefail; . "'"$COMMON"'"; CURL_FAIL=1 resolve_node_lts_major >/dev/null'
 
 echo "== Case 3: the pinned fallbacks are not stale relative to the recorded feeds =="
-eq "NODE_LTS_FALLBACK matches the feed"       "$(resolve_node_lts_major)"    "$NODE_LTS_FALLBACK"
-eq "NVM_VERSION_FALLBACK matches the feed"    "$(resolve_nvm_version)"       "$NVM_VERSION_FALLBACK"
-eq "JAVA_LTS_FALLBACK matches the feed"       "$(resolve_java_lts_major)"    "$JAVA_LTS_FALLBACK"
+eq "NODE_LTS_FALLBACK matches the feed" "$(resolve_node_lts_major)" "$NODE_LTS_FALLBACK"
+eq "NVM_VERSION_FALLBACK matches the feed" "$(resolve_nvm_version)" "$NVM_VERSION_FALLBACK"
+eq "JAVA_LTS_FALLBACK matches the feed" "$(resolve_java_lts_major)" "$JAVA_LTS_FALLBACK"
 eq "DOTNET_CHANNEL_FALLBACK matches the feed" "$(resolve_dotnet_lts_channel)" "$DOTNET_CHANNEL_FALLBACK"
-eq "SWIFT_VERSION_FALLBACK matches the feed"  "$(resolve_swift_versions | head -n1)" "$SWIFT_VERSION_FALLBACK"
-eq "OPAM_VERSION_FALLBACK matches the feed"   "$(resolve_opam_version)"      "$OPAM_VERSION_FALLBACK"
+eq "SWIFT_VERSION_FALLBACK matches the feed" "$(resolve_swift_versions | head -n1)" "$SWIFT_VERSION_FALLBACK"
+eq "OPAM_VERSION_FALLBACK matches the feed" "$(resolve_opam_version)" "$OPAM_VERSION_FALLBACK"
 
 echo "== Case 4: an explicit override wins over the feed =="
-eq "NODE_VERSION=22 pins node"          "22"   "$(NODE_VERSION=22 resolve_node_lts_major)"
-eq "NODE_VERSION=22.14.0 pins the major" "22"  "$(NODE_VERSION=22.14.0 resolve_node_lts_major)"
-eq "JAVA_VERSION=21 pins java"          "21"   "$(JAVA_VERSION=21 resolve_java_lts_major)"
-eq "DOTNET_CHANNEL=8.0 pins dotnet"     "8.0"  "$(DOTNET_CHANNEL=8.0 resolve_dotnet_lts_channel)"
-eq "SWIFT_VERSION=6.0.3 pins swift"     "6.0.3" "$(SWIFT_VERSION=6.0.3 resolve_swift_versions)"
-eq "OPAM_VERSION=2.3.0 pins opam"       "2.3.0" "$(OPAM_VERSION=2.3.0 resolve_opam_version)"
-eq "NVM_VERSION=v0.40.3 pins nvm"       "v0.40.3" "$(NVM_VERSION=v0.40.3 resolve_nvm_version)"
+eq "NODE_VERSION=22 pins node" "22" "$(NODE_VERSION=22 resolve_node_lts_major)"
+eq "NODE_VERSION=22.14.0 pins the major" "22" "$(NODE_VERSION=22.14.0 resolve_node_lts_major)"
+eq "JAVA_VERSION=21 pins java" "21" "$(JAVA_VERSION=21 resolve_java_lts_major)"
+eq "DOTNET_CHANNEL=8.0 pins dotnet" "8.0" "$(DOTNET_CHANNEL=8.0 resolve_dotnet_lts_channel)"
+eq "SWIFT_VERSION=6.0.3 pins swift" "6.0.3" "$(SWIFT_VERSION=6.0.3 resolve_swift_versions)"
+eq "OPAM_VERSION=2.3.0 pins opam" "2.3.0" "$(OPAM_VERSION=2.3.0 resolve_opam_version)"
+eq "NVM_VERSION=v0.40.3 pins nvm" "v0.40.3" "$(NVM_VERSION=v0.40.3 resolve_nvm_version)"
 
 echo "== Case 5: a malformed feed response is rejected, not installed =="
 eq "garbage node feed falls back" "$NODE_LTS_FALLBACK" \
@@ -201,9 +216,9 @@ done
 echo "== Case 7: one-version-per-language-root invariant =="
 export BOX_HOME="$WORK/home"
 mkdir -p "$BOX_HOME/.nvm/versions/node/v24.20.0" \
-         "$BOX_HOME/.rustup/toolchains/1.98.0-x86_64-unknown-linux-gnu" \
-         "$BOX_HOME/.pyenv/versions/3.14.2" \
-         "$BOX_HOME/.sdkman/candidates/java/25.0.4-tem"
+  "$BOX_HOME/.rustup/toolchains/1.98.0-x86_64-unknown-linux-gnu" \
+  "$BOX_HOME/.pyenv/versions/3.14.2" \
+  "$BOX_HOME/.sdkman/candidates/java/25.0.4-tem"
 ln -s "$BOX_HOME/.sdkman/candidates/java/25.0.4-tem" "$BOX_HOME/.sdkman/candidates/java/current"
 eq "a single node version counts as 1" "1" "$(count_installed_versions "$BOX_HOME/.nvm/versions/node")"
 eq "the sdkman 'current' symlink is not counted as a version" "1" \
@@ -226,10 +241,24 @@ rmdir "$BOX_HOME/.rustup/toolchains/stable-x86_64-unknown-linux-gnu"
 mkdir -p "$BOX_HOME/.nvm/versions/node/v20.19.5"
 check "two node versions fail the invariant" \
   bash -c '. "'"$COMMON"'"; BOX_HOME="'"$BOX_HOME"'" assert_single_runtime_versions >/dev/null 2>&1 && exit 1; exit 0'
+rm -rf "$BOX_HOME/.nvm/versions/node/v20.19.5"
+
+# Lean joined the invariant in issue #115: elan keeps every toolchain it has
+# ever installed under ~/.elan/toolchains, so a box that installed `stable` and
+# then a pinned version would carry both (a Lean toolchain is ~200 MB).
+mkdir -p "$BOX_HOME/.elan/toolchains/leanprover--lean4---v4.33.1"
+check "one lean toolchain satisfies the invariant" \
+  bash -c '. "'"$COMMON"'"; BOX_HOME="'"$BOX_HOME"'" assert_single_runtime_versions >/dev/null 2>&1'
+mkdir -p "$BOX_HOME/.elan/toolchains/leanprover--lean4---v4.32.0"
+check "two lean toolchains fail the invariant" \
+  bash -c '. "'"$COMMON"'"; BOX_HOME="'"$BOX_HOME"'" assert_single_runtime_versions >/dev/null 2>&1 && exit 1; exit 0'
+check "the violation names the lean root" \
+  bash -c '. "'"$COMMON"'"; out=$(BOX_HOME="'"$BOX_HOME"'" assert_single_runtime_versions 2>&1 || true); case "$out" in *"lean: expected exactly 1 version"*) exit 0 ;; *) exit 1 ;; esac'
+rm -rf "$BOX_HOME/.elan"
 
 echo "== Case 8: the .NET channel is intersected with what apt can actually install =="
 # Mock apt-cache: APT_CHANNELS lists the dotnet-sdk channels this archive has.
-cat > "$WORK/bin/apt-cache" <<'MOCK'
+cat >"$WORK/bin/apt-cache" <<'MOCK'
 #!/usr/bin/env bash
 case "$1" in
   policy)
@@ -270,7 +299,7 @@ check "apt_has_package is false for a missing package" \
 echo "== Case 9: the CRAN repository is added before installing R =="
 # Ubuntu freezes r-base at whatever shipped with the release (4.3.3 on 24.04);
 # CRAN carries the current R for the same codename. add_cran_repo() is what
-# makes `apt install r-base` deliver the fresh one (issue #112).
+# makes `apt-get install r-base` deliver the fresh one (issue #112).
 export CRAN_APT_ROOT="$WORK/cran-root"
 CRAN_LIST="$CRAN_APT_ROOT/etc/apt/sources.list.d/cran.list"
 CRAN_KEY="$CRAN_APT_ROOT/etc/apt/keyrings/cran_ubuntu_key.asc"

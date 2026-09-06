@@ -80,7 +80,7 @@ PR_HEAD_BRANCH="${PR_HEAD_BRANCH:-}"
 PR_HEAD_REPO_ID="${PR_HEAD_REPO_ID:-}"
 export GITHUB_RUN_ID GITHUB_RUN_NUMBER PR_HEAD_SHA PR_HEAD_REPO_ID
 
-log()  { echo "[supersede] $*"; }
+log() { echo "[supersede] $*"; }
 warn() { echo "[supersede] WARNING: $*" >&2; }
 
 API_CMD="${SUPERSEDE_API:-gh api}"
@@ -134,7 +134,7 @@ except Exception:
 ensure_cancelled() {
   local run_id="$1" waited=0 grace="${SUPERSEDE_FORCE_AFTER_SECONDS:-45}" status
   while :; do
-    status="$(run_status "$run_id")" || return 0   # cannot tell: leave it alone
+    status="$(run_status "$run_id")" || return 0 # cannot tell: leave it alone
     if [ "$status" = "completed" ]; then
       log "run ${run_id} has stopped"
       return 0
@@ -261,7 +261,7 @@ cancel_older() {
     request_cancel "$id"
     ids="${ids}${id} "
     count=$((count + 1))
-  done <<< "$targets"
+  done <<<"$targets"
 
   for id in $ids; do
     ensure_cancelled "$id"
@@ -335,7 +335,7 @@ stop_if_superseded() {
 # cancelled run frees every slot it holds at once.
 watch_superseded() {
   local interval="${SUPERSEDE_WATCH_INTERVAL_SECONDS:-300}"
-  local limit="${SUPERSEDE_WATCH_MAX_SECONDS:-21600}"   # a job cannot outlive 6h
+  local limit="${SUPERSEDE_WATCH_MAX_SECONDS:-21600}" # a job cannot outlive 6h
   local waited=0 head
 
   # One poll per job every few minutes keeps well inside GITHUB_TOKEN's REST
@@ -345,7 +345,7 @@ watch_superseded() {
     sleep "$interval"
     waited=$((waited + interval))
     head="$(current_head)"
-    [ -n "$head" ] || continue                 # transient failure: try again
+    [ -n "$head" ] || continue # transient failure: try again
     [ "$head" = "${PR_HEAD_SHA:-}" ] && continue
     cancel_self "$head"
     return 0

@@ -26,7 +26,13 @@ WORKDIR /home/box
 ENV OPAM_SWITCH_PREFIX="/home/box/.opam/default"
 ENV CAML_LD_LIBRARY_PATH="/home/box/.opam/default/lib/stublibs:/home/box/.opam/default/lib/ocaml/stublibs:/home/box/.opam/default/lib/ocaml"
 ENV OCAML_TOPLEVEL_PATH="/home/box/.opam/default/lib/toplevel"
-ENV PATH="/home/box/.opam/default/bin:${PATH}"
+# ~/.local/bin holds the opam binary itself (ubuntu/24.04/rocq/install.sh
+# installs it there); ~/.opam/default/bin holds the switch's binaries (rocq,
+# coqc, ...). Without the first entry `opam --version` said "not found" in
+# every non-login shell - `docker run box-rocq opam --version`, `docker exec`,
+# and every CI step - because ~/.bashrc is not read there. Verified against
+# the published konard/box-rocq:latest (issue #115).
+ENV PATH="/home/box/.local/bin:/home/box/.opam/default/bin:${PATH}"
 
 SHELL ["/bin/bash", "-c"]
 CMD ["/bin/bash"]

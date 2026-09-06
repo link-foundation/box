@@ -111,7 +111,7 @@ run_container_from_image() {
 
   local -a runtime_args=()
   if [ -n "${DIND_RUNTIME_FLAG:-}" ]; then
-    read -r -a runtime_args <<< "$DIND_RUNTIME_FLAG"
+    read -r -a runtime_args <<<"$DIND_RUNTIME_FLAG"
   fi
 
   docker rm -f "$name" >/dev/null 2>&1 || true

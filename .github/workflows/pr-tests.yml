@@ -1,0 +1,671 @@
+name: PR Tests
+
+# Called by .github/workflows/release.yml. It is not triggered directly: a
+# `workflow_call` file has no other trigger, so it never starts a run of its own.
+#
+# Why it is a separate file (issue #115, RC-8). release.yml had grown to 3135
+# lines - more than twice the 1500-line limit the reference CI/CD template
+# enforces (scripts/check-file-line-limits.sh there, scripts/ci/check-file-line-limits.sh
+# here). At that size a defect fixed in one of the near-identical build jobs kept
+# surviving in the others, which is how RC-4 and RC-7 came back after being
+# fixed. The file is split by image family; the job graph is unchanged.
+
+on:
+  workflow_call:
+    inputs:
+      changes:
+        description: 'JSON object of the detect-changes job outputs'
+        required: true
+        type: string
+      detect-changes-result:
+        description: 'Result of the detect-changes job'
+        required: true
+        type: string
+      version-check-result:
+        description: 'Result of the version-check job'
+        required: true
+        type: string
+      changeset-check-result:
+        description: 'Result of the changeset-check job'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+
+  # === BUILD AND TEST DOCKER IMAGES (PR) — issue #82 ===
+  #
+  # On every pull request we exercise *all* image configurations in parallel,
+  # each on its own clean GitHub-hosted VM with maximum free disk space. The
+  # parallel layout mirrors the production release matrix:
+  #
+  #   pr-test-js               (1 job)      - JS base box
+  #   pr-test-essentials       (1 job)      - essentials box on JS
+  #   pr-test-language         (matrix: 11) - one job per language box
+  #   pr-test-full             (1 job)      - full-box (all languages)
+  #   pr-test-dind             (matrix: 14) - one job per dind variant
+  #                                            (js, essentials, 11 languages, full)
+  #   docker-build-test        (1 job)      - aggregator for branch protection
+  #
+  # Each job rebuilds its required base chain locally with plain `docker build`
+  # against the host Docker daemon. We deliberately do NOT use buildx with the
+  # docker-container driver here because subsequent `FROM box-js` /
+  # `FROM box-essentials` resolution in that driver would attempt a registry
+  # pull (which fails on PR forks and on Docker Hub outages). The trade-off is
+  # that each VM rebuilds JS and essentials from source — fine because every VM
+  # has 30 GB freed up front and the parallel matrix means wall-clock is bound
+  # by the slowest single image, not by the depth of the chain.
+  #
+  # Every build job runs `jlumbroso/free-disk-space@main` first to reclaim
+  # ~30 GB before building, fixing the "no space left on device" regression
+  # captured in run 25075335426 (see docs/case-studies/issue-82/).
+  #
+  # See: docs/case-studies/issue-82/CASE-STUDY.md
+
+  # --- Tier 0: version policy (no image build, runs in seconds) ---
+  # The resolvers in ubuntu/24.04/common.sh are the only thing keeping a rebuild
+  # from shipping last year's runtimes (issue #112), and refresh-rust.sh depends
+  # on a layer property (a delete after COPY --from reclaims nothing) that is
+  # easy to regress. Both are covered without building an image, so this job
+  # gates the expensive tiers below.
+  pr-test-version-policy:
+    name: pr-test / version-policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    if: |
+      !cancelled() &&
+      (inputs.version-check-result == 'success' || inputs.version-check-result == 'skipped') &&
+      (inputs.changeset-check-result == 'success' || inputs.changeset-check-result == 'skipped') &&
+      github.event_name == 'pull_request'
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      - name: Version resolvers and one-version-per-language invariant
+        run: bash experiments/version-policy-unit-test.sh
+
+      - name: Layer semantics behind the rustup refresh
+        run: bash experiments/rust-refresh-layer-test.sh
+
+      - name: Superseded-commit guard (stubbed API) and its workflow wiring
+        run: bash experiments/test-issue112-supersede.sh
+
+      - name: Resolvers agree with the live upstream feeds
+        # Not an assertion on a specific version — it fails only if a feed
+        # changed shape and every resolver silently fell back to its pin.
+        run: |
+          set -e
+          . ubuntu/24.04/common.sh
+          for fn in resolve_node_lts_major resolve_nvm_version resolve_java_lts_major \
+                    resolve_dotnet_lts_channel resolve_swift_versions resolve_opam_version; do
+            value="$("$fn" | head -n1)"
+            echo "$fn -> $value"
+            [ -n "$value" ] || { echo "::error::$fn returned nothing"; exit 1; }
+          done
+
+  # --- Tier 1: JS box ---
+  pr-test-js:
+    name: pr-test / js
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: [pr-test-version-policy]
+    if: |
+      !cancelled() &&
+      inputs.detect-changes-result == 'success' &&
+      (inputs.version-check-result == 'success' || inputs.version-check-result == 'skipped') &&
+      (inputs.changeset-check-result == 'success' || inputs.changeset-check-result == 'skipped') &&
+      github.event_name == 'pull_request' &&
+      fromJSON(inputs.changes)['should-build'] == 'true'
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Build JS box (amd64)
+        run: |
+          set -e
+          echo "=== Building JS box ==="
+          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
+
+      - name: Test JS box
+        run: bash scripts/ci/test-box.sh js box-js
+
+  # --- Tier 2: essentials box ---
+  pr-test-essentials:
+    name: pr-test / essentials
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: [pr-test-js]
+    if: |
+      !cancelled() &&
+      needs.pr-test-js.result == 'success' &&
+      github.event_name == 'pull_request' &&
+      fromJSON(inputs.changes)['should-build'] == 'true'
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Build JS + essentials chain
+        run: |
+          set -e
+          echo "=== Building JS box ==="
+          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
+
+          echo ""
+          echo "=== Building essentials box (on JS) ==="
+          docker build -f ubuntu/24.04/essentials-box/Dockerfile \
+            --build-arg JS_IMAGE=box-js -t box-essentials .
+
+      - name: Test essentials box
+        run: bash scripts/ci/test-box.sh essentials box-essentials
+
+  # --- Tier 3: per-language boxes (parallel matrix, one VM each) ---
+  pr-test-language:
+    name: pr-test / ${{ matrix.language }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    needs: [pr-test-version-policy, pr-test-essentials]
+    if: |
+      !cancelled() &&
+      needs.pr-test-essentials.result == 'success' &&
+      github.event_name == 'pull_request' &&
+      fromJSON(inputs.changes)['should-build'] == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every directory under ubuntu/24.04/ that ships a standalone
+        # Dockerfile, not just the ones that get published as images: cpp,
+        # assembly, dotnet and r were documented in README and built by nobody,
+        # so a broken install.sh there reached users unreported (issue #115).
+        # experiments/test-issue115-language-coverage.sh keeps this list equal
+        # to the directory listing.
+        language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, cpp, assembly, dotnet, r]
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Build JS + essentials + ${{ matrix.language }} chain
+        run: |
+          set -e
+          echo "=== Building JS box ==="
+          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
+
+          echo ""
+          echo "=== Building essentials box (on JS) ==="
+          docker build -f ubuntu/24.04/essentials-box/Dockerfile \
+            --build-arg JS_IMAGE=box-js -t box-essentials .
+
+          echo ""
+          echo "=== Building ${{ matrix.language }} box (on essentials) ==="
+          docker build -f "ubuntu/24.04/${{ matrix.language }}/Dockerfile" \
+            --build-arg ESSENTIALS_IMAGE=box-essentials \
+            -t "box-${{ matrix.language }}" .
+
+      - name: Test ${{ matrix.language }} box
+        env:
+          LANGUAGE: ${{ matrix.language }}
+        run: bash scripts/ci/test-box.sh "$LANGUAGE" "box-$LANGUAGE"
+
+  # --- Tier 4: full box (integration smoke test, all languages on one VM) ---
+  pr-test-full:
+    name: pr-test / full
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    needs: [pr-test-language]
+    if: |
+      !cancelled() &&
+      needs.pr-test-language.result == 'success' &&
+      github.event_name == 'pull_request' &&
+      fromJSON(inputs.changes)['should-build'] == 'true'
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Set up Docker Buildx
+        uses: ./.github/actions/setup-buildx-resilient
+
+      - name: Build full chain (JS -> essentials -> languages -> full)
+        run: |
+          set -e
+          echo "=== Building JS box ==="
+          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
+
+          echo ""
+          echo "=== Building essentials box (on JS) ==="
+          docker build -f ubuntu/24.04/essentials-box/Dockerfile \
+            --build-arg JS_IMAGE=box-js -t box-essentials .
+
+          echo ""
+          echo "=== Building language images (on essentials) ==="
+          for lang in python go rust java kotlin ruby php perl swift lean rocq; do
+            echo ""
+            echo "--- Building ${lang} box ---"
+            docker build -f "ubuntu/24.04/${lang}/Dockerfile" \
+              --build-arg ESSENTIALS_IMAGE=box-essentials \
+              -t "box-${lang}" .
+          done
+
+          echo ""
+          echo "=== Building full box (multi-stage from all language images) ==="
+          docker build -f ubuntu/24.04/full-box/Dockerfile \
+            --build-arg ESSENTIALS_IMAGE=box-essentials \
+            --build-arg PYTHON_IMAGE=box-python \
+            --build-arg GO_IMAGE=box-go \
+            --build-arg RUST_IMAGE=box-rust \
+            --build-arg JAVA_IMAGE=box-java \
+            --build-arg KOTLIN_IMAGE=box-kotlin \
+            --build-arg RUBY_IMAGE=box-ruby \
+            --build-arg PHP_IMAGE=box-php \
+            --build-arg PERL_IMAGE=box-perl \
+            --build-arg SWIFT_IMAGE=box-swift \
+            --build-arg LEAN_IMAGE=box-lean \
+            --build-arg ROCQ_IMAGE=box-rocq \
+            -t box-test .
+
+      - name: Test full box
+        env:
+          # The standalone PHP box is the source of /home/box/.php-install-method
+          # in the full box; printing both catches a COPY that silently took the
+          # wrong stage.
+          PHP_METHOD_REFERENCE_IMAGE: box-php
+        run: bash scripts/ci/test-box.sh full box-test
+
+  # --- Tier 5: dind-box variants (parallel matrix: 14 variants, one VM each) — issue #80 ---
+  # Each dind variant rebuilds its base chain (JS + essentials + optional lang/full)
+  # locally and then layers dind on top, so this matrix only depends on
+  # pr-test-essentials having validated the base layer; it can run in parallel
+  # with the per-language and full-box jobs to minimise wall-clock time.
+  pr-test-dind:
+    name: pr-test / dind-${{ matrix.variant }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    needs: [pr-test-version-policy, pr-test-essentials]
+    if: |
+      !cancelled() &&
+      needs.pr-test-essentials.result == 'success' &&
+      github.event_name == 'pull_request' &&
+      fromJSON(inputs.changes)['should-build'] == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        # variant -> base box flavour. Special value "full" rebuilds the entire chain;
+        # everything else needs only JS+essentials+<lang>.
+        variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
+    # The guard below cancels this run when its commit is superseded, which
+    # needs write access to the Actions API (issue #112 follow-up).
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # A queued matrix job can start long after the run was created, by which
+      # time the pull request may have moved on (issue #112 follow-up). Check
+      # before spending a runner on a commit nobody is waiting for.
+      - name: Stop if a newer commit superseded this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bash scripts/ci/supersede.sh stop-if-superseded
+          # ...and keep watching from inside the job. Cancelling from the
+          # outside needs a free runner, and a superseded run holding every
+          # slot is exactly why there is none.
+          setsid nohup bash scripts/ci/supersede.sh watch \
+            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Set up Docker Buildx
+        uses: ./.github/actions/setup-buildx-resilient
+
+      - name: Build base box for dind variant
+        run: |
+          set -e
+          VARIANT="${{ matrix.variant }}"
+
+          echo "=== Building JS box (base layer) ==="
+          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
+
+          if [ "$VARIANT" = "js" ]; then
+            BASE_IMAGE="box-js"
+          else
+            echo ""
+            echo "=== Building essentials box ==="
+            docker build -f ubuntu/24.04/essentials-box/Dockerfile \
+              --build-arg JS_IMAGE=box-js -t box-essentials .
+
+            if [ "$VARIANT" = "essentials" ]; then
+              BASE_IMAGE="box-essentials"
+            elif [ "$VARIANT" = "full" ]; then
+              echo ""
+              echo "=== Building all language images (full-box prerequisites) ==="
+              for lang in python go rust java kotlin ruby php perl swift lean rocq; do
+                echo "--- Building ${lang} box ---"
+                docker build -f "ubuntu/24.04/${lang}/Dockerfile" \
+                  --build-arg ESSENTIALS_IMAGE=box-essentials \
+                  -t "box-${lang}" .
+              done
+              echo ""
+              echo "=== Building full box ==="
+              docker build -f ubuntu/24.04/full-box/Dockerfile \
+                --build-arg ESSENTIALS_IMAGE=box-essentials \
+                --build-arg PYTHON_IMAGE=box-python \
+                --build-arg GO_IMAGE=box-go \
+                --build-arg RUST_IMAGE=box-rust \
+                --build-arg JAVA_IMAGE=box-java \
+                --build-arg KOTLIN_IMAGE=box-kotlin \
+                --build-arg RUBY_IMAGE=box-ruby \
+                --build-arg PHP_IMAGE=box-php \
+                --build-arg PERL_IMAGE=box-perl \
+                --build-arg SWIFT_IMAGE=box-swift \
+                --build-arg LEAN_IMAGE=box-lean \
+                --build-arg ROCQ_IMAGE=box-rocq \
+                -t box-full .
+              BASE_IMAGE="box-full"
+            else
+              echo ""
+              echo "=== Building ${VARIANT} box ==="
+              docker build -f "ubuntu/24.04/${VARIANT}/Dockerfile" \
+                --build-arg ESSENTIALS_IMAGE=box-essentials \
+                -t "box-${VARIANT}" .
+              BASE_IMAGE="box-${VARIANT}"
+            fi
+          fi
+
+          echo "BASE_IMAGE=${BASE_IMAGE}" >> "$GITHUB_ENV"
+
+      - name: Build dind-box variant
+        run: |
+          set -e
+          echo "=== Building dind-${{ matrix.variant }} on ${BASE_IMAGE} ==="
+          docker build -f ubuntu/24.04/dind/Dockerfile \
+            --build-arg BASE_IMAGE="${BASE_IMAGE}" \
+            -t "box-dind-${{ matrix.variant }}" .
+
+      - name: Test dind-box variant
+        run: |
+          set -e
+          IMG="box-dind-${{ matrix.variant }}"
+          echo "=== Testing ${IMG} (no privileged mode in PR CI) ==="
+          # Regression check for issue #88: docker exec and entrypoint-bypassed
+          # shells use the image's configured USER, so dind variants must keep
+          # Config.User aligned with the regular box images.
+          CONFIG_USER=$(docker inspect --format '{{.Config.User}}' "$IMG")
+          if [ "$CONFIG_USER" != "box" ]; then
+            echo "Expected ${IMG} Config.User to be box, got '${CONFIG_USER:-<empty>}'"
+            exit 1
+          fi
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'test "$(whoami)" = box'
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'test "$HOME" = /home/box'
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'sudo -n /usr/bin/dockerd --version'
+
+          # Verify Docker CLI, dockerd binary, buildx and compose plugins are present.
+          # We do NOT start dockerd here because GitHub-hosted runners disallow --privileged.
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'docker --version'
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'dockerd --version'
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'docker buildx version'
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'docker compose version'
+          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'cat /etc/box/variant'
+          echo "=== ${IMG} smoke tests passed ==="
+
+      - name: Test documented dind examples
+        if: matrix.variant == 'js'
+        env:
+          DIND_IMAGE: box-dind-js
+          DIND_WAIT_SECONDS: "60"
+        run: |
+          set -e
+          echo "=== Testing documented dind examples against ${DIND_IMAGE} ==="
+          tests/dind/example-basic-docker-ps.sh
+          tests/dind/example-commit-cycle.sh
+          tests/dind/example-sudoers-extension.sh
+          tests/dind/example-storage-driver-vfs.sh
+          tests/dind/example-preload-images.sh
+          tests/dind/example-dood-host-socket.sh
+          echo "=== Documented dind examples passed ==="
+
+  # --- Aggregator: single status check for branch protection ---
+  # GitHub branch protection rules can require this one job to pass instead of
+  # listing every parallel pr-test-* job individually.
+  docker-build-test:
+    name: docker-build-test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [pr-test-version-policy, pr-test-js, pr-test-essentials, pr-test-language, pr-test-full, pr-test-dind]
+    if: |
+      !cancelled() &&
+      github.event_name == 'pull_request' &&
+      fromJSON(inputs.changes)['should-build'] == 'true'
+    steps:
+      - name: Aggregate pr-test results
+        run: |
+          set -e
+          echo "pr-test-version-policy: ${{ needs.pr-test-version-policy.result }}"
+          echo "pr-test-js:         ${{ needs.pr-test-js.result }}"
+          echo "pr-test-essentials: ${{ needs.pr-test-essentials.result }}"
+          echo "pr-test-language:   ${{ needs.pr-test-language.result }}"
+          echo "pr-test-full:       ${{ needs.pr-test-full.result }}"
+          echo "pr-test-dind:       ${{ needs.pr-test-dind.result }}"
+
+          fail=0
+          for r in \
+            "${{ needs.pr-test-version-policy.result }}" \
+            "${{ needs.pr-test-js.result }}" \
+            "${{ needs.pr-test-essentials.result }}" \
+            "${{ needs.pr-test-language.result }}" \
+            "${{ needs.pr-test-full.result }}" \
+            "${{ needs.pr-test-dind.result }}"; do
+            case "$r" in
+              success|skipped) ;;
+              *) fail=1 ;;
+            esac
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::One or more pr-test jobs did not succeed."
+            exit 1
+          fi
+          echo "All pr-test jobs succeeded."

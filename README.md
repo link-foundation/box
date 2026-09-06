@@ -173,48 +173,61 @@ Each row below has the same toolchain as its non-dind sibling **plus** a working
 | Lean + dind | [`konard/box-lean-dind:latest`](https://hub.docker.com/r/konard/box-lean-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-lean-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-lean-dind/tags?name=latest-arm64) |
 | Rocq + dind | [`konard/box-rocq-dind:latest`](https://hub.docker.com/r/konard/box-rocq-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-rocq-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-rocq-dind/tags?name=latest-arm64) |
 
+> **GHCR is the registry of record; it is not populated yet.** Every release
+> job pushes to `ghcr.io` and to Docker Hub, but until this pull request the two
+> pushes were a *single* buildx solve, so the expired `DOCKERHUB_TOKEN` failed
+> the whole solve and GHCR received nothing — `docker manifest inspect
+> ghcr.io/link-foundation/box-js:latest` still returns "manifest unknown".
+> Docker Hub (`konard/box-*`, above) is what exists today. The tags below are
+> what the release publishes; they are written as plain names rather than links
+> because `github.com/link-foundation/box/pkgs/container/…` 404s for a package
+> that has never been pushed.
+>
+> Published packages appear at
+> [github.com/orgs/link-foundation/packages](https://github.com/orgs/link-foundation/packages).
+
 ### GitHub Container Registry - Combo Boxes
 
 | Image | Multi-arch | AMD64 | ARM64 |
 |-------|------------|-------|-------|
-| Full Box | [`ghcr.io/link-foundation/box:latest`](https://github.com/link-foundation/box/pkgs/container/box?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box?tag=latest-arm64) |
-| Essentials | [`ghcr.io/link-foundation/box-essentials:latest`](https://github.com/link-foundation/box/pkgs/container/box-essentials?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-essentials?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-essentials?tag=latest-arm64) |
-| JS | [`ghcr.io/link-foundation/box-js:latest`](https://github.com/link-foundation/box/pkgs/container/box-js?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-js?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-js?tag=latest-arm64) |
+| Full Box | `ghcr.io/link-foundation/box:latest` | `latest-amd64` | `latest-arm64` |
+| Essentials | `ghcr.io/link-foundation/box-essentials:latest` | `latest-amd64` | `latest-arm64` |
+| JS | `ghcr.io/link-foundation/box-js:latest` | `latest-amd64` | `latest-arm64` |
 
 ### GitHub Container Registry - Language Boxes
 
 | Language | Multi-arch | AMD64 | ARM64 |
 |----------|------------|-------|-------|
-| Python | [`ghcr.io/link-foundation/box-python:latest`](https://github.com/link-foundation/box/pkgs/container/box-python?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-python?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-python?tag=latest-arm64) |
-| Go | [`ghcr.io/link-foundation/box-go:latest`](https://github.com/link-foundation/box/pkgs/container/box-go?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-go?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-go?tag=latest-arm64) |
-| Rust | [`ghcr.io/link-foundation/box-rust:latest`](https://github.com/link-foundation/box/pkgs/container/box-rust?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-rust?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-rust?tag=latest-arm64) |
-| Java | [`ghcr.io/link-foundation/box-java:latest`](https://github.com/link-foundation/box/pkgs/container/box-java?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-java?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-java?tag=latest-arm64) |
-| Kotlin | [`ghcr.io/link-foundation/box-kotlin:latest`](https://github.com/link-foundation/box/pkgs/container/box-kotlin?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-kotlin?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-kotlin?tag=latest-arm64) |
-| Ruby | [`ghcr.io/link-foundation/box-ruby:latest`](https://github.com/link-foundation/box/pkgs/container/box-ruby?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-ruby?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-ruby?tag=latest-arm64) |
-| PHP | [`ghcr.io/link-foundation/box-php:latest`](https://github.com/link-foundation/box/pkgs/container/box-php?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-php?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-php?tag=latest-arm64) |
-| Perl | [`ghcr.io/link-foundation/box-perl:latest`](https://github.com/link-foundation/box/pkgs/container/box-perl?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-perl?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-perl?tag=latest-arm64) |
-| Swift | [`ghcr.io/link-foundation/box-swift:latest`](https://github.com/link-foundation/box/pkgs/container/box-swift?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-swift?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-swift?tag=latest-arm64) |
-| Lean | [`ghcr.io/link-foundation/box-lean:latest`](https://github.com/link-foundation/box/pkgs/container/box-lean?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-lean?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-lean?tag=latest-arm64) |
-| Rocq | [`ghcr.io/link-foundation/box-rocq:latest`](https://github.com/link-foundation/box/pkgs/container/box-rocq?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-rocq?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-rocq?tag=latest-arm64) |
+| Python | `ghcr.io/link-foundation/box-python:latest` | `latest-amd64` | `latest-arm64` |
+| Go | `ghcr.io/link-foundation/box-go:latest` | `latest-amd64` | `latest-arm64` |
+| Rust | `ghcr.io/link-foundation/box-rust:latest` | `latest-amd64` | `latest-arm64` |
+| Java | `ghcr.io/link-foundation/box-java:latest` | `latest-amd64` | `latest-arm64` |
+| Kotlin | `ghcr.io/link-foundation/box-kotlin:latest` | `latest-amd64` | `latest-arm64` |
+| Ruby | `ghcr.io/link-foundation/box-ruby:latest` | `latest-amd64` | `latest-arm64` |
+| PHP | `ghcr.io/link-foundation/box-php:latest` | `latest-amd64` | `latest-arm64` |
+| Perl | `ghcr.io/link-foundation/box-perl:latest` | `latest-amd64` | `latest-arm64` |
+| Swift | `ghcr.io/link-foundation/box-swift:latest` | `latest-amd64` | `latest-arm64` |
+| Lean | `ghcr.io/link-foundation/box-lean:latest` | `latest-amd64` | `latest-arm64` |
+| Rocq | `ghcr.io/link-foundation/box-rocq:latest` | `latest-amd64` | `latest-arm64` |
 
 ### GitHub Container Registry - dind-box (Docker-in-Docker variants, issue #80)
 
 | Image | Multi-arch | AMD64 | ARM64 |
 |-------|------------|-------|-------|
-| Full + dind | [`ghcr.io/link-foundation/box-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-dind?tag=latest-arm64) |
-| Essentials + dind | [`ghcr.io/link-foundation/box-essentials-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-essentials-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-essentials-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-essentials-dind?tag=latest-arm64) |
-| JS + dind | [`ghcr.io/link-foundation/box-js-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-js-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-js-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-js-dind?tag=latest-arm64) |
-| Python + dind | [`ghcr.io/link-foundation/box-python-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-python-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-python-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-python-dind?tag=latest-arm64) |
-| Go + dind | [`ghcr.io/link-foundation/box-go-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-go-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-go-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-go-dind?tag=latest-arm64) |
-| Rust + dind | [`ghcr.io/link-foundation/box-rust-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-rust-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-rust-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-rust-dind?tag=latest-arm64) |
-| Java + dind | [`ghcr.io/link-foundation/box-java-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-java-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-java-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-java-dind?tag=latest-arm64) |
-| Kotlin + dind | [`ghcr.io/link-foundation/box-kotlin-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-kotlin-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-kotlin-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-kotlin-dind?tag=latest-arm64) |
-| Ruby + dind | [`ghcr.io/link-foundation/box-ruby-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-ruby-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-ruby-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-ruby-dind?tag=latest-arm64) |
-| PHP + dind | [`ghcr.io/link-foundation/box-php-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-php-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-php-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-php-dind?tag=latest-arm64) |
-| Perl + dind | [`ghcr.io/link-foundation/box-perl-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-perl-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-perl-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-perl-dind?tag=latest-arm64) |
-| Swift + dind | [`ghcr.io/link-foundation/box-swift-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-swift-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-swift-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-swift-dind?tag=latest-arm64) |
-| Lean + dind | [`ghcr.io/link-foundation/box-lean-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-lean-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-lean-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-lean-dind?tag=latest-arm64) |
-| Rocq + dind | [`ghcr.io/link-foundation/box-rocq-dind:latest`](https://github.com/link-foundation/box/pkgs/container/box-rocq-dind?tag=latest) | [`latest-amd64`](https://github.com/link-foundation/box/pkgs/container/box-rocq-dind?tag=latest-amd64) | [`latest-arm64`](https://github.com/link-foundation/box/pkgs/container/box-rocq-dind?tag=latest-arm64) |
+| Full + dind | `ghcr.io/link-foundation/box-dind:latest` | `latest-amd64` | `latest-arm64` |
+| Essentials + dind | `ghcr.io/link-foundation/box-essentials-dind:latest` | `latest-amd64` | `latest-arm64` |
+| JS + dind | `ghcr.io/link-foundation/box-js-dind:latest` | `latest-amd64` | `latest-arm64` |
+| Python + dind | `ghcr.io/link-foundation/box-python-dind:latest` | `latest-amd64` | `latest-arm64` |
+| Go + dind | `ghcr.io/link-foundation/box-go-dind:latest` | `latest-amd64` | `latest-arm64` |
+| Rust + dind | `ghcr.io/link-foundation/box-rust-dind:latest` | `latest-amd64` | `latest-arm64` |
+| Java + dind | `ghcr.io/link-foundation/box-java-dind:latest` | `latest-amd64` | `latest-arm64` |
+| Kotlin + dind | `ghcr.io/link-foundation/box-kotlin-dind:latest` | `latest-amd64` | `latest-arm64` |
+| Ruby + dind | `ghcr.io/link-foundation/box-ruby-dind:latest` | `latest-amd64` | `latest-arm64` |
+| PHP + dind | `ghcr.io/link-foundation/box-php-dind:latest` | `latest-amd64` | `latest-arm64` |
+| Perl + dind | `ghcr.io/link-foundation/box-perl-dind:latest` | `latest-amd64` | `latest-arm64` |
+| Swift + dind | `ghcr.io/link-foundation/box-swift-dind:latest` | `latest-amd64` | `latest-arm64` |
+| Lean + dind | `ghcr.io/link-foundation/box-lean-dind:latest` | `latest-amd64` | `latest-arm64` |
+| Rocq + dind | `ghcr.io/link-foundation/box-rocq-dind:latest` | `latest-amd64` | `latest-arm64` |
 
 ### Docker-in-Docker security model
 
@@ -353,6 +366,22 @@ _Note: Sizes are measured after cleanup and may vary based on system state and p
 ## Releasing
 
 Releases are produced by `.github/workflows/release.yml`, which builds and pushes images to **both** the GitHub Container Registry (GHCR) and Docker Hub.
+
+That workflow is the entry point; the builds themselves live in one reusable
+workflow per image family, called with `uses:` (issue #115):
+
+| Workflow | Builds |
+|---|---|
+| `.github/workflows/release.yml` | change detection, version and changeset checks, the five family calls, the GitHub Release |
+| `.github/workflows/pr-tests.yml` | the pull-request test tier |
+| `.github/workflows/release-js.yml` | `box-js` |
+| `.github/workflows/release-essentials.yml` | `box-essentials` |
+| `.github/workflows/release-languages.yml` | the per-language images |
+| `.github/workflows/release-full.yml` | the full box |
+| `.github/workflows/release-dind.yml` | the Docker-in-Docker variants |
+
+`bash scripts/ci/list-release-workflows.sh` prints that list from the `uses:`
+graph, and `--job <id>` answers which file defines a given job.
 
 The workflow uses two sets of credentials:
 

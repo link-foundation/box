@@ -43,14 +43,14 @@ echo "==> Variant B: RUN --mount=type=bind,from=... — copy and prune in one la
 docker build -q -t whiteout-single-layer -f "$CTX/Dockerfile.single-layer" "$CTX" >/dev/null
 
 size() { docker image inspect -f '{{.Size}}' "$1"; }
-mb() { echo "$(( $1 / 1024 / 1024 ))"; }
+mb() { echo "$(($1 / 1024 / 1024))"; }
 
 base=$(size "$BASE_IMAGE")
 a=$(size whiteout-copy-then-delete)
 b=$(size whiteout-single-layer)
 
-a_added=$(( a - base ))
-b_added=$(( b - base ))
+a_added=$((a - base))
+b_added=$((b - base))
 
 echo
 echo "  base ${BASE_IMAGE}                  : $(mb "$base") MB"
@@ -62,14 +62,14 @@ failed=0
 
 # A must carry both payloads: the whiteout hides the stale toolchain but the
 # bytes stay in the image. Allow slack for compression/metadata.
-if [ "$a_added" -gt $(( PAYLOAD_MB * 3 / 2 * 1024 * 1024 )) ]; then
+if [ "$a_added" -gt $((PAYLOAD_MB * 3 / 2 * 1024 * 1024)) ]; then
   echo "PASS: deleting after COPY --from does not reclaim the bytes (image grew by ~2x the payload)"
 else
   echo "FAIL: expected variant A to carry both payloads, it only added $(mb "$a_added") MB"
   failed=1
 fi
 
-if [ "$b_added" -lt $(( PAYLOAD_MB * 3 / 2 * 1024 * 1024 )) ]; then
+if [ "$b_added" -lt $((PAYLOAD_MB * 3 / 2 * 1024 * 1024)) ]; then
   echo "PASS: copying and pruning inside one RUN commits only the kept payload"
 else
   echo "FAIL: expected variant B to carry one payload, it added $(mb "$b_added") MB"
@@ -77,7 +77,7 @@ else
 fi
 
 if [ "$b" -lt "$a" ]; then
-  echo "PASS: the single-layer variant is smaller ($(mb $(( a - b ))) MB saved)"
+  echo "PASS: the single-layer variant is smaller ($(mb $((a - b))) MB saved)"
 else
   echo "FAIL: the single-layer variant is not smaller"
   failed=1

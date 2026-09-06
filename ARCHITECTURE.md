@@ -124,7 +124,7 @@ multi-stage `COPY --from` once all are ready.
 
 Each image only rebuilds if its own scripts/Dockerfiles changed, or if a dependency
 (common.sh, essentials) changed. The full box uses `COPY --from` to merge
-pre-built language runtimes from all language images, plus `apt install` for
+pre-built language runtimes from all language images, plus `apt-get install` for
 system-level packages (.NET, R, C/C++, Assembly).
 
 ## File Structure
@@ -311,8 +311,8 @@ Two properties keep this honest:
 
 - **One version per language root.** `assert_single_runtime_versions()` fails a
   build that leaves two entries under `~/.nvm/versions/node`,
-  `~/.rustup/toolchains`, `~/.pyenv/versions`, `~/.rbenv/versions` or any
-  `~/.sdkman/candidates/*`. A second entry always means a stale toolchain was
+  `~/.rustup/toolchains`, `~/.pyenv/versions`, `~/.rbenv/versions`,
+  `~/.elan/toolchains` or any `~/.sdkman/candidates/*`. A second entry always means a stale toolchain was
   carried in from a cached language image and is costing gigabytes.
 - **Refresh happens in the layer that creates it.** `COPY --from=rust-stage`
   bakes whatever the (possibly cached) rust image was built with, and a later

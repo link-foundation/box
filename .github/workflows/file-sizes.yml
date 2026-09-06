@@ -1,0 +1,91 @@
+name: File sizes
+
+# The 1500-line limit, ported from the reference template's
+# check-file-line-limits job (issue #115, R3/R5).
+#
+# Why this is a CI gate and not a style note: .github/workflows/release.yml had
+# grown to 3135 lines with ten near-identical build jobs in it, and that size
+# was itself a root cause (RC-8). A fix applied to one copy reached none of the
+# others, which is how the missing `docker manifest create --amend` and the
+# unguarded Docker Hub push both came back after being fixed. No reviewer reads
+# 3135 lines of YAML, so nothing caught it.
+#
+# It is its own workflow rather than a job in Scripts, because it checks
+# Markdown and YAML as well as shell, and a gate that skips the pull requests
+# which only touch documentation is a gate with a hole in it.
+#
+# Reproduce locally with the identical command:
+#   bash scripts/ci/check-file-line-limits.sh
+#   bash scripts/ci/check-file-line-limits.sh --list   # what it would check
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.sh'
+      - '**.md'
+      - '**.yml'
+      - '**.yaml'
+      - '**.mjs'
+      - '**.js'
+      - '**.cjs'
+      - '**.py'
+      - '**.rb'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**.sh'
+      - '**.md'
+      - '**.yml'
+      - '**.yaml'
+      - '**.mjs'
+      - '**.js'
+      - '**.cjs'
+      - '**.py'
+      - '**.rb'
+  workflow_dispatch:
+
+# Least-privilege default; this job only reads the checked-out tree.
+permissions:
+  contents: read
+
+jobs:
+  line-limits:
+    name: file sizes / line limits
+    runs-on: ubuntu-24.04
+    # Typical run: under 10 seconds. It counts lines in tracked files.
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-line-limits
+      cancel-in-progress: true
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      # Printed before the check runs, so a failure comes with the list of
+      # files the check was looking at. A gate that examined nothing exits 0
+      # and reads exactly like a clean tree (RC-16); the script fails with
+      # exit 2 in that case, and this step makes it visible.
+      - name: List the files that will be checked
+        run: bash scripts/ci/check-file-line-limits.sh --list
+
+      - name: Every maintained file is under the line limit
+        run: bash scripts/ci/check-file-line-limits.sh
+
+      - name: The gate's own fixtures still hold
+        if: ${{ !cancelled() }}
+        run: bash experiments/test-issue115-line-limits.sh

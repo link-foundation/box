@@ -1,0 +1,200 @@
+name: Scripts
+
+# Static checks over the shell scripts that build and measure the boxes.
+#
+# Why this workflow exists (issue #115): the two scripts that generate a second
+# script from a quoted heredoc both referenced parent-shell variables that the
+# generated script could never see. One of them broke `Measure Disk Space and
+# Update README` on main (run 33972074753); the other, scripts/ubuntu-24-server-install.sh,
+# had the identical defect and no job that would ever have run it. Checks that
+# only ever run on a developer's laptop are not checks, so they run here.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.sh'
+      - '.github/workflows/**'
+      - 'ubuntu/**'
+      - 'tests/**'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**.sh'
+      - '.github/workflows/**'
+      - 'ubuntu/**'
+      - 'tests/**'
+  workflow_dispatch:
+
+# Least-privilege default; these jobs only read the checked-out tree.
+permissions:
+  contents: read
+
+jobs:
+  heredoc-vars:
+    name: scripts / heredoc variables
+    runs-on: ubuntu-24.04
+    # Typical run: a few seconds. The limit is here so a pathological regex
+    # cannot hold a runner for six hours.
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-heredoc-vars
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      # Fails the job on any expansion inside a quoted heredoc that the
+      # generated script cannot resolve, with a file/line annotation.
+      - name: No variable leaks out of a quoted heredoc
+        run: bash scripts/ci/check-heredoc-vars.sh
+
+      # The checker is only worth trusting if its own false-positive and
+      # false-negative fixtures still hold.
+      - name: Checker fixtures and the run 33972074753 reproduction
+        run: bash experiments/test-issue115-heredoc-unbound-vars.sh
+
+  # Issue #115. actionlint runs shellcheck over the `run:` blocks inside
+  # .github/workflows/**, and nothing ran it over the 75 tracked *.sh files that
+  # actually build the boxes — the largest body of shell in the repository was
+  # the only one no linter saw. That is a false negative by construction: a
+  # `for x in $(ls ...)` in ubuntu/24.04/js/install.sh is exactly the class of
+  # defect shellcheck exists to catch, and four of them were sitting in the
+  # tree when this job was added.
+  #
+  # Threshold is --severity=warning, the same bar actionlint's bundled
+  # shellcheck applies to workflow `run:` blocks, so a snippet does not pass in
+  # one place and fail in the other. `info` and below are excluded on purpose:
+  # they are dominated by SC1091 (sourcing a path that only exists inside the
+  # image) and SC2016 (single-quoted `$` in the heredocs that generate the
+  # in-image scripts), both of which are deliberate here.
+  #
+  # Reproduce locally with the identical command:
+  #   bash scripts/ci/run-shellcheck.sh
+  shellcheck:
+    name: scripts / shellcheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-shellcheck
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      - name: shellcheck every tracked shell script
+        run: bash scripts/ci/run-shellcheck.sh
+
+      - name: The runner's own fixtures still hold
+        run: bash experiments/test-issue115-shellcheck-gate.sh
+
+  # Issue #115, template best practice #3 ("automated code formatting"). The
+  # template runs prettier over a JavaScript repository; the source of this one
+  # is shell, and nothing formatted it. 74 of the 98 tracked scripts disagreed
+  # with any single consistent style - four-space indents next to two-space
+  # ones, `a; b` on one line next to one statement per line - which makes every
+  # diff noisier than the change it carries and turns formatting into a review
+  # comment nobody should have to write.
+  #
+  # A reformat is nearly always inert - shfmt parses the script and prints the
+  # syntax tree back out - but "nearly" is doing work: shfmt formats an array
+  # subscript as arithmetic, and it silently rewrote the key
+  # `[node-lts-integration-test.sh]` in run-experiments.sh into a different
+  # string, disabling three skip entries. The regression suites caught it. So
+  # the evidence that a reformat is safe is that the suites pass over the
+  # rewritten tree, never the parse-and-print argument on its own.
+  #
+  # Reproduce locally with the identical command:
+  #   bash scripts/ci/run-shfmt.sh          # check
+  #   bash scripts/ci/run-shfmt.sh --fix    # rewrite
+  shfmt:
+    name: scripts / formatting
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-shfmt
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      - name: Every shell script is formatted
+        run: bash scripts/ci/run-shfmt.sh
+
+      # Including the check that the formatter cannot pass by examining
+      # nothing: a wrong mount or a missing tool exits 0 with no output, which
+      # is indistinguishable from a clean tree (RC-16).
+      - name: The formatter gate's own fixtures still hold
+        run: bash experiments/test-issue115-shfmt-gate.sh
+
+  # Issue #115 (RC-9). The repository had 27 regression suites under
+  # experiments/ and the workflows referenced 5 of them. The remaining 22 ran
+  # only when someone remembered to — so two of them had been crashing on any
+  # machine without a UTF-8 locale, unnoticed, because nothing ran them.
+  #
+  # The runner discovers suites instead of listing them, so a suite added in a
+  # later PR is gated from the moment it lands.
+  experiments:
+    name: scripts / regression suites
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-experiments
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      - name: List the suites that will run
+        run: bash scripts/ci/run-experiments.sh --list
+
+      - name: Run every experiment suite
+        run: bash scripts/ci/run-experiments.sh
+
+      - name: Upload suite logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: experiment-logs
+          path: /tmp/experiment-logs/
+          if-no-files-found: warn
+          retention-days: 7

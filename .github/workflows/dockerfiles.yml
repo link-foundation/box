@@ -1,0 +1,77 @@
+name: Dockerfiles
+
+# Static checks over the Dockerfiles that define the boxes.
+#
+# Why this workflow exists (issue #115): this repository *is* a collection of
+# Dockerfiles, and no linter had ever read one. actionlint reads the workflows,
+# scripts.yml reads every *.sh, and the 23 Dockerfiles were the one body of
+# source with no check at all. `apt install` instead of `apt-get install` was
+# sitting in ubuntu/24.04/js/Dockerfile and in nine install scripts, printing
+# "WARNING: apt does not have a stable CLI interface" into every box build -
+# a warning nobody was looking for, because nothing collected it.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/Dockerfile'
+      - '**/Dockerfile.*'
+      - '**/*.Dockerfile'
+      - '.hadolint.yaml'
+      - 'scripts/ci/run-hadolint.sh'
+      - '.github/workflows/dockerfiles.yml'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**/Dockerfile'
+      - '**/Dockerfile.*'
+      - '**/*.Dockerfile'
+      - '.hadolint.yaml'
+      - 'scripts/ci/run-hadolint.sh'
+      - '.github/workflows/dockerfiles.yml'
+  workflow_dispatch:
+
+# Least-privilege default; this job only reads the checked-out tree.
+permissions:
+  contents: read
+
+jobs:
+  hadolint:
+    name: dockerfiles / hadolint
+    runs-on: ubuntu-24.04
+    # Typical run: a few seconds once the image is pulled. The limit is here so
+    # a hung docker pull cannot hold a runner for six hours.
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-hadolint
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      - name: List the Dockerfiles that will be checked
+        run: bash scripts/ci/run-hadolint.sh --list
+
+      # Threshold and the single ignored rule are in .hadolint.yaml, each with
+      # the reason. Reproduce locally with the identical command:
+      #   bash scripts/ci/run-hadolint.sh
+      - name: hadolint every tracked Dockerfile
+        run: bash scripts/ci/run-hadolint.sh
+
+      # Also part of run-experiments.sh, which scripts.yml runs on any '**.sh'
+      # or 'ubuntu/**' change - so the no-bare-apt policy it asserts is checked
+      # even when a pull request touches no Dockerfile at all.
+      - name: The runner's own fixtures still hold
+        run: bash experiments/test-issue115-hadolint-gate.sh

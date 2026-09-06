@@ -42,7 +42,7 @@ RUN chmod +x /tmp/install.sh /tmp/common.sh
 # PHP_VERBOSE=1 enables detailed logging to debug potential hangs (Issue #53)
 RUN PHP_HOMEBREW_TIMEOUT=${PHP_HOMEBREW_TIMEOUT} PHP_VERBOSE=${PHP_VERBOSE} bash /tmp/install.sh
 
-# --- Step 3: Handle global fallback (apt install as root if needed) ---
+# --- Step 3: Handle global fallback (apt-get install as root if needed) ---
 USER root
 RUN . /tmp/common.sh && \
     PHP_METHOD=$(cat /home/box/.php-install-method 2>/dev/null || echo "unknown") && \

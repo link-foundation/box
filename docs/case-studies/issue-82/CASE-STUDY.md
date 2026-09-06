@@ -168,7 +168,7 @@ The failure occurs at `Dockerfile:99` (`full-box`) on `COPY --from=ruby-stage --
 
 ### Root cause
 
-`docker-build-test` (PR-only smoke test, lines 403-564 of `release.yml`) does not free disk space before the build. The publish-jobs (`docker-build-push`, `docker-build-push-arm64`) already use `jlumbroso/free-disk-space@main` to reclaim ~30 GB before building (added in [issue #41](../../issue-41/CASE-STUDY.md)), but the PR-CI smoke test was missed. As more language images were added (most recently `dind` family in #80), cumulative disk usage from BuildKit's working set tipped over the runner's default ~22 GB free.
+`docker-build-test` (PR-only smoke test, lines 403-564 of `release.yml`) does not free disk space before the build. The publish-jobs (`docker-build-push`, `docker-build-push-arm64`) already use `jlumbroso/free-disk-space@main` to reclaim ~30 GB before building (added in [issue #41](../issue-41/CASE-STUDY.md)), but the PR-CI smoke test was missed. As more language images were added (most recently `dind` family in #80), cumulative disk usage from BuildKit's working set tipped over the runner's default ~22 GB free.
 
 ### Fix in this PR
 

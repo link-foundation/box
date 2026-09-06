@@ -1,0 +1,450 @@
+name: "Release: dind boxes"
+
+# Called by .github/workflows/release.yml. It is not triggered directly: a
+# `workflow_call` file has no other trigger, so it never starts a run of its own.
+#
+# Why it is a separate file (issue #115, RC-8). release.yml had grown to 3135
+# lines - more than twice the 1500-line limit the reference CI/CD template
+# enforces (scripts/check-file-line-limits.sh there, scripts/ci/check-file-line-limits.sh
+# here). At that size a defect fixed in one of the near-identical build jobs kept
+# surviving in the others, which is how RC-4 and RC-7 came back after being
+# fixed. The file is split by image family; the job graph is unchanged.
+
+on:
+  workflow_call:
+    inputs:
+      changes:
+        description: 'JSON object of the detect-changes job outputs'
+        required: true
+        type: string
+      js-manifest-result:
+        description: 'Result of the js-manifest job'
+        required: false
+        type: string
+        default: ''
+      essentials-manifest-result:
+        description: 'Result of the essentials-manifest job'
+        required: false
+        type: string
+        default: ''
+      languages-manifest-result:
+        description: 'Rollup result of the languages-manifest matrix'
+        required: false
+        type: string
+        default: ''
+      full-manifest-result:
+        description: 'Result of the docker-manifest job'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      # Optional on purpose: Docker Hub is a mirror of GHCR, and every job that
+      # uses these tolerates a failed login (issue #82). A fork or a repository
+      # without the secrets set still publishes to GHCR.
+      DOCKERHUB_USERNAME:
+        required: false
+      DOCKERHUB_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+# Workflow-level `env` is NOT inherited by a called workflow (each `workflow_call`
+# file gets its own environment), so these five are re-declared here rather than
+# read from release.yml. experiments/test-issue115-workflow-split.sh asserts that
+# every release-*.yml carries the same set with the same values.
+env:
+  # The full-box Dockerfiles use `RUN --mount=type=bind,from=<stage>` to refresh
+  # the copied rustup toolchains inside the same layer (issue #112). buildx
+  # enables BuildKit implicitly; the plain `docker build` steps below need it
+  # switched on explicitly or that syntax is a parse error.
+  DOCKER_BUILDKIT: "1"
+  # GitHub Container Registry
+  GHCR_REGISTRY: ghcr.io
+  GHCR_IMAGE_NAME: ${{ github.repository }}
+  # Docker Hub
+  DOCKERHUB_REGISTRY: docker.io
+  DOCKERHUB_IMAGE_NAME: konard/box
+
+jobs:
+
+  # === BUILD DIND-BOX VARIANTS (amd64) - issue #80 ===
+  # Layers Docker Engine on top of every base box image so each variant has a
+  # "<base>-dind" sibling. Runs after the source variant's manifest is published.
+  build-dind-amd64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # variant -> base box flavour. Special value "full" maps to konard/box.
+        # Everything else maps to konard/box-<variant>.
+        variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
+    if: |
+      !cancelled() &&
+      (inputs.js-manifest-result == 'success' || inputs.js-manifest-result == 'skipped') &&
+      (inputs.essentials-manifest-result == 'success' || inputs.essentials-manifest-result == 'skipped') &&
+      (inputs.languages-manifest-result == 'success' || inputs.languages-manifest-result == 'skipped') &&
+      (inputs.full-manifest-result == 'success' || inputs.full-manifest-result == 'skipped') &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main' && fromJSON(inputs.changes)['should-build'] == 'true') ||
+        (github.event_name == 'workflow_dispatch')
+      )
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      # Issue #82: free disk space on every build job's runner before pulling
+      # base images / running buildx so that COPY --from=*-stage and large
+      # apt installs never hit "no space left on device" mid-build.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Get latest version
+        id: version
+        run: |
+          git pull origin main || true
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Compute image names
+        id: names
+        run: |
+          NAME="${{ matrix.variant }}"
+          # Source base image: full -> "konard/box"; others -> "konard/box-<name>"
+          # Target dind image: full -> "konard/box-dind"; others -> "konard/box-<name>-dind"
+          if [ "$NAME" = "full" ]; then
+            BASE_SUFFIX=""
+            DIND_SUFFIX="-dind"
+          else
+            BASE_SUFFIX="-$NAME"
+            DIND_SUFFIX="-${NAME}-dind"
+          fi
+          echo "base_image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-amd64" >> "$GITHUB_OUTPUT"
+          echo "dind_suffix=${DIND_SUFFIX}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: ./.github/actions/setup-buildx-resilient
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
+      - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.DOCKERHUB_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: "Check Docker Hub login (issue #82)"
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
+
+      # Issue #115 (RC-4): a manifest job that was skipped because its build
+      # failed is indistinguishable, in an `if:` expression, from one skipped
+      # because the flavour was not rebuilt. Assert the postcondition the gate
+      # stands in for, so a missing base image is reported once, here, instead
+      # of 28 matrix legs failing 8.5 minutes later blaming the dind Dockerfile.
+      - name: Verify base image was published (issue #115)
+        run: |
+          bash scripts/release/assert-base-image.sh \
+            "${{ steps.names.outputs.base_image }}" \
+            "the ${{ matrix.variant }} dind-box (amd64) image"
+
+      - name: Build and push ${{ matrix.variant }} dind-box (amd64)
+        id: build-push
+        continue-on-error: true
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ubuntu/24.04/dind/Dockerfile
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            BASE_IMAGE=${{ steps.names.outputs.base_image }}
+          tags: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64
+          provenance: false
+          cache-from: type=gha,scope=dind-${{ matrix.variant }}-amd64
+          cache-to: type=gha,scope=dind-${{ matrix.variant }}-amd64,mode=max
+
+      - name: Retry push ${{ matrix.variant }} dind-box (amd64) on failure
+        if: steps.build-push.outcome == 'failure'
+        run: |
+          bash scripts/release/buildx-retry.sh \
+              --file ubuntu/24.04/dind/Dockerfile \
+              --platform linux/amd64 \
+              --build-arg BASE_IMAGE=${{ steps.names.outputs.base_image }} \
+              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64 \
+              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64 \
+              --provenance=false \
+              --cache-from type=gha,scope=dind-${{ matrix.variant }}-amd64 \
+              --push \
+              .
+
+  # === BUILD DIND-BOX VARIANTS (arm64) - issue #80 ===
+      # Issue #115 (RC-3): GHCR is the registry of record - it is written with
+      # the per-run GITHUB_TOKEN, which cannot expire - and Docker Hub is a
+      # mirror of it. Pushing both registries in one `docker buildx build --push`
+      # meant a single expired DOCKERHUB_TOKEN destroyed the GHCR tags and the
+      # `cache-to: type=gha` export as collateral (run 33972074755).
+      - name: Mirror ${{ matrix.variant }} dind-box (amd64) to Docker Hub
+        if: steps.dockerhub-login.outcome == 'success'
+        run: |
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64"
+
+  build-dind-arm64:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
+    if: |
+      !cancelled() &&
+      (inputs.js-manifest-result == 'success' || inputs.js-manifest-result == 'skipped') &&
+      (inputs.essentials-manifest-result == 'success' || inputs.essentials-manifest-result == 'skipped') &&
+      (inputs.languages-manifest-result == 'success' || inputs.languages-manifest-result == 'skipped') &&
+      (inputs.full-manifest-result == 'success' || inputs.full-manifest-result == 'skipped') &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main' && fromJSON(inputs.changes)['should-build'] == 'true') ||
+        (github.event_name == 'workflow_dispatch')
+      )
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      # Issue #82: free disk space on every build job's runner before pulling
+      # base images / running buildx so that COPY --from=*-stage and large
+      # apt installs never hit "no space left on device" mid-build.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Get latest version
+        id: version
+        run: |
+          git pull origin main || true
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Compute image names
+        id: names
+        run: |
+          NAME="${{ matrix.variant }}"
+          if [ "$NAME" = "full" ]; then
+            BASE_SUFFIX=""
+            DIND_SUFFIX="-dind"
+          else
+            BASE_SUFFIX="-$NAME"
+            DIND_SUFFIX="-${NAME}-dind"
+          fi
+          echo "base_image=${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-arm64" >> "$GITHUB_OUTPUT"
+          echo "dind_suffix=${DIND_SUFFIX}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: ./.github/actions/setup-buildx-resilient
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
+      - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.DOCKERHUB_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: "Check Docker Hub login (issue #82)"
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
+
+      # Issue #115 (RC-4): a manifest job that was skipped because its build
+      # failed is indistinguishable, in an `if:` expression, from one skipped
+      # because the flavour was not rebuilt. Assert the postcondition the gate
+      # stands in for, so a missing base image is reported once, here, instead
+      # of 28 matrix legs failing 8.5 minutes later blaming the dind Dockerfile.
+      - name: Verify base image was published (issue #115)
+        run: |
+          bash scripts/release/assert-base-image.sh \
+            "${{ steps.names.outputs.base_image }}" \
+            "the ${{ matrix.variant }} dind-box (arm64) image"
+
+      - name: Build and push ${{ matrix.variant }} dind-box (arm64)
+        id: build-push
+        continue-on-error: true
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ubuntu/24.04/dind/Dockerfile
+          platforms: linux/arm64
+          push: true
+          build-args: |
+            BASE_IMAGE=${{ steps.names.outputs.base_image }}
+          tags: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64
+          provenance: false
+          cache-from: type=gha,scope=dind-${{ matrix.variant }}-arm64
+          cache-to: type=gha,scope=dind-${{ matrix.variant }}-arm64,mode=max
+
+      - name: Retry push ${{ matrix.variant }} dind-box (arm64) on failure
+        if: steps.build-push.outcome == 'failure'
+        run: |
+          bash scripts/release/buildx-retry.sh \
+              --file ubuntu/24.04/dind/Dockerfile \
+              --platform linux/arm64 \
+              --build-arg BASE_IMAGE=${{ steps.names.outputs.base_image }} \
+              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64 \
+              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64 \
+              --provenance=false \
+              --cache-from type=gha,scope=dind-${{ matrix.variant }}-arm64 \
+              --push \
+              .
+
+  # === CREATE DIND-BOX MULTI-ARCH MANIFESTS - issue #80 ===
+      # Issue #115 (RC-3): GHCR is the registry of record - it is written with
+      # the per-run GITHUB_TOKEN, which cannot expire - and Docker Hub is a
+      # mirror of it. Pushing both registries in one `docker buildx build --push`
+      # meant a single expired DOCKERHUB_TOKEN destroyed the GHCR tags and the
+      # `cache-to: type=gha` export as collateral (run 33972074755).
+      - name: Mirror ${{ matrix.variant }} dind-box (arm64) to Docker Hub
+        if: steps.dockerhub-login.outcome == 'success'
+        run: |
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64"
+
+  dind-manifest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: [build-dind-amd64, build-dind-arm64]
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
+    if: |
+      !cancelled() &&
+      needs.build-dind-amd64.result == 'success' &&
+      needs.build-dind-arm64.result == 'success'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Get latest version
+        id: version
+        run: |
+          git pull origin main || true
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
+      # so that pushes to GHCR still proceed instead of taking down every build job.
+      - name: Log in to Docker Hub
+        id: dockerhub-login
+        continue-on-error: true
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.DOCKERHUB_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: "Check Docker Hub login (issue #82)"
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
+
+      - name: Compute dind suffix
+        id: names
+        run: |
+          NAME="${{ matrix.variant }}"
+          if [ "$NAME" = "full" ]; then
+            echo "dind_suffix=-dind" >> "$GITHUB_OUTPUT"
+          else
+            echo "dind_suffix=-${NAME}-dind" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create and push ${{ matrix.variant }} dind multi-arch manifests (GHCR)
+        run: |
+          bash scripts/release/create-multiarch-manifest.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}" \
+            latest "${{ steps.version.outputs.version }}"
+
+      - name: Create and push ${{ matrix.variant }} dind multi-arch manifests (Docker Hub)
+        if: steps.dockerhub-login.outcome == 'success'
+        env:
+          # A Docker Hub manifest failure must not fail a release whose GHCR
+          # manifest is already published (issue #115, RC-3).
+          MANIFEST_REQUIRED: '0'
+        run: |
+          bash scripts/release/create-multiarch-manifest.sh \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}" \
+            latest "${{ steps.version.outputs.version }}"
+
+      - name: Skip ${{ matrix.variant }} dind Docker Hub multi-arch manifests
+        if: steps.dockerhub-login.outcome != 'success'
+        run: |
+          echo "::warning title=Docker Hub manifest skipped::Skipping ${{ matrix.variant }} dind Docker Hub multi-arch manifests because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."

@@ -1,0 +1,92 @@
+name: Workflows
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.github/zizmor.yml'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.github/zizmor.yml'
+  workflow_dispatch:
+
+# Least-privilege default; these jobs only read the checked-out tree.
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-actionlint
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      # The Docker image bundles shellcheck and pyflakes, so this also lints
+      # every `run:` block — which is the point here: release.yml carries
+      # thousands of lines of shell that no other linter sees. A native
+      # actionlint binary without shellcheck on PATH silently skips the shell
+      # checks and exits 0, so reproduce failures with the image:
+      #   docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
+      - uses: docker://rhysd/actionlint:1.7.7
+        with:
+          args: -color
+
+  zizmor:
+    name: zizmor
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-zizmor
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      # Run the image rather than the action so the command is identical to the
+      # local one and the thresholds are visible here.
+      #
+      # --min-severity medium: the remaining low findings are `self-repository`
+      # (a `./.github/actions/...` reference style) and template expansions of
+      # `matrix.language` / this repository's own step outputs, none of which
+      # are attacker-controllable. The reference template is in the same state.
+      # Everything at medium and above is fixed and must stay fixed.
+      #
+      # Scoped to .github: dev/log/ holds verbatim copies of other projects'
+      # workflows collected as issue evidence, and they are not ours to fix.
+      - name: zizmor
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo \
+            ghcr.io/zizmorcore/zizmor:1.30.0 \
+            --min-confidence medium \
+            --min-severity medium \
+            --no-progress \
+            --format plain \
+            --config .github/zizmor.yml \
+            .github/workflows

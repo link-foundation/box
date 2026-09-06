@@ -38,7 +38,8 @@ verify_command() {
   local version_flag="${3:---version}"
 
   if command -v "$command_name" &>/dev/null; then
-    local version=$("$command_name" $version_flag 2>/dev/null | head -n1 || echo "installed")
+    local version
+    version=$("$command_name" $version_flag 2>/dev/null | head -n1 || echo "installed")
     log_success "$tool_name: $version"
     return 0
   else
@@ -120,15 +121,15 @@ cleanup_duplicate_apt_sources() {
   log_info "Checking for duplicate APT sources..."
   local duplicates_found=false
 
-  if [ -f /etc/apt/sources.list.d/microsoft-edge.list ] && \
-     [ -f /etc/apt/sources.list.d/microsoft-edge-stable.list ]; then
+  if [ -f /etc/apt/sources.list.d/microsoft-edge.list ] \
+    && [ -f /etc/apt/sources.list.d/microsoft-edge-stable.list ]; then
     log_info "Found duplicate Microsoft Edge APT sources"
     maybe_sudo rm -f /etc/apt/sources.list.d/microsoft-edge.list
     duplicates_found=true
   fi
 
-  if [ -f /etc/apt/sources.list.d/google-chrome.list ] && \
-     [ -f /etc/apt/sources.list.d/google-chrome-stable.list ]; then
+  if [ -f /etc/apt/sources.list.d/google-chrome.list ] \
+    && [ -f /etc/apt/sources.list.d/google-chrome-stable.list ]; then
     log_info "Found duplicate Google Chrome APT sources"
     maybe_sudo rm -f /etc/apt/sources.list.d/google-chrome-stable.list
     duplicates_found=true
@@ -266,8 +267,8 @@ resolve_nvm_version() {
 is_java_lts_major() {
   local major="$1"
   case "$major" in
-    8|11|17) return 0 ;;
-    *) [[ "$major" =~ ^[0-9]+$ ]] && [ "$major" -ge 21 ] && [ $(( (major - 21) % 4 )) -eq 0 ] ;;
+    8 | 11 | 17) return 0 ;;
+    *) [[ "$major" =~ ^[0-9]+$ ]] && [ "$major" -ge 21 ] && [ $(((major - 21) % 4)) -eq 0 ] ;;
   esac
 }
 
@@ -281,9 +282,9 @@ resolve_java_lts_major() {
     return 0
   fi
   for candidate in $(fetch_release_feed \
-      "https://api.sdkman.io/2/candidates/java/linuxx64/versions/list?current=&installed=" \
-      | grep -oE '[0-9]+(\.[0-9]+)*(\+[0-9.]+)?-tem' \
-      | sed 's/[.+].*//; s/-tem//' | sort -un); do
+    "https://api.sdkman.io/2/candidates/java/linuxx64/versions/list?current=&installed=" \
+    | grep -oE '[0-9]+(\.[0-9]+)*(\+[0-9.]+)?-tem' \
+    | sed 's/[.+].*//; s/-tem//' | sort -un); do
     if is_java_lts_major "$candidate"; then
       best="$candidate"
     fi
@@ -423,7 +424,7 @@ add_cran_repo() {
 
   maybe_sudo mkdir -p "${etc}/keyrings" "${etc}/sources.list.d"
   if ! curl -fsSL --max-time "${VERSION_FETCH_TIMEOUT}" "${base}/marutter_pubkey.asc" \
-       | maybe_sudo tee "$keyring" >/dev/null; then
+    | maybe_sudo tee "$keyring" >/dev/null; then
     log_warning "Could not fetch the CRAN signing key; using the distro R"
     maybe_sudo rm -f "$keyring"
     return 1
@@ -448,16 +449,37 @@ add_cran_repo() {
 # own bookkeeping entries ("current" symlinks, dotfiles, aliases).
 count_installed_versions() {
   local root="$1" entry count=0
-  [ -d "$root" ] || { echo 0; return 0; }
+  [ -d "$root" ] || {
+    echo 0
+    return 0
+  }
   for entry in "$root"/*; do
     [ -d "$entry" ] || continue
     [ -L "$entry" ] && continue
     case "$(basename "$entry")" in
-      current|.*) continue ;;
+      current | .*) continue ;;
     esac
     count=$((count + 1))
   done
   echo "$count"
+}
+
+# List the installed versions in a version-manager root, one per line,
+# applying exactly the same rules as count_installed_versions. Parsing `ls`
+# output would break on any name containing whitespace and would count the
+# manager's own "current" symlink as a version.
+list_installed_versions() {
+  local root="$1" entry name
+  [ -d "$root" ] || return 0
+  for entry in "$root"/*; do
+    [ -d "$entry" ] || continue
+    [ -L "$entry" ] && continue
+    name="$(basename "$entry")"
+    case "$name" in
+      current | .*) continue ;;
+    esac
+    printf '%s\n' "$name"
+  done
 }
 
 # assert_single_runtime_versions [--warn]
@@ -473,6 +495,12 @@ assert_single_runtime_versions() {
     "rust:$home/.rustup/toolchains"
     "python:$home/.pyenv/versions"
     "ruby:$home/.rbenv/versions"
+    # elan keeps every Lean it has ever been asked for here. It is also the
+    # directory whose *absence* meant "the box ships no Lean at all" before
+    # issue #115 - a root that does not exist is skipped below, so this entry
+    # bounds the count from above only; ubuntu/24.04/lean/install.sh is what
+    # asserts a toolchain is present.
+    "lean:$home/.elan/toolchains"
   )
   for candidate in "$home"/.sdkman/candidates/*; do
     [ -d "$candidate" ] || continue
@@ -485,10 +513,10 @@ assert_single_runtime_versions() {
     count=$(count_installed_versions "$path")
     if [ "$count" -gt 1 ]; then
       log_error "$name: expected exactly 1 version in $path, found $count:"
-      ls -1 "$path" | sed 's/^/      /'
+      list_installed_versions "$path" | sed 's/^/      /'
       status=1
     elif [ "$count" -eq 1 ]; then
-      log_success "$name: 1 version ($(ls -1 "$path" | grep -v '^current$' | head -n1))"
+      log_success "$name: 1 version ($(list_installed_versions "$path" | head -n1))"
     fi
   done
 

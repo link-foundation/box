@@ -216,4 +216,4 @@ See the changes in:
 - [Playwright: Install System Dependencies](https://playwright.dev/docs/browsers#install-system-dependencies)
 - [Puppeteer Troubleshooting: Chrome dependencies](https://pptr.dev/troubleshooting)
 - [Puppeteer: @puppeteer/browsers CLI](https://pptr.dev/browsers-api)
-- [ci-logs/issue-68-playwright-warning.txt](../../ci-logs/issue-68-playwright-warning.txt)
+- [ci-logs/issue-68-playwright-warning.txt](../../../ci-logs/issue-68-playwright-warning.txt)

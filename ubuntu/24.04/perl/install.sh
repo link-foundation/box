@@ -32,7 +32,7 @@ if [ ! -d "$HOME/.perl5" ]; then
       echo '  export PERLBREW_ROOT="$HOME/.perl5"'
       echo '  [ -f "$PERLBREW_ROOT/etc/bashrc" ] && source "$PERLBREW_ROOT/etc/bashrc"'
       echo 'fi'
-    } >> "$HOME/.bashrc"
+    } >>"$HOME/.bashrc"
   fi
 
   if [ -f "$PERLBREW_ROOT/etc/bashrc" ]; then

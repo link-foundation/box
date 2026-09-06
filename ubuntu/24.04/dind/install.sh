@@ -63,7 +63,7 @@ fi
 
 UBUNTU_CODENAME="$(. /etc/os-release && echo "${UBUNTU_CODENAME:-${VERSION_CODENAME:-noble}}")"
 echo "deb [arch=${ARCH} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu ${UBUNTU_CODENAME} stable" \
-  | maybe_sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  | maybe_sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
 
 log_step "Installing docker-ce, docker-ce-cli, containerd.io, buildx, compose"
 apt_update_with_retry

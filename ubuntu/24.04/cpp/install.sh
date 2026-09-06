@@ -22,7 +22,7 @@ log_step "Installing C/C++ Development Tools"
 apt_update_with_retry
 
 log_info "Installing build-essential, CMake, Clang/LLVM, LLD..."
-maybe_sudo apt install -y build-essential cmake clang llvm lld
+maybe_sudo apt-get install -y build-essential cmake clang llvm lld
 log_success "C/C++ development tools installed"
 
 log_success "C/C++ tools installation complete"

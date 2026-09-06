@@ -171,7 +171,11 @@ Per the issue request to "double check all other steps in the same CI/CD flow," 
 
 ## Artifacts
 
-- [`ci-run-22267653514-failed.log`](./ci-run-22267653514-failed.log) — Failed run log (the git push rejection)
-- [`ci-run-22267653514-full.log`](../../ci-run-22267653514.log) — Full run log
-- [`ci-run-22265618808-failed.log`](./ci-run-22265618808-failed.log) — Previous failure (Issue #49 era)
-- [`ci-run-22263724056-failed.log`](./ci-run-22263724056-failed.log) — Earlier failure (Issue #46 era)
+- Run 22267653514 — the git push rejection. **Log expired.**
+- Run 22265618808 — previous failure (issue #49 era). **Log expired.**
+- Run 22263724056 — earlier failure (issue #46 era). **Log expired.**
+
+None of the three was committed, and GitHub's 90-day retention has since
+removed all of them (`gh run view <id> --log` → `HTTP 410`). The rejection
+message they carried is quoted above. Later case studies commit their logs
+into the case-study directory for exactly this reason.

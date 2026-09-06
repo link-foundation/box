@@ -56,7 +56,7 @@ Note: `force_build` is empty (`""`) for push events, and `docker=false`, `script
 ### Issue 3: `unknown/unknown` Platform in GHCR
 
 **Observed Behavior:**
-According to the issue description, the GHCR package at https://github.com/link-foundation/box/pkgs/container/box shows `unknown/unknown` instead of `linux/arm64`.
+According to the issue description, the GHCR package at `https://github.com/link-foundation/box/pkgs/container/box` shows `unknown/unknown` instead of `linux/arm64`. (That page is a 404 today — the package has never been successfully pushed; see the note above the GHCR tables in `README.md`.)
 
 **Root Cause:**
 This is caused by Docker Buildx's default behavior of including **provenance attestations** when pushing images. These attestations are stored as manifest entries with `unknown/unknown` platform.

@@ -13,7 +13,7 @@ derived_image="${DIND_EXAMPLE_ID}-sudoers"
 register_temp_dir "$tmp_dir"
 register_image "$derived_image"
 
-cat > "$tmp_dir/Dockerfile" <<'DOCKERFILE'
+cat >"$tmp_dir/Dockerfile" <<'DOCKERFILE'
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 

@@ -28,11 +28,11 @@ if ! command_exists R; then
     add_cran_repo || true
   fi
   apt_update_with_retry
-  maybe_sudo apt install -y r-base || {
+  maybe_sudo apt-get install -y r-base || {
     log_warning "r-base install failed; retrying without the CRAN repository"
     maybe_sudo rm -f /etc/apt/sources.list.d/cran.list
     apt_update_with_retry
-    maybe_sudo apt install -y r-base
+    maybe_sudo apt-get install -y r-base
   }
   log_success "R language installed"
 else

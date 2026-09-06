@@ -126,7 +126,7 @@ DIND_HOST_DOCKER_SOCK="${DIND_HOST_DOCKER_SOCK:-/var/run/host-docker.sock}"
 DIND_HOST_PASSTHROUGH_REGISTRIES="${DIND_HOST_PASSTHROUGH_REGISTRIES:-docker.io ghcr.io quay.io gcr.io registry.k8s.io public.ecr.aws mcr.microsoft.com}"
 DIND_HOST_PASSTHROUGH_IMAGES="${DIND_HOST_PASSTHROUGH_IMAGES:-}"
 
-log()  { echo "[dind-entrypoint] $*"; }
+log() { echo "[dind-entrypoint] $*"; }
 warn() { echo "[dind-entrypoint] WARN: $*" >&2; }
 
 as_root() {
@@ -196,7 +196,7 @@ current_user_in_gid() {
 grant_socket_access() {
   sock="$1"
   adopt="${2:-adopt}"
-  [ -S "$sock" ] || return 0   # nothing mounted at this path: nothing to do
+  [ -S "$sock" ] || return 0 # nothing mounted at this path: nothing to do
 
   gid="$(socket_gid "$sock" || true)"
 
@@ -211,8 +211,8 @@ grant_socket_access() {
   # Adopt only a private socket into the image docker group. Refused for shared
   # sockets so the host's /var/run/docker.sock is never mutated under DooD.
   if [ "$adopt" = "adopt" ] \
-     && as_root /usr/bin/chgrp docker "$sock" 2>/dev/null \
-     && as_root /usr/bin/chmod 660 "$sock" 2>/dev/null; then
+    && as_root /usr/bin/chgrp docker "$sock" 2>/dev/null \
+    && as_root /usr/bin/chmod 660 "$sock" 2>/dev/null; then
     log "adjusted ${sock} into the docker group so the box user can access it"
     return 0
   fi
@@ -442,7 +442,7 @@ preload_images() {
 
 host_passthrough_enabled() {
   case "$DIND_HOST_PASSTHROUGH" in
-    off|0|false|no|"") return 1 ;;
+    off | 0 | false | no | "") return 1 ;;
     *) return 0 ;;
   esac
 }
@@ -464,7 +464,7 @@ host_docker_available() {
 image_registry() {
   first="${1%%/*}"
   case "$first" in
-    localhost|*.*|*:*) printf '%s\n' "$first" ;;
+    localhost | *.* | *:*) printf '%s\n' "$first" ;;
     *) printf '%s\n' "docker.io" ;;
   esac
 }
@@ -486,7 +486,7 @@ host_image_matches_images_filter() {
   ref="$1"
   [ -n "$DIND_HOST_PASSTHROUGH_IMAGES" ] || return 0
 
-  repo="${ref%:*}"   # strip the :tag -> repository (handles host:port/path too)
+  repo="${ref%:*}" # strip the :tag -> repository (handles host:port/path too)
 
   # Candidate forms to test patterns against: the tagged ref, the bare repo, and
   # — for Docker Hub refs — the same two with an explicit docker.io/ prefix (or,
@@ -494,11 +494,13 @@ host_image_matches_images_filter() {
   set -- "$ref" "$repo"
   case "$ref" in
     docker.io/*)
-      set -- "$@" "${ref#docker.io/}" "${repo#docker.io/}" ;;
+      set -- "$@" "${ref#docker.io/}" "${repo#docker.io/}"
+      ;;
     *)
       if [ "$(image_registry "$ref")" = "docker.io" ]; then
         set -- "$@" "docker.io/$ref" "docker.io/$repo"
-      fi ;;
+      fi
+      ;;
   esac
 
   for pattern in $DIND_HOST_PASSTHROUGH_IMAGES; do
@@ -520,7 +522,8 @@ host_image_matches_images_filter() {
 #             private-registry images are excluded, so passthrough never copies
 #             local build secrets or images that required a credential.
 host_image_passes_filter() {
-  ref="$1"; repo_digests="$2"
+  ref="$1"
+  repo_digests="$2"
 
   # Repository/name allowlist, composed with the mode gate below: when set, the
   # image must additionally match at least one pattern. (issue #97)
@@ -535,7 +538,8 @@ host_image_passes_filter() {
           return 0
         fi
       done
-      return 1 ;;
+      return 1
+      ;;
     *) return 1 ;;
   esac
 }
@@ -587,27 +591,27 @@ passthrough_host_images() {
 
   $hostdocker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | sort -u \
     | while IFS= read -r ref; do
-        [ -n "$ref" ] || continue
-        case "$ref" in *'<none>'*) continue ;; esac
+      [ -n "$ref" ] || continue
+      case "$ref" in *'<none>'*) continue ;; esac
 
-        repo_digests="$($hostdocker image inspect "$ref" \
-          --format '{{range .RepoDigests}}{{.}} {{end}}' 2>/dev/null || true)"
+      repo_digests="$($hostdocker image inspect "$ref" \
+        --format '{{range .RepoDigests}}{{.}} {{end}}' 2>/dev/null || true)"
 
-        if ! host_image_passes_filter "$ref" "$repo_digests"; then
-          log "passthrough skip (filtered by mode=${DIND_HOST_PASSTHROUGH}): ${ref}"
-          continue
-        fi
+      if ! host_image_passes_filter "$ref" "$repo_digests"; then
+        log "passthrough skip (filtered by mode=${DIND_HOST_PASSTHROUGH}): ${ref}"
+        continue
+      fi
 
-        if docker image inspect "$ref" >/dev/null 2>&1; then
-          log "passthrough skip (already present): ${ref}"
-          continue
-        fi
+      if docker image inspect "$ref" >/dev/null 2>&1; then
+        log "passthrough skip (already present): ${ref}"
+        continue
+      fi
 
-        log "passthrough loading host image: ${ref}"
-        if ! $hostdocker save "$ref" | docker load; then
-          warn "passthrough failed for ${ref}"
-        fi
-      done
+      log "passthrough loading host image: ${ref}"
+      if ! $hostdocker save "$ref" | docker load; then
+        warn "passthrough failed for ${ref}"
+      fi
+    done
 
   # The save|load above runs synchronously, so by the time this returns every
   # eligible host image has finished streaming into the nested daemon — the
@@ -626,13 +630,13 @@ passthrough_host_images() {
 # is a registry port, not a tag, and is correctly treated as non-concrete.
 ref_is_concrete() {
   case "$1" in
-    *'*'*|*'?'*|*'['*) return 1 ;;   # glob pattern
+    *'*'* | *'?'* | *'['*) return 1 ;; # glob pattern
   esac
   case "$1" in
-    *@*) return 0 ;;                 # explicit digest (…@sha256:…)
+    *@*) return 0 ;; # explicit digest (…@sha256:…)
   esac
   case "${1##*/}" in
-    *:*) return 0 ;;                 # explicit tag in the final segment
+    *:*) return 0 ;; # explicit tag in the final segment
   esac
   return 1
 }
@@ -677,7 +681,7 @@ preload_into_daemon() {
   # Tarball/registry preload only run when their vars are set; host passthrough
   # is on by default, so we still proceed to give it a chance to find a socket.
   if [ -z "$DIND_PRELOAD_TARBALL" ] && [ -z "$DIND_PRELOAD_IMAGES" ] \
-     && ! host_passthrough_enabled; then
+    && ! host_passthrough_enabled; then
     return 0
   fi
 
@@ -744,7 +748,7 @@ else
     log "DIND_SKIP_DAEMON=1: not starting a nested dockerd"
   fi
   if [ -n "$DIND_PRELOAD_TARBALL" ] || [ -n "$DIND_PRELOAD_IMAGES" ] \
-     || { host_passthrough_enabled && [ -n "$DIND_HOST_DOCKER_SOCK" ] && [ -e "$DIND_HOST_DOCKER_SOCK" ]; }; then
+    || { host_passthrough_enabled && [ -n "$DIND_HOST_DOCKER_SOCK" ] && [ -e "$DIND_HOST_DOCKER_SOCK" ]; }; then
     warn "DIND_PRELOAD_*/host passthrough requested but DIND_SKIP_DAEMON=1; nothing will be preloaded (DooD reuses the host daemon's images directly, so no seeding is needed)"
   fi
 fi

@@ -41,7 +41,7 @@
 
 set -euo pipefail
 
-LANGUAGES="python go rust java kotlin ruby php perl swift lean rocq cpp assembly"
+LANGUAGES="python go rust java kotlin ruby php perl swift lean rocq cpp assembly dotnet r"
 
 log() { echo "$@"; }
 
@@ -54,7 +54,7 @@ resolve_range() {
     # Synthetic merge commit: HEAD^1=base, HEAD^2=PR head.
     if git rev-parse --verify -q "HEAD^2" >/dev/null 2>&1; then
       if git rev-parse --verify -q "HEAD^2^" >/dev/null 2>&1; then
-        echo "HEAD^2^ HEAD^2"   # per-commit diff of the PR head (issue #108)
+        echo "HEAD^2^ HEAD^2" # per-commit diff of the PR head (issue #108)
         return
       fi
       # First commit on the PR head has no parent inside the PR: diff the PR
@@ -68,7 +68,7 @@ resolve_range() {
       echo "$PR_BASE_SHA HEAD"
       return
     fi
-    echo "HEAD~1 HEAD"
+    last_resort_range
     return
   fi
 
@@ -81,7 +81,21 @@ resolve_range() {
     echo "$before HEAD"
     return
   fi
-  echo "HEAD~1 HEAD"
+  last_resort_range
+}
+
+# HEAD~1..HEAD, but only if HEAD~1 is actually reachable. It is not in a
+# shallow checkout - actions/checkout defaults to fetch-depth: 1 - nor on a
+# repository's root commit. Printing a range that cannot be resolved used to
+# take the whole script down: `git diff` exits 128, and the `|| git diff
+# --name-only HEAD~1 HEAD` fallback below re-ran the identical failing command,
+# so under `set -euo pipefail` the script died with `error: Could not access
+# HEAD~1` and wrote not one output. Print nothing instead and let the caller
+# degrade (issue #115).
+last_resort_range() {
+  if git rev-parse --verify -q "HEAD~1" >/dev/null 2>&1; then
+    echo "HEAD~1 HEAD"
+  fi
 }
 
 # Print the newline-separated list of changed file paths for this event.
@@ -90,11 +104,25 @@ get_changed_files() {
     printf '%s\n' "$CHANGED_FILES_OVERRIDE"
     return
   fi
-  local range
+  local range files
   range=$(resolve_range)
-  log "Comparing range: ${range}" >&2
-  # shellcheck disable=SC2086
-  git diff --name-only $range 2>/dev/null || git diff --name-only HEAD~1 HEAD
+
+  if [ -n "$range" ]; then
+    log "Comparing range: ${range}" >&2
+    # shellcheck disable=SC2086
+    if files="$(git diff --name-only $range 2>/dev/null)"; then
+      printf '%s\n' "$files"
+      return
+    fi
+    log "Range ${range} did not resolve; falling back to every tracked file" >&2
+  else
+    log "No diff range available (shallow checkout or root commit); falling back to every tracked file" >&2
+  fi
+
+  # Never under-build. With no usable range the safe classification is "all of
+  # it changed": a build that was not needed costs runner minutes, a build that
+  # was needed and skipped ships an unbuilt image.
+  git ls-files
 }
 
 # matches REGEX < files -> echoes "true"/"false"
@@ -111,7 +139,7 @@ set_output() {
   local name="$1" value="$2"
   log "${name}=${value}"
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
-    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+    echo "${name}=${value}" >>"$GITHUB_OUTPUT"
   fi
 }
 
@@ -129,11 +157,11 @@ main() {
 
   # --- Top-level categories ---
   local docker scripts ubuntu workflow version
-  docker=$(printf '%s\n'   "$changed_files" | matches '^Dockerfile$')
-  scripts=$(printf '%s\n'  "$changed_files" | matches '^scripts/')
-  ubuntu=$(printf '%s\n'   "$changed_files" | matches '^ubuntu/')
+  docker=$(printf '%s\n' "$changed_files" | matches '^Dockerfile$')
+  scripts=$(printf '%s\n' "$changed_files" | matches '^scripts/')
+  ubuntu=$(printf '%s\n' "$changed_files" | matches '^ubuntu/')
   workflow=$(printf '%s\n' "$changed_files" | matches '^\.github/(workflows|actions)/')
-  version=$(printf '%s\n'  "$changed_files" | matches '^VERSION$')
+  version=$(printf '%s\n' "$changed_files" | matches '^VERSION$')
   set_output docker "$docker"
   set_output scripts "$scripts"
   set_output ubuntu "$ubuntu"
@@ -142,14 +170,14 @@ main() {
 
   # --- Per-image categories ---
   local js essentials full common dind
-  js=$(printf '%s\n'         "$changed_files" | matches '^ubuntu/24\.04/js/')
+  js=$(printf '%s\n' "$changed_files" | matches '^ubuntu/24\.04/js/')
   essentials=$(printf '%s\n' "$changed_files" | matches '^ubuntu/24\.04/essentials-box/')
-  full=$(printf '%s\n'       "$changed_files" | matches '^(ubuntu/24\.04/full-box/|Dockerfile$|scripts/)')
-  common=$(printf '%s\n'     "$changed_files" | matches '^ubuntu/24\.04/common\.sh$')
+  full=$(printf '%s\n' "$changed_files" | matches '^(ubuntu/24\.04/full-box/|Dockerfile$|scripts/)')
+  common=$(printf '%s\n' "$changed_files" | matches '^ubuntu/24\.04/common\.sh$')
   # dind: image source and the CI example tests that exercise it. Documentation
   # under docs/dind/ is intentionally NOT a build trigger (issue #108: docs and
   # other non-essential files must not run the image build/test matrix).
-  dind=$(printf '%s\n'       "$changed_files" | matches '^(ubuntu/24\.04/dind/|tests/dind/)')
+  dind=$(printf '%s\n' "$changed_files" | matches '^(ubuntu/24\.04/dind/|tests/dind/)')
   set_output js "$js"
   set_output essentials "$essentials"
   set_output full "$full"
@@ -166,19 +194,26 @@ main() {
   # --- Aggregate build decision ---
   local should_build="false" reason="no relevant changes detected"
   if [ "${GITHUB_EVENT_NAME:-}" = "workflow_dispatch" ]; then
-    should_build="true"; reason="manual dispatch"
+    should_build="true"
+    reason="manual dispatch"
   elif [ "$docker" = "true" ]; then
-    should_build="true"; reason="Dockerfile changes"
+    should_build="true"
+    reason="Dockerfile changes"
   elif [ "$scripts" = "true" ]; then
-    should_build="true"; reason="scripts changes"
+    should_build="true"
+    reason="scripts changes"
   elif [ "$ubuntu" = "true" ]; then
-    should_build="true"; reason="ubuntu modular scripts changes"
+    should_build="true"
+    reason="ubuntu modular scripts changes"
   elif [ "$workflow" = "true" ]; then
-    should_build="true"; reason="workflow/action changes"
+    should_build="true"
+    reason="workflow/action changes"
   elif [ "$version" = "true" ]; then
-    should_build="true"; reason="VERSION file changes"
+    should_build="true"
+    reason="VERSION file changes"
   elif [ "$dind" = "true" ]; then
-    should_build="true"; reason="dind image/test changes"
+    should_build="true"
+    reason="dind image/test changes"
   fi
   set_output should-build "$should_build"
   log ""

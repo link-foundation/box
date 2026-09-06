@@ -15,7 +15,10 @@
 # Invariants checked here:
 #   1. Each pr-test-* job exists.
 #   2. Each pr-test-* build job has a `Free disk space` step using
-#      jlumbroso/free-disk-space@main, *before* its first build step.
+#      jlumbroso/free-disk-space, *before* its first build step. The ref is
+#      not asserted to be a branch: since issue #115 every third-party action
+#      is pinned to a full 40-character commit SHA (zizmor `unpinned-uses`),
+#      so this checks the action is present and that its pin is immutable.
 #   3. The pr-test-language matrix lists all 11 languages.
 #   4. The pr-test-dind matrix lists all 14 variants (js, essentials, 11
 #      languages, full).
@@ -27,12 +30,31 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-WF="${ROOT}/.github/workflows/release.yml"
 
-if [ ! -f "$WF" ]; then
-  echo "ERR: $WF not found" >&2
-  exit 1
-fi
+# The jobs checked below used to be in one file. release.yml was split by image
+# family (issue #115, RC-8), so they now live across seven workflows - the
+# pr-test-* jobs in pr-tests.yml, the build jobs in release-<family>.yml. Every
+# check here is "job X has property Y", which a per-file search answers with
+# "job X not found", so the checks read the concatenation of the whole
+# pipeline. Job ids are unique across it, and a job block still starts at
+# `^  <id>:`, so the parsing below is unchanged.
+#
+# The list is resolved from the caller's `uses:` graph rather than written out,
+# so the next split does not silently narrow what this suite reads.
+WORKFLOWS="$(cd "$ROOT" && bash scripts/ci/list-release-workflows.sh)" || exit 1
+
+WF="$(mktemp)"
+trap 'rm -f "$WF"' EXIT
+for workflow in $WORKFLOWS; do
+  if [ ! -f "$ROOT/$workflow" ]; then
+    echo "ERR: $ROOT/$workflow not found" >&2
+    exit 1
+  fi
+  cat "$ROOT/$workflow" >>"$WF"
+  # A file that does not end in a newline would glue its last line to the next
+  # file's `name:` and hide the first job of that file.
+  printf '\n' >>"$WF"
+done
 
 fail=0
 
@@ -52,7 +74,8 @@ for job in pr-test-js pr-test-essentials pr-test-language pr-test-full pr-test-d
   check "$job job is defined" "grep -q '^  ${job}:$' '$WF'"
 done
 
-# 2. Each build job has a Free disk space step using jlumbroso/free-disk-space@main.
+# 2. Each build job has a Free disk space step using jlumbroso/free-disk-space,
+#    pinned to a full-length commit SHA.
 BUILD_JOBS=(
   pr-test-js
   pr-test-essentials
@@ -94,11 +117,23 @@ for job in jobs:
         print(f"FAIL: job '{job}' not found in workflow", file=sys.stderr)
         fail = 1
         continue
-    if 'jlumbroso/free-disk-space@main' not in block:
-        print(f"FAIL: job '{job}' is missing 'jlumbroso/free-disk-space@main'", file=sys.stderr)
+    refs = re.findall(r'jlumbroso/free-disk-space@(\S+)', block)
+    if not refs:
+        print(f"FAIL: job '{job}' is missing 'jlumbroso/free-disk-space'", file=sys.stderr)
+        fail = 1
+        continue
+    # Issue #115: third-party actions must be pinned to an immutable commit
+    # SHA, never a branch or tag that upstream can move under us.
+    unpinned = [r for r in refs if not re.fullmatch(r'[0-9a-f]{40}', r)]
+    if unpinned:
+        print(
+            f"FAIL: job '{job}' uses jlumbroso/free-disk-space@{unpinned[0]}; "
+            "expected a full 40-character commit SHA",
+            file=sys.stderr,
+        )
         fail = 1
     else:
-        print(f"PASS: job '{job}' has free-disk-space step")
+        print(f"PASS: job '{job}' has a SHA-pinned free-disk-space step")
 sys.exit(fail)
 PY
 disk_status=$?
@@ -106,8 +141,22 @@ if [ "$disk_status" -ne 0 ]; then
   fail=1
 fi
 
-# 3. pr-test-language matrix lists all 11 languages.
-EXPECTED_LANGS="python go rust java kotlin ruby php perl swift lean rocq"
+# 3. pr-test-language matrix builds every language directory there is.
+#
+# This list used to be the 11 published languages, hand-written here. cpp,
+# assembly, dotnet and r ship a Dockerfile and an install.sh, are documented in
+# README, and were built by no job at all - so it is derived from the directory
+# listing now, and adding ubuntu/24.04/<new>/Dockerfile without a matrix entry
+# fails here (issue #115).
+EXPECTED_LANGS=""
+for dockerfile in "$ROOT"/ubuntu/24.04/*/Dockerfile; do
+  dir="$(basename "$(dirname "$dockerfile")")"
+  case "$dir" in
+    js | essentials-box | full-box | dind) continue ;;
+  esac
+  EXPECTED_LANGS="$EXPECTED_LANGS $dir"
+done
+EXPECTED_LANGS="${EXPECTED_LANGS# }"
 python3 - "$WF" "$EXPECTED_LANGS" <<'PY'
 import re, sys
 text = open(sys.argv[1]).read()

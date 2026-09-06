@@ -16,7 +16,7 @@ COPY ubuntu/24.04/common.sh /tmp/common.sh
 # Install minimal system prerequisites
 RUN . /tmp/common.sh && \
     apt_update_with_retry && \
-    apt install -y curl git sudo ca-certificates unzip && \
+    apt-get install -y curl git sudo ca-certificates unzip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install system-level dependencies for Playwright and Puppeteer browser automation

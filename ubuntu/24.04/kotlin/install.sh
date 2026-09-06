@@ -37,7 +37,7 @@ if [ ! -d "$HOME/.sdkman" ]; then
       echo '# SDKMAN configuration'
       echo 'export SDKMAN_DIR="$HOME/.sdkman"'
       echo '[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ] && . "$HOME/.sdkman/bin/sdkman-init.sh"'
-    } >> "$HOME/.bashrc"
+    } >>"$HOME/.bashrc"
   fi
 fi
 
@@ -51,9 +51,9 @@ if [ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
   if ! command_exists java; then
     log_info "Installing Java ${JAVA_MAJOR} LTS (Temurin) via SDKMAN (required by Kotlin)..."
     set +u
-    sdk install java "${JAVA_MAJOR}-tem" < /dev/null || {
+    sdk install java "${JAVA_MAJOR}-tem" </dev/null || {
       log_warning "Eclipse Temurin installation failed, trying default OpenJDK..."
-      sdk install java "${JAVA_MAJOR}-open" < /dev/null || true
+      sdk install java "${JAVA_MAJOR}-open" </dev/null || true
     }
     set -u
 
@@ -69,7 +69,7 @@ if [ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
   if ! command_exists kotlin; then
     log_info "Installing Kotlin via SDKMAN..."
     set +u
-    sdk install kotlin < /dev/null || true
+    sdk install kotlin </dev/null || true
     set -u
 
     if command -v kotlin &>/dev/null; then

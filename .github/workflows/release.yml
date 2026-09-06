@@ -9,6 +9,14 @@ on:
       - 'scripts/**'
       - 'ubuntu/**'
       - '.github/workflows/release.yml'
+      # The build jobs live in these called workflows (issue #115, RC-8).
+      # Without them here, editing a build job would not trigger a build.
+      - '.github/workflows/release-js.yml'
+      - '.github/workflows/release-essentials.yml'
+      - '.github/workflows/release-languages.yml'
+      - '.github/workflows/release-full.yml'
+      - '.github/workflows/release-dind.yml'
+      - '.github/workflows/pr-tests.yml'
       - '.changeset/**'
       - 'VERSION'
   pull_request:
@@ -56,6 +64,14 @@ concurrency:
   group: ${{ github.event_name == 'pull_request' && format('{0}-pr-{1}-run-{2}', github.workflow, github.event.pull_request.number, github.run_id) || format('{0}-{1}', github.workflow, github.ref) }}
   cancel-in-progress: true
 
+# Least-privilege default. Every job that needs more declares it itself
+# (contents: write for the version/release jobs, packages: write for the image
+# builds, actions: write for the supersession guard). Without this, the four
+# jobs that declare nothing — version-check, changeset-check, detect-changes and
+# docker-build-test — ran with the repository's default token scope (issue #115).
+permissions:
+  contents: read
+
 env:
   # The full-box Dockerfiles use `RUN --mount=type=bind,from=<stage>` to refresh
   # the copied rustup toolchains inside the same layer (issue #112). buildx
@@ -68,7 +84,6 @@ env:
   # Docker Hub
   DOCKERHUB_REGISTRY: docker.io
   DOCKERHUB_IMAGE_NAME: konard/box
-
 jobs:
   # === CANCEL SUPERSEDED RUNS (PRs only) — issue #112 follow-up ===
   #
@@ -107,6 +122,7 @@ jobs:
   version-check:
     name: Check for Manual Version Changes
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v6
@@ -126,6 +142,7 @@ jobs:
   changeset-check:
     name: Check for Changesets
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v6
@@ -163,6 +180,7 @@ jobs:
   apply-changesets:
     name: Apply Changesets
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
@@ -191,6 +209,7 @@ jobs:
   # === MANUAL VERSION BUMP (workflow_dispatch with bump-and-release) ===
   version-bump:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_mode == 'bump-and-release'
     permissions:
       contents: write
@@ -210,16 +229,22 @@ jobs:
 
       - name: Bump version
         id: bump
+        # The dispatch inputs arrive through env, not through ${{ }} inside the
+        # script. Interpolating them directly splices attacker-controlled text
+        # into a shell that holds contents: write on main (issue #115).
+        env:
+          BUMP_TYPE: ${{ github.event.inputs.bump_type }}
+          DESCRIPTION: ${{ github.event.inputs.description }}
         run: |
           # Read current version
-          CURRENT_VERSION=$(cat VERSION | tr -d '[:space:]')
+          CURRENT_VERSION=$(tr -d '[:space:]' < VERSION)
           echo "Current version: $CURRENT_VERSION"
 
           # Parse version components
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 
           # Bump based on type
-          case "${{ github.event.inputs.bump_type }}" in
+          case "$BUMP_TYPE" in
             major)
               MAJOR=$((MAJOR + 1))
               MINOR=0
@@ -242,23 +267,23 @@ jobs:
 
           # Commit and push
           git add VERSION
-          DESCRIPTION="${{ github.event.inputs.description }}"
-          if [ -n "$DESCRIPTION" ]; then
+          if [ -n "${DESCRIPTION:-}" ]; then
             git commit -m "$NEW_VERSION: $DESCRIPTION"
           else
             git commit -m "$NEW_VERSION"
           fi
           git push origin main
 
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "bumped=true" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "bumped=true" >> "$GITHUB_OUTPUT"
 
   # === DETECT CHANGES (per-image granularity) ===
   detect-changes:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     needs: [apply-changesets, version-bump]
     # Always run, but wait for version jobs if they're running
-    if: always() && (needs.apply-changesets.result == 'success' || needs.apply-changesets.result == 'skipped') && (needs.version-bump.result == 'success' || needs.version-bump.result == 'skipped')
+    if: ${{ !cancelled() && (needs.apply-changesets.result == 'success' || needs.apply-changesets.result == 'skipped') && (needs.version-bump.result == 'success' || needs.version-bump.result == 'skipped') }}
     outputs:
       # Legacy change detection
       docker-changed: ${{ steps.detect.outputs.docker }}
@@ -287,6 +312,8 @@ jobs:
       rocq-changed: ${{ steps.detect.outputs.rocq }}
       cpp-changed: ${{ steps.detect.outputs.cpp }}
       assembly-changed: ${{ steps.detect.outputs.assembly }}
+      dotnet-changed: ${{ steps.detect.outputs.dotnet }}
+      r-changed: ${{ steps.detect.outputs.r }}
       # dind-box change detection (issue #80)
       dind-changed: ${{ steps.detect.outputs.dind }}
 
@@ -309,8 +336,8 @@ jobs:
       - name: Get version from VERSION file
         id: version
         run: |
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Detected version: $VERSION"
 
       # Single source of truth for change detection (issue #108).
@@ -333,1493 +360,46 @@ jobs:
           PUSH_BEFORE_SHA: ${{ github.event.before }}
         run: bash scripts/ci/detect-changes.sh
 
-  # === BUILD AND TEST DOCKER IMAGES (PR) — issue #82 ===
+  # === IMAGE BUILDS ===
   #
-  # On every pull request we exercise *all* image configurations in parallel,
-  # each on its own clean GitHub-hosted VM with maximum free disk space. The
-  # parallel layout mirrors the production release matrix:
+  # One caller job per image family (issue #115, RC-8). Each `uses:` runs the jobs
+  # of the named file as part of *this* run, so the Actions UI still shows one
+  # release run; the checks are renamed `<caller-job>/ <job name>`.
   #
-  #   pr-test-js               (1 job)      - JS base box
-  #   pr-test-essentials       (1 job)      - essentials box on JS
-  #   pr-test-language         (matrix: 11) - one job per language box
-  #   pr-test-full             (1 job)      - full-box (all languages)
-  #   pr-test-dind             (matrix: 14) - one job per dind variant
-  #                                            (js, essentials, 11 languages, full)
-  #   docker-build-test        (1 job)      - aggregator for branch protection
+  # Every per-job `if:` moved with its job. What used to be
+  # `needs.<upstream-job>.result` is passed in as an input instead, because a
+  # called workflow cannot read the caller's `needs` context - that is what the
+  # `status` job in each file exists to publish. The conditions themselves are
+  # unchanged, so a failure in one architecture still has exactly the effect it
+  # had before the split.
   #
-  # Each job rebuilds its required base chain locally with plain `docker build`
-  # against the host Docker daemon. We deliberately do NOT use buildx with the
-  # docker-container driver here because subsequent `FROM box-js` /
-  # `FROM box-essentials` resolution in that driver would attempt a registry
-  # pull (which fails on PR forks and on Docker Hub outages). The trade-off is
-  # that each VM rebuilds JS and essentials from source — fine because every VM
-  # has 30 GB freed up front and the parallel matrix means wall-clock is bound
-  # by the slowest single image, not by the depth of the chain.
-  #
-  # Every build job runs `jlumbroso/free-disk-space@main` first to reclaim
-  # ~30 GB before building, fixing the "no space left on device" regression
-  # captured in run 25075335426 (see docs/case-studies/issue-82/).
-  #
-  # See: docs/case-studies/issue-82/CASE-STUDY.md
-
-  # --- Tier 0: version policy (no image build, runs in seconds) ---
-  # The resolvers in ubuntu/24.04/common.sh are the only thing keeping a rebuild
-  # from shipping last year's runtimes (issue #112), and refresh-rust.sh depends
-  # on a layer property (a delete after COPY --from reclaims nothing) that is
-  # easy to regress. Both are covered without building an image, so this job
-  # gates the expensive tiers below.
-  pr-test-version-policy:
-    name: pr-test / version-policy
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    needs: [version-check, changeset-check]
-    if: |
-      always() &&
-      (needs.version-check.result == 'success' || needs.version-check.result == 'skipped') &&
-      (needs.changeset-check.result == 'success' || needs.changeset-check.result == 'skipped') &&
-      github.event_name == 'pull_request'
-    # The guard below cancels this run when its commit is superseded, which
-    # needs write access to the Actions API (issue #112 follow-up).
-    permissions:
-      contents: read
-      actions: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      # A queued matrix job can start long after the run was created, by which
-      # time the pull request may have moved on (issue #112 follow-up). Check
-      # before spending a runner on a commit nobody is waiting for.
-      - name: Stop if a newer commit superseded this run
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          bash scripts/ci/supersede.sh stop-if-superseded
-          # ...and keep watching from inside the job. Cancelling from the
-          # outside needs a free runner, and a superseded run holding every
-          # slot is exactly why there is none.
-          setsid nohup bash scripts/ci/supersede.sh watch \
-            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
-
-      - name: Version resolvers and one-version-per-language invariant
-        run: bash experiments/version-policy-unit-test.sh
-
-      - name: Layer semantics behind the rustup refresh
-        run: bash experiments/rust-refresh-layer-test.sh
-
-      - name: Superseded-commit guard (stubbed API) and its workflow wiring
-        run: bash experiments/test-issue112-supersede.sh
-
-      - name: Resolvers agree with the live upstream feeds
-        # Not an assertion on a specific version — it fails only if a feed
-        # changed shape and every resolver silently fell back to its pin.
-        run: |
-          set -e
-          . ubuntu/24.04/common.sh
-          for fn in resolve_node_lts_major resolve_nvm_version resolve_java_lts_major \
-                    resolve_dotnet_lts_channel resolve_swift_versions resolve_opam_version; do
-            value="$("$fn" | head -n1)"
-            echo "$fn -> $value"
-            [ -n "$value" ] || { echo "::error::$fn returned nothing"; exit 1; }
-          done
-
-  # --- Tier 1: JS box ---
-  pr-test-js:
-    name: pr-test / js
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    needs: [detect-changes, version-check, changeset-check, pr-test-version-policy]
-    if: |
-      always() &&
-      needs.detect-changes.result == 'success' &&
-      (needs.version-check.result == 'success' || needs.version-check.result == 'skipped') &&
-      (needs.changeset-check.result == 'success' || needs.changeset-check.result == 'skipped') &&
-      github.event_name == 'pull_request' &&
-      needs.detect-changes.outputs.should-build == 'true'
-    # The guard below cancels this run when its commit is superseded, which
-    # needs write access to the Actions API (issue #112 follow-up).
-    permissions:
-      contents: read
-      actions: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      # A queued matrix job can start long after the run was created, by which
-      # time the pull request may have moved on (issue #112 follow-up). Check
-      # before spending a runner on a commit nobody is waiting for.
-      - name: Stop if a newer commit superseded this run
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          bash scripts/ci/supersede.sh stop-if-superseded
-          # ...and keep watching from inside the job. Cancelling from the
-          # outside needs a free runner, and a superseded run holding every
-          # slot is exactly why there is none.
-          setsid nohup bash scripts/ci/supersede.sh watch \
-            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
-
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Build JS box (amd64)
-        run: |
-          set -e
-          echo "=== Building JS box ==="
-          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
-
-      - name: Test JS box
-        run: |
-          set -e
-          echo "=== Testing JS box ==="
-          docker run --rm box-js bash -c '. $HOME/.nvm/nvm.sh && node --version'
-          docker run --rm box-js bash -c 'export PATH=$HOME/.bun/bin:$PATH && bun --version'
-          docker run --rm box-js bash -c 'export PATH=$HOME/.deno/bin:$PATH && deno --version'
-
-          # Issue #112: the image must ship the Node LTS that was current when it
-          # was built, exactly one of them, and a login shell must agree.
-          echo "=== Node freshness and one-version invariant ==="
-          . ubuntu/24.04/common.sh
-          EXPECTED_NODE="$(resolve_node_lts_major)"
-          echo "expected Node major: $EXPECTED_NODE"
-          docker run --rm -e EXPECTED_NODE="$EXPECTED_NODE" box-js bash -c '
-            set -e
-            . "$HOME/.nvm/nvm.sh"
-            actual="$(node --version)"
-            echo "image ships $actual, nvm default alias -> $(nvm version default)"
-            case "$actual" in
-              v"$EXPECTED_NODE".*) ;;
-              *) echo "::error::image ships $actual, expected Node $EXPECTED_NODE"; exit 1 ;;
-            esac
-            # Without an explicit default alias the image could ship one Node
-            # and activate another (issue #112).
-            [ "$(nvm version default)" = "$actual" ] \
-              || { echo "::error::nvm default alias is $(nvm version default), active is $actual"; exit 1; }
-            count="$(ls -1 "$HOME/.nvm/versions/node" | wc -l)"
-            [ "$count" -eq 1 ] || { echo "::error::$count Node versions in the image"; exit 1; }
-          '
-          echo "=== JS box tests passed ==="
-
-  # --- Tier 2: essentials box ---
-  pr-test-essentials:
-    name: pr-test / essentials
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    needs: [detect-changes, version-check, changeset-check, pr-test-js]
-    if: |
-      always() &&
-      needs.pr-test-js.result == 'success' &&
-      github.event_name == 'pull_request' &&
-      needs.detect-changes.outputs.should-build == 'true'
-    # The guard below cancels this run when its commit is superseded, which
-    # needs write access to the Actions API (issue #112 follow-up).
-    permissions:
-      contents: read
-      actions: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      # A queued matrix job can start long after the run was created, by which
-      # time the pull request may have moved on (issue #112 follow-up). Check
-      # before spending a runner on a commit nobody is waiting for.
-      - name: Stop if a newer commit superseded this run
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          bash scripts/ci/supersede.sh stop-if-superseded
-          # ...and keep watching from inside the job. Cancelling from the
-          # outside needs a free runner, and a superseded run holding every
-          # slot is exactly why there is none.
-          setsid nohup bash scripts/ci/supersede.sh watch \
-            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
-
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Build JS + essentials chain
-        run: |
-          set -e
-          echo "=== Building JS box ==="
-          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
-
-          echo ""
-          echo "=== Building essentials box (on JS) ==="
-          docker build -f ubuntu/24.04/essentials-box/Dockerfile \
-            --build-arg JS_IMAGE=box-js -t box-essentials .
-
-      - name: Test essentials box
-        run: |
-          set -e
-          echo "=== Testing essentials box ==="
-          docker run --rm box-essentials gh --version
-          docker run --rm box-essentials glab --version
-          docker run --rm box-essentials gh-setup-git-identity --version
-          docker run --rm box-essentials glab-setup-git-identity --version
-          echo "=== Essentials box tests passed ==="
-
-  # --- Tier 3: per-language boxes (parallel matrix, one VM each) ---
-  pr-test-language:
-    name: pr-test / ${{ matrix.language }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    needs: [detect-changes, version-check, changeset-check, pr-test-version-policy, pr-test-essentials]
-    if: |
-      always() &&
-      needs.pr-test-essentials.result == 'success' &&
-      github.event_name == 'pull_request' &&
-      needs.detect-changes.outputs.should-build == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq]
-    # The guard below cancels this run when its commit is superseded, which
-    # needs write access to the Actions API (issue #112 follow-up).
-    permissions:
-      contents: read
-      actions: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      # A queued matrix job can start long after the run was created, by which
-      # time the pull request may have moved on (issue #112 follow-up). Check
-      # before spending a runner on a commit nobody is waiting for.
-      - name: Stop if a newer commit superseded this run
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          bash scripts/ci/supersede.sh stop-if-superseded
-          # ...and keep watching from inside the job. Cancelling from the
-          # outside needs a free runner, and a superseded run holding every
-          # slot is exactly why there is none.
-          setsid nohup bash scripts/ci/supersede.sh watch \
-            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
-
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Build JS + essentials + ${{ matrix.language }} chain
-        run: |
-          set -e
-          echo "=== Building JS box ==="
-          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
-
-          echo ""
-          echo "=== Building essentials box (on JS) ==="
-          docker build -f ubuntu/24.04/essentials-box/Dockerfile \
-            --build-arg JS_IMAGE=box-js -t box-essentials .
-
-          echo ""
-          echo "=== Building ${{ matrix.language }} box (on essentials) ==="
-          docker build -f "ubuntu/24.04/${{ matrix.language }}/Dockerfile" \
-            --build-arg ESSENTIALS_IMAGE=box-essentials \
-            -t "box-${{ matrix.language }}" .
-
-      - name: Test ${{ matrix.language }} box
-        run: |
-          set -e
-          LANG="${{ matrix.language }}"
-          IMG="box-${LANG}"
-          echo "=== Testing ${LANG} box (${IMG}) ==="
-          case "$LANG" in
-            python)
-              docker run --rm "$IMG" python3 --version
-              docker run --rm "$IMG" pip3 --version
-              ;;
-            go)
-              docker run --rm "$IMG" go version
-              ;;
-            rust)
-              docker run --rm "$IMG" rustc --version
-              docker run --rm "$IMG" cargo --version
-              docker run --rm "$IMG" rustup --version
-              ;;
-            java)
-              docker run --rm "$IMG" java -version
-              ;;
-            kotlin)
-              docker run --rm "$IMG" kotlin -version
-              ;;
-            ruby)
-              docker run --rm "$IMG" ruby --version
-              docker run --rm "$IMG" gem --version
-              ;;
-            php)
-              docker run --rm "$IMG" php --version
-              echo "=== PHP install method ==="
-              docker run --rm "$IMG" cat /home/box/.php-install-method
-              ;;
-            perl)
-              docker run --rm "$IMG" perl --version
-              ;;
-            swift)
-              docker run --rm "$IMG" swift --version
-              ;;
-            lean)
-              docker run --rm "$IMG" lean --version
-              ;;
-            rocq)
-              # rocq is invoked via "rocq --version" but historically coqc; check both
-              docker run --rm "$IMG" bash -c 'rocq --version 2>/dev/null || coqc --version'
-              ;;
-          esac
-          echo "=== ${LANG} box tests passed ==="
-
-  # --- Tier 4: full box (integration smoke test, all languages on one VM) ---
-  pr-test-full:
-    name: pr-test / full
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    needs: [detect-changes, version-check, changeset-check, pr-test-language]
-    if: |
-      always() &&
-      needs.pr-test-language.result == 'success' &&
-      github.event_name == 'pull_request' &&
-      needs.detect-changes.outputs.should-build == 'true'
-    # The guard below cancels this run when its commit is superseded, which
-    # needs write access to the Actions API (issue #112 follow-up).
-    permissions:
-      contents: read
-      actions: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      # A queued matrix job can start long after the run was created, by which
-      # time the pull request may have moved on (issue #112 follow-up). Check
-      # before spending a runner on a commit nobody is waiting for.
-      - name: Stop if a newer commit superseded this run
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          bash scripts/ci/supersede.sh stop-if-superseded
-          # ...and keep watching from inside the job. Cancelling from the
-          # outside needs a free runner, and a superseded run holding every
-          # slot is exactly why there is none.
-          setsid nohup bash scripts/ci/supersede.sh watch \
-            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
-
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Set up Docker Buildx
-        uses: ./.github/actions/setup-buildx-resilient
-
-      - name: Build full chain (JS -> essentials -> languages -> full)
-        run: |
-          set -e
-          echo "=== Building JS box ==="
-          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
-
-          echo ""
-          echo "=== Building essentials box (on JS) ==="
-          docker build -f ubuntu/24.04/essentials-box/Dockerfile \
-            --build-arg JS_IMAGE=box-js -t box-essentials .
-
-          echo ""
-          echo "=== Building language images (on essentials) ==="
-          for lang in python go rust java kotlin ruby php perl swift lean rocq; do
-            echo ""
-            echo "--- Building ${lang} box ---"
-            docker build -f "ubuntu/24.04/${lang}/Dockerfile" \
-              --build-arg ESSENTIALS_IMAGE=box-essentials \
-              -t "box-${lang}" .
-          done
-
-          echo ""
-          echo "=== Building full box (multi-stage from all language images) ==="
-          docker build -f ubuntu/24.04/full-box/Dockerfile \
-            --build-arg ESSENTIALS_IMAGE=box-essentials \
-            --build-arg PYTHON_IMAGE=box-python \
-            --build-arg GO_IMAGE=box-go \
-            --build-arg RUST_IMAGE=box-rust \
-            --build-arg JAVA_IMAGE=box-java \
-            --build-arg KOTLIN_IMAGE=box-kotlin \
-            --build-arg RUBY_IMAGE=box-ruby \
-            --build-arg PHP_IMAGE=box-php \
-            --build-arg PERL_IMAGE=box-perl \
-            --build-arg SWIFT_IMAGE=box-swift \
-            --build-arg LEAN_IMAGE=box-lean \
-            --build-arg ROCQ_IMAGE=box-rocq \
-            -t box-test .
-
-      - name: Test full box
-        run: |
-          set -e
-          echo "=== Testing full box ==="
-          echo "Note: Using entrypoint script which initializes all environments"
-
-          # JavaScript/TypeScript runtimes
-          docker run --rm box-test node --version
-          docker run --rm box-test bun --version
-          docker run --rm box-test deno --version
-
-          # Python (pyenv)
-          docker run --rm box-test python3 --version
-          docker run --rm box-test pip3 --version
-
-          # Go
-          docker run --rm box-test go version
-
-          # Rust (rustup + cargo + rustc)
-          docker run --rm box-test rustc --version
-          docker run --rm box-test cargo --version
-          docker run --rm box-test rustup --version
-
-          # Java/JVM (SDKMAN)
-          docker run --rm box-test java -version
-          docker run --rm box-test kotlin -version
-
-          # Ruby (rbenv)
-          docker run --rm box-test ruby --version
-          docker run --rm box-test gem --version
-
-          # PHP
-          docker run --rm box-test php --version
-
-          # Perl (perlbrew)
-          docker run --rm box-test perl --version
-
-          # Swift
-          docker run --rm box-test swift --version
-
-          # Lean/Mathlib (elan)
-          docker run --rm box-test lean --version
-
-          # Dotnet
-          docker run --rm box-test dotnet --version
-
-          # R language
-          docker run --rm box-test Rscript --version
-
-          # CLI tools
-          docker run --rm box-test gh --version
-          docker run --rm box-test glab --version
-          docker run --rm box-test gh-setup-git-identity --version
-          docker run --rm box-test glab-setup-git-identity --version
-
-          # expect (interactive automation tool, issue #64)
-          docker run --rm box-test expect -v
-
-          echo ""
-          echo "=== Runtime freshness and one-version-per-language invariant (issue #112) ==="
-          . ubuntu/24.04/common.sh
-          EXPECTED_NODE="$(resolve_node_lts_major)"
-          ACTUAL_NODE="$(docker run --rm box-test node --version)"
-          echo "full box ships Node $ACTUAL_NODE, expected major $EXPECTED_NODE"
-          case "$ACTUAL_NODE" in
-            v"$EXPECTED_NODE".*) ;;
-            *) echo "::error::full box ships $ACTUAL_NODE, expected Node $EXPECTED_NODE"; exit 1 ;;
-          esac
-
-          # The stale `stable` next to a pinned toolchain is the 2.2 GB ~/.rustup
-          # from issue #112: assert one toolchain, and that it is the one rustup
-          # itself considers current. `rustup check` also reports updates for the
-          # rustup binary, which is not what this asserts — toolchain lines only.
-          docker run --rm box-test rustup toolchain list
-          TOOLCHAINS="$(docker run --rm box-test rustup toolchain list | grep -c .)"
-          [ "$TOOLCHAINS" -eq 1 ] \
-            || { echo "::error::$TOOLCHAINS rustup toolchains in the full box, expected 1"; exit 1; }
-          if docker run --rm box-test rustup check | grep -v "^rustup " | grep "Update available"; then
-            echo "::error::the shipped Rust stable is not the current release"; exit 1
-          fi
-
-          docker run --rm -v "$PWD/ubuntu/24.04/common.sh:/tmp/common.sh:ro" \
-            box-test bash -c '. /tmp/common.sh && assert_single_runtime_versions'
-
-          echo ""
-          echo "=== PHP install method check ==="
-          docker run --rm box-php cat /home/box/.php-install-method
-          docker run --rm box-test cat /home/box/.php-install-method
-
-          echo ""
-          echo "=== All full box tests passed ==="
-
-  # --- Tier 5: dind-box variants (parallel matrix: 14 variants, one VM each) — issue #80 ---
-  # Each dind variant rebuilds its base chain (JS + essentials + optional lang/full)
-  # locally and then layers dind on top, so this matrix only depends on
-  # pr-test-essentials having validated the base layer; it can run in parallel
-  # with the per-language and full-box jobs to minimise wall-clock time.
-  pr-test-dind:
-    name: pr-test / dind-${{ matrix.variant }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    needs: [detect-changes, version-check, changeset-check, pr-test-version-policy, pr-test-essentials]
-    if: |
-      always() &&
-      needs.pr-test-essentials.result == 'success' &&
-      github.event_name == 'pull_request' &&
-      needs.detect-changes.outputs.should-build == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        # variant -> base box flavour. Special value "full" rebuilds the entire chain;
-        # everything else needs only JS+essentials+<lang>.
-        variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
-    # The guard below cancels this run when its commit is superseded, which
-    # needs write access to the Actions API (issue #112 follow-up).
-    permissions:
-      contents: read
-      actions: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      # A queued matrix job can start long after the run was created, by which
-      # time the pull request may have moved on (issue #112 follow-up). Check
-      # before spending a runner on a commit nobody is waiting for.
-      - name: Stop if a newer commit superseded this run
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          bash scripts/ci/supersede.sh stop-if-superseded
-          # ...and keep watching from inside the job. Cancelling from the
-          # outside needs a free runner, and a superseded run holding every
-          # slot is exactly why there is none.
-          setsid nohup bash scripts/ci/supersede.sh watch \
-            > "$RUNNER_TEMP/supersede-watch.log" 2>&1 < /dev/null &
-
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Set up Docker Buildx
-        uses: ./.github/actions/setup-buildx-resilient
-
-      - name: Build base box for dind variant
-        run: |
-          set -e
-          VARIANT="${{ matrix.variant }}"
-
-          echo "=== Building JS box (base layer) ==="
-          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
-
-          if [ "$VARIANT" = "js" ]; then
-            BASE_IMAGE="box-js"
-          else
-            echo ""
-            echo "=== Building essentials box ==="
-            docker build -f ubuntu/24.04/essentials-box/Dockerfile \
-              --build-arg JS_IMAGE=box-js -t box-essentials .
-
-            if [ "$VARIANT" = "essentials" ]; then
-              BASE_IMAGE="box-essentials"
-            elif [ "$VARIANT" = "full" ]; then
-              echo ""
-              echo "=== Building all language images (full-box prerequisites) ==="
-              for lang in python go rust java kotlin ruby php perl swift lean rocq; do
-                echo "--- Building ${lang} box ---"
-                docker build -f "ubuntu/24.04/${lang}/Dockerfile" \
-                  --build-arg ESSENTIALS_IMAGE=box-essentials \
-                  -t "box-${lang}" .
-              done
-              echo ""
-              echo "=== Building full box ==="
-              docker build -f ubuntu/24.04/full-box/Dockerfile \
-                --build-arg ESSENTIALS_IMAGE=box-essentials \
-                --build-arg PYTHON_IMAGE=box-python \
-                --build-arg GO_IMAGE=box-go \
-                --build-arg RUST_IMAGE=box-rust \
-                --build-arg JAVA_IMAGE=box-java \
-                --build-arg KOTLIN_IMAGE=box-kotlin \
-                --build-arg RUBY_IMAGE=box-ruby \
-                --build-arg PHP_IMAGE=box-php \
-                --build-arg PERL_IMAGE=box-perl \
-                --build-arg SWIFT_IMAGE=box-swift \
-                --build-arg LEAN_IMAGE=box-lean \
-                --build-arg ROCQ_IMAGE=box-rocq \
-                -t box-full .
-              BASE_IMAGE="box-full"
-            else
-              echo ""
-              echo "=== Building ${VARIANT} box ==="
-              docker build -f "ubuntu/24.04/${VARIANT}/Dockerfile" \
-                --build-arg ESSENTIALS_IMAGE=box-essentials \
-                -t "box-${VARIANT}" .
-              BASE_IMAGE="box-${VARIANT}"
-            fi
-          fi
-
-          echo "BASE_IMAGE=${BASE_IMAGE}" >> "$GITHUB_ENV"
-
-      - name: Build dind-box variant
-        run: |
-          set -e
-          echo "=== Building dind-${{ matrix.variant }} on ${BASE_IMAGE} ==="
-          docker build -f ubuntu/24.04/dind/Dockerfile \
-            --build-arg BASE_IMAGE="${BASE_IMAGE}" \
-            -t "box-dind-${{ matrix.variant }}" .
-
-      - name: Test dind-box variant
-        run: |
-          set -e
-          IMG="box-dind-${{ matrix.variant }}"
-          echo "=== Testing ${IMG} (no privileged mode in PR CI) ==="
-          # Regression check for issue #88: docker exec and entrypoint-bypassed
-          # shells use the image's configured USER, so dind variants must keep
-          # Config.User aligned with the regular box images.
-          CONFIG_USER=$(docker inspect --format '{{.Config.User}}' "$IMG")
-          if [ "$CONFIG_USER" != "box" ]; then
-            echo "Expected ${IMG} Config.User to be box, got '${CONFIG_USER:-<empty>}'"
-            exit 1
-          fi
-          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'test "$(whoami)" = box'
-          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'test "$HOME" = /home/box'
-          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'sudo -n /usr/bin/dockerd --version'
-
-          # Verify Docker CLI, dockerd binary, buildx and compose plugins are present.
-          # We do NOT start dockerd here because GitHub-hosted runners disallow --privileged.
-          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'docker --version'
-          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'dockerd --version'
-          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'docker buildx version'
-          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'docker compose version'
-          docker run --rm --entrypoint=/bin/bash "$IMG" -c 'cat /etc/box/variant'
-          echo "=== ${IMG} smoke tests passed ==="
-
-      - name: Test documented dind examples
-        if: matrix.variant == 'js'
-        env:
-          DIND_IMAGE: box-dind-js
-          DIND_WAIT_SECONDS: "60"
-        run: |
-          set -e
-          echo "=== Testing documented dind examples against ${DIND_IMAGE} ==="
-          tests/dind/example-basic-docker-ps.sh
-          tests/dind/example-commit-cycle.sh
-          tests/dind/example-sudoers-extension.sh
-          tests/dind/example-storage-driver-vfs.sh
-          tests/dind/example-preload-images.sh
-          tests/dind/example-dood-host-socket.sh
-          echo "=== Documented dind examples passed ==="
-
-  # --- Aggregator: single status check for branch protection ---
-  # GitHub branch protection rules can require this one job to pass instead of
-  # listing every parallel pr-test-* job individually.
-  docker-build-test:
-    name: docker-build-test
-    runs-on: ubuntu-24.04
-    needs: [detect-changes, version-check, changeset-check, pr-test-version-policy, pr-test-js, pr-test-essentials, pr-test-language, pr-test-full, pr-test-dind]
-    if: |
-      always() &&
-      github.event_name == 'pull_request' &&
-      needs.detect-changes.outputs.should-build == 'true'
-    steps:
-      - name: Aggregate pr-test results
-        run: |
-          set -e
-          echo "pr-test-version-policy: ${{ needs.pr-test-version-policy.result }}"
-          echo "pr-test-js:         ${{ needs.pr-test-js.result }}"
-          echo "pr-test-essentials: ${{ needs.pr-test-essentials.result }}"
-          echo "pr-test-language:   ${{ needs.pr-test-language.result }}"
-          echo "pr-test-full:       ${{ needs.pr-test-full.result }}"
-          echo "pr-test-dind:       ${{ needs.pr-test-dind.result }}"
-
-          fail=0
-          for r in \
-            "${{ needs.pr-test-version-policy.result }}" \
-            "${{ needs.pr-test-js.result }}" \
-            "${{ needs.pr-test-essentials.result }}" \
-            "${{ needs.pr-test-language.result }}" \
-            "${{ needs.pr-test-full.result }}" \
-            "${{ needs.pr-test-dind.result }}"; do
-            case "$r" in
-              success|skipped) ;;
-              *) fail=1 ;;
-            esac
-          done
-          if [ "$fail" -ne 0 ]; then
-            echo "::error::One or more pr-test jobs did not succeed."
-            exit 1
-          fi
-          echo "All pr-test jobs succeeded."
-
-  # === BUILD JS BOX (amd64) ===
-  # JS box is the base layer - built first, other images depend on it
-  build-js-amd64:
-    runs-on: ubuntu-24.04
+  # The guard below is the prefix every build job carried; it is hoisted here
+  # once. Its `!cancelled()` matters: a caller job whose `needs` failed still
+  # runs, so a broken family does not silently skip create-release.
+  js:
     needs: [detect-changes]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
         (github.event_name == 'workflow_dispatch')
-      ) &&
-      (
-        needs.detect-changes.outputs.js-changed == 'true' ||
-        needs.detect-changes.outputs.common-changed == 'true' ||
-        needs.detect-changes.outputs.version-changed == 'true' ||
-        github.event_name == 'workflow_dispatch'
       )
     permissions:
       contents: read
       packages: write
-    outputs:
-      built: ${{ steps.result.outputs.built }}
+    uses: ./.github/workflows/release-js.yml
+    with:
+      changes: ${{ toJSON(needs.detect-changes.outputs) }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: main
-
-      # Issue #82: free disk space on every build job's runner before pulling
-      # base images / running buildx so that COPY --from=*-stage and large
-      # apt installs never hit "no space left on device" mid-build.
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Get latest version
-        id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Set up Docker Buildx
-        uses: ./.github/actions/setup-buildx-resilient
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
-      # so that pushes to GHCR still proceed instead of taking down every build job.
-      - name: Log in to Docker Hub
-        id: dockerhub-login
-        continue-on-error: true
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Check Docker Hub login (issue #82)"
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
-
-      - name: Build and push JS box (amd64)
-        id: build-push
-        continue-on-error: true
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ubuntu/24.04/js/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-amd64
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64
-          provenance: false
-          cache-from: type=gha,scope=js-amd64
-          cache-to: type=gha,scope=js-amd64,mode=max
-
-      # Retry push on transient GHCR 403 errors (Issue #78)
-      - name: Retry push JS box (amd64) on failure
-        if: steps.build-push.outcome == 'failure'
-        run: |
-          echo "First push attempt failed, retrying with backoff..."
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
-              --file ubuntu/24.04/js/Dockerfile \
-              --platform linux/amd64 \
-              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-amd64 \
-              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64 \
-              --provenance=false \
-              --cache-from type=gha,scope=js-amd64 \
-              --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
-
-      - name: Mark as built
-        id: result
-        run: echo "built=true" >> $GITHUB_OUTPUT
-
-  # === BUILD JS BOX (arm64) ===
-  build-js-arm64:
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 120
-    needs: [detect-changes]
+  essentials:
+    needs: [detect-changes, js]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
-      (
-        (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
-        (github.event_name == 'workflow_dispatch')
-      ) &&
-      (
-        needs.detect-changes.outputs.js-changed == 'true' ||
-        needs.detect-changes.outputs.common-changed == 'true' ||
-        needs.detect-changes.outputs.version-changed == 'true' ||
-        github.event_name == 'workflow_dispatch'
-      )
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      built: ${{ steps.result.outputs.built }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: main
-
-      # Issue #82: free disk space on every build job's runner before pulling
-      # base images / running buildx so that COPY --from=*-stage and large
-      # apt installs never hit "no space left on device" mid-build.
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Get latest version
-        id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Set up Docker Buildx
-        uses: ./.github/actions/setup-buildx-resilient
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
-      # so that pushes to GHCR still proceed instead of taking down every build job.
-      - name: Log in to Docker Hub
-        id: dockerhub-login
-        continue-on-error: true
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Check Docker Hub login (issue #82)"
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
-
-      - name: Build and push JS box (arm64)
-        id: build-push
-        continue-on-error: true
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ubuntu/24.04/js/Dockerfile
-          platforms: linux/arm64
-          push: true
-          tags: |
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-arm64
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64
-          provenance: false
-          cache-from: type=gha,scope=js-arm64
-          cache-to: type=gha,scope=js-arm64,mode=max
-
-      # Retry push on transient GHCR 403 errors (Issue #78)
-      - name: Retry push JS box (arm64) on failure
-        if: steps.build-push.outcome == 'failure'
-        run: |
-          echo "First push attempt failed, retrying with backoff..."
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
-              --file ubuntu/24.04/js/Dockerfile \
-              --platform linux/arm64 \
-              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-arm64 \
-              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64 \
-              --provenance=false \
-              --cache-from type=gha,scope=js-arm64 \
-              --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
-
-      - name: Mark as built
-        id: result
-        run: echo "built=true" >> $GITHUB_OUTPUT
-
-  # === CREATE JS MULTI-ARCH MANIFEST ===
-  js-manifest:
-    runs-on: ubuntu-24.04
-    needs: [detect-changes, build-js-amd64, build-js-arm64]
-    if: |
-      always() &&
-      needs.detect-changes.result == 'success' &&
-      needs.build-js-amd64.result == 'success' &&
-      needs.build-js-arm64.result == 'success'
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: main
-
-      - name: Get latest version
-        id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
-      # so that pushes to GHCR still proceed instead of taking down every build job.
-      - name: Log in to Docker Hub
-        id: dockerhub-login
-        continue-on-error: true
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Check Docker Hub login (issue #82)"
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
-
-      - name: Create and push JS multi-arch manifests (GHCR)
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:latest
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION} \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION}-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION}-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${VERSION}
-
-          echo "JS box GHCR multi-arch manifests pushed for latest and ${VERSION}"
-
-      - name: Create and push JS multi-arch manifests (Docker Hub)
-        if: steps.dockerhub-login.outcome == 'success'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION} \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION}-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION}-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-js:${VERSION}
-
-          echo "JS box Docker Hub multi-arch manifests pushed for latest and ${VERSION}"
-
-      - name: Skip JS Docker Hub multi-arch manifests
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub manifest skipped::Skipping JS Docker Hub multi-arch manifests because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
-
-  # === BUILD ESSENTIALS BOX (amd64) ===
-  # Built on top of JS box - waits for JS to complete (if JS was rebuilt)
-  build-essentials-amd64:
-    runs-on: ubuntu-24.04
-    needs: [detect-changes, build-js-amd64]
-    if: |
-      always() &&
-      needs.detect-changes.result == 'success' &&
-      (needs.build-js-amd64.result == 'success' || needs.build-js-amd64.result == 'skipped') &&
-      (
-        (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
-        (github.event_name == 'workflow_dispatch')
-      ) &&
-      (
-        needs.detect-changes.outputs.js-changed == 'true' ||
-        needs.detect-changes.outputs.essentials-changed == 'true' ||
-        needs.detect-changes.outputs.common-changed == 'true' ||
-        needs.detect-changes.outputs.scripts-changed == 'true' ||
-        needs.detect-changes.outputs.version-changed == 'true' ||
-        github.event_name == 'workflow_dispatch'
-      )
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      built: ${{ steps.result.outputs.built }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: main
-
-      # Issue #82: free disk space on every build job's runner before pulling
-      # base images / running buildx so that COPY --from=*-stage and large
-      # apt installs never hit "no space left on device" mid-build.
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Get latest version
-        id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Set up Docker Buildx
-        uses: ./.github/actions/setup-buildx-resilient
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
-      # so that pushes to GHCR still proceed instead of taking down every build job.
-      - name: Log in to Docker Hub
-        id: dockerhub-login
-        continue-on-error: true
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Check Docker Hub login (issue #82)"
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
-
-      - name: Determine JS base image
-        id: js-base
-        run: |
-          # Use freshly built JS image if JS was rebuilt, otherwise use latest
-          if [ "${{ needs.build-js-amd64.outputs.built }}" = "true" ]; then
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-amd64" >> $GITHUB_OUTPUT
-          else
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-amd64" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Build and push essentials box (amd64)
-        id: build-push
-        continue-on-error: true
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ubuntu/24.04/essentials-box/Dockerfile
-          platforms: linux/amd64
-          push: true
-          build-args: |
-            JS_IMAGE=${{ steps.js-base.outputs.image }}
-          tags: |
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-amd64
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64
-          provenance: false
-          cache-from: type=gha,scope=essentials-amd64
-          cache-to: type=gha,scope=essentials-amd64,mode=max
-
-      # Retry push on transient GHCR 403 errors (Issue #78)
-      - name: Retry push essentials box (amd64) on failure
-        if: steps.build-push.outcome == 'failure'
-        run: |
-          echo "First push attempt failed, retrying with backoff..."
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
-              --file ubuntu/24.04/essentials-box/Dockerfile \
-              --platform linux/amd64 \
-              --build-arg JS_IMAGE=${{ steps.js-base.outputs.image }} \
-              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-amd64 \
-              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64 \
-              --provenance=false \
-              --cache-from type=gha,scope=essentials-amd64 \
-              --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
-
-      - name: Mark as built
-        id: result
-        run: echo "built=true" >> $GITHUB_OUTPUT
-
-  # === BUILD ESSENTIALS BOX (arm64) ===
-  build-essentials-arm64:
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 120
-    needs: [detect-changes, build-js-arm64]
-    if: |
-      always() &&
-      needs.detect-changes.result == 'success' &&
-      (needs.build-js-arm64.result == 'success' || needs.build-js-arm64.result == 'skipped') &&
-      (
-        (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
-        (github.event_name == 'workflow_dispatch')
-      ) &&
-      (
-        needs.detect-changes.outputs.js-changed == 'true' ||
-        needs.detect-changes.outputs.essentials-changed == 'true' ||
-        needs.detect-changes.outputs.common-changed == 'true' ||
-        needs.detect-changes.outputs.scripts-changed == 'true' ||
-        needs.detect-changes.outputs.version-changed == 'true' ||
-        github.event_name == 'workflow_dispatch'
-      )
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      built: ${{ steps.result.outputs.built }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: main
-
-      # Issue #82: free disk space on every build job's runner before pulling
-      # base images / running buildx so that COPY --from=*-stage and large
-      # apt installs never hit "no space left on device" mid-build.
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Get latest version
-        id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Set up Docker Buildx
-        uses: ./.github/actions/setup-buildx-resilient
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
-      # so that pushes to GHCR still proceed instead of taking down every build job.
-      - name: Log in to Docker Hub
-        id: dockerhub-login
-        continue-on-error: true
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Check Docker Hub login (issue #82)"
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
-
-      - name: Determine JS base image
-        id: js-base
-        run: |
-          if [ "${{ needs.build-js-arm64.outputs.built }}" = "true" ]; then
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}-arm64" >> $GITHUB_OUTPUT
-          else
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest-arm64" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Build and push essentials box (arm64)
-        id: build-push
-        continue-on-error: true
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ubuntu/24.04/essentials-box/Dockerfile
-          platforms: linux/arm64
-          push: true
-          build-args: |
-            JS_IMAGE=${{ steps.js-base.outputs.image }}
-          tags: |
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-arm64
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64
-          provenance: false
-          cache-from: type=gha,scope=essentials-arm64
-          cache-to: type=gha,scope=essentials-arm64,mode=max
-
-      # Retry push on transient GHCR 403 errors (Issue #78)
-      - name: Retry push essentials box (arm64) on failure
-        if: steps.build-push.outcome == 'failure'
-        run: |
-          echo "First push attempt failed, retrying with backoff..."
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
-              --file ubuntu/24.04/essentials-box/Dockerfile \
-              --platform linux/arm64 \
-              --build-arg JS_IMAGE=${{ steps.js-base.outputs.image }} \
-              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-arm64 \
-              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64 \
-              --provenance=false \
-              --cache-from type=gha,scope=essentials-arm64 \
-              --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
-
-      - name: Mark as built
-        id: result
-        run: echo "built=true" >> $GITHUB_OUTPUT
-
-  # === CREATE ESSENTIALS MULTI-ARCH MANIFEST ===
-  essentials-manifest:
-    runs-on: ubuntu-24.04
-    needs: [detect-changes, build-essentials-amd64, build-essentials-arm64]
-    if: |
-      always() &&
-      needs.detect-changes.result == 'success' &&
-      needs.build-essentials-amd64.result == 'success' &&
-      needs.build-essentials-arm64.result == 'success'
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: main
-
-      - name: Get latest version
-        id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
-      # so that pushes to GHCR still proceed instead of taking down every build job.
-      - name: Log in to Docker Hub
-        id: dockerhub-login
-        continue-on-error: true
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Check Docker Hub login (issue #82)"
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
-
-      - name: Create and push essentials multi-arch manifests (GHCR)
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:latest
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION} \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION}-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION}-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-essentials:${VERSION}
-
-          echo "Essentials box GHCR multi-arch manifests pushed for latest and ${VERSION}"
-
-      - name: Create and push essentials multi-arch manifests (Docker Hub)
-        if: steps.dockerhub-login.outcome == 'success'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION} \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}
-
-          echo "Essentials box Docker Hub multi-arch manifests pushed for latest and ${VERSION}"
-
-      - name: Skip essentials Docker Hub multi-arch manifests
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub manifest skipped::Skipping essentials Docker Hub multi-arch manifests because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
-
-  # === BUILD LANGUAGE IMAGES (amd64) ===
-  # All language images are built in parallel on top of essentials box
-  build-languages-amd64:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45    # Issue #53: Add timeout to fail fast on hangs (normal builds take ~10-15 min)
-    needs: [detect-changes, build-essentials-amd64]
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq]
-    if: |
-      always() &&
-      needs.detect-changes.result == 'success' &&
-      (needs.build-essentials-amd64.result == 'success' || needs.build-essentials-amd64.result == 'skipped') &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
         (github.event_name == 'workflow_dispatch')
@@ -1827,200 +407,22 @@ jobs:
     permissions:
       contents: read
       packages: write
+    uses: ./.github/workflows/release-essentials.yml
+    with:
+      changes: ${{ toJSON(needs.detect-changes.outputs) }}
+      js-built-amd64: ${{ needs.js.outputs.built-amd64 }}
+      js-built-arm64: ${{ needs.js.outputs.built-arm64 }}
+      js-amd64-result: ${{ needs.js.outputs.amd64-result }}
+      js-arm64-result: ${{ needs.js.outputs.arm64-result }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    steps:
-      - name: Check if this language needs building
-        id: check-lang
-        run: |
-          LANG="${{ matrix.language }}"
-          LANG_CHANGED="${{ needs.detect-changes.outputs[format('{0}-changed', matrix.language)] }}"
-          ESSENTIALS_CHANGED="${{ needs.detect-changes.outputs.essentials-changed }}"
-          COMMON_CHANGED="${{ needs.detect-changes.outputs.common-changed }}"
-          VERSION_CHANGED="${{ needs.detect-changes.outputs.version-changed }}"
-          JS_CHANGED="${{ needs.detect-changes.outputs.js-changed }}"
-
-          if [ "$LANG_CHANGED" = "true" ] || \
-             [ "$ESSENTIALS_CHANGED" = "true" ] || \
-             [ "$COMMON_CHANGED" = "true" ] || \
-             [ "$JS_CHANGED" = "true" ] || \
-             [ "$VERSION_CHANGED" = "true" ] || \
-             [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "should_build=true" >> $GITHUB_OUTPUT
-            echo "Building ${LANG}: change detected or workflow_dispatch"
-          else
-            echo "should_build=false" >> $GITHUB_OUTPUT
-            echo "Skipping ${LANG}: no relevant changes"
-          fi
-
-      - name: Checkout repository
-        if: steps.check-lang.outputs.should_build == 'true'
-        uses: actions/checkout@v6
-        with:
-          ref: main
-
-      # Issue #82: free disk space on every build job's runner before pulling
-      # base images / running buildx so that COPY --from=*-stage and large
-      # apt installs never hit "no space left on device" mid-build.
-      - name: Free disk space
-        if: steps.check-lang.outputs.should_build == 'true'
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Get latest version
-        if: steps.check-lang.outputs.should_build == 'true'
-        id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Set up Docker Buildx
-        if: steps.check-lang.outputs.should_build == 'true'
-        uses: ./.github/actions/setup-buildx-resilient
-
-      - name: Log in to GitHub Container Registry
-        if: steps.check-lang.outputs.should_build == 'true'
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
-      # so that pushes to GHCR still proceed instead of taking down every build job.
-      - name: Log in to Docker Hub
-        id: dockerhub-login
-        if: steps.check-lang.outputs.should_build == 'true'
-        continue-on-error: true
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Check Docker Hub login (issue #82)"
-        if: steps.check-lang.outputs.should_build == 'true' && steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
-
-      - name: Determine essentials base image
-        if: steps.check-lang.outputs.should_build == 'true'
-        id: essentials-base
-        run: |
-          if [ "${{ needs.build-essentials-amd64.outputs.built }}" = "true" ]; then
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-amd64" >> $GITHUB_OUTPUT
-          else
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Build and push ${{ matrix.language }} box (amd64)
-        id: build-push
-        continue-on-error: true
-        if: steps.check-lang.outputs.should_build == 'true'
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ubuntu/24.04/${{ matrix.language }}/Dockerfile
-          platforms: linux/amd64
-          push: true
-          build-args: |
-            ESSENTIALS_IMAGE=${{ steps.essentials-base.outputs.image }}
-          tags: |
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64
-          provenance: false
-          cache-from: type=gha,scope=${{ matrix.language }}-amd64
-          cache-to: type=gha,scope=${{ matrix.language }}-amd64,mode=max
-
-      # Retry push on transient GHCR 403 errors (Issue #78)
-      - name: Retry push ${{ matrix.language }} box (amd64) on failure
-        if: steps.check-lang.outputs.should_build == 'true' && steps.build-push.outcome == 'failure'
-        run: |
-          echo "First push attempt failed, retrying with backoff..."
-          TAGS=(
-            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64"
-            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64"
-            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-amd64"
-            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-amd64"
-          )
-          TAG_ARGS=""
-          for tag in "${TAGS[@]}"; do
-            TAG_ARGS="$TAG_ARGS --tag $tag"
-          done
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
-              --file ubuntu/24.04/${{ matrix.language }}/Dockerfile \
-              --platform linux/amd64 \
-              --build-arg ESSENTIALS_IMAGE=${{ steps.essentials-base.outputs.image }} \
-              $TAG_ARGS \
-              --provenance=false \
-              --cache-from type=gha,scope=${{ matrix.language }}-amd64 \
-              --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
-
-      # PHP-specific: Add local/global suffix tags based on install method (Issue #44)
-      - name: Tag PHP image with install method suffix (amd64)
-        if: steps.check-lang.outputs.should_build == 'true' && matrix.language == 'php'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          # Pull the image and inspect the marker file
-          docker pull ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64
-          PHP_METHOD=$(docker run --rm ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 cat /home/box/.php-install-method 2>/dev/null || echo "unknown")
-          echo "PHP install method (amd64): $PHP_METHOD"
-
-          if [ "$PHP_METHOD" = "local" ] || [ "$PHP_METHOD" = "global" ]; then
-            # Tag with method suffix on both registries
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
-              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
-              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64-${PHP_METHOD}
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
-              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64 \
-              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64-${PHP_METHOD}
-
-            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}
-            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-amd64-${PHP_METHOD}
-            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-amd64-${PHP_METHOD}
-            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-amd64-${PHP_METHOD}
-
-            echo "Tagged PHP image with -${PHP_METHOD} suffix"
-          fi
-
-  # === BUILD LANGUAGE IMAGES (arm64) ===
-  build-languages-arm64:
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 45    # Issue #53: Reduced from 120 to 45 min - fail fast on network hangs
-    needs: [detect-changes, build-essentials-arm64]
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq]
+  languages:
+    needs: [detect-changes, essentials]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
-      (needs.build-essentials-arm64.result == 'success' || needs.build-essentials-arm64.result == 'skipped') &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
         (github.event_name == 'workflow_dispatch')
@@ -2028,290 +430,22 @@ jobs:
     permissions:
       contents: read
       packages: write
+    uses: ./.github/workflows/release-languages.yml
+    with:
+      changes: ${{ toJSON(needs.detect-changes.outputs) }}
+      essentials-built-amd64: ${{ needs.essentials.outputs.built-amd64 }}
+      essentials-built-arm64: ${{ needs.essentials.outputs.built-arm64 }}
+      essentials-amd64-result: ${{ needs.essentials.outputs.amd64-result }}
+      essentials-arm64-result: ${{ needs.essentials.outputs.arm64-result }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    steps:
-      - name: Check if this language needs building
-        id: check-lang
-        run: |
-          LANG="${{ matrix.language }}"
-          LANG_CHANGED="${{ needs.detect-changes.outputs[format('{0}-changed', matrix.language)] }}"
-          ESSENTIALS_CHANGED="${{ needs.detect-changes.outputs.essentials-changed }}"
-          COMMON_CHANGED="${{ needs.detect-changes.outputs.common-changed }}"
-          VERSION_CHANGED="${{ needs.detect-changes.outputs.version-changed }}"
-          JS_CHANGED="${{ needs.detect-changes.outputs.js-changed }}"
-
-          if [ "$LANG_CHANGED" = "true" ] || \
-             [ "$ESSENTIALS_CHANGED" = "true" ] || \
-             [ "$COMMON_CHANGED" = "true" ] || \
-             [ "$JS_CHANGED" = "true" ] || \
-             [ "$VERSION_CHANGED" = "true" ] || \
-             [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "should_build=true" >> $GITHUB_OUTPUT
-            echo "Building ${LANG}: change detected or workflow_dispatch"
-          else
-            echo "should_build=false" >> $GITHUB_OUTPUT
-            echo "Skipping ${LANG}: no relevant changes"
-          fi
-
-      - name: Checkout repository
-        if: steps.check-lang.outputs.should_build == 'true'
-        uses: actions/checkout@v6
-        with:
-          ref: main
-
-      # Issue #82: free disk space on every build job's runner before pulling
-      # base images / running buildx so that COPY --from=*-stage and large
-      # apt installs never hit "no space left on device" mid-build.
-      - name: Free disk space
-        if: steps.check-lang.outputs.should_build == 'true'
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Get latest version
-        if: steps.check-lang.outputs.should_build == 'true'
-        id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Set up Docker Buildx
-        if: steps.check-lang.outputs.should_build == 'true'
-        uses: ./.github/actions/setup-buildx-resilient
-
-      - name: Log in to GitHub Container Registry
-        if: steps.check-lang.outputs.should_build == 'true'
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
-      # so that pushes to GHCR still proceed instead of taking down every build job.
-      - name: Log in to Docker Hub
-        id: dockerhub-login
-        if: steps.check-lang.outputs.should_build == 'true'
-        continue-on-error: true
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Check Docker Hub login (issue #82)"
-        if: steps.check-lang.outputs.should_build == 'true' && steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
-
-      - name: Determine essentials base image
-        if: steps.check-lang.outputs.should_build == 'true'
-        id: essentials-base
-        run: |
-          if [ "${{ needs.build-essentials-arm64.outputs.built }}" = "true" ]; then
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${{ steps.version.outputs.version }}-arm64" >> $GITHUB_OUTPUT
-          else
-            echo "image=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Build and push ${{ matrix.language }} box (arm64)
-        id: build-push
-        continue-on-error: true
-        if: steps.check-lang.outputs.should_build == 'true'
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ubuntu/24.04/${{ matrix.language }}/Dockerfile
-          platforms: linux/arm64
-          push: true
-          build-args: |
-            ESSENTIALS_IMAGE=${{ steps.essentials-base.outputs.image }}
-          tags: |
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64
-          provenance: false
-          cache-from: type=gha,scope=${{ matrix.language }}-arm64
-          cache-to: type=gha,scope=${{ matrix.language }}-arm64,mode=max
-
-      # Retry push on transient GHCR 403 errors (Issue #78)
-      - name: Retry push ${{ matrix.language }} box (arm64) on failure
-        if: steps.check-lang.outputs.should_build == 'true' && steps.build-push.outcome == 'failure'
-        run: |
-          echo "First push attempt failed, retrying with backoff..."
-          TAGS=(
-            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64"
-            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64"
-            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:latest-arm64"
-            "${{ env.DOCKERHUB_IMAGE_NAME }}-${{ matrix.language }}:${{ steps.version.outputs.version }}-arm64"
-          )
-          TAG_ARGS=""
-          for tag in "${TAGS[@]}"; do
-            TAG_ARGS="$TAG_ARGS --tag $tag"
-          done
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
-              --file ubuntu/24.04/${{ matrix.language }}/Dockerfile \
-              --platform linux/arm64 \
-              --build-arg ESSENTIALS_IMAGE=${{ steps.essentials-base.outputs.image }} \
-              $TAG_ARGS \
-              --provenance=false \
-              --cache-from type=gha,scope=${{ matrix.language }}-arm64 \
-              --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
-
-      # PHP-specific: Add local/global suffix tags based on install method (Issue #44)
-      - name: Tag PHP image with install method suffix (arm64)
-        if: steps.check-lang.outputs.should_build == 'true' && matrix.language == 'php'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          # Pull the image and inspect the marker file
-          docker pull ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64
-          PHP_METHOD=$(docker run --rm ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 cat /home/box/.php-install-method 2>/dev/null || echo "unknown")
-          echo "PHP install method (arm64): $PHP_METHOD"
-
-          if [ "$PHP_METHOD" = "local" ] || [ "$PHP_METHOD" = "global" ]; then
-            # Tag with method suffix on both registries
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
-              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
-              ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64-${PHP_METHOD}
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
-              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}
-            docker tag ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64 \
-              ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64-${PHP_METHOD}
-
-            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}
-            docker push ${{ env.DOCKERHUB_IMAGE_NAME }}-php:${VERSION}-arm64-${PHP_METHOD}
-            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:latest-arm64-${PHP_METHOD}
-            docker push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-php:${VERSION}-arm64-${PHP_METHOD}
-
-            echo "Tagged PHP image with -${PHP_METHOD} suffix"
-          fi
-
-  # === CREATE LANGUAGE MULTI-ARCH MANIFESTS ===
-  languages-manifest:
-    runs-on: ubuntu-24.04
-    needs: [detect-changes, build-languages-amd64, build-languages-arm64]
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq]
+  full:
+    needs: [detect-changes, essentials, languages]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
-      needs.build-languages-amd64.result == 'success' &&
-      needs.build-languages-arm64.result == 'success'
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: main
-
-      - name: Get latest version
-        id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
-      # so that pushes to GHCR still proceed instead of taking down every build job.
-      - name: Log in to Docker Hub
-        id: dockerhub-login
-        continue-on-error: true
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Check Docker Hub login (issue #82)"
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
-
-      - name: Create and push ${{ matrix.language }} multi-arch manifests (GHCR)
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          LANG="${{ matrix.language }}"
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:latest
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION} \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION}-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION}-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-${LANG}:${VERSION}
-
-          echo "${LANG} box GHCR multi-arch manifests pushed for latest and ${VERSION}"
-
-      - name: Create and push ${{ matrix.language }} multi-arch manifests (Docker Hub)
-        if: steps.dockerhub-login.outcome == 'success'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          LANG="${{ matrix.language }}"
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:latest \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:latest-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:latest-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:latest
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION} \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION}-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION}-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}-${LANG}:${VERSION}
-
-          echo "${LANG} box Docker Hub multi-arch manifests pushed for latest and ${VERSION}"
-
-      - name: Skip ${{ matrix.language }} Docker Hub multi-arch manifests
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub manifest skipped::Skipping ${{ matrix.language }} Docker Hub multi-arch manifests because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
-
-  # === BUILD AND PUSH FULL BOX (MAIN - amd64) ===
-  docker-build-push:
-    runs-on: ubuntu-24.04
-    needs: [detect-changes, build-languages-amd64, build-essentials-amd64]
-    # Run on push to main with changes, OR on workflow_dispatch
-    if: |
-      always() &&
-      needs.detect-changes.result == 'success' &&
-      (needs.build-essentials-amd64.result == 'success' || needs.build-essentials-amd64.result == 'skipped') &&
-      (needs.build-languages-amd64.result == 'success' || needs.build-languages-amd64.result == 'skipped') &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
         (github.event_name == 'workflow_dispatch')
@@ -2319,268 +453,24 @@ jobs:
     permissions:
       contents: read
       packages: write
+    uses: ./.github/workflows/release-full.yml
+    with:
+      changes: ${{ toJSON(needs.detect-changes.outputs) }}
+      essentials-built-amd64: ${{ needs.essentials.outputs.built-amd64 }}
+      essentials-built-arm64: ${{ needs.essentials.outputs.built-arm64 }}
+      essentials-amd64-result: ${{ needs.essentials.outputs.amd64-result }}
+      essentials-arm64-result: ${{ needs.essentials.outputs.arm64-result }}
+      languages-amd64-result: ${{ needs.languages.outputs.amd64-result }}
+      languages-arm64-result: ${{ needs.languages.outputs.arm64-result }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    outputs:
-      version: ${{ needs.detect-changes.outputs.version }}
-      digest: ${{ steps.build.outputs.digest }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: main  # Always use latest main for releases
-
-      # Fix for issue #41: Free disk space to prevent "No space left on device" errors
-      # This step removes unnecessary pre-installed software from the runner to free ~30 GB
-      # See: docs/case-studies/issue-41/CASE-STUDY.md
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false  # Keep tool cache for setup-* action compatibility
-          android: true      # Free ~14 GB
-          dotnet: true       # Free ~2.7 GB
-          haskell: true      # Free ~0 GB (not pre-installed on ubuntu-24.04)
-          large-packages: true  # Free ~5.3 GB
-          docker-images: true   # Clean existing Docker images
-          swap-storage: true    # Free ~4 GB
-
-      - name: Get latest version
-        id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version: $VERSION"
-
-      - name: Set up Docker Buildx
-        uses: ./.github/actions/setup-buildx-resilient
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
-      # so that pushes to GHCR still proceed instead of taking down every build job.
-      - name: Log in to Docker Hub
-        id: dockerhub-login
-        continue-on-error: true
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Check Docker Hub login (issue #82)"
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
-
-      - name: Determine base images
-        id: base-images
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          # Essentials base image
-          if [ "${{ needs.build-essentials-amd64.outputs.built }}" = "true" ]; then
-            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-amd64" >> $GITHUB_OUTPUT
-          else
-            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-amd64" >> $GITHUB_OUTPUT
-          fi
-
-          # Language images - use version tag if languages were built, otherwise latest
-          for lang in python go rust java kotlin ruby php perl swift lean rocq; do
-            LANG_UPPER=$(echo "$lang" | tr '[:lower:]' '[:upper:]')
-            # If the language matrix ran successfully, use versioned tag
-            if [ "${{ needs.build-languages-amd64.result }}" = "success" ]; then
-              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:${VERSION}-amd64" >> $GITHUB_OUTPUT
-            else
-              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:latest-amd64" >> $GITHUB_OUTPUT
-            fi
-          done
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: |
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
-            ${{ env.DOCKERHUB_IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest
-            type=raw,value=${{ steps.version.outputs.version }}
-            type=sha,prefix=
-            type=raw,value={{date 'YYYYMMDD'}}
-
-      - name: Extract metadata for amd64-specific tags
-        id: meta-amd64
-        uses: docker/metadata-action@v6
-        with:
-          images: |
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
-            ${{ env.DOCKERHUB_IMAGE_NAME }}
-          flavor: |
-            suffix=-amd64
-          tags: |
-            type=raw,value=latest
-            type=raw,value=${{ steps.version.outputs.version }}
-            type=sha,prefix=
-            type=raw,value={{date 'YYYYMMDD'}}
-
-      - name: Build and push full box (amd64)
-        id: build
-        continue-on-error: true
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ubuntu/24.04/full-box/Dockerfile
-          platforms: linux/amd64
-          push: true
-          build-args: |
-            ESSENTIALS_IMAGE=${{ steps.base-images.outputs.essentials }}
-            PYTHON_IMAGE=${{ steps.base-images.outputs.python }}
-            GO_IMAGE=${{ steps.base-images.outputs.go }}
-            RUST_IMAGE=${{ steps.base-images.outputs.rust }}
-            JAVA_IMAGE=${{ steps.base-images.outputs.java }}
-            KOTLIN_IMAGE=${{ steps.base-images.outputs.kotlin }}
-            RUBY_IMAGE=${{ steps.base-images.outputs.ruby }}
-            PHP_IMAGE=${{ steps.base-images.outputs.php }}
-            PERL_IMAGE=${{ steps.base-images.outputs.perl }}
-            SWIFT_IMAGE=${{ steps.base-images.outputs.swift }}
-            LEAN_IMAGE=${{ steps.base-images.outputs.lean }}
-            ROCQ_IMAGE=${{ steps.base-images.outputs.rocq }}
-          tags: |
-            ${{ steps.meta.outputs.tags }}
-            ${{ steps.meta-amd64.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          provenance: false  # Prevents unknown/unknown platform in registry
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # Retry push on transient GHCR 403 errors (Issue #78)
-      - name: Retry push full box (amd64) on failure
-        if: steps.build.outcome == 'failure'
-        env:
-          ALL_TAGS: |
-            ${{ steps.meta.outputs.tags }}
-            ${{ steps.meta-amd64.outputs.tags }}
-        run: |
-          echo "First push attempt failed, retrying with backoff..."
-          TAG_ARGS=""
-          while IFS= read -r tag; do
-            tag=$(echo "$tag" | xargs)
-            [ -z "$tag" ] && continue
-            TAG_ARGS="$TAG_ARGS --tag $tag"
-          done <<< "$ALL_TAGS"
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
-              --file ubuntu/24.04/full-box/Dockerfile \
-              --platform linux/amd64 \
-              --build-arg ESSENTIALS_IMAGE=${{ steps.base-images.outputs.essentials }} \
-              --build-arg PYTHON_IMAGE=${{ steps.base-images.outputs.python }} \
-              --build-arg GO_IMAGE=${{ steps.base-images.outputs.go }} \
-              --build-arg RUST_IMAGE=${{ steps.base-images.outputs.rust }} \
-              --build-arg JAVA_IMAGE=${{ steps.base-images.outputs.java }} \
-              --build-arg KOTLIN_IMAGE=${{ steps.base-images.outputs.kotlin }} \
-              --build-arg RUBY_IMAGE=${{ steps.base-images.outputs.ruby }} \
-              --build-arg PHP_IMAGE=${{ steps.base-images.outputs.php }} \
-              --build-arg PERL_IMAGE=${{ steps.base-images.outputs.perl }} \
-              --build-arg SWIFT_IMAGE=${{ steps.base-images.outputs.swift }} \
-              --build-arg LEAN_IMAGE=${{ steps.base-images.outputs.lean }} \
-              --build-arg ROCQ_IMAGE=${{ steps.base-images.outputs.rocq }} \
-              $TAG_ARGS \
-              --provenance=false \
-              --cache-from type=gha \
-              --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
-
-      # Smoke test the published image to verify all toolchains work (issue #62)
-      # Tests each toolchain command to catch cases where tools are missing/broken
-      - name: Smoke test released full box (amd64)
-        run: |
-          set -e
-          VERSION="${{ steps.version.outputs.version }}"
-          IMAGE="${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION}"
-          echo "=== Smoke testing released image: ${IMAGE} ==="
-
-          # JavaScript/TypeScript runtimes
-          docker run --rm "${IMAGE}" node --version
-          docker run --rm "${IMAGE}" bun --version
-          docker run --rm "${IMAGE}" deno --version
-
-          # Python (pyenv)
-          docker run --rm "${IMAGE}" python3 --version
-          docker run --rm "${IMAGE}" pip3 --version
-
-          # Go
-          docker run --rm "${IMAGE}" go version
-
-          # Rust (rustup + cargo + rustc)
-          docker run --rm "${IMAGE}" rustc --version
-          docker run --rm "${IMAGE}" cargo --version
-          docker run --rm "${IMAGE}" rustup --version
-
-          # Java/JVM (SDKMAN)
-          docker run --rm "${IMAGE}" java -version
-          docker run --rm "${IMAGE}" kotlin -version
-
-          # Ruby (rbenv)
-          docker run --rm "${IMAGE}" ruby --version
-          docker run --rm "${IMAGE}" gem --version
-
-          # PHP
-          docker run --rm "${IMAGE}" php --version
-
-          # Perl (perlbrew)
-          docker run --rm "${IMAGE}" perl --version
-
-          # Swift
-          docker run --rm "${IMAGE}" swift --version
-
-          # Lean/Mathlib (elan)
-          docker run --rm "${IMAGE}" lean --version
-
-          # Dotnet
-          docker run --rm "${IMAGE}" dotnet --version
-
-          # R language
-          docker run --rm "${IMAGE}" Rscript --version
-
-          # CLI tools
-          docker run --rm "${IMAGE}" gh --version
-          docker run --rm "${IMAGE}" glab --version
-
-          # expect (interactive automation tool, issue #64)
-          docker run --rm "${IMAGE}" expect -v
-
-          echo "=== All smoke tests passed for ${IMAGE} ==="
-
-  # === BUILD AND PUSH ARM64 IMAGE ===
-  # Using native ARM64 runner for optimal build performance
-  docker-build-push-arm64:
-    runs-on: ubuntu-24.04-arm  # Native ARM64 runner (free for public repos since Jan 2025)
-    timeout-minutes: 120       # Safety timeout to prevent runaway builds
-    needs: [detect-changes, build-languages-arm64, build-essentials-arm64, docker-build-push]
+  dind:
+    needs: [detect-changes, js, essentials, languages, full]
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
-      (needs.build-essentials-arm64.result == 'success' || needs.build-essentials-arm64.result == 'skipped') &&
-      (needs.build-languages-arm64.result == 'success' || needs.build-languages-arm64.result == 'skipped') &&
-      needs.docker-build-push.result == 'success' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
         (github.event_name == 'workflow_dispatch')
@@ -2588,680 +478,61 @@ jobs:
     permissions:
       contents: read
       packages: write
+    uses: ./.github/workflows/release-dind.yml
+    with:
+      changes: ${{ toJSON(needs.detect-changes.outputs) }}
+      js-manifest-result: ${{ needs.js.outputs.manifest-result }}
+      essentials-manifest-result: ${{ needs.essentials.outputs.manifest-result }}
+      languages-manifest-result: ${{ needs.languages.outputs.manifest-result }}
+      full-manifest-result: ${{ needs.full.outputs.manifest-result }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    outputs:
-      digest: ${{ steps.build.outputs.digest }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: main  # Always use latest main for releases
-
-      # Fix for issue #41: Free disk space to prevent "No space left on device" errors
-      # ARM64 runners have more disk space (~45 GB) but we still clean up for safety
-      # See: docs/case-studies/issue-41/CASE-STUDY.md
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false  # Keep tool cache for setup-* action compatibility
-          android: true      # Free ~14 GB
-          dotnet: true       # Free ~2.7 GB
-          haskell: true      # Free ~0 GB (not pre-installed)
-          large-packages: true  # Free ~5.3 GB
-          docker-images: true   # Clean existing Docker images
-          swap-storage: true    # Free ~4 GB
-
-      - name: Get latest version
-        id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version: $VERSION"
-
-      - name: Set up Docker Buildx
-        uses: ./.github/actions/setup-buildx-resilient
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
-      # so that pushes to GHCR still proceed instead of taking down every build job.
-      - name: Log in to Docker Hub
-        id: dockerhub-login
-        continue-on-error: true
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Check Docker Hub login (issue #82)"
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
-
-      - name: Determine base images
-        id: base-images
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          # Essentials base image
-          if [ "${{ needs.build-essentials-arm64.outputs.built }}" = "true" ]; then
-            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:${VERSION}-arm64" >> $GITHUB_OUTPUT
-          else
-            echo "essentials=${{ env.DOCKERHUB_IMAGE_NAME }}-essentials:latest-arm64" >> $GITHUB_OUTPUT
-          fi
-
-          # Language images
-          for lang in python go rust java kotlin ruby php perl swift lean rocq; do
-            if [ "${{ needs.build-languages-arm64.result }}" = "success" ]; then
-              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:${VERSION}-arm64" >> $GITHUB_OUTPUT
-            else
-              echo "${lang}=${{ env.DOCKERHUB_IMAGE_NAME }}-${lang}:latest-arm64" >> $GITHUB_OUTPUT
-            fi
-          done
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: |
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
-            ${{ env.DOCKERHUB_IMAGE_NAME }}
-          flavor: |
-            suffix=-arm64
-          tags: |
-            type=raw,value=latest
-            type=raw,value=${{ steps.version.outputs.version }}
-            type=sha,prefix=
-            type=raw,value={{date 'YYYYMMDD'}}
-
-      - name: Build and push full box (arm64)
-        id: build
-        continue-on-error: true
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ubuntu/24.04/full-box/Dockerfile
-          platforms: linux/arm64
-          push: true
-          build-args: |
-            ESSENTIALS_IMAGE=${{ steps.base-images.outputs.essentials }}
-            PYTHON_IMAGE=${{ steps.base-images.outputs.python }}
-            GO_IMAGE=${{ steps.base-images.outputs.go }}
-            RUST_IMAGE=${{ steps.base-images.outputs.rust }}
-            JAVA_IMAGE=${{ steps.base-images.outputs.java }}
-            KOTLIN_IMAGE=${{ steps.base-images.outputs.kotlin }}
-            RUBY_IMAGE=${{ steps.base-images.outputs.ruby }}
-            PHP_IMAGE=${{ steps.base-images.outputs.php }}
-            PERL_IMAGE=${{ steps.base-images.outputs.perl }}
-            SWIFT_IMAGE=${{ steps.base-images.outputs.swift }}
-            LEAN_IMAGE=${{ steps.base-images.outputs.lean }}
-            ROCQ_IMAGE=${{ steps.base-images.outputs.rocq }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          provenance: false  # Prevents unknown/unknown platform in registry
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # Retry push on transient GHCR 403 errors (Issue #78)
-      - name: Retry push full box (arm64) on failure
-        if: steps.build.outcome == 'failure'
-        env:
-          ALL_TAGS: ${{ steps.meta.outputs.tags }}
-        run: |
-          echo "First push attempt failed, retrying with backoff..."
-          TAG_ARGS=""
-          while IFS= read -r tag; do
-            tag=$(echo "$tag" | xargs)
-            [ -z "$tag" ] && continue
-            TAG_ARGS="$TAG_ARGS --tag $tag"
-          done <<< "$ALL_TAGS"
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
-              --file ubuntu/24.04/full-box/Dockerfile \
-              --platform linux/arm64 \
-              --build-arg ESSENTIALS_IMAGE=${{ steps.base-images.outputs.essentials }} \
-              --build-arg PYTHON_IMAGE=${{ steps.base-images.outputs.python }} \
-              --build-arg GO_IMAGE=${{ steps.base-images.outputs.go }} \
-              --build-arg RUST_IMAGE=${{ steps.base-images.outputs.rust }} \
-              --build-arg JAVA_IMAGE=${{ steps.base-images.outputs.java }} \
-              --build-arg KOTLIN_IMAGE=${{ steps.base-images.outputs.kotlin }} \
-              --build-arg RUBY_IMAGE=${{ steps.base-images.outputs.ruby }} \
-              --build-arg PHP_IMAGE=${{ steps.base-images.outputs.php }} \
-              --build-arg PERL_IMAGE=${{ steps.base-images.outputs.perl }} \
-              --build-arg SWIFT_IMAGE=${{ steps.base-images.outputs.swift }} \
-              --build-arg LEAN_IMAGE=${{ steps.base-images.outputs.lean }} \
-              --build-arg ROCQ_IMAGE=${{ steps.base-images.outputs.rocq }} \
-              $TAG_ARGS \
-              --provenance=false \
-              --cache-from type=gha \
-              --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
-
-  # === CREATE MULTI-ARCH MANIFEST ===
-  docker-manifest:
-    runs-on: ubuntu-24.04
-    needs: [detect-changes, docker-build-push, docker-build-push-arm64]
-    if: |
-      always() &&
-      needs.detect-changes.result == 'success' &&
-      needs.docker-build-push.result == 'success' &&
-      needs.docker-build-push-arm64.result == 'success' &&
-      (
-        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'workflow_dispatch')
-      )
+  # === PULL REQUEST TESTS ===
+  #
+  # Same idea, for the six pr-test tiers and the docker-build-test roll-up.
+  # `version-check` and `changeset-check` only exist on a pull request, so their
+  # results are passed in rather than re-derived.
+  pr-tests:
+    needs: [detect-changes, version-check, changeset-check]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
     permissions:
       contents: read
-      packages: write
+      actions: write
+    uses: ./.github/workflows/pr-tests.yml
+    with:
+      changes: ${{ toJSON(needs.detect-changes.outputs) }}
+      detect-changes-result: ${{ needs.detect-changes.result }}
+      version-check-result: ${{ needs.version-check.result }}
+      changeset-check-result: ${{ needs.changeset-check.result }}
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: main
-
-      - name: Get latest version
-        id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Creating manifest for version: $VERSION"
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
-      # so that pushes to GHCR still proceed instead of taking down every build job.
-      - name: Log in to Docker Hub
-        id: dockerhub-login
-        continue-on-error: true
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Check Docker Hub login (issue #82)"
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
-
-      - name: Create and push multi-arch manifest (GHCR)
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          # Create manifest for latest tag on GHCR
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:latest \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:latest-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:latest-arm64
-
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:latest
-
-          # Create manifest for version tag on GHCR
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION} \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION}-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION}-arm64
-
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${VERSION}
-
-          echo "GHCR multi-arch manifest created and pushed successfully for latest and ${VERSION}"
-
-      - name: Create and push multi-arch manifest (Docker Hub)
-        if: steps.dockerhub-login.outcome == 'success'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          # Create manifest for latest tag on Docker Hub
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}:latest \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}:latest-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}:latest-arm64
-
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}:latest
-
-          # Create manifest for version tag on Docker Hub
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION} \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION}-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION}-arm64
-
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}:${VERSION}
-
-          echo "Docker Hub multi-arch manifest created and pushed successfully for latest and ${VERSION}"
-
-      - name: Skip Docker Hub multi-arch manifest
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub manifest skipped::Skipping Docker Hub multi-arch manifest because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
-
-  # === BUILD DIND-BOX VARIANTS (amd64) - issue #80 ===
-  # Layers Docker Engine on top of every base box image so each variant has a
-  # "<base>-dind" sibling. Runs after the source variant's manifest is published.
-  build-dind-amd64:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    needs: [detect-changes, js-manifest, essentials-manifest, languages-manifest, docker-manifest]
-    strategy:
-      fail-fast: false
-      matrix:
-        # variant -> base box flavour. Special value "full" maps to konard/box.
-        # Everything else maps to konard/box-<variant>.
-        variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
-    if: |
-      always() &&
-      needs.detect-changes.result == 'success' &&
-      (needs.js-manifest.result == 'success' || needs.js-manifest.result == 'skipped') &&
-      (needs.essentials-manifest.result == 'success' || needs.essentials-manifest.result == 'skipped') &&
-      (needs.languages-manifest.result == 'success' || needs.languages-manifest.result == 'skipped') &&
-      (needs.docker-manifest.result == 'success' || needs.docker-manifest.result == 'skipped') &&
-      (
-        (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
-        (github.event_name == 'workflow_dispatch')
-      )
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: main
-
-      # Issue #82: free disk space on every build job's runner before pulling
-      # base images / running buildx so that COPY --from=*-stage and large
-      # apt installs never hit "no space left on device" mid-build.
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Get latest version
-        id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Compute image names
-        id: names
-        run: |
-          NAME="${{ matrix.variant }}"
-          # Source base image: full -> "konard/box"; others -> "konard/box-<name>"
-          # Target dind image: full -> "konard/box-dind"; others -> "konard/box-<name>-dind"
-          if [ "$NAME" = "full" ]; then
-            BASE_SUFFIX=""
-            DIND_SUFFIX="-dind"
-          else
-            BASE_SUFFIX="-$NAME"
-            DIND_SUFFIX="-${NAME}-dind"
-          fi
-          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-amd64" >> $GITHUB_OUTPUT
-          echo "dind_suffix=${DIND_SUFFIX}" >> $GITHUB_OUTPUT
-
-      - name: Set up Docker Buildx
-        uses: ./.github/actions/setup-buildx-resilient
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
-      # so that pushes to GHCR still proceed instead of taking down every build job.
-      - name: Log in to Docker Hub
-        id: dockerhub-login
-        continue-on-error: true
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Check Docker Hub login (issue #82)"
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
-
-      - name: Build and push ${{ matrix.variant }} dind-box (amd64)
-        id: build-push
-        continue-on-error: true
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ubuntu/24.04/dind/Dockerfile
-          platforms: linux/amd64
-          push: true
-          build-args: |
-            BASE_IMAGE=${{ steps.names.outputs.base_image }}
-          tags: |
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64
-          provenance: false
-          cache-from: type=gha,scope=dind-${{ matrix.variant }}-amd64
-          cache-to: type=gha,scope=dind-${{ matrix.variant }}-amd64,mode=max
-
-      - name: Retry push ${{ matrix.variant }} dind-box (amd64) on failure
-        if: steps.build-push.outcome == 'failure'
-        run: |
-          echo "First push attempt failed, retrying with backoff..."
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
-              --file ubuntu/24.04/dind/Dockerfile \
-              --platform linux/amd64 \
-              --build-arg BASE_IMAGE=${{ steps.names.outputs.base_image }} \
-              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64 \
-              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-amd64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-amd64 \
-              --provenance=false \
-              --cache-from type=gha,scope=dind-${{ matrix.variant }}-amd64 \
-              --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
-
-  # === BUILD DIND-BOX VARIANTS (arm64) - issue #80 ===
-  build-dind-arm64:
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 45
-    needs: [detect-changes, js-manifest, essentials-manifest, languages-manifest, docker-manifest]
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
-    if: |
-      always() &&
-      needs.detect-changes.result == 'success' &&
-      (needs.js-manifest.result == 'success' || needs.js-manifest.result == 'skipped') &&
-      (needs.essentials-manifest.result == 'success' || needs.essentials-manifest.result == 'skipped') &&
-      (needs.languages-manifest.result == 'success' || needs.languages-manifest.result == 'skipped') &&
-      (needs.docker-manifest.result == 'success' || needs.docker-manifest.result == 'skipped') &&
-      (
-        (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.should-build == 'true') ||
-        (github.event_name == 'workflow_dispatch')
-      )
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: main
-
-      # Issue #82: free disk space on every build job's runner before pulling
-      # base images / running buildx so that COPY --from=*-stage and large
-      # apt installs never hit "no space left on device" mid-build.
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Get latest version
-        id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Compute image names
-        id: names
-        run: |
-          NAME="${{ matrix.variant }}"
-          if [ "$NAME" = "full" ]; then
-            BASE_SUFFIX=""
-            DIND_SUFFIX="-dind"
-          else
-            BASE_SUFFIX="-$NAME"
-            DIND_SUFFIX="-${NAME}-dind"
-          fi
-          echo "base_image=${{ env.DOCKERHUB_IMAGE_NAME }}${BASE_SUFFIX}:${{ steps.version.outputs.version }}-arm64" >> $GITHUB_OUTPUT
-          echo "dind_suffix=${DIND_SUFFIX}" >> $GITHUB_OUTPUT
-
-      - name: Set up Docker Buildx
-        uses: ./.github/actions/setup-buildx-resilient
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
-      # so that pushes to GHCR still proceed instead of taking down every build job.
-      - name: Log in to Docker Hub
-        id: dockerhub-login
-        continue-on-error: true
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Check Docker Hub login (issue #82)"
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
-
-      - name: Build and push ${{ matrix.variant }} dind-box (arm64)
-        id: build-push
-        continue-on-error: true
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ubuntu/24.04/dind/Dockerfile
-          platforms: linux/arm64
-          push: true
-          build-args: |
-            BASE_IMAGE=${{ steps.names.outputs.base_image }}
-          tags: |
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64
-            ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64
-          provenance: false
-          cache-from: type=gha,scope=dind-${{ matrix.variant }}-arm64
-          cache-to: type=gha,scope=dind-${{ matrix.variant }}-arm64,mode=max
-
-      - name: Retry push ${{ matrix.variant }} dind-box (arm64) on failure
-        if: steps.build-push.outcome == 'failure'
-        run: |
-          echo "First push attempt failed, retrying with backoff..."
-          for attempt in 1 2 3; do
-            echo "==> Retry attempt $attempt/3..."
-            if docker buildx build \
-              --file ubuntu/24.04/dind/Dockerfile \
-              --platform linux/arm64 \
-              --build-arg BASE_IMAGE=${{ steps.names.outputs.base_image }} \
-              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64 \
-              --tag ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:latest-arm64 \
-              --tag ${{ env.DOCKERHUB_IMAGE_NAME }}${{ steps.names.outputs.dind_suffix }}:${{ steps.version.outputs.version }}-arm64 \
-              --provenance=false \
-              --cache-from type=gha,scope=dind-${{ matrix.variant }}-arm64 \
-              --push \
-              .; then
-              echo "==> Push succeeded on retry attempt $attempt"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              delay=$((10 * attempt))
-              echo "==> Retry failed, waiting ${delay}s before next attempt..."
-              sleep "$delay"
-            fi
-          done
-          echo "==> All retry attempts failed"
-          exit 1
-
-  # === CREATE DIND-BOX MULTI-ARCH MANIFESTS - issue #80 ===
-  dind-manifest:
-    runs-on: ubuntu-24.04
-    needs: [detect-changes, build-dind-amd64, build-dind-arm64]
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [js, essentials, python, go, rust, java, kotlin, ruby, php, perl, swift, lean, rocq, full]
-    if: |
-      always() &&
-      needs.detect-changes.result == 'success' &&
-      needs.build-dind-amd64.result == 'success' &&
-      needs.build-dind-arm64.result == 'success'
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: main
-
-      - name: Get latest version
-        id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Issue #82: tolerate Docker Hub login failure (e.g. expired DOCKERHUB_TOKEN)
-      # so that pushes to GHCR still proceed instead of taking down every build job.
-      - name: Log in to Docker Hub
-        id: dockerhub-login
-        continue-on-error: true
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: "Check Docker Hub login (issue #82)"
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
-
-      - name: Compute dind suffix
-        id: names
-        run: |
-          NAME="${{ matrix.variant }}"
-          if [ "$NAME" = "full" ]; then
-            echo "dind_suffix=-dind" >> $GITHUB_OUTPUT
-          else
-            echo "dind_suffix=-${NAME}-dind" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create and push ${{ matrix.variant }} dind multi-arch manifests (GHCR)
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          DSUF="${{ steps.names.outputs.dind_suffix }}"
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:latest
-
-          docker manifest create ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION} \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}-amd64 \
-            --amend ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}-arm64
-          docker manifest push ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}${DSUF}:${VERSION}
-
-          echo "Pushed GHCR multi-arch manifest for ${{ env.GHCR_IMAGE_NAME }}${DSUF} (latest, ${VERSION})"
-
-      - name: Create and push ${{ matrix.variant }} dind multi-arch manifests (Docker Hub)
-        if: steps.dockerhub-login.outcome == 'success'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          DSUF="${{ steps.names.outputs.dind_suffix }}"
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:latest
-
-          docker manifest create ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION} \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION}-amd64 \
-            --amend ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION}-arm64
-          docker manifest push ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF}:${VERSION}
-
-          echo "Pushed multi-arch manifest for ${{ env.DOCKERHUB_IMAGE_NAME }}${DSUF} (latest, ${VERSION})"
-
-      - name: Skip ${{ matrix.variant }} dind Docker Hub multi-arch manifests
-        if: steps.dockerhub-login.outcome != 'success'
-        run: |
-          echo "::warning title=Docker Hub manifest skipped::Skipping ${{ matrix.variant }} dind Docker Hub multi-arch manifests because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
 
   # === CREATE GITHUB RELEASE ===
   create-release:
     runs-on: ubuntu-24.04
-    needs: [detect-changes, docker-manifest, js-manifest, essentials-manifest, languages-manifest, dind-manifest]
+    timeout-minutes: 15
+    needs: [detect-changes, js, essentials, languages, full, dind]
+    # The release is created from the source state, not from the registry
+    # (issue #115; hive-mind principle #13, "never gate the release on an image
+    # push"). It waits for the manifest jobs so the notes can report what was
+    # published, but `needs.full.result == 'success'` is deliberately
+    # NOT required: a Docker Hub outage or an expired registry token used to
+    # mean the tagged commit got no GitHub Release at all, and the release for
+    # that version then had to be created by hand. Only detect-changes is
+    # required, because its output is what decides there is anything to release.
+    # The notes say per image which references actually resolve, so a partial
+    # push produces an honest release instead of no release.
     if: |
-      always() &&
+      !cancelled() &&
       needs.detect-changes.result == 'success' &&
-      needs.docker-manifest.result == 'success' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
         (github.event_name == 'workflow_dispatch')
       )
     permissions:
       contents: write
+      packages: read
 
     steps:
       - name: Checkout repository
@@ -3273,147 +544,40 @@ jobs:
         id: version
         run: |
           git pull origin main || true
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Creating release for version: $VERSION"
 
-      - name: Create GitHub Release
+      # Anonymous `docker manifest inspect` cannot tell "this package does not
+      # exist" from "you may not look at it" on GHCR, and the notes must not
+      # report a published image as missing. Logging in with the job's own token
+      # makes the distinction real. Docker Hub is public and needs no login;
+      # if it rate-limits, the check reports "unknown", never "missing".
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The notes are generated from one image list by
+      # scripts/release/build-release-notes.sh. They used to be 106 lines of
+      # inline heredoc with a hand-written row per image, split across two steps
+      # only to stay under GitHub's 21000-character per-step expression limit
+      # (issue #80) - a limit a script does not have (issue #115).
+      - name: Build release notes
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+          REPO: ${{ github.repository }}
           GHCR_IMAGE: ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
           DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_IMAGE_NAME }}
+          # Ask the registries which of the advertised references exist. Off by
+          # default so the generator stays offline-testable.
+          VERIFY_IMAGES: '1'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          DATE=$(date +%Y-%m-%d)
-          REPO="${{ github.repository }}"
-
-          # Create release notes file with comprehensive clickable links
-          # Issue #39: All tags should have clickable links for both Docker Hub and GHCR
-          cat > /tmp/release-notes.md << ENDOFNOTES
-          ## Docker Images
-
-          ### Docker Hub - Combo Boxes
-
-          | Image | Multi-arch | AMD64 | ARM64 |
-          |-------|------------|-------|-------|
-          | Full Box | [\`${DOCKERHUB_IMAGE}:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}/tags?name=${VERSION}-arm64) |
-          | Essentials | [\`${DOCKERHUB_IMAGE}-essentials:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-essentials/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-essentials/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-essentials/tags?name=${VERSION}-arm64) |
-          | JS | [\`${DOCKERHUB_IMAGE}-js:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-js/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-js/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-js/tags?name=${VERSION}-arm64) |
-
-          ### Docker Hub - Language Boxes
-
-          | Language | Multi-arch | AMD64 | ARM64 |
-          |----------|------------|-------|-------|
-          | Python | [\`${DOCKERHUB_IMAGE}-python:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-python/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-python/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-python/tags?name=${VERSION}-arm64) |
-          | Go | [\`${DOCKERHUB_IMAGE}-go:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-go/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-go/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-go/tags?name=${VERSION}-arm64) |
-          | Rust | [\`${DOCKERHUB_IMAGE}-rust:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rust/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rust/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rust/tags?name=${VERSION}-arm64) |
-          | Java | [\`${DOCKERHUB_IMAGE}-java:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-java/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-java/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-java/tags?name=${VERSION}-arm64) |
-          | Kotlin | [\`${DOCKERHUB_IMAGE}-kotlin:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-kotlin/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-kotlin/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-kotlin/tags?name=${VERSION}-arm64) |
-          | Ruby | [\`${DOCKERHUB_IMAGE}-ruby:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-ruby/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-ruby/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-ruby/tags?name=${VERSION}-arm64) |
-          | PHP | [\`${DOCKERHUB_IMAGE}-php:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-php/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-php/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-php/tags?name=${VERSION}-arm64) |
-          | Perl | [\`${DOCKERHUB_IMAGE}-perl:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-perl/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-perl/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-perl/tags?name=${VERSION}-arm64) |
-          | Swift | [\`${DOCKERHUB_IMAGE}-swift:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-swift/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-swift/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-swift/tags?name=${VERSION}-arm64) |
-          | Lean | [\`${DOCKERHUB_IMAGE}-lean:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-lean/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-lean/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-lean/tags?name=${VERSION}-arm64) |
-          | Rocq | [\`${DOCKERHUB_IMAGE}-rocq:${VERSION}\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rocq/tags?name=${VERSION}) | [\`${VERSION}-amd64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rocq/tags?name=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://hub.docker.com/r/${DOCKERHUB_IMAGE}-rocq/tags?name=${VERSION}-arm64) |
-
-          ### GitHub Container Registry - Combo Boxes
-
-          | Image | Multi-arch | AMD64 | ARM64 |
-          |-------|------------|-------|-------|
-          | Full Box | [\`${GHCR_IMAGE}:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box?tag=${VERSION}-arm64) |
-          | Essentials | [\`${GHCR_IMAGE}-essentials:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-essentials?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-essentials?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-essentials?tag=${VERSION}-arm64) |
-          | JS | [\`${GHCR_IMAGE}-js:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-js?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-js?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-js?tag=${VERSION}-arm64) |
-
-          ### GitHub Container Registry - Language Boxes
-
-          | Language | Multi-arch | AMD64 | ARM64 |
-          |----------|------------|-------|-------|
-          | Python | [\`${GHCR_IMAGE}-python:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-python?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-python?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-python?tag=${VERSION}-arm64) |
-          | Go | [\`${GHCR_IMAGE}-go:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-go?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-go?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-go?tag=${VERSION}-arm64) |
-          | Rust | [\`${GHCR_IMAGE}-rust:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-rust?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-rust?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-rust?tag=${VERSION}-arm64) |
-          | Java | [\`${GHCR_IMAGE}-java:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-java?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-java?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-java?tag=${VERSION}-arm64) |
-          | Kotlin | [\`${GHCR_IMAGE}-kotlin:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-kotlin?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-kotlin?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-kotlin?tag=${VERSION}-arm64) |
-          | Ruby | [\`${GHCR_IMAGE}-ruby:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-ruby?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-ruby?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-ruby?tag=${VERSION}-arm64) |
-          | PHP | [\`${GHCR_IMAGE}-php:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-php?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-php?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-php?tag=${VERSION}-arm64) |
-          | Perl | [\`${GHCR_IMAGE}-perl:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-perl?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-perl?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-perl?tag=${VERSION}-arm64) |
-          | Swift | [\`${GHCR_IMAGE}-swift:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-swift?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-swift?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-swift?tag=${VERSION}-arm64) |
-          | Lean | [\`${GHCR_IMAGE}-lean:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-lean?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-lean?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-lean?tag=${VERSION}-arm64) |
-          | Rocq | [\`${GHCR_IMAGE}-rocq:${VERSION}\`](https://github.com/${REPO}/pkgs/container/box-rocq?tag=${VERSION}) | [\`${VERSION}-amd64\`](https://github.com/${REPO}/pkgs/container/box-rocq?tag=${VERSION}-amd64) | [\`${VERSION}-arm64\`](https://github.com/${REPO}/pkgs/container/box-rocq?tag=${VERSION}-arm64) |
-
-          ## Architecture
-
-          \`\`\`
-          JS box (konard/box-js)
-            → Essentials box (konard/box-essentials)
-              ├─ box-python  ├─ box-go    ├─ box-rust
-              ├─ box-java    ├─ box-kotlin ├─ box-ruby
-              ├─ box-php     ├─ box-perl   ├─ box-swift
-              ├─ box-lean    └─ box-rocq
-              → Full box (konard/box) [merges all language images]
-          \`\`\`
-
-          ## Quick Start
-
-          Pull multi-arch (auto-selects your platform):
-          \`\`\`sh
-          docker pull ${DOCKERHUB_IMAGE}:${VERSION}
-          \`\`\`
-
-          Pull specific architecture:
-          \`\`\`sh
-          # AMD64
-          docker pull ${DOCKERHUB_IMAGE}:${VERSION}-amd64
-
-          # ARM64 (Apple Silicon, Raspberry Pi, etc.)
-          docker pull ${DOCKERHUB_IMAGE}:${VERSION}-arm64
-          \`\`\`
-
-          Pull from GHCR:
-          \`\`\`sh
-          docker pull ${GHCR_IMAGE}:${VERSION}
-          \`\`\`
-
-          ## Links
-          - [Docker Hub](https://hub.docker.com/r/${DOCKERHUB_IMAGE})
-          - [GHCR Package](https://github.com/${REPO}/pkgs/container/box)
-
-          Released on ${DATE}
-          ENDOFNOTES
-
-      # Append dind-box tables in a separate step to stay under GitHub's
-      # 21000-char per-step expression limit (issue #80).
-      - name: Append dind-box tables to release notes
-        env:
-          GHCR_REG: ${{ env.GHCR_REGISTRY }}
-          GHCR_NAME: ${{ env.GHCR_IMAGE_NAME }}
-          DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_IMAGE_NAME }}
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          REPO="${{ github.repository }}"
-
-          {
-            printf '\n### Docker Hub - dind-box (Docker-in-Docker variants, issue #80)\n\n'
-            printf 'Each variant runs an inner Docker daemon. Run with `docker run --privileged` (default) or `docker run --runtime=sysbox-runc` (recommended for shared hosts). `docker ps -a` inside the container only lists containers created by that container - see [docs/case-studies/issue-80](https://github.com/%s/blob/v%s/docs/case-studies/issue-80/CASE-STUDY.md).\n\n' "$REPO" "$VERSION"
-            printf '| Image | Multi-arch | AMD64 | ARM64 |\n'
-            printf '|-------|------------|-------|-------|\n'
-            for variant in "Full|" "Essentials|-essentials" "JS|-js" "Python|-python" "Go|-go" "Rust|-rust" "Java|-java" "Kotlin|-kotlin" "Ruby|-ruby" "PHP|-php" "Perl|-perl" "Swift|-swift" "Lean|-lean" "Rocq|-rocq"; do
-              label="${variant%%|*}"
-              suffix="${variant#*|}"
-              dh="${DOCKERHUB_IMAGE}${suffix}-dind"
-              printf '| %s + dind | [`%s:%s`](https://hub.docker.com/r/%s/tags?name=%s) | [`%s-amd64`](https://hub.docker.com/r/%s/tags?name=%s-amd64) | [`%s-arm64`](https://hub.docker.com/r/%s/tags?name=%s-arm64) |\n' \
-                "$label" "$dh" "$VERSION" "$dh" "$VERSION" "$VERSION" "$dh" "$VERSION" "$VERSION" "$dh" "$VERSION"
-            done
-            printf '\n### GitHub Container Registry - dind-box (Docker-in-Docker variants, issue #80)\n\n'
-            printf '| Image | Multi-arch | AMD64 | ARM64 |\n'
-            printf '|-------|------------|-------|-------|\n'
-            for variant in "Full|box" "Essentials|box-essentials" "JS|box-js" "Python|box-python" "Go|box-go" "Rust|box-rust" "Java|box-java" "Kotlin|box-kotlin" "Ruby|box-ruby" "PHP|box-php" "Perl|box-perl" "Swift|box-swift" "Lean|box-lean" "Rocq|box-rocq"; do
-              label="${variant%%|*}"
-              pkg="${variant#*|}-dind"
-              gh_image="${GHCR_REG}/${GHCR_NAME%/*}/${pkg}"
-              printf '| %s + dind | [`%s:%s`](https://github.com/%s/pkgs/container/%s?tag=%s) | [`%s-amd64`](https://github.com/%s/pkgs/container/%s?tag=%s-amd64) | [`%s-arm64`](https://github.com/%s/pkgs/container/%s?tag=%s-arm64) |\n' \
-                "$label" "$gh_image" "$VERSION" "$REPO" "$pkg" "$VERSION" "$VERSION" "$REPO" "$pkg" "$VERSION" "$VERSION" "$REPO" "$pkg" "$VERSION"
-            done
-          } >> /tmp/release-notes.md
+          bash scripts/release/build-release-notes.sh > /tmp/release-notes.md
+          echo "=== release notes ($(wc -l < /tmp/release-notes.md) lines) ==="
+          cat /tmp/release-notes.md
 
       - name: Publish GitHub Release
         env:

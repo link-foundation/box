@@ -83,7 +83,7 @@ exposing the host socket
 
 Podman is daemonless and supports rootless nesting natively
 ([Podman rootless tutorial](https://github.com/containers/podman/blob/main/docs/tutorials/rootless_tutorial.md),
-[issue #15419 nested rootless](https://github.com/containers/podman/issues/15419)).
+[issue #15419 nested rootless](https://github.com/podman-container-tools/podman/issues/15419)).
 
 - Privilege: none; containers run in the user's namespace.
 - Security posture: very strong if subuid/subgid ranges are sized correctly.
