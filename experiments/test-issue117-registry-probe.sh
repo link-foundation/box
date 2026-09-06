@@ -291,6 +291,7 @@ else
 fi
 
 REGISTRY_PROBE_USERNAME="konard"
+# shellcheck disable=SC2034  # read by registry_probe_push in the sourced file
 REGISTRY_PROBE_PASSWORD="pat"
 STDOUT="$(registry_probe_push ghcr.io link-foundation/box)"
 if [ -z "$STDOUT" ]; then
