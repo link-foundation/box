@@ -719,10 +719,31 @@ jobs:
       # whether the *run* is allowed to be green. A release nobody can pull is
       # not a successful release, and run 33972074755 reporting success is the
       # reason v2.5.0 and v2.6.0 went unnoticed for months (issue #117).
+      # The baseline for the regression half of the check below (issue #119c).
+      # It is computed in its own step because that check must hold no registry
+      # credential, and GITHUB_TOKEN is one: it authenticates to ghcr.io, which
+      # is precisely how the v2.6.0 notes came to say "28 of 56 resolve" about
+      # 56 references nobody else could pull (issue #117).
+      - name: Find the version this release should be compared against
+        id: previous
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          PREVIOUS="$(gh release list --exclude-drafts --exclude-pre-releases --limit 30 \
+            --json tagName \
+            --jq "[.[].tagName | ltrimstr(\"v\")] | map(select(. != \"${VERSION}\")) | first // \"\"")"
+          echo "version=${PREVIOUS}" >> "$GITHUB_OUTPUT"
+          echo "Comparing v${VERSION} against ${PREVIOUS:-no previous release}"
+
       - name: Verify the release is reachable without credentials
         env:
           VERSION: ${{ steps.version.outputs.version }}
           GHCR_IMAGE: ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
           DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_IMAGE_NAME }}
+          # A tag that resolves and carries one architecture is not published:
+          # `docker pull` on the other one fails with "no matching manifest".
+          # v2.7.0 shipped konard/box:latest that way and the run was green.
+          PREVIOUS_VERSION: ${{ steps.previous.outputs.version }}
         run: |
           bash scripts/release/check-publication.sh

@@ -48,6 +48,13 @@ cat >"$WORK/scripts/release/registry-probe.sh" <<'STUB'
 # RC-1, enforced by scripts/ci/check-heredoc-vars.sh).
 : "${STUB_STATE:?must be passed in by the test}"
 : "${STUB_LOG:?must be passed in by the test}"
+: "${STUB_REAL_PROBE:?must be passed in by the test}"
+# The real file first, for the pure parsers the caller also uses
+# (registry_probe_missing_platforms). Sourcing it runs nothing and asks nothing;
+# the two entry points that would touch a network are replaced below. A stub
+# that reimplemented the parsers would be testing the stub's arithmetic.
+# shellcheck source=/dev/null
+source "$STUB_REAL_PROBE"
 REGISTRY_PROBE_STATE=""
 REGISTRY_PROBE_DETAIL=""
 registry_probe_pull() {
@@ -57,7 +64,15 @@ registry_probe_pull() {
     *) REGISTRY_PROBE_STATE="${STUB_DOCKERHUB_STATE:-$STUB_STATE}" ;;
   esac
   REGISTRY_PROBE_DETAIL="stub answered ${REGISTRY_PROBE_STATE} for $1"
+  # This suite is about the four states, not about coverage: every published
+  # reference carries the full set, so issue #119c's gate never fires here and
+  # the states stay the only thing under test. Coverage has its own suite,
+  # experiments/test-issue119-check-publication.sh.
+  REGISTRY_PROBE_PLATFORMS=""
+  [ "$REGISTRY_PROBE_STATE" = "published" ] && REGISTRY_PROBE_PLATFORMS="${STUB_PLATFORMS:-linux/amd64 linux/arm64}"
+  return 0
 }
+registry_probe_platforms() { registry_probe_pull "$1"; }
 STUB
 
 OUT="$WORK/out"
@@ -80,6 +95,7 @@ run() {
     STUB_GHCR_STATE="$ghcr_state" \
     STUB_DOCKERHUB_STATE="$dockerhub_state" \
     STUB_LOG="$STUB_LOG" \
+    STUB_REAL_PROBE="$PWD/scripts/release/registry-probe.sh" \
     GITHUB_STEP_SUMMARY="$SUMMARY" \
     "$@" \
     bash "$WORK/scripts/release/check-publication.sh" >"$OUT" 2>&1
@@ -158,11 +174,14 @@ echo ""
 echo "== Part 3: it checks what it says it checks =="
 
 run published published
+# Four images on two registries, at two tags each: the version and `latest`.
+# `latest` joined the sample with issue #119c - it is the tag v2.7.0 broke, and
+# a check that only reads the version tag would have passed that release.
 PROBED="$(wc -l <"$STUB_LOG")"
-if [ "$PROBED" -eq 8 ]; then
-  pass "both registries are probed for all four sampled images"
+if [ "$PROBED" -eq 16 ]; then
+  pass "both registries are probed for all four sampled images, at both tags"
 else
-  fail "expected 8 probes, got $PROBED"
+  fail "expected 16 probes, got $PROBED"
   sed 's/^/      /' "$STUB_LOG" >&2
 fi
 
@@ -183,7 +202,7 @@ else
 fi
 
 run published published CHECK_SUFFIXES="-python"
-if [ "$(wc -l <"$STUB_LOG")" -eq 4 ]; then
+if [ "$(wc -l <"$STUB_LOG")" -eq 8 ]; then
   pass "CHECK_SUFFIXES narrows the sample (and always keeps the base image)"
 else
   fail "CHECK_SUFFIXES does not control the sample"
@@ -205,6 +224,7 @@ for var in VERSION GHCR_IMAGE DOCKERHUB_IMAGE; do
   out="$(env -i PATH="$PATH" HOME="$HOME" \
     VERSION="2.6.0" GHCR_IMAGE="ghcr.io/link-foundation/box" \
     DOCKERHUB_IMAGE="konard/box" STUB_STATE="published" STUB_LOG="$STUB_LOG" \
+    STUB_REAL_PROBE="$PWD/scripts/release/registry-probe.sh" \
     "$var=" bash "$WORK/scripts/release/check-publication.sh" 2>&1)"
   status=$?
   if [ "$status" -eq 2 ] && printf '%s' "$out" | grep -q '::error'; then
