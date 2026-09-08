@@ -1,0 +1,66 @@
+# Evidence: what the two full-chain PR jobs run out of
+#
+# Run 34278116323 on commit c866111, the first run with the sampler from
+# scripts/ci/resource-monitor.sh in it:
+#
+#   job 102247036552  pr-test / full       exit 143
+#   job 102240110409  pr-test / dind-full  exit 143
+#
+# Both died in the full box's `#64 exporting layers`, and both left the reading
+# that the three earlier failures (run 34259552358) did not. Reproduced with:
+#
+#   gh api repos/link-foundation/box/actions/jobs/102247036552/logs
+#   gh api repos/link-foundation/box/actions/jobs/102240110409/logs
+#
+# Read the two columns against each other. Disk: 11 MB consumed across the
+# whole 4.5-minute export, 88 GB still free. Memory: 2.3 GB -> 18.8 GB
+# committed (RAM plus swap), swap saturated at 3071 MB, still climbing ~2 GB
+# per 30 s when the runner was taken down. The export runs out of memory while
+# the disk sits idle, which is docker/buildx#1606 - reported against the docker
+# driver since Docker 23.0, still open, with no daemon setting to turn it off -
+# and it is why the fix (scripts/ci/ensure-swap.sh) spends the idle disk on
+# swap rather than reclaiming more disk.
+#
+# For scale: the same two jobs passed on 2026-09-05 (run 33962512941, job
+# 101300748685, `#63 exporting layers 171.1s done`) on the same runner image
+# and the same Docker 28.0.4. What grew in between is what gets exported -
+# commit 46f80a5 made the Lean boxes install a real toolchain, so the full
+# box's `COPY --from=lean-stage /home/box/.elan` stopped copying a stub.
+
+=== pr-test / full, job 102247036552: the export window ===
+2026-09-08T22:13:07.2189290Z #63 [stage-11 34/34] WORKDIR /home/box
+2026-09-08T22:13:07.2191684Z #64 exporting to image
+2026-09-08T22:13:07.2192119Z #64 exporting layers
+2026-09-08T22:13:34.4006830Z [resources] 22:13:34 disk /=59758MB used / 87945MB free (41%) | mem 5836MB used / 10152MB available of 15989MB | swap 0MB used of 3071MB
+2026-09-08T22:14:04.4561074Z [resources] 22:14:04 disk /=59758MB used / 87945MB free (41%) | mem 9193MB used / 6796MB available of 15989MB | swap 0MB used of 3071MB
+2026-09-08T22:14:34.4849368Z [resources] 22:14:34 disk /=59759MB used / 87945MB free (41%) | mem 11527MB used / 4462MB available of 15989MB | swap 162MB used of 3071MB
+2026-09-08T22:15:04.5117409Z [resources] 22:15:04 disk /=59759MB used / 87945MB free (41%) | mem 13157MB used / 2831MB available of 15989MB | swap 885MB used of 3071MB
+2026-09-08T22:15:34.5501355Z [resources] 22:15:34 disk /=59759MB used / 87944MB free (41%) | mem 13671MB used / 2318MB available of 15989MB | swap 2620MB used of 3071MB
+2026-09-08T22:16:04.5674660Z [resources] 22:16:04 disk /=59760MB used / 87943MB free (41%) | mem 14052MB used / 1937MB available of 15989MB | swap 2727MB used of 3071MB
+2026-09-08T22:16:34.7159025Z [resources] 22:16:34 disk /=59763MB used / 87941MB free (41%) | mem 14616MB used / 1372MB available of 15989MB | swap 2705MB used of 3071MB
+2026-09-08T22:17:04.7814960Z [resources] 22:17:04 disk /=59764MB used / 87940MB free (41%) | mem 15126MB used / 863MB available of 15989MB | swap 3058MB used of 3071MB LOW-MEM
+2026-09-08T22:17:34.8715603Z [resources] 22:17:34 disk /=59769MB used / 87934MB free (41%) | mem 15723MB used / 265MB available of 15989MB | swap 3071MB used of 3071MB LOW-MEM
+2026-09-08T22:17:38.4681283Z ##[error]Process completed with exit code 143.
+2026-09-08T22:17:38.4683938Z ##[error]The runner has received a shutdown signal. This can happen when the runner service is stopped, or a manually started runner is canceled.
+
+=== pr-test / dind-full, job 102240110409: the same window, 22 minutes earlier ===
+2026-09-08T21:51:30.6735363Z #63 [stage-11 34/34] WORKDIR /home/box
+2026-09-08T21:51:30.6736252Z #64 exporting to image
+2026-09-08T21:51:30.6736635Z #64 exporting layers
+2026-09-08T21:51:54.3325903Z [resources] 21:51:54 disk /=59760MB used / 87943MB free (41%) | mem 5108MB used / 10881MB available of 15989MB | swap 0MB used of 3071MB
+2026-09-08T21:52:24.3532386Z [resources] 21:52:24 disk /=59761MB used / 87943MB free (41%) | mem 9015MB used / 6974MB available of 15989MB | swap 0MB used of 3071MB
+2026-09-08T21:52:54.3996540Z [resources] 21:52:54 disk /=59761MB used / 87943MB free (41%) | mem 11915MB used / 4074MB available of 15989MB | swap 188MB used of 3071MB
+2026-09-08T21:53:24.4213995Z [resources] 21:53:24 disk /=59761MB used / 87943MB free (41%) | mem 12623MB used / 3366MB available of 15989MB | swap 1644MB used of 3071MB
+2026-09-08T21:53:54.4467786Z [resources] 21:53:54 disk /=59762MB used / 87942MB free (41%) | mem 13140MB used / 2848MB available of 15989MB | swap 2273MB used of 3071MB
+2026-09-08T21:54:24.4707134Z [resources] 21:54:24 disk /=59762MB used / 87941MB free (41%) | mem 14246MB used / 1743MB available of 15989MB | swap 1387MB used of 3071MB
+2026-09-08T21:54:54.5071507Z [resources] 21:54:54 disk /=59763MB used / 87940MB free (41%) | mem 14203MB used / 1786MB available of 15989MB | swap 2236MB used of 3071MB
+2026-09-08T21:55:24.5509919Z [resources] 21:55:24 disk /=59764MB used / 87939MB free (41%) | mem 15051MB used / 938MB available of 15989MB | swap 3066MB used of 3071MB LOW-MEM
+2026-09-08T21:55:55.0212495Z ##[error]Process completed with exit code 143.
+2026-09-08T21:55:55.0212890Z ##[error]The runner has received a shutdown signal. This can happen when the runner service is stopped, or a manually started runner is canceled.
+
+=== how much disk is free when the swapfile is sized, same runner ===
+# From the `Free disk space` step of run 34259552358, job 102215605228: the
+# reclaim leaves 118027324 KB = ~112 GB free on /, which is what
+# ENSURE_SWAP_RESERVE_MB=40960 is subtracted from. 29697 MB of swapfile leaves
+# the chain (~27 GB) and its export (~25 GB) room to finish.
+/dev/root      151263856 33220148 118027324  22% /

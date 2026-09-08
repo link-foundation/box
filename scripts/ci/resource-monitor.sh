@@ -35,6 +35,15 @@
 #   So this script exists to make the next failure self-explanatory: whichever
 #   resource ran out, the sample immediately before the kill says so.
 #
+#   It did. Run 34278116323 (job 102247036552) recorded the full box's export
+#   growing from 2.3 GB to 18.8 GB committed - RAM plus swap - in 4.5 minutes
+#   while the disk gained 11 MB and kept 88 GB free, which is why the fix is
+#   scripts/ci/ensure-swap.sh and not more disk. Each sample now also names the
+#   biggest processes by resident memory, because "memory ran out" and "*this*
+#   process took it" are two different findings and only the second one points
+#   at anything: it is what identifies the consumer as dockerd rather than the
+#   build client, the language runtimes, or the runner agent itself.
+#
 # Usage:
 #
 #   bash scripts/ci/resource-monitor.sh &      # sample until killed
@@ -58,6 +67,8 @@
 #   RESOURCE_MONITOR_LOW_MEM_MB       - warn under this much available (default 1024)
 #   RESOURCE_MONITOR_PARENT_PID       - stop when this process is gone
 #                                       (default: the caller, $PPID)
+#   RESOURCE_MONITOR_TOP_PROCESSES    - name this many biggest processes by
+#                                       resident memory (default 3, 0 = off)
 
 set -uo pipefail
 
@@ -71,13 +82,32 @@ LOW_MEM_MB="${RESOURCE_MONITOR_LOW_MEM_MB:-1024}"
 # would turn a build failure into a hung job. Stop as soon as the caller is
 # gone, which covers the case the EXIT trap cannot: the caller being SIGKILLed.
 PARENT_PID="${RESOURCE_MONITOR_PARENT_PID:-$PPID}"
+TOP_PROCESSES="${RESOURCE_MONITOR_TOP_PROCESSES:-3}"
+
+# Which process holds the memory, largest first. `ps` is in the same procps
+# package as `free`, so this costs no new dependency, and the RSS of a handful
+# of processes is the whole answer to "who?" - the daemon that exports layers
+# runs outside the step's own process tree, so nothing narrower would see it.
+top_rss() {
+  [ "$TOP_PROCESSES" -gt 0 ] 2>/dev/null || return 0
+  ps -eo rss=,comm= --sort=-rss 2>/dev/null | awk -v n="$TOP_PROCESSES" '
+    NR > n { exit }
+    {
+      rss = $1
+      $1 = ""
+      sub(/^ +/, "")
+      gsub(/[ ,]/, "_")
+      printf "%s%s=%dMB", (NR > 1 ? "," : ""), $0, int(rss / 1024)
+    }
+  '
+}
 
 # `free -m` and `df -Pm` are both in coreutils/procps on every runner image, so
 # a sample never depends on docker being responsive - which matters, because a
 # docker daemon wedged by a full disk is exactly the state to report on.
 sample_line() {
   local ts disk_total disk_used disk_free disk_pct
-  local mem_total mem_used mem_avail swap_total swap_used warn=""
+  local mem_total mem_used mem_avail swap_total swap_used warn="" top
 
   ts="$(date -u +%H:%M:%S)"
 
@@ -104,6 +134,9 @@ sample_line() {
   swap_total="${swap_total:-?}"
   swap_used="${swap_used:-?}"
 
+  top="$(top_rss)"
+  top="${top:-?}"
+
   if [ "$disk_free" != "?" ] && [ "$disk_free" -lt "$LOW_DISK_MB" ] 2>/dev/null; then
     warn=" LOW-DISK"
   fi
@@ -111,10 +144,10 @@ sample_line() {
     warn="${warn} LOW-MEM"
   fi
 
-  printf '[resources] %s disk %s=%sMB used / %sMB free (%s) | mem %sMB used / %sMB available of %sMB | swap %sMB used of %sMB%s\n' \
+  printf '[resources] %s disk %s=%sMB used / %sMB free (%s) | mem %sMB used / %sMB available of %sMB | swap %sMB used of %sMB | top %s%s\n' \
     "$ts" "$DISK_PATH" "$disk_used" "$disk_free" "$disk_pct" \
     "$mem_used" "$mem_avail" "$mem_total" \
-    "$swap_used" "$swap_total" "$warn"
+    "$swap_used" "$swap_total" "$top" "$warn"
 }
 
 if [ "${1:-}" = "sample" ]; then

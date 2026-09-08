@@ -252,6 +252,81 @@ invocations in the failing log print `building with "default" instance using
 docker driver`, so the builder it created was never used — and a step that does
 nothing is a step whose failure mode is unexplainable.
 
+### What the sampler said
+
+The next run, 34278116323, failed the same way and this time explained itself.
+Both jobs entered `#64 exporting layers` and the samples from inside the step
+read (full log excerpt in
+`dev/log/issues/119/pulls/120/full-chain-34278116323-export-window.log`):
+
+| time | disk used on `/` | disk free | memory used | swap used |
+|------|------------------|-----------|-------------|-----------|
+| 22:13:04 — export starts | 59711 MB | 87993 MB | 2323 MB | 0 of 3071 MB |
+| 22:14:34 | 59759 MB | 87945 MB | 11527 MB | 162 MB |
+| 22:15:34 | 59759 MB | 87944 MB | 13671 MB | 2620 MB |
+| 22:17:34 — last sample | 59769 MB | 87934 MB | 15723 MB | 3071 of 3071 MB |
+| 22:17:38 | | | `exit code 143`, `The runner has received a shutdown signal` |
+
+Two columns settle a question that four failed runs could not. The disk grows
+**11 MB** across the whole 4.5-minute export and keeps 88 GB free, so every
+reclaim in the table above — the tool cache included — was addressing the wrong
+resource. Memory goes from 2.3 GB to **18.8 GB committed**, RAM plus every page
+of swap, and is still climbing at ~2 GB per 30 s when the runner is taken down.
+`dind-full` recorded the identical curve 22 minutes earlier.
+
+That dockerd accumulates the layers it is exporting in anonymous memory instead
+of writing them out is [docker/buildx#1606][buildx-1606]: reported against the
+`docker` driver since Docker 23.0, still open, with no daemon setting to turn it
+off. The pre-BuildKit builder did the same export in under 1 GB. So there is
+nothing to configure and nothing in this repository's Dockerfiles to blame —
+and the reason it started failing *now* is on the other side of the equation.
+The same two jobs passed on 2026-09-05 (run 33962512941, `exporting layers
+171.1s done`) on the same runner image and the same Docker 28.0.4; commit
+46f80a5 then made the Lean boxes install a real toolchain, so the full box's
+`COPY --from=lean-stage /home/box/.elan` stopped copying a stub. The export's
+appetite scales with the bytes it exports, and that is what crossed 16 GB.
+
+[buildx-1606]: https://github.com/docker/buildx/issues/1606
+
+### Spending the resource that is idle on the one that is not
+
+16 GB of RAM is what an `ubuntu-24.04` runner has, and larger runners are not
+available to this repository. The only headroom on the machine is the 88 GB of
+disk the measurement shows going untouched at the moment of death, so
+`scripts/ci/ensure-swap.sh` converts a slice of it into swap: a 32 GB total
+target, 29697 MB of it as a new swapfile on `/`, sized down from the target
+only if it would eat into a 40 GB reserve the chain and its export still need.
+Pages that dockerd writes once and reads back much later are what swap is for,
+and the alternative on this runner is not a slower build but no build.
+
+Three properties of that script are the point of it, and each is pinned by an
+assertion in `experiments/test-issue119-ci-resource-headroom.sh`:
+
+- **It decides out loud.** Every input and the decision taken from it is on a
+  `[ensure-swap]` line, and `plan` mode prints the decision without touching
+  anything — which is also how the sizing is tested, since provisioning needs
+  root and a test that needs root is a test that does not run.
+- **It never fails the job.** A runner where swap cannot be had gets a
+  `::warning` and the build attempt. The failure belongs on the build, whose
+  log now explains itself, not on a missing optimisation — and `sudo -n`
+  guarantees a machine that would prompt for a password fails instantly instead
+  of hanging.
+- **It refuses to take the disk the build needs.** The reserve is not advice:
+  trading a SIGKILL for `no space left on device` is not a fix.
+
+`pr-test-dind`'s timeout follows from the same measurement. The `full` variant
+reaches the export ~37 minutes into the job and now spends that export paging,
+which is slower than RAM by construction, so `timeout-minutes` is
+`${{ matrix.variant == 'full' && 90 || 60 }}` — 90 for the one variant that
+builds the full box, 60 for the 13 that never do. A build killed at the
+60-minute mark while it is making progress reports a timeout and hides the
+thing that was actually fixed.
+
+The sampler also names the biggest processes by resident memory now. "Memory
+ran out" and "*this* process took it" are different findings, and only the
+second one points at anything: the daemon doing the export runs outside the
+step's own process tree, so nothing narrower would have seen it.
+
 ## 8. Still outstanding
 
 The Docker Hub mirror of v2.7.0 stays wrong until a release runs with these
