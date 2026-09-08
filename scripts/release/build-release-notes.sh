@@ -22,6 +22,9 @@
 #   GHCR_IMAGE        Full GHCR image, registry/owner/name (required)
 #   DOCKERHUB_IMAGE   Docker Hub image, namespace/name (required)
 #   VERIFY_IMAGES=1   Ask the registries which references a reader can pull
+#   EXPECTED_PLATFORMS  Architectures a multi-arch tag must serve
+#                     (default: "linux/amd64 linux/arm64"; empty = say what a
+#                     reference carries without calling anything incomplete)
 #   RELEASE_DATE      Date printed at the end (default: today, UTC)
 #   BOX_VERBOSE=1     Trace every command this script runs
 #
@@ -41,6 +44,7 @@ for var in VERSION REPO GHCR_IMAGE DOCKERHUB_IMAGE; do
 done
 
 RELEASE_DATE="${RELEASE_DATE:-$(date -u +%Y-%m-%d)}"
+EXPECTED_PLATFORMS="${EXPECTED_PLATFORMS-linux/amd64 linux/arm64}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./registry-probe.sh
@@ -70,13 +74,118 @@ LANGUAGE_IMAGES=(
   "Rocq|-rocq"
 )
 
-# dockerhub_row LABEL SUFFIX - one table row of Docker Hub tag links.
+# --- what the probe measured, rendered into the tables (issue #119d) --------
+#
+# The tables used to print a static "Multi-arch" heading over a column of links
+# that were emitted for every image, whether or not it existed. The v2.7.0
+# notes listed `konard/box-dind:2.7.0` under "not published" and then linked
+# its `2.7.0-arm64` tag three tables further down, and headed `konard/box:2.7.0`
+# "Multi-arch" while that reference served linux/amd64 only. A column heading
+# is not a measurement: it says the same thing in the release where the mirror
+# worked and in the release where it did not, which is the property that makes
+# it useless to the reader deciding whether to pull.
+#
+# So the tag column carries the probe's answer for that exact reference, and a
+# per-architecture tag is linked only when the reference was measured to serve
+# that platform. Nothing measured means nothing claimed: without VERIFY_IMAGES
+# the cells render exactly as they did before, which is also how the offline
+# tests read them.
+declare -A REF_STATE=()
+declare -A REF_PLATFORMS=()
+
+# ref_pullable REF - false only when the probe said a reader cannot pull REF.
+ref_pullable() {
+  case "${REF_STATE[$1]:-}" in
+    "" | published) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# ref_serves REF PLATFORM - true unless REF was measured not to serve PLATFORM.
+#
+# Both "no probe ran" and "the probe could not read the platform list" answer
+# true. An empty list is issue #117's "I could not look", and dropping a link
+# over it would state as fact the thing that was not measured - the same defect
+# as the static column, pointed the other way.
+ref_serves() {
+  # Separate statements on purpose: `local` marks every name local before it
+  # evaluates any right-hand side, so `local ref="$1" x="${A[$ref]}"` reads an
+  # unset `ref` and dies under `set -u`.
+  local ref="$1" platform="$2"
+  local platforms="${REF_PLATFORMS[$ref]:-}"
+  ref_pullable "$ref" || return 1
+  [ -n "${REF_STATE[$ref]:-}" ] || return 0
+  [ -n "$platforms" ] || return 0
+  [ -z "$(registry_probe_missing_platforms "$platform" "$platforms")" ]
+}
+
+# ref_measurement REF - the probe's answer for REF, as trailing cell text.
+ref_measurement() {
+  local ref="$1" platforms missing
+  local state="${REF_STATE[$ref]:-}"
+  case "$state" in
+    "") return 0 ;;
+    published) ;;
+    missing)
+      printf ' - **not published**'
+      return 0
+      ;;
+    private)
+      printf ' - **private**, not readable anonymously'
+      return 0
+      ;;
+    *)
+      printf ' - state unknown (the registry did not answer)'
+      return 0
+      ;;
+  esac
+
+  platforms="${REF_PLATFORMS[$ref]:-}"
+  if [ -z "$platforms" ]; then
+    printf ' - published, architectures not measured'
+    return 0
+  fi
+  missing="$(registry_probe_missing_platforms "$EXPECTED_PLATFORMS" "$platforms")"
+  if [ -n "$missing" ]; then
+    printf ' - **%s only**, missing %s' "${platforms// /, }" "${missing// /, }"
+  else
+    printf ' - %s' "${platforms// /, }"
+  fi
+}
+
+# dockerhub_tag_cell IMAGE TAG - the tag as a search link, or a bare code span
+# when the probe says a reader cannot pull it. A tag-search URL renders for a
+# tag that was never pushed, so linking one advertises an image that is not
+# there - RC-17's defect without the 404 that would give it away.
+dockerhub_tag_cell() {
+  local image="$1" tag="$2" ref="${1}:${VERSION}"
+  if ref_pullable "$ref"; then
+    printf '[`%s:%s`](https://hub.docker.com/r/%s/tags?name=%s)' \
+      "$image" "$tag" "$image" "$tag"
+  else
+    printf '`%s:%s`' "$image" "$tag"
+  fi
+}
+
+# dockerhub_arch_cell IMAGE ARCH - one per-architecture tag cell.
+dockerhub_arch_cell() {
+  local image="$1" arch="$2" ref="${1}:${VERSION}"
+  if ref_serves "$ref" "linux/${arch}"; then
+    printf '[`%s-%s`](https://hub.docker.com/r/%s/tags?name=%s-%s)' \
+      "$VERSION" "$arch" "$image" "$VERSION" "$arch"
+  else
+    printf '`%s-%s`' "$VERSION" "$arch"
+  fi
+}
+
+# dockerhub_row LABEL SUFFIX - one table row of Docker Hub tags.
 dockerhub_row() {
   local label="$1" image="${DOCKERHUB_IMAGE}${2}"
-  printf '| %s | [`%s:%s`](https://hub.docker.com/r/%s/tags?name=%s) | [`%s-amd64`](https://hub.docker.com/r/%s/tags?name=%s-amd64) | [`%s-arm64`](https://hub.docker.com/r/%s/tags?name=%s-arm64) |\n' \
-    "$label" "$image" "$VERSION" "$image" "$VERSION" \
-    "$VERSION" "$image" "$VERSION" \
-    "$VERSION" "$image" "$VERSION"
+  printf '| %s | %s%s | %s | %s |\n' \
+    "$label" \
+    "$(dockerhub_tag_cell "$image" "$VERSION")" "$(ref_measurement "${image}:${VERSION}")" \
+    "$(dockerhub_arch_cell "$image" amd64)" \
+    "$(dockerhub_arch_cell "$image" arm64)"
 }
 
 # ghcr_row LABEL SUFFIX - one table row of GHCR tags.
@@ -92,8 +201,8 @@ dockerhub_row() {
 ghcr_row() {
   local label="$1" suffix="$2"
   local image="${GHCR_IMAGE}${suffix}"
-  printf '| %s | `%s:%s` | `%s:%s-amd64` | `%s:%s-arm64` |\n' \
-    "$label" "$image" "$VERSION" \
+  printf '| %s | `%s:%s`%s | `%s:%s-amd64` | `%s:%s-arm64` |\n' \
+    "$label" "$image" "$VERSION" "$(ref_measurement "${image}:${VERSION}")" \
     "$image" "$VERSION" \
     "$image" "$VERSION"
 }
@@ -103,8 +212,8 @@ rows() {
   local first_column="$1" row_fn="$2"
   shift 2
   local entry
-  printf '| %s | Multi-arch | AMD64 | ARM64 |\n' "$first_column"
-  printf '|-------|------------|-------|-------|\n'
+  printf '| %s | Tag | AMD64 | ARM64 |\n' "$first_column"
+  printf '|-------|-----|-------|-------|\n'
   for entry in "$@"; do
     "$row_fn" "${entry%%|*}" "${entry#*|}"
   done
@@ -164,18 +273,24 @@ all_refs() {
   done
 }
 
-declare -A REF_STATE=()
 GHCR_PULLABLE=0
 GHCR_TOTAL=0
 DOCKERHUB_PULLABLE=0
 DOCKERHUB_TOTAL=0
 
-# probe_all - fill REF_STATE and the per-registry counters.
+# probe_all - fill REF_STATE, REF_PLATFORMS and the per-registry counters.
+#
+# registry_probe_platforms, not registry_probe_pull: "does this resolve" is the
+# question that was green while `konard/box:2.7.0` served one architecture
+# (issue #119). An index answers it out of the manifest that was fetched
+# anyway; the extra request is spent only on a reference that turned out to be
+# a plain single-platform manifest, which is exactly the case worth the cost.
 probe_all() {
   local ref
   while IFS= read -r ref; do
-    registry_probe_pull "$ref"
+    registry_probe_platforms "$ref"
     REF_STATE["$ref"]="$REGISTRY_PROBE_STATE"
+    REF_PLATFORMS["$ref"]="$REGISTRY_PROBE_PLATFORMS"
     case "$ref" in
       "$GHCR_IMAGE"*)
         GHCR_TOTAL=$((GHCR_TOTAL + 1))
@@ -203,6 +318,19 @@ refs_in_state() {
   done < <(all_refs)
 }
 
+# single_arch_refs - published references that do not serve EXPECTED_PLATFORMS.
+single_arch_refs() {
+  local ref missing
+  [ -n "$EXPECTED_PLATFORMS" ] || return 0
+  while IFS= read -r ref; do
+    [ "${REF_STATE[$ref]:-}" = "published" ] || continue
+    [ -n "${REF_PLATFORMS[$ref]:-}" ] || continue
+    missing="$(registry_probe_missing_platforms "$EXPECTED_PLATFORMS" "${REF_PLATFORMS[$ref]}")"
+    [ -n "$missing" ] || continue
+    printf '`%s` carries %s, missing %s\n' "$ref" "${REF_PLATFORMS[$ref]// /, }" "${missing// /, }"
+  done < <(all_refs)
+}
+
 # state_list HEADING STATE - a bullet list, or nothing when the state is empty.
 state_list() {
   local heading="$1" state="$2"
@@ -216,6 +344,7 @@ state_list() {
 publication_section() {
   local total=$((GHCR_TOTAL + DOCKERHUB_TOTAL))
   local pullable=$((GHCR_PULLABLE + DOCKERHUB_PULLABLE))
+  local single
 
   printf '\n## Image publication\n\n'
   printf 'Checked **anonymously**, the way a reader of these notes pulls them: %s of %s image references can be pulled without credentials.\n\n' \
@@ -233,6 +362,12 @@ publication_section() {
   state_list 'These exist but are **not readable anonymously** - the package is private, so publishing to it reaches nobody:' private
   state_list 'The registry did not answer for these, so their state is unknown (this is not a claim that they are missing):' unknown
 
+  mapfile -t single < <(single_arch_refs)
+  if [ "${#single[@]}" -gt 0 ]; then
+    printf '\nThese **resolve, and serve fewer architectures than this release built**. Pulling one on a platform it does not carry fails with `no matching manifest`, which is why a reference that resolves is not by itself evidence that it was published correctly (issue #119):\n\n'
+    printf -- '- %s\n' "${single[@]}"
+  fi
+
   if [ "$((GHCR_TOTAL - GHCR_PULLABLE))" -gt 0 ] || [ "$((DOCKERHUB_TOTAL - DOCKERHUB_PULLABLE))" -gt 0 ]; then
     printf '\nRe-run the release workflow to publish the missing references. The GitHub Release is deliberately not blocked on an image push (issue #115), and a run that ends with nothing published fails on its own publication check rather than by withholding these notes (issue #117).\n'
   fi
@@ -243,7 +378,12 @@ if [ "${VERIFY_IMAGES:-0}" = "1" ]; then
   publication_section
 fi
 
-printf '\n## Docker Images\n'
+printf '\n## Docker Images\n\n'
+if [ "${VERIFY_IMAGES:-0}" = "1" ]; then
+  printf 'The **Tag** column is the reference that selects a platform for you, followed by the architectures it was measured to serve when these notes were generated. A per-architecture tag is linked only where the reference it belongs to could be read.\n'
+else
+  printf 'The **Tag** column is the reference that selects a platform for you. These notes were generated without a registry check, so no cell below is a claim that the reference exists.\n'
+fi
 
 table "Docker Hub - Combo Boxes" "Image" dockerhub_row "${COMBO_IMAGES[@]}"
 table "Docker Hub - Language Boxes" "Language" dockerhub_row "${LANGUAGE_IMAGES[@]}"

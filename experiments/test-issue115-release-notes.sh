@@ -265,6 +265,11 @@ fi
 SANDBOX="$TMP/sandbox"
 mkdir -p "$SANDBOX/scripts/release"
 cp "$SCRIPT" "$SANDBOX/scripts/release/"
+# The stub answers the two network entry points and inherits everything else -
+# media types, the platform-list parser, the "which of these are missing"
+# comparison - from the real probe, so what the generator renders is decided by
+# the production code path and not by a second implementation of it.
+cp scripts/release/registry-probe.sh "$SANDBOX/scripts/release/registry-probe-real.sh"
 cat >"$SANDBOX/scripts/release/registry-probe.sh" <<'STUB'
 #!/usr/bin/env bash
 # Stub probe: answers every reference with $STUB_STATE, or with the per-prefix
@@ -272,21 +277,35 @@ cat >"$SANDBOX/scripts/release/registry-probe.sh" <<'STUB'
 # are read from the environment verified() sets, so they are asserted here
 # instead of being expanded by the parent (issue #115, RC-1).
 : "${STUB_STATE?must be passed in by the test}"
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/registry-probe-real.sh"
 REGISTRY_PROBE_STATE=""
 REGISTRY_PROBE_DETAIL=""
+REGISTRY_PROBE_PLATFORMS=""
 registry_probe_pull() {
   case "$1" in
     ghcr.io/*) REGISTRY_PROBE_STATE="${STUB_GHCR_STATE:-$STUB_STATE}" ;;
     *) REGISTRY_PROBE_STATE="${STUB_DOCKERHUB_STATE:-$STUB_STATE}" ;;
   esac
   REGISTRY_PROBE_DETAIL="stub answered ${REGISTRY_PROBE_STATE}"
+  # A published reference serves both architectures unless the test names one
+  # that does not (issue #119), or blanks the list to mean "could not read it".
+  REGISTRY_PROBE_PLATFORMS=""
+  [ "$REGISTRY_PROBE_STATE" = "published" ] || return 0
+  case "$1" in
+    "${STUB_SINGLE_ARCH_REF:-::none::}") REGISTRY_PROBE_PLATFORMS="linux/amd64" ;;
+    *) REGISTRY_PROBE_PLATFORMS="${STUB_PLATFORMS-linux/amd64 linux/arm64}" ;;
+  esac
 }
+registry_probe_platforms() { registry_probe_pull "$1"; }
 STUB
 
 # verified STATE [GHCR_STATE DOCKERHUB_STATE] - regenerate the notes with the
 # registries answering STATE.
 verified() {
   STUB_STATE="$1" STUB_GHCR_STATE="${2:-}" STUB_DOCKERHUB_STATE="${3:-}" \
+    STUB_SINGLE_ARCH_REF="${STUB_SINGLE_ARCH_REF:-}" \
+    STUB_PLATFORMS="${STUB_PLATFORMS-linux/amd64 linux/arm64}" \
     VERIFY_IMAGES=1 \
     VERSION="$VERSION" REPO="$REPO" GHCR_IMAGE="$GHCR_IMAGE" \
     DOCKERHUB_IMAGE="$DOCKERHUB_IMAGE" RELEASE_DATE="2026-01-01" \
@@ -420,6 +439,122 @@ if printf '%s' "$CREATE_RELEASE_BLOCK" | grep -q 'scripts/release/check-publicat
   pass "create-release asserts, after publishing, that the release is reachable"
 else
   fail "nothing asserts that the published release can be pulled"
+fi
+
+echo ""
+echo "== Part 7 (issue #119): the tables report what the probe measured =="
+
+# The v2.7.0 notes listed konard/box-dind:2.7.0 as not published and then
+# linked its 2.7.0-arm64 tag, and headed konard/box:2.7.0 "Multi-arch" while
+# that reference served linux/amd64 only. A heading says the same thing in the
+# release where the mirror worked and in the release where it did not.
+if ! grep -q '^| Image | Multi-arch |' "$NOTES"; then
+  pass "no table claims 'Multi-arch' in a heading, where no measurement can reach it"
+else
+  fail "a table still heads a column 'Multi-arch' regardless of what was published"
+fi
+
+if grep -q 'generated without a registry check' "$NOTES"; then
+  pass "unverified notes say that no cell below was checked"
+else
+  fail "unverified notes claim their tables were checked"
+fi
+
+if ! grep -q 'linux/amd64, linux/arm64' "$NOTES"; then
+  pass "unverified notes state no architectures (nothing was measured)"
+else
+  fail "unverified notes state architectures they never measured"
+fi
+
+FULL_ROW='^| Full Box | '
+row() { grep -m1 "$1" "$2"; }
+
+if row "$FULL_ROW" "$TMP/ok.md" | grep -q -- '- linux/amd64, linux/arm64 |'; then
+  pass "a reference that serves both architectures says so, next to the tag"
+else
+  fail "a two-architecture reference does not report its architectures"
+  row "$FULL_ROW" "$TMP/ok.md" | sed 's/^/      /' >&2
+fi
+
+# The exact shape of issue #119: GHCR correct, konard/box:VERSION amd64-only.
+STUB_SINGLE_ARCH_REF="${DOCKERHUB_IMAGE}:${VERSION}" \
+  verified published >"$TMP/single.md" 2>"$TMP/single.err"
+SINGLE_ROW="$(row "$FULL_ROW" "$TMP/single.md")"
+
+if printf '%s' "$SINGLE_ROW" | grep -q -- '\*\*linux/amd64 only\*\*, missing linux/arm64'; then
+  pass "an amd64-only tag is reported as amd64-only, in the column that used to say Multi-arch"
+else
+  fail "an amd64-only tag is not distinguished from a multi-arch one"
+  printf '      %s\n' "$SINGLE_ROW" >&2
+fi
+
+if printf '%s' "$SINGLE_ROW" | grep -q "tags?name=${VERSION}-amd64" \
+  && ! printf '%s' "$SINGLE_ROW" | grep -q "tags?name=${VERSION}-arm64"; then
+  pass "the architecture it serves stays linked; the one it does not is not advertised"
+else
+  fail "the arm64 tag of an amd64-only image is still linked"
+  printf '      %s\n' "$SINGLE_ROW" >&2
+fi
+
+if grep -q 'serve fewer architectures than this release built' "$TMP/single.md" \
+  && grep -qF -- "- \`${DOCKERHUB_IMAGE}:${VERSION}\` carries linux/amd64, missing linux/arm64" "$TMP/single.md"; then
+  pass "the publication section lists the reference that resolves with half the architectures"
+else
+  fail "a single-architecture reference is invisible in the publication section"
+  grep -n 'fewer architectures' "$TMP/single.md" | sed 's/^/      /' >&2
+fi
+
+# GHCR is checked the same way; the column is not a Docker Hub-only fix.
+if grep -m1 '^| Full Box | `ghcr' "$TMP/single.md" | grep -q -- '- linux/amd64, linux/arm64 |'; then
+  pass "the GHCR tables carry the measurement too"
+else
+  fail "the GHCR tables still render an unmeasured column"
+fi
+
+MISSING_ROW="$(row "$FULL_ROW" "$TMP/missing.md")"
+if printf '%s' "$MISSING_ROW" | grep -q -- '\*\*not published\*\*' \
+  && ! printf '%s' "$MISSING_ROW" | grep -q 'hub.docker.com'; then
+  pass "a reference declared not published is not also linked as if it were"
+else
+  fail "a reference declared not published is still linked"
+  printf '      %s\n' "$MISSING_ROW" >&2
+fi
+
+if row "$FULL_ROW" "$TMP/private.md" | grep -q -- '\*\*private\*\*'; then
+  pass "a private reference is named private in the table, not left to the reader to guess"
+else
+  fail "a private reference reads like a published one in the table"
+fi
+
+if row "$FULL_ROW" "$TMP/unknown.md" | grep -q -- '- state unknown'; then
+  pass "an unanswered registry reads as unknown in the table"
+else
+  fail "an unanswered registry does not read as unknown in the table"
+fi
+
+# "I could not read the platform list" is not "it carries one architecture":
+# the first is issue #117's lesson, and stating it as the second would be the
+# same false claim with the sign flipped.
+STUB_PLATFORMS="" verified published >"$TMP/unmeasured.md" 2>"$TMP/unmeasured.err"
+UNMEASURED_ROW="$(row "$FULL_ROW" "$TMP/unmeasured.md")"
+if printf '%s' "$UNMEASURED_ROW" | grep -q -- '- published, architectures not measured' \
+  && ! printf '%s' "$UNMEASURED_ROW" | grep -q 'only'; then
+  pass "an unreadable platform list reads as not measured, never as single-architecture"
+else
+  fail "an unreadable platform list is reported as a missing architecture"
+  printf '      %s\n' "$UNMEASURED_ROW" >&2
+fi
+
+if printf '%s' "$UNMEASURED_ROW" | grep -q "tags?name=${VERSION}-arm64"; then
+  pass "and it keeps both per-architecture links, because nothing ruled either out"
+else
+  fail "an unreadable platform list silently drops the per-architecture links"
+fi
+
+if ! grep -q 'serve fewer architectures' "$TMP/unmeasured.md"; then
+  pass "and it is not listed as serving fewer architectures"
+else
+  fail "an unmeasured reference is listed as serving fewer architectures"
 fi
 
 echo ""
