@@ -211,7 +211,45 @@ Offline, the four suites that pin this behaviour:
    "fine" or "broken" invents a fact, and both directions have shipped a wrong
    release in this repository.
 
-## 7. Still outstanding
+## 7. A postscript: the two CI jobs this branch could not get green
+
+The branch's own PR checks failed on `pr-test / full` and `pr-test / dind-full`
+and on nothing else — not on any of the 11 language jobs, not on the other 13
+dind variants, all of which pass on the same commit. Those two are the only
+jobs that hold the JS image, the essentials image, all 11 language images and
+the full box on one runner at the same time.
+
+Both died identically in run 34259552358: the `docker build -t box-full .`
+client was `Killed` 65 seconds into `#64 exporting layers`, and the runner
+logged `The runner has received a shutdown signal` in the same second — exit
+137 for `full`, 143 for `dind-full`. Neither was near its timeout (dind-full
+died at 37 minutes of a 60-minute limit; full at 83 of 90), the head SHA never
+moved so the supersede poller was not the killer, and there was 113 GB free
+when the build started.
+
+Which leaves the diagnosis where §5 of the principle above says not to leave
+it: the resource that ran out is *unmeasured*. The last disk or memory reading
+in either log comes from the `Free disk space` step, some 30 minutes and ~90 GB
+of image data before the kill. A SIGKILLed step also has no successor to upload
+an artifact from, so an `if: always()` collector would have salvaged nothing.
+`scripts/ci/resource-monitor.sh` therefore samples `df` and `free` from inside
+the build step, into that step's own live log, which is the only output that
+survives the runner going down.
+
+Two settings were also working against exactly these two jobs, and both were
+changed on evidence rather than on intuition:
+
+| Setting | Was | Now | Because |
+|---------|-----|-----|---------|
+| `tool-cache` | `false` | `true` | ~8 GB of `/opt/hostedtoolcache` withheld from two jobs that run only bash and docker; the Node `actions/checkout` needs is in the runner's externals directory, not the tool cache |
+| `swap-storage` | `true` | `false` | the job's own `df -a` shows no `/mnt` filesystem, so removing `/mnt/swapfile` reclaims nothing, while `swapoff -a` still takes every page of swap from a job last seen being SIGKILLed |
+
+`Set up Docker Buildx` is gone from both jobs as well: all 14 `docker build`
+invocations in the failing log print `building with "default" instance using
+docker driver`, so the builder it created was never used — and a step that does
+nothing is a step whose failure mode is unexplainable.
+
+## 8. Still outstanding
 
 The Docker Hub mirror of v2.7.0 stays wrong until a release runs with these
 changes: nothing here rewrites a published tag. `konard/box:latest` will be
