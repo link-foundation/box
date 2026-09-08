@@ -16,6 +16,13 @@
 # claimed, so this suite drives the script against a fake `docker` on PATH that
 # records every invocation and can be told to fail in a chosen way.
 #
+# The pair the script itself runs changed in issue #119: `docker manifest create`
+# refuses a source that is an index, which is exactly what the Docker Hub mirror
+# writes, so the manifest is built with `docker buildx imagetools create` now.
+# What this suite pins is unchanged - retries, the mirror not failing the job,
+# one script for every manifest step - and the media-type behaviour itself is
+# pinned by experiments/test-issue119-manifest-media-type.sh.
+#
 # Usage: bash experiments/test-issue115-manifest-script.sh
 
 set -uo pipefail
@@ -43,12 +50,19 @@ mkdir -p "$BIN"
 
 # A fake docker. It appends every argument list to $DOCKER_LOG and decides its
 # exit status from two files written by the caller:
-#   $TMP/fail-pushes   how many `manifest push` calls must fail (counted down)
+#   $TMP/fail-pushes   how many `imagetools create` calls must fail (counted down)
 #   $TMP/fail-output   what a failing call prints (chooses transient vs permanent)
+#
+# It also serves the manifest back: `imagetools inspect --raw` answers with an
+# index built from the platforms of whatever sources the matching `create` was
+# given, so the read-back the script does after publishing (issue #119) sees the
+# truth rather than a canned success.
 cat >"$BIN/docker" <<'FAKE'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$DOCKER_LOG"
-if [ "$2" = "push" ]; then
+
+if [ "$1 $2 $3" = "buildx imagetools create" ]; then
+  shift 3
   remaining="$(cat "$FAKE_STATE/fail-pushes" 2>/dev/null || echo 0)"
   if [ "$remaining" -gt 0 ]; then
     echo $((remaining - 1)) > "$FAKE_STATE/fail-pushes"
@@ -57,7 +71,29 @@ if [ "$2" = "push" ]; then
     cat "$FAKE_STATE/fail-output" >&2
     exit 1
   fi
+  tag=""; platforms=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --tag|-t) tag="$2"; shift 2 ;;
+      *) platforms="$platforms linux/${1##*-}"; shift ;;
+    esac
+  done
+  printf '%s %s\n' "$tag" "${platforms# }" >> "$FAKE_STATE/manifests"
+  exit 0
 fi
+
+if [ "$1 $2 $3" = "buildx imagetools inspect" ]; then
+  ref="${*: -1}"
+  line="$(grep "^${ref} " "$FAKE_STATE/manifests" 2>/dev/null | tail -1)" || true
+  [ -n "$line" ] || { echo "${ref}: not found" >&2; exit 1; }
+  children=""
+  for platform in ${line#* }; do
+    children="${children}{\"platform\":{\"architecture\":\"${platform#*/}\",\"os\":\"${platform%%/*}\"}},"
+  done
+  printf '{"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[%s]}\n' "${children%,}"
+  exit 0
+fi
+
 exit 0
 FAKE
 chmod +x "$BIN/docker"
@@ -75,6 +111,7 @@ run() {
   echo "$fail_pushes" >"$TMP/fail-pushes"
   printf '%s\n' "$fail_output" >"$TMP/fail-output"
   : >"$DOCKER_LOG"
+  : >"$TMP/manifests"
 
   # Everything before `--` is a NAME=VALUE override for this run; everything
   # after it is an argument to the script.
@@ -98,8 +135,7 @@ run() {
   STATUS=$?
 }
 
-pushes() { grep -c 'manifest push' "$DOCKER_LOG" || true; }
-creates() { grep -c 'manifest create' "$DOCKER_LOG" || true; }
+creates() { grep -c 'imagetools create' "$DOCKER_LOG" || true; }
 
 TRANSIENT='received unexpected HTTP status: 502 Bad Gateway'
 PERMANENT='denied: requested access to the resource is denied'
@@ -116,26 +152,27 @@ else
   echo "$OUT" | sed 's/^/      /' >&2
 fi
 
-if [ "$(pushes)" -eq 2 ] && [ "$(creates)" -eq 2 ]; then
-  pass "one create and one push per tag"
+if [ "$(creates)" -eq 2 ]; then
+  pass "one manifest write per tag"
 else
-  fail "one create and one push per tag (creates=$(creates) pushes=$(pushes))"
+  fail "one manifest write per tag (creates=$(creates))"
 fi
 
-if grep -qx 'manifest create ghcr.io/link-foundation/box-js:latest --amend ghcr.io/link-foundation/box-js:latest-amd64 --amend ghcr.io/link-foundation/box-js:latest-arm64' "$DOCKER_LOG"; then
-  pass "each architecture tag is amended into the list"
+if grep -qx 'buildx imagetools create --tag ghcr.io/link-foundation/box-js:latest ghcr.io/link-foundation/box-js:latest-amd64 ghcr.io/link-foundation/box-js:latest-arm64' "$DOCKER_LOG"; then
+  pass "every architecture tag is a source of the published manifest"
 else
-  fail "each architecture tag is amended into the list"
+  fail "every architecture tag is a source of the published manifest"
   sed 's/^/      /' "$DOCKER_LOG" >&2
 fi
 
-# --amend is what makes a retry possible at all: the local manifest store
-# survives a failed attempt, so a plain `create` would fail with "already
-# exists" on the second attempt and turn a transient error into a permanent one.
-if ! grep -q 'manifest create' "$DOCKER_LOG" || grep 'manifest create' "$DOCKER_LOG" | grep -qv -- '--amend'; then
-  fail "every create uses --amend"
+# imagetools create writes the tag from its sources on every call, so a retry
+# needs no equivalent of `docker manifest create --amend`: there is no local
+# manifest store left over from the failed attempt to collide with.
+if [ "$(grep -c -- '--amend' "$DOCKER_LOG")" -eq 0 ]; then
+  pass "no local manifest store to keep in sync between attempts"
 else
-  pass "every create uses --amend"
+  fail "no local manifest store to keep in sync between attempts"
+  sed 's/^/      /' "$DOCKER_LOG" >&2
 fi
 
 echo ""
@@ -143,10 +180,17 @@ echo "== Part 2: MANIFEST_ARCHES selects the architectures =="
 
 run 0 "" MANIFEST_ARCHES='amd64 arm64 riscv64' -- ghcr.io/example/box latest
 
-if grep -q -- '--amend ghcr.io/example/box:latest-riscv64' "$DOCKER_LOG"; then
-  pass "a third architecture is amended when MANIFEST_ARCHES asks for it"
+if grep -q 'ghcr.io/example/box:latest-riscv64' "$DOCKER_LOG"; then
+  pass "a third architecture is a source when MANIFEST_ARCHES asks for it"
 else
-  fail "a third architecture is amended when MANIFEST_ARCHES asks for it"
+  fail "a third architecture is a source when MANIFEST_ARCHES asks for it"
+fi
+
+if [ "$STATUS" -eq 0 ]; then
+  pass "and the read-back expects linux/riscv64 too, so it still verifies"
+else
+  fail "and the read-back expects linux/riscv64 too (got $STATUS)"
+  echo "$OUT" | sed 's/^/      /' >&2
 fi
 
 echo ""
@@ -161,16 +205,10 @@ else
   echo "$OUT" | sed 's/^/      /' >&2
 fi
 
-if [ "$(pushes)" -eq 3 ]; then
+if [ "$(creates)" -eq 3 ]; then
   pass "the third attempt is the one that succeeds"
 else
-  fail "the third attempt is the one that succeeds (pushes=$(pushes))"
-fi
-
-if [ "$(creates)" -eq 3 ]; then
-  pass "create is re-run before every retry, so the amend list is rebuilt"
-else
-  fail "create is re-run before every retry (creates=$(creates))"
+  fail "the third attempt is the one that succeeds (creates=$(creates))"
 fi
 
 echo ""
@@ -178,10 +216,10 @@ echo "== Part 4: permanent failures are not retried =="
 
 run 99 "$PERMANENT" -- ghcr.io/example/box latest
 
-if [ "$(pushes)" -eq 1 ]; then
+if [ "$(creates)" -eq 1 ]; then
   pass "an auth failure costs exactly one attempt"
 else
-  fail "an auth failure costs exactly one attempt (pushes=$(pushes))"
+  fail "an auth failure costs exactly one attempt (creates=$(creates))"
 fi
 
 case "$OUT" in
@@ -208,10 +246,10 @@ case "$OUT" in
   *) fail "the failure is annotated as an error" ;;
 esac
 
-if [ "$(pushes)" -eq 3 ]; then
+if [ "$(creates)" -eq 3 ]; then
   pass "MAX_RETRIES attempts are made before giving up"
 else
-  fail "MAX_RETRIES attempts are made before giving up (pushes=$(pushes))"
+  fail "MAX_RETRIES attempts are made before giving up (creates=$(creates))"
 fi
 
 : >"$TMP/summary.md"
@@ -246,10 +284,10 @@ else
   fail "a missing tag argument exits 2 (got $STATUS)"
 fi
 
-if [ "$(pushes)" -eq 0 ]; then
+if [ "$(creates)" -eq 0 ]; then
   pass "misuse pushes nothing"
 else
-  fail "misuse pushes nothing (pushes=$(pushes))"
+  fail "misuse pushes nothing (creates=$(creates))"
 fi
 
 echo ""
