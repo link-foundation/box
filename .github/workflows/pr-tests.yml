@@ -62,11 +62,14 @@ jobs:
   # ~30 GB before building, fixing the "no space left on device" regression
   # captured in run 25075335426 (see docs/case-studies/issue-82/).
   #
-  # pr-test-full and pr-test-dind(full) are the two jobs that have to hold the
-  # whole chain - JS, essentials, 11 language images and the full box - on one
-  # VM at once, and they are the two that keep dying mid-build (run 34259552358).
-  # They therefore reclaim the tool cache as well, keep the kernel's swap, and
-  # sample memory and disk while they build; see scripts/ci/resource-monitor.sh.
+  # pr-test-full and pr-test-dind's `full` variant are the two jobs that have to
+  # hold the whole chain - JS, essentials, 11 language images and the full box -
+  # on one VM at once, and they are the two that keep dying mid-build (run
+  # 34259552358, SIGKILL during the full box's `exporting layers`). Both
+  # therefore reclaim the tool cache as well, keep the kernel's swap, and sample
+  # memory and disk while they build; see scripts/ci/resource-monitor.sh. The
+  # free-disk-space step is job-level, so the other 13 dind variants inherit the
+  # same reclaim - which costs them nothing.
   #
   # See: docs/case-studies/issue-82/CASE-STUDY.md
 
@@ -538,9 +541,14 @@ jobs:
       - name: Free disk space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
-          # The two full-chain jobs are the only ones that hold every language
-          # image and the full box on one VM at the same time, so they reclaim
-          # more than the others (issue #119 follow-up):
+          # Same reclaim as pr-test-full, and for the same reason: the
+          # `full` variant of this matrix builds the identical chain - JS,
+          # essentials, 11 language images, the full box - before it layers
+          # dind on top, and it died the identical way in run 34259552358.
+          # A matrix cannot vary a step's inputs per variant without an
+          # expression, and there is nothing to gain by withholding the
+          # reclaim from the 13 lighter variants, so all 14 get it (issue
+          # #119 follow-up):
           #
           #   tool-cache  /opt/hostedtoolcache is ~8 GB of Python/Node/Go/Ruby
           #               builds for `actions/setup-*`. Nothing here calls one:
