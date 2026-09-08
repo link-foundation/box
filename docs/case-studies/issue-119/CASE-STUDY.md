@@ -222,7 +222,10 @@ the full box on one runner at the same time.
 Both died identically in run 34259552358: the `docker build -t box-full .`
 client was `Killed` 65 seconds into `#64 exporting layers`, and the runner
 logged `The runner has received a shutdown signal` in the same second — exit
-137 for `full`, 143 for `dind-full`. Neither was near its timeout (dind-full
+137 for `full`, 143 for `dind-full`. The excerpt is kept in
+`dev/log/issues/119/pulls/120/dind-full-34259552358-kill-window.log`, because
+GitHub replaces attempt-1 logs on re-run and the sibling job's already returns
+`BlobNotFound`. Neither was near its timeout (dind-full
 died at 37 minutes of a 60-minute limit; full at 83 of 90), the head SHA never
 moved so the supersede poller was not the killer, and there was 113 GB free
 when the build started.
