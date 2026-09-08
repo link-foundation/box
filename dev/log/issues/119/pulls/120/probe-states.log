@@ -1,0 +1,6 @@
+published	ghcr.io/link-foundation/box:2.7.0	anonymous GET of the manifest returned HTTP 200
+published	docker.io/konard/box:2.7.0	anonymous GET of the manifest returned HTTP 200
+published	docker.io/konard/box:latest	anonymous GET of the manifest returned HTTP 200
+missing	docker.io/konard/box-dind:2.7.0	the registry has no 2.7.0 tag for konard/box-dind (HTTP 404)
+published	ghcr.io/link-foundation/box:20260907	anonymous GET of the manifest returned HTTP 200
+published	ghcr.io/link-foundation/box:fd4742b	anonymous GET of the manifest returned HTTP 200

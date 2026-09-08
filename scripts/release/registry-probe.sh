@@ -88,6 +88,15 @@ REGISTRY_PROBE_REGISTRY=""
 REGISTRY_PROBE_REPOSITORY=""
 REGISTRY_PROBE_TAG=""
 
+# What the reference actually serves, filled in by the pull probe (issue #119).
+# "Does it resolve?" and "is it usable?" are different questions: on 2026-09-08
+# konard/box:latest answered HTTP 200 and carried linux/amd64 alone, where
+# konard/box:2.4.0 carries both architectures. A release that drops an
+# architecture from a tag passes every resolvability check ever written.
+REGISTRY_PROBE_MEDIA_TYPE=""
+REGISTRY_PROBE_PLATFORMS=""
+REGISTRY_PROBE_MANIFEST=""
+
 # The media types a multi-arch release publishes. Without them a registry may
 # answer 404 for an index it would happily serve as an index, which would read
 # as "missing" - the exact false negative this file exists to prevent.
@@ -187,6 +196,65 @@ registry_probe_body() {
     *$'\n\n'*) printf '%s' "${response#*$'\n\n'}" ;;
     *) printf '' ;;
   esac
+}
+
+# registry_probe_manifest_media_type BODY - the media type a manifest declares.
+#
+# grep first, then cut: a greedy sed would return the *last* mediaType in the
+# document, which for an index is one of its children and always says
+# "manifest", never "index".
+registry_probe_manifest_media_type() {
+  printf '%s' "$1" | tr '\n\t' '  ' \
+    | grep -o '"mediaType"[[:space:]]*:[[:space:]]*"[^"]*"' \
+    | head -1 | sed 's/.*"\([^"]*\)"$/\1/'
+}
+
+# registry_probe_manifest_platforms BODY - "os/arch" for every child of an index.
+#
+# A plain manifest has no "platform" object anywhere and answers "" here, which
+# is the answer that matters: an unsuffixed tag served as a plain manifest is a
+# single-architecture publication whatever it resolves to.
+#
+# The body is flattened before parsing because sed is line-oriented and ghcr.io
+# pretty-prints its indexes, putting "architecture" and "os" on separate lines.
+# unknown/unknown is buildx's attestation manifest (provenance, SBOM), not an
+# architecture: counting it would make an amd64-only mirror look like a
+# two-platform one, which is precisely the mistake being fixed.
+#
+# The variant is deliberately dropped. Coverage is asked in architectures -
+# linux/arm64/v8 and linux/arm64 are the same answer to "was arm64 published?"
+registry_probe_manifest_platforms() {
+  printf '%s' "$1" | tr '\n\t' '  ' \
+    | grep -o '"platform"[[:space:]]*:[[:space:]]*{[^}]*}' \
+    | sed -n \
+      -e 's/.*"architecture"[[:space:]]*:[[:space:]]*"\([^"]*\)".*"os"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\2\/\1/p' \
+      -e 's/.*"os"[[:space:]]*:[[:space:]]*"\([^"]*\)".*"architecture"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1\/\2/p' \
+    | grep -v '^unknown/unknown$' \
+    | sort -u | tr '\n' ' ' | sed 's/ $//'
+}
+
+# registry_probe_config_digest BODY - the config blob digest of a plain manifest.
+registry_probe_config_digest() {
+  printf '%s' "$1" | tr '\n\t' '  ' \
+    | grep -o '"config"[[:space:]]*:[[:space:]]*{[^}]*}' \
+    | sed -n 's/.*"digest"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1
+}
+
+# registry_probe_missing_platforms WANTED GOT - the wanted platforms not in GOT.
+#
+# Word-by-word, not a substring test: "linux/arm64" is a substring of nothing
+# in "linux/amd64", but "arm64" is a substring of "linux/arm64" and of
+# "linux/arm64/v8", and a coverage check that silently passes on a prefix is
+# the check not running.
+registry_probe_missing_platforms() {
+  local wanted="$1" got="$2" want missing=""
+  for want in $wanted; do
+    case " ${got} " in
+      *" ${want} "*) ;;
+      *) missing="${missing}${want} " ;;
+    esac
+  done
+  printf '%s' "${missing% }"
 }
 
 # registry_probe_endpoints REGISTRY - the token and API base URLs, space separated.
@@ -290,11 +358,14 @@ registry_probe_anonymous_token() {
 # Sets REGISTRY_PROBE_STATE to published, private, missing or unknown, and
 # REGISTRY_PROBE_DETAIL to the reason.
 registry_probe_pull() {
-  local ref="$1" endpoints api response status
+  local ref="$1" endpoints api response status content_type
 
   registry_probe_parse_ref "$ref"
   REGISTRY_PROBE_STATE="unknown"
   REGISTRY_PROBE_DETAIL=""
+  REGISTRY_PROBE_MEDIA_TYPE=""
+  REGISTRY_PROBE_PLATFORMS=""
+  REGISTRY_PROBE_MANIFEST=""
 
   if ! endpoints="$(registry_probe_endpoints "$REGISTRY_PROBE_REGISTRY")"; then
     REGISTRY_PROBE_DETAIL="unsupported registry '${REGISTRY_PROBE_REGISTRY}'; registry-probe.sh knows ghcr.io and docker.io"
@@ -324,6 +395,16 @@ registry_probe_pull() {
 
   case "$status" in
     200)
+      # What was served, not just that something was. The manifest is kept so
+      # registry_probe_platforms can answer from it without asking twice.
+      REGISTRY_PROBE_MANIFEST="$(registry_probe_body "$response")"
+      content_type="$(registry_probe_header Content-Type "$response")"
+      content_type="${content_type%%;*}"
+      REGISTRY_PROBE_MEDIA_TYPE="${content_type// /}"
+      if [ -z "$REGISTRY_PROBE_MEDIA_TYPE" ]; then
+        REGISTRY_PROBE_MEDIA_TYPE="$(registry_probe_manifest_media_type "$REGISTRY_PROBE_MANIFEST")"
+      fi
+      REGISTRY_PROBE_PLATFORMS="$(registry_probe_manifest_platforms "$REGISTRY_PROBE_MANIFEST")"
       REGISTRY_PROBE_DETAIL="anonymous GET of the manifest returned HTTP 200"
       REGISTRY_PROBE_STATE="published"
       ;;
@@ -344,6 +425,61 @@ registry_probe_pull() {
       REGISTRY_PROBE_STATE="unknown"
       ;;
   esac
+}
+
+# registry_probe_platforms REF - what architectures REF actually serves.
+#
+# Runs the pull probe and then, for the one case the manifest cannot answer by
+# itself, asks one more question. Sets REGISTRY_PROBE_PLATFORMS to a
+# space-separated list of "os/arch", or leaves it empty when the reference is
+# not published or the registry would not say.
+#
+# Why this is a separate entry point rather than part of registry_probe_pull: a
+# plain manifest declares no platform - the architecture lives in its config
+# blob - so answering costs a second request. check-publication.sh sweeps
+# dozens of references for their *state* and does not need that request;
+# doubling a 56-reference sweep is how a probe earns a rate limit, and a 429
+# turns into "unknown" for a release that is fine.
+#
+# An unreadable config blob leaves the list empty on purpose. "I could not
+# look" and "it carries one architecture" have different consequences - the
+# second fails a release - and collapsing them would put the false claim of
+# issue #117 back, pointed the other way.
+registry_probe_platforms() {
+  local ref="$1" endpoints api response status body digest architecture os
+
+  registry_probe_pull "$ref"
+  [ "$REGISTRY_PROBE_STATE" = "published" ] || return 0
+  [ -z "$REGISTRY_PROBE_PLATFORMS" ] || return 0
+
+  digest="$(registry_probe_config_digest "$REGISTRY_PROBE_MANIFEST")"
+  if [ -z "$digest" ]; then
+    REGISTRY_PROBE_DETAIL="${REGISTRY_PROBE_DETAIL}; served as ${REGISTRY_PROBE_MEDIA_TYPE:-an undeclared media type}, which names no platform"
+    return 0
+  fi
+
+  endpoints="$(registry_probe_endpoints "$REGISTRY_PROBE_REGISTRY")" || return 0
+  api="${endpoints##* }"
+
+  response="$(REGISTRY_PROBE_USERNAME="" REGISTRY_PROBE_PASSWORD="" \
+    registry_probe_http GET \
+    "${api}/v2/${REGISTRY_PROBE_REPOSITORY}/blobs/${digest}" \
+    "Authorization: Bearer ${REGISTRY_PROBE_TOKEN}")"
+  status="$(registry_probe_status "$response")"
+  body="$(registry_probe_body "$response")"
+
+  if [ "$status" != "200" ]; then
+    REGISTRY_PROBE_DETAIL="${REGISTRY_PROBE_DETAIL}; the config blob answered HTTP ${status}, so the architecture is unknown"
+    return 0
+  fi
+
+  body="$(printf '%s' "$body" | tr '\n\t' '  ')"
+  architecture="$(printf '%s' "$body" | sed -n 's/.*"architecture"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+  os="$(printf '%s' "$body" | sed -n 's/.*"os"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+  if [ -n "$architecture" ] && [ -n "$os" ]; then
+    REGISTRY_PROBE_PLATFORMS="${os}/${architecture}"
+    REGISTRY_PROBE_DETAIL="${REGISTRY_PROBE_DETAIL}; a plain manifest for ${os}/${architecture}, not a multi-arch index"
+  fi
 }
 
 # registry_probe_push REGISTRY REPOSITORY - can the configured credential write?
@@ -458,6 +594,20 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
         registry_probe_pull "$ref"
         printf '%s\t%s\t%s\n' "$REGISTRY_PROBE_STATE" "$ref" "$REGISTRY_PROBE_DETAIL"
         [ "$REGISTRY_PROBE_STATE" = "published" ]
+        ;;
+      platforms)
+        local ref="${1:-}"
+        shift || true
+        [ -n "$ref" ] || {
+          echo "Usage: $0 platforms <reference> [expected-platform...]" >&2
+          exit 2
+        }
+        registry_probe_platforms "$ref"
+        local missing
+        missing="$(registry_probe_missing_platforms "$*" "$REGISTRY_PROBE_PLATFORMS")"
+        printf '%s\t%s\t%s\t%s\n' "$REGISTRY_PROBE_STATE" "$ref" \
+          "${REGISTRY_PROBE_PLATFORMS:--}" "$REGISTRY_PROBE_DETAIL"
+        [ "$REGISTRY_PROBE_STATE" = "published" ] && [ -z "$missing" ]
         ;;
       push)
         local image="${1:-}"
