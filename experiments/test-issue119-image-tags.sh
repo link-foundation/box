@@ -28,6 +28,13 @@ SCRIPT="scripts/release/image-tags.sh"
 PASS=0
 FAIL=0
 
+# Actions sets GITHUB_SHA on every step it runs, and the commit CI checks out is
+# not the commit this suite was written against - a test that read it would
+# expect `fd4742b` on a laptop and the merge commit in CI. The environment this
+# suite runs in starts empty, so the only commit, date and version in it are the
+# ones a test names.
+unset GITHUB_SHA IMAGE_TAGS IMAGE_TAGS_DATE IMAGE_TAGS_SHA VERSION
+
 pass() {
   echo "PASS: $1"
   PASS=$((PASS + 1))

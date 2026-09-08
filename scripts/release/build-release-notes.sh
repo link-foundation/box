@@ -158,7 +158,8 @@ ref_measurement() {
 # tag that was never pushed, so linking one advertises an image that is not
 # there - RC-17's defect without the 404 that would give it away.
 dockerhub_tag_cell() {
-  local image="$1" tag="$2" ref="${1}:${VERSION}"
+  local image="$1" tag="$2"
+  local ref="${image}:${tag}"
   if ref_pullable "$ref"; then
     printf '[`%s:%s`](https://hub.docker.com/r/%s/tags?name=%s)' \
       "$image" "$tag" "$image" "$tag"
