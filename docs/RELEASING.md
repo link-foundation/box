@@ -102,17 +102,18 @@ swift, lean, rocq — plus a `-dind` variant of every one of those.
 Verify from outside, holding no credential at all:
 
 ```sh
-VERSION=2.6.0 \
+VERSION=2.7.0 \
 GHCR_IMAGE=ghcr.io/link-foundation/box \
 DOCKERHUB_IMAGE=konard/box \
   bash scripts/release/check-publication.sh
 ```
 
-Exit 0 means a reader can pull the release. Exit 1 says which of the two ways
-of reaching nobody happened: nothing was pushed, or what was pushed is private.
-The same script runs at the end of every release, after the GitHub Release has
-been created, so a release that reaches nobody turns the run red instead of
-being reported as a success.
+Exit 0 means a reader can pull the release. Exit 1 says which of the ways of
+reaching nobody happened: nothing was pushed, what was pushed is private, or
+what was pushed resolves and does not carry the architectures the release built
+(issue #119). The same script runs at the end of every release, after the
+GitHub Release has been created, so a release that reaches nobody turns the run
+red instead of being reported as a success.
 
 Until the visibility is flipped, the preflight blocks releases on `main` with
 `::error title=GHCR package is private::`. That is deliberate: publishing more
@@ -121,6 +122,34 @@ the top of this file says not to spend. To release anyway — knowing the result
 is unreachable — set the repository variable `ALLOW_PRIVATE_GHCR=1`, which
 downgrades it to a warning.
 
+## Architectures, and the tag a user actually pulls
+
+A tag that resolves is not a tag that was published: `konard/box:2.7.0`
+answered HTTP 200 while serving linux/amd64 alone, and an arm64 reader got
+`no matching manifest for linux/arm64`. Three things now hold that shut, and
+they are worth knowing about before changing a release workflow.
+
+- **`EXPECTED_PLATFORMS`** (default `linux/amd64 linux/arm64`) is what every
+  checked reference must carry. On the registry of record a reference that
+  carries less fails the run; on Docker Hub a *missing* tag stays a warning
+  because a mirror may lag, but a tag that resolves with the wrong
+  architectures is an error — somebody pulling it today gets the wrong answer
+  today. Setting it empty disables the coverage check entirely.
+- **`PREVIOUS_VERSION`** adds the comparison a constant cannot make: a tag that
+  was multi-arch in the previous release and is single-arch now is a
+  regression, whatever `EXPECTED_PLATFORMS` says. The release workflow fills it
+  from `gh release list`; the baseline only counts when the previous release's
+  reference is itself published.
+- **Only a manifest step may write a tag without an architecture suffix.** An
+  architecture-specific job that pushes `:latest` publishes a tag that is true
+  of one platform — which is exactly how `konard/box:latest` lost arm64 in
+  2.7.0. `experiments/test-issue119-tag-policy.sh` reads every image reference
+  out of the release workflows and fails if a job named for one architecture
+  names a bare tag.
+
+An unreadable platform list is neither of these: it means "I could not look",
+and it is reported as a warning, never as a missing architecture.
+
 ## Checking a release by hand
 
 Everything below runs anonymously, which is the only view that decides whether
@@ -128,7 +157,7 @@ a release happened.
 
 ```sh
 # What can a reader pull, per registry?
-VERIFY_IMAGES=1 VERSION=2.6.0 REPO=link-foundation/box \
+VERIFY_IMAGES=1 VERSION=2.7.0 REPO=link-foundation/box \
 GHCR_IMAGE=ghcr.io/link-foundation/box DOCKERHUB_IMAGE=konard/box \
   bash scripts/release/build-release-notes.sh
 
@@ -145,19 +174,22 @@ found nothing wrong" and "I could not look".
 
 ## Known gaps in the published history
 
+Measured anonymously on 2026-09-08; reproduce with the commands above.
+
 - **2.5.0 has no git tag and no GitHub Release.** The version bump was
-  committed, the release was not produced, and the tags run v2.4.0 → v2.6.0.
-- **Docker Hub carries nothing newer than 2.4.0** (2026-06-21), even though
-  the credential works again: preflight run
-  [34053764507](https://github.com/link-foundation/box/actions/runs/34053764507)
-  reports `docker.io/<account>/box accepted a blob upload session (HTTP 202)`.
-  The expired token that produced the failure in the issue has been replaced;
-  what is missing is a release run, or `scripts/release/mirror-to-dockerhub.sh`
-  against the existing tags.
-- **Both GHCR packages are still private**, which the same preflight run
-  reports for `ghcr.io/link-foundation/box` and
-  `ghcr.io/link-foundation/box-dind`. This is the one blocker no script can
-  clear; see *Making the GHCR packages public* above.
-- **`konard/box:latest` on Docker Hub is the pre-#112 June image** — Node 20,
-  and the duplicated `~/.rustup` that issue #112 fixed. The fix ships in 2.5.0
-  and later, which is to say: not on Docker Hub yet.
+  committed, the release was not produced, and the tags run v2.4.0 -> v2.6.0.
+- **GHCR is correct and complete for 2.7.0.** All 28 packages serve `2.7.0` and
+  `latest` anonymously, with both architectures. The private-package blocker
+  recorded here for 2.6.0 has been cleared.
+- **Docker Hub carries 2.7.0 for `konard/box` only, and only for amd64.** The
+  same run overwrote `konard/box:latest` with that amd64-only index, so it does
+  not run on arm64; every other `konard/...:latest` is the older multi-arch
+  image. `konard/box-dind:2.7.0` and the rest of the `2.7.0` mirror tags are
+  absent. Issue #119 explains why the manifest step could not have worked, and
+  the fix ships in the next release; nothing in this repository rewrites a tag
+  that is already published.
+- **`konard/box:latest` and `konard/box:2.7.0` are the same digest**
+  (`sha256:9ac67276...`), which is how the regression is visible from outside:
+  the amd64-only 2.7.0 index replaced a `latest` that used to serve both
+  architectures. Prefer `ghcr.io/link-foundation/box:latest` until a release
+  runs with the #119 fix.

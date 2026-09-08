@@ -1,0 +1,16 @@
+ghcr.io/link-foundation/box:latest            published  linux/amd64 linux/arm64
+ghcr.io/link-foundation/box:2.7.0             published  linux/amd64 linux/arm64
+ghcr.io/link-foundation/box-dind:latest       published  linux/amd64 linux/arm64
+ghcr.io/link-foundation/box-js:latest         published  linux/amd64 linux/arm64
+konard/box:latest                             published  linux/amd64
+konard/box:2.7.0                              published  linux/amd64
+konard/box-dind:latest                        published  linux/amd64 linux/arm64
+konard/box-dind:2.7.0                         missing    <none>
+konard/box-js:latest                          published  linux/amd64 linux/arm64
+konard/box-essentials:latest                  published  linux/amd64 linux/arm64
+konard/box-js:2.7.0                      missing    <none>
+konard/box-essentials:2.7.0              missing    <none>
+konard/box-python:2.7.0                  missing    <none>
+konard/box-js-dind:2.7.0                 missing    <none>
+konard/box-python-dind:2.7.0             missing    <none>
+konard/box-essentials-dind:2.7.0         missing    <none>

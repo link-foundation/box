@@ -130,32 +130,37 @@ curl -fsSL https://raw.githubusercontent.com/link-foundation/box/main/ubuntu/24.
 
 > **Which registry carries which version.** GitHub Container Registry is the
 > registry of record: it is written with each run's own `GITHUB_TOKEN`, which
-> cannot expire. Docker Hub is a mirror of it, and the mirror is currently
-> behind — its access token expired, so nothing newer than `2.4.0`
-> (2026-06-21) has reached it. Everything the tables below list under
-> `konard/...` is that June image until the credential is restored; in
-> particular `konard/box:latest` predates the runtime refresh of issue #112
-> (it still carries Node 20). Every `ghcr.io/link-foundation/...` reference is
-> the same image name with the registry prefix added.
+> cannot expire. Docker Hub is a mirror of it. Measured anonymously on
+> 2026-09-08, every `ghcr.io/link-foundation/...` reference in the tables below
+> carries both architectures at `2.7.0` and at `latest`; on Docker Hub, `2.7.0`
+> reached only `konard/box`, and it reached it **linux/amd64 only** — which
+> also overwrote `konard/box:latest`, so that one tag does not run on arm64
+> today. The other `konard/...:latest` tags are the pre-`2.7.0` images and are
+> still multi-arch. Issue #119 is why; the next release repairs the mirror, and
+> a release that repeats it now fails.
 >
-> Whether a given release can actually be pulled is checked anonymously and
-> printed in that release's notes, per registry. See
-> [`docs/RELEASING.md`](docs/RELEASING.md) for the credential runbook and
+> The tables below head that column "Tag" rather than "Multi-arch", because a
+> heading cannot notice the release where it stopped being true. What a given
+> release actually published is measured anonymously, per registry and per
+> architecture, and printed in that release's notes. See [`docs/RELEASING.md`](docs/RELEASING.md)
+> for the credential runbook,
 > [`docs/case-studies/issue-117/CASE-STUDY.md`](docs/case-studies/issue-117/CASE-STUDY.md)
-> for how a release reached nobody under a green check.
+> for how a release reached nobody under a green check, and
+> [`docs/case-studies/issue-119/CASE-STUDY.md`](docs/case-studies/issue-119/CASE-STUDY.md)
+> for how the next one reached half of them.
 
 ### Docker Hub - Combo Boxes
 
-| Image | Multi-arch | AMD64 | ARM64 |
-|-------|------------|-------|-------|
+| Image | Tag | AMD64 | ARM64 |
+|-------|-----|-------|-------|
 | Full Box | [`konard/box:latest`](https://hub.docker.com/r/konard/box/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box/tags?name=latest-arm64) |
 | Essentials | [`konard/box-essentials:latest`](https://hub.docker.com/r/konard/box-essentials/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-essentials/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-essentials/tags?name=latest-arm64) |
 | JS | [`konard/box-js:latest`](https://hub.docker.com/r/konard/box-js/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-js/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-js/tags?name=latest-arm64) |
 
 ### Docker Hub - Language Boxes
 
-| Language | Multi-arch | AMD64 | ARM64 |
-|----------|------------|-------|-------|
+| Language | Tag | AMD64 | ARM64 |
+|----------|-----|-------|-------|
 | Python | [`konard/box-python:latest`](https://hub.docker.com/r/konard/box-python/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-python/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-python/tags?name=latest-arm64) |
 | Go | [`konard/box-go:latest`](https://hub.docker.com/r/konard/box-go/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-go/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-go/tags?name=latest-arm64) |
 | Rust | [`konard/box-rust:latest`](https://hub.docker.com/r/konard/box-rust/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-rust/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-rust/tags?name=latest-arm64) |
@@ -172,8 +177,8 @@ curl -fsSL https://raw.githubusercontent.com/link-foundation/box/main/ubuntu/24.
 
 Each row below has the same toolchain as its non-dind sibling **plus** a working Docker Engine (Docker CLI + dockerd + containerd + Buildx + Compose v2). The default is nested Docker-in-Docker — each container has its own daemon, so `docker ps -a` from inside the container only lists containers it created. See the [security model](#docker-in-docker-security-model) section below, the [dind usage guide](docs/dind/USAGE.md), and [docs/case-studies/issue-80](docs/case-studies/issue-80/CASE-STUDY.md).
 
-| Image | Multi-arch | AMD64 | ARM64 |
-|-------|------------|-------|-------|
+| Image | Tag | AMD64 | ARM64 |
+|-------|-----|-------|-------|
 | Full + dind | [`konard/box-dind:latest`](https://hub.docker.com/r/konard/box-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-dind/tags?name=latest-arm64) |
 | Essentials + dind | [`konard/box-essentials-dind:latest`](https://hub.docker.com/r/konard/box-essentials-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-essentials-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-essentials-dind/tags?name=latest-arm64) |
 | JS + dind | [`konard/box-js-dind:latest`](https://hub.docker.com/r/konard/box-js-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-js-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-js-dind/tags?name=latest-arm64) |
@@ -189,31 +194,31 @@ Each row below has the same toolchain as its non-dind sibling **plus** a working
 | Lean + dind | [`konard/box-lean-dind:latest`](https://hub.docker.com/r/konard/box-lean-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-lean-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-lean-dind/tags?name=latest-arm64) |
 | Rocq + dind | [`konard/box-rocq-dind:latest`](https://hub.docker.com/r/konard/box-rocq-dind/tags?name=latest) | [`latest-amd64`](https://hub.docker.com/r/konard/box-rocq-dind/tags?name=latest-amd64) | [`latest-arm64`](https://hub.docker.com/r/konard/box-rocq-dind/tags?name=latest-arm64) |
 
-> **GHCR is the registry of record; it is not populated yet.** Every release
-> job pushes to `ghcr.io` and to Docker Hub, but until this pull request the two
-> pushes were a *single* buildx solve, so the expired `DOCKERHUB_TOKEN` failed
-> the whole solve and GHCR received nothing — `docker manifest inspect
-> ghcr.io/link-foundation/box-js:latest` still returns "manifest unknown".
-> Docker Hub (`konard/box-*`, above) is what exists today. The tags below are
-> what the release publishes; they are written as plain names rather than links
-> because `github.com/link-foundation/box/pkgs/container/…` 404s for a package
-> that has never been pushed.
+> **GHCR is the registry of record, and it is populated.** It was not until
+> `2.7.0`: the release pushed to both registries in a *single* buildx solve, so
+> the expired `DOCKERHUB_TOKEN` failed the whole solve and GHCR received
+> nothing. Issue #115 split the two pushes and issue #117 made the packages
+> public, and `ghcr.io/link-foundation/box:2.7.0` now pulls anonymously with
+> both architectures. The tags below are written as plain names rather than
+> links because `github.com/link-foundation/box/pkgs/container/...` 404s for a
+> package that has never been pushed, and not every image in the matrix has
+> been.
 >
 > Published packages appear at
 > [github.com/orgs/link-foundation/packages](https://github.com/orgs/link-foundation/packages).
 
 ### GitHub Container Registry - Combo Boxes
 
-| Image | Multi-arch | AMD64 | ARM64 |
-|-------|------------|-------|-------|
+| Image | Tag | AMD64 | ARM64 |
+|-------|-----|-------|-------|
 | Full Box | `ghcr.io/link-foundation/box:latest` | `latest-amd64` | `latest-arm64` |
 | Essentials | `ghcr.io/link-foundation/box-essentials:latest` | `latest-amd64` | `latest-arm64` |
 | JS | `ghcr.io/link-foundation/box-js:latest` | `latest-amd64` | `latest-arm64` |
 
 ### GitHub Container Registry - Language Boxes
 
-| Language | Multi-arch | AMD64 | ARM64 |
-|----------|------------|-------|-------|
+| Language | Tag | AMD64 | ARM64 |
+|----------|-----|-------|-------|
 | Python | `ghcr.io/link-foundation/box-python:latest` | `latest-amd64` | `latest-arm64` |
 | Go | `ghcr.io/link-foundation/box-go:latest` | `latest-amd64` | `latest-arm64` |
 | Rust | `ghcr.io/link-foundation/box-rust:latest` | `latest-amd64` | `latest-arm64` |
@@ -228,8 +233,8 @@ Each row below has the same toolchain as its non-dind sibling **plus** a working
 
 ### GitHub Container Registry - dind-box (Docker-in-Docker variants, issue #80)
 
-| Image | Multi-arch | AMD64 | ARM64 |
-|-------|------------|-------|-------|
+| Image | Tag | AMD64 | ARM64 |
+|-------|-----|-------|-------|
 | Full + dind | `ghcr.io/link-foundation/box-dind:latest` | `latest-amd64` | `latest-arm64` |
 | Essentials + dind | `ghcr.io/link-foundation/box-essentials-dind:latest` | `latest-amd64` | `latest-arm64` |
 | JS + dind | `ghcr.io/link-foundation/box-js-dind:latest` | `latest-amd64` | `latest-arm64` |
