@@ -319,12 +319,24 @@ else
   printf '%s\n' "$LEFTOVER" | sed 's/^/      /' >&2
 fi
 
+# One call per image family, on the registry of record only. Docker Hub used to
+# get a second call that assembled its own manifest from the mirrored
+# per-architecture tags; since issue #119a it is handed the finished GHCR index
+# by mirror-to-dockerhub.sh, because those mirrored tags are indexes themselves
+# and there was never anything to assemble.
 CALLS="$(grep -h 'create-multiarch-manifest.sh' $WORKFLOWS | wc -l)"
-if [ "$CALLS" -eq 10 ]; then
-  pass "all ten manifest steps (five jobs x two registries) call the script"
+if [ "$CALLS" -eq 5 ]; then
+  pass "all five manifest steps (one per image family) call the script"
 else
-  fail "all ten manifest steps call the script (found $CALLS)"
+  fail "all five manifest steps call the script (found $CALLS)"
   grep -n 'create-multiarch-manifest.sh' $WORKFLOWS | sed 's/^/      /' >&2
+fi
+
+MIRRORED="$(grep -h 'mirror-to-dockerhub.sh' $WORKFLOWS | wc -l)"
+if [ "$MIRRORED" -ge 5 ]; then
+  pass "Docker Hub is served by the mirror, not by a second assembly ($MIRRORED call sites)"
+else
+  fail "Docker Hub is served by the mirror, not by a second assembly (found $MIRRORED call sites)"
 fi
 
 echo ""

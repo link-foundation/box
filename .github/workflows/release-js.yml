@@ -370,21 +370,25 @@ jobs:
             "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js" \
             latest "${{ steps.version.outputs.version }}"
 
-      - name: Create and push JS multi-arch manifests (Docker Hub)
+      # Copy the index GHCR now serves, rather than assembling a second one from
+      # the mirrored per-architecture tags (issue #119a). Those tags are indexes
+      # themselves - `docker buildx imagetools create` always writes one - and
+      # `docker manifest create` refuses an index as a source, which is why
+      # run 34056619231 retried "docker.io/***/box:2.7.0-amd64 is a manifest
+      # list" three times and published nothing. There is also nothing to
+      # assemble: the correct answer already exists on GHCR.
+      - name: Mirror JS multi-arch manifests to Docker Hub
         if: steps.dockerhub-login.outcome == 'success'
-        env:
-          # A Docker Hub manifest failure must not fail a release whose GHCR
-          # manifest is already published (issue #115, RC-3).
-          MANIFEST_REQUIRED: '0'
         run: |
-          bash scripts/release/create-multiarch-manifest.sh \
-            "${{ env.DOCKERHUB_IMAGE_NAME }}-js" \
-            latest "${{ steps.version.outputs.version }}"
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-js:latest" \
+            "${{ env.DOCKERHUB_IMAGE_NAME }}-js:${{ steps.version.outputs.version }}"
 
       - name: Skip JS Docker Hub multi-arch manifests
         if: steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub manifest skipped::Skipping JS Docker Hub multi-arch manifests because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
+          echo "::warning title=Docker Hub manifest skipped::Skipping the Docker Hub mirror of the JS multi-arch manifests because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
 
   # === STATUS ===
   #

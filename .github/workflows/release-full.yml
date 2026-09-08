@@ -108,6 +108,8 @@ jobs:
     outputs:
       version: ${{ fromJSON(inputs.changes)['version'] }}
       digest: ${{ steps.build.outputs.digest }}
+      # The tag list every later job writes or combines (issue #119b).
+      tags: ${{ steps.tags.outputs.tags }}
 
     steps:
       - name: Checkout repository
@@ -190,31 +192,49 @@ jobs:
             fi
           done
 
-      - name: Extract metadata (tags, labels) for Docker
+      # Labels only. The tags come from the step below, because a tag list is
+      # a property of the release and metadata-action computes one per job.
+      - name: Extract metadata (labels) for Docker
         id: meta
         uses: docker/metadata-action@v6
         with:
           images: |
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
           tags: |
-            type=raw,value=latest
             type=raw,value=${{ steps.version.outputs.version }}
-            type=sha,prefix=
-            type=raw,value={{date 'YYYYMMDD'}}
 
-      - name: Extract metadata for amd64-specific tags
-        id: meta-amd64
-        uses: docker/metadata-action@v6
-        with:
-          images: |
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
-          flavor: |
-            suffix=-amd64
-          tags: |
-            type=raw,value=latest
-            type=raw,value=${{ steps.version.outputs.version }}
-            type=sha,prefix=
-            type=raw,value={{date 'YYYYMMDD'}}
+      # Issue #119b. This job used to push the unsuffixed tags - latest, the
+      # version, the date and the commit - alongside its own -amd64 ones, and
+      # then mirror all eight to Docker Hub. So `box:latest` was whatever the
+      # amd64 job wrote until the manifest step overwrote it, and the two tags
+      # the manifest step did not know about were never overwritten at all.
+      # Measured anonymously on 2026-09-08:
+      #
+      #   ghcr.io/link-foundation/box:2.7.0     linux/amd64 linux/arm64
+      #   ghcr.io/link-foundation/box:20260907  linux/amd64
+      #   ghcr.io/link-foundation/box:fd4742b   linux/amd64
+      #
+      # Now this job writes -amd64 tags only, and the list is computed once,
+      # here, and handed to the arm64 build and the manifest job: metadata-action
+      # evaluates `{{date 'YYYYMMDD'}}` when the step runs, and the full box
+      # takes over an hour to build, so a release started before midnight UTC
+      # gave the two builds different date tags.
+      - name: Compute the tags this release publishes
+        id: tags
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          IMAGE_TAGS_DATE="$(date -u +%Y%m%d)"
+          export IMAGE_TAGS_DATE
+
+          TAGS="$(bash scripts/release/image-tags.sh | tr '\n' ' ')"
+          echo "tags=${TAGS% }" >> "$GITHUB_OUTPUT"
+          {
+            echo "refs<<TAGS_EOF"
+            bash scripts/release/image-tags.sh \
+              --image "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}" --suffix -amd64
+            echo "TAGS_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build and push full box (amd64)
         id: build
@@ -238,9 +258,7 @@ jobs:
             SWIFT_IMAGE=${{ steps.base-images.outputs.swift }}
             LEAN_IMAGE=${{ steps.base-images.outputs.lean }}
             ROCQ_IMAGE=${{ steps.base-images.outputs.rocq }}
-          tags: |
-            ${{ steps.meta.outputs.tags }}
-            ${{ steps.meta-amd64.outputs.tags }}
+          tags: ${{ steps.tags.outputs.refs }}
           labels: ${{ steps.meta.outputs.labels }}
           provenance: false  # Prevents unknown/unknown platform in registry
           cache-from: type=gha
@@ -250,9 +268,7 @@ jobs:
       - name: Retry push full box (amd64) on failure
         if: steps.build.outcome == 'failure'
         env:
-          ALL_TAGS: |
-            ${{ steps.meta.outputs.tags }}
-            ${{ steps.meta-amd64.outputs.tags }}
+          ALL_TAGS: ${{ steps.tags.outputs.refs }}
         run: |
           TAG_ARGS=()
           while IFS= read -r tag; do
@@ -290,9 +306,7 @@ jobs:
       - name: Mirror full box (amd64) to Docker Hub
         if: steps.dockerhub-login.outcome == 'success'
         env:
-          GHCR_TAGS: |
-            ${{ steps.meta.outputs.tags }}
-            ${{ steps.meta-amd64.outputs.tags }}
+          GHCR_TAGS: ${{ steps.tags.outputs.refs }}
         run: |
           GHCR_PREFIX="${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}"
           DH_PREFIX="${{ env.DOCKERHUB_IMAGE_NAME }}"
@@ -314,9 +328,12 @@ jobs:
       # pushed artifact is verified by exactly the checks its candidate passed.
       # This step used to be a hand-maintained copy that had drifted to a
       # 22-of-29 subset.
+      # The architecture this job built, by the name this job pushed it under.
+      # The unsuffixed tag is written by the manifest job, which has not run yet
+      # (issue #119b) - testing it here would have tested the previous release.
       - name: Smoke test released full box (amd64)
         env:
-          IMAGE: ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${{ steps.version.outputs.version }}
+          IMAGE: ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${{ steps.version.outputs.version }}-amd64
         run: bash scripts/ci/test-box.sh full "$IMAGE"
 
   # === BUILD AND PUSH ARM64 IMAGE ===
@@ -421,7 +438,8 @@ jobs:
             fi
           done
 
-      - name: Extract metadata (tags, labels) for Docker
+      # Labels only; see the amd64 job for why the tags are not computed here.
+      - name: Extract metadata (labels) for Docker
         id: meta
         uses: docker/metadata-action@v6
         with:
@@ -430,10 +448,22 @@ jobs:
           flavor: |
             suffix=-arm64
           tags: |
-            type=raw,value=latest
             type=raw,value=${{ steps.version.outputs.version }}
-            type=sha,prefix=
-            type=raw,value={{date 'YYYYMMDD'}}
+
+      # The list the amd64 job computed, in this architecture's spelling. Asking
+      # the clock again here is exactly the mistake that made a build straddling
+      # midnight UTC unmanifestable (issue #119b).
+      - name: Compute the tags this release publishes
+        id: tags
+        env:
+          IMAGE_TAGS: ${{ needs.docker-build-push.outputs.tags }}
+        run: |
+          {
+            echo "refs<<TAGS_EOF"
+            bash scripts/release/image-tags.sh \
+              --image "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}" --suffix -arm64
+            echo "TAGS_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build and push full box (arm64)
         id: build
@@ -457,7 +487,7 @@ jobs:
             SWIFT_IMAGE=${{ steps.base-images.outputs.swift }}
             LEAN_IMAGE=${{ steps.base-images.outputs.lean }}
             ROCQ_IMAGE=${{ steps.base-images.outputs.rocq }}
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.tags.outputs.refs }}
           labels: ${{ steps.meta.outputs.labels }}
           provenance: false  # Prevents unknown/unknown platform in registry
           cache-from: type=gha
@@ -467,7 +497,7 @@ jobs:
       - name: Retry push full box (arm64) on failure
         if: steps.build.outcome == 'failure'
         env:
-          ALL_TAGS: ${{ steps.meta.outputs.tags }}
+          ALL_TAGS: ${{ steps.tags.outputs.refs }}
         run: |
           TAG_ARGS=()
           while IFS= read -r tag; do
@@ -504,8 +534,7 @@ jobs:
       - name: Mirror full box (arm64) to Docker Hub
         if: steps.dockerhub-login.outcome == 'success'
         env:
-          GHCR_TAGS: |
-            ${{ steps.meta.outputs.tags }}
+          GHCR_TAGS: ${{ steps.tags.outputs.refs }}
         run: |
           GHCR_PREFIX="${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}"
           DH_PREFIX="${{ env.DOCKERHUB_IMAGE_NAME }}"
@@ -578,27 +607,45 @@ jobs:
         run: |
           echo "::warning title=Docker Hub login failed::Docker Hub login failed (outcome=${{ steps.dockerhub-login.outcome }}). The DOCKERHUB_TOKEN repository secret is most likely expired or revoked. See docs/case-studies/issue-82/CASE-STUDY.md for the rotation runbook. The job will continue and push to GHCR; guarded Docker Hub publish steps will be skipped, while unguarded Docker Hub push attempts may fail without failing the job."
 
-      - name: Create and push multi-arch manifest (GHCR)
+      # Every tag a user pulls is written here, and nowhere else (issue #119b):
+      # the date and commit tags used to be left as whatever the amd64 job had
+      # pushed, so `box:20260907` served linux/amd64 alone.
+      - name: Create and push multi-arch manifests (GHCR)
+        env:
+          TAGS: ${{ needs.docker-build-push.outputs.tags }}
         run: |
+          # shellcheck disable=SC2086  # the tag list is one argument per tag
           bash scripts/release/create-multiarch-manifest.sh \
-            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}" \
-            latest "${{ steps.version.outputs.version }}"
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}" $TAGS
 
-      - name: Create and push multi-arch manifest (Docker Hub)
+      # Copy the index GHCR now serves, rather than assembling a second one from
+      # the mirrored per-architecture tags (issue #119a). Those tags are indexes
+      # themselves - `docker buildx imagetools create` always writes one - and
+      # `docker manifest create` refuses an index as a source, which is why
+      # run 34056619231 retried "docker.io/***/box:2.7.0-amd64 is a manifest
+      # list" three times and left konard/box:2.7.0 amd64-only. There is also
+      # nothing to assemble: the correct answer already exists on GHCR.
+      - name: Mirror the multi-arch manifests to Docker Hub
         if: steps.dockerhub-login.outcome == 'success'
         env:
-          # A Docker Hub manifest failure must not fail a release whose GHCR
-          # manifest is already published (issue #115, RC-3).
-          MANIFEST_REQUIRED: '0'
+          IMAGE_TAGS: ${{ needs.docker-build-push.outputs.tags }}
         run: |
-          bash scripts/release/create-multiarch-manifest.sh \
-            "${{ env.DOCKERHUB_IMAGE_NAME }}" \
-            latest "${{ steps.version.outputs.version }}"
+          mapfile -t TARGETS < <(bash scripts/release/image-tags.sh \
+            --image "${{ env.DOCKERHUB_IMAGE_NAME }}")
 
-      - name: Skip Docker Hub multi-arch manifest
+          # The step above published every one of these tags on GHCR as the same
+          # index, so any of them names it; take the first rather than re-deriving
+          # a version this job read from its own checkout.
+          read -r -a TAGS <<<"$IMAGE_TAGS"
+
+          bash scripts/release/mirror-to-dockerhub.sh \
+            "${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${TAGS[0]}" \
+            "${TARGETS[@]}"
+
+      - name: Skip Docker Hub multi-arch manifests
         if: steps.dockerhub-login.outcome != 'success'
         run: |
-          echo "::warning title=Docker Hub manifest skipped::Skipping Docker Hub multi-arch manifest because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
+          echo "::warning title=Docker Hub manifests skipped::Skipping the Docker Hub mirror of the multi-arch manifests because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
 
   # === STATUS ===
   #
