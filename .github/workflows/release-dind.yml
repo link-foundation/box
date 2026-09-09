@@ -96,7 +96,13 @@ jobs:
   # "<base>-dind" sibling. Runs after the source variant's manifest is published.
   build-dind-amd64:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # Caps are sized from measured job durations, not guessed (issue #121,
+    # docs/CI-TIMEOUT-BUDGETS.md): the `full` variant, the slowest of the 14, took 19.2 minutes - which is
+    # 64% of the 30-minute cap this job used to carry, too close to leave. A cap far
+    # above the work it bounds is the number of minutes a hung job burns
+    # before anyone hears about it, and it is reported as a *cancelled* job
+    # rather than a failed one.
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -202,6 +208,15 @@ jobs:
       - name: Build and push ${{ matrix.variant }} dind-box (amd64)
         id: build-push
         continue-on-error: true
+        # A `uses:` step cannot be routed through
+        # scripts/ci/run-with-budget-warning.sh, so its budget is the one
+        # GitHub applies to a whole step (issue #121,
+        # docs/CI-TIMEOUT-BUDGETS.md). A step that runs out of it fails and
+        # names itself; the job's `timeout-minutes` backstop would instead
+        # report the whole job *cancelled*, with no indication of where the
+        # time went. Sized from measurement: the slowest dind build (the
+        # `full` variant) took 11.8 minutes.
+        timeout-minutes: 20
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -349,6 +364,7 @@ jobs:
       - name: Build and push ${{ matrix.variant }} dind-box (arm64)
         id: build-push
         continue-on-error: true
+        timeout-minutes: 20
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -394,7 +410,8 @@ jobs:
 
   dind-manifest:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # Measured maximum 1.4 minutes: this job only assembles manifests.
+    timeout-minutes: 10
     needs: [build-dind-amd64, build-dind-arm64]
     strategy:
       fail-fast: false

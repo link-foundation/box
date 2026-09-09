@@ -1,0 +1,186 @@
+workflow	job	n	mean_min	max_min	max_run_id
+Build and Release Docker Image	pr-tests / pr-test / dind-full	3	41.0	43.4	34287594620
+Build and Release Docker Image	pr-tests / pr-test / full	2	42.4	43.0	34287594620
+Build and Release Docker Image	pr-test / dind-full	1	40.1	40.1	34000521949
+Build and Release Docker Image	full / docker-build-push	3	27.6	35.6	34056619231
+Build and Release Docker Image	full / docker-build-push-arm64	3	21.8	30.8	34293699247
+Build and Release Docker Image	pr-tests / pr-test / rocq	3	19.2	20.4	34259552358
+Build and Release Docker Image	pr-tests / pr-test / dind-rocq	3	18.5	20.2	34287594620
+Build and Release Docker Image	pr-test / rocq	2	18.8	19.9	34007285586
+Build and Release Docker Image	pr-test / dind-rocq	2	18.6	19.3	34000521949
+Build and Release Docker Image	dind / build-dind-amd64 (full)	3	13.2	19.2	34056619231
+Build and Release Docker Image	languages / build-languages-amd64 (rocq)	3	18.0	18.5	34293699247
+Build and Release Docker Image	js / build-js-amd64	3	10.7	16.1	34056619231
+Build and Release Docker Image	pr-tests / pr-test / ruby	4	11.1	16.0	34278116323
+Measure Disk Space and Update README	Measure Component Disk Space	1	14.8	14.8	34011750117
+Build and Release Docker Image	dind / build-dind-amd64 (go)	3	7.1	13.8	34056619231
+Build and Release Docker Image	dind / build-dind-arm64 (java)	3	6.7	13.7	34056619231
+Build and Release Docker Image	dind / build-dind-amd64 (rust)	3	7.7	13.7	34056619231
+Build and Release Docker Image	dind / build-dind-amd64 (swift)	3	9.7	13.5	34056619231
+Build and Release Docker Image	pr-tests / pr-test / dind-kotlin	4	7.7	13.3	34259552358
+Build and Release Docker Image	languages / build-languages-arm64 (rocq)	3	13.1	13.2	34293699247
+Build and Release Docker Image	dind / build-dind-amd64 (rocq)	3	7.5	12.8	34056619231
+Build and Release Docker Image	dind / build-dind-arm64 (swift)	3	6.7	12.5	34056619231
+Build and Release Docker Image	pr-tests / pr-test / dind-python	5	9.0	12.4	34259552358
+Build and Release Docker Image	dind / build-dind-amd64 (java)	3	6.9	12.2	34056619231
+Build and Release Docker Image	pr-tests / pr-test / dind-rust	5	8.2	12.1	34259552358
+Build and Release Docker Image	dind / build-dind-arm64 (full)	3	9.6	12.0	34293699247
+Build and Release Docker Image	pr-tests / pr-test / kotlin	4	9.6	12.0	34278116323
+Build and Release Docker Image	pr-tests / pr-test / dotnet	5	7.1	10.8	34259552358
+Build and Release Docker Image	pr-test / dind-java	3	7.7	10.7	34000521949
+Build and Release Docker Image	dind / build-dind-amd64 (php)	3	6.9	10.5	34056619231
+Build and Release Docker Image	pr-test / perl	3	9.3	10.4	34007285586
+Build and Release Docker Image	essentials / build-essentials-amd64	3	7.3	10.3	34293699247
+Build and Release Docker Image	pr-tests / pr-test / perl	4	9.3	10.2	34009886866
+Build and Release Docker Image	pr-tests / pr-test / dind-ruby	5	8.8	9.9	34287594620
+Build and Release Docker Image	pr-tests / pr-test / dind-perl	4	9.3	9.9	34009886866
+Build and Release Docker Image	pr-test / ruby	3	9.4	9.8	34000521949
+Build and Release Docker Image	pr-test / dind-perl	3	9.0	9.8	34000521949
+Build and Release Docker Image	pr-test / dind-ruby	3	9.0	9.7	34000521949
+Build and Release Docker Image	languages / build-languages-amd64 (perl)	3	7.8	9.4	34293699247
+Build and Release Docker Image	pr-tests / pr-test / dind-php	4	8.0	9.1	34259552358
+Build and Release Docker Image	languages / build-languages-amd64 (go)	3	5.5	9.0	34056619231
+Build and Release Docker Image	pr-tests / pr-test / php	4	7.4	8.9	34009886866
+Build and Release Docker Image	pr-test / dind-python	3	8.1	8.7	34000521949
+Build and Release Docker Image	languages / build-languages-amd64 (swift)	3	7.6	8.6	34056619231
+Build and Release Docker Image	dind / build-dind-amd64 (perl)	3	5.9	8.5	34056619231
+Build and Release Docker Image	pr-test / dind-swift	3	7.5	8.5	33999636005
+Build and Release Docker Image	pr-test / python	3	7.7	8.5	34007285586
+Build and Release Docker Image	pr-tests / pr-test / assembly	5	6.5	8.5	34009886866
+Build and Release Docker Image	pr-tests / pr-test / dind-java	4	6.8	8.2	34278116323
+Build and Release Docker Image	pr-test / js	7	5.0	7.9	33999078495
+Build and Release Docker Image	languages / build-languages-amd64 (ruby)	3	7.7	7.9	34293699247
+Build and Release Docker Image	pr-test / dind-php	3	7.3	7.8	34000521949
+Build and Release Docker Image	pr-test / dind-rust	2	6.8	7.8	34007285586
+Build and Release Docker Image	pr-test / php	3	7.2	7.7	34000521949
+Build and Release Docker Image	pr-tests / pr-test / dind-lean	4	7.0	7.7	34287594620
+Build and Release Docker Image	pr-test / dind-essentials	3	6.4	7.6	33999636005
+Build and Release Docker Image	languages / build-languages-amd64 (php)	3	7.1	7.5	34056619231
+Build and Release Docker Image	pr-tests / pr-test / java	5	5.8	7.4	34278116323
+Build and Release Docker Image	pr-tests / pr-test / dind-js	5	5.8	7.3	34278116323
+Build and Release Docker Image	dind / build-dind-arm64 (php)	3	5.9	7.3	34293699247
+Build and Release Docker Image	languages / build-languages-amd64 (lean)	3	6.5	7.2	34056619231
+Build and Release Docker Image	pr-tests / pr-test / swift	4	6.8	7.2	34009886866
+Build and Release Docker Image	pr-tests / pr-test / lean	4	6.5	7.1	34009149654
+Build and Release Docker Image	pr-tests / pr-test / python	4	6.7	7.1	34278116323
+Build and Release Docker Image	pr-test / kotlin	3	6.2	7.1	33999636005
+Build and Release Docker Image	languages / build-languages-amd64 (java)	3	6.1	7.1	34011750193
+Build and Release Docker Image	pr-test / dind-go	4	5.6	7.0	34007285586
+Build and Release Docker Image	dind / build-dind-amd64 (python)	3	5.9	6.9	34056619231
+Build and Release Docker Image	pr-tests / pr-test / dind-swift	3	6.6	6.9	34259552358
+Build and Release Docker Image	dind / build-dind-amd64 (lean)	3	5.6	6.9	34293699247
+Build and Release Docker Image	pr-tests / pr-test / dind-go	5	5.9	6.8	34287594620
+Build and Release Docker Image	languages / build-languages-amd64 (kotlin)	3	4.7	6.8	34293699247
+Build and Release Docker Image	pr-tests / pr-test / cpp	3	6.0	6.7	34259552358
+Build and Release Docker Image	pr-tests / pr-test / dind-essentials	4	5.8	6.7	34278116323
+Build and Release Docker Image	dind / build-dind-arm64 (kotlin)	3	4.7	6.6	34056619231
+Build and Release Docker Image	pr-test / swift	3	6.3	6.6	33999636005
+Build and Release Docker Image	languages / build-languages-arm64 (php)	3	5.6	6.6	34293699247
+Build and Release Docker Image	pr-test / essentials	6	5.1	6.5	34003416837
+Build and Release Docker Image	languages / build-languages-arm64 (perl)	3	5.8	6.3	34056619231
+Build and Release Docker Image	pr-test / dind-kotlin	3	5.6	6.3	33999636005
+Build and Release Docker Image	pr-tests / pr-test / rust	5	5.8	6.2	34009149654
+Build and Release Docker Image	pr-tests / pr-test / essentials	5	5.7	6.2	34009886866
+Build and Release Docker Image	pr-test / dind-lean	4	5.6	6.1	34007285586
+Build and Release Docker Image	pr-tests / pr-test / r	4	5.7	6.0	34259552358
+Build and Release Docker Image	pr-test / dind-js	2	5.6	6.0	34000521949
+Build and Release Docker Image	pr-test / go	4	4.8	5.9	34007285586
+Build and Release Docker Image	pr-test / assembly	2	5.4	5.8	34007285586
+Build and Release Docker Image	dind / build-dind-amd64 (js)	3	4.4	5.8	34056619231
+Build and Release Docker Image	pr-test / rust	4	5.4	5.8	33999636005
+Build and Release Docker Image	pr-test / java	4	5.3	5.8	34000521949
+Build and Release Docker Image	languages / build-languages-arm64 (swift)	3	5.2	5.8	34293699247
+Build and Release Docker Image	languages / build-languages-amd64 (python)	3	5.4	5.7	34011750193
+Build and Release Docker Image	pr-test / r	1	5.5	5.5	34007285586
+Build and Release Docker Image	pr-tests / pr-test / go	5	4.8	5.5	34009149654
+Build and Release Docker Image	pr-test / cpp	1	5.5	5.5	34007285586
+Build and Release Docker Image	js / build-js-arm64	3	4.8	5.4	34056619231
+Build and Release Docker Image	essentials / build-essentials-arm64	3	4.6	5.4	34293699247
+Build and Release Docker Image	languages / build-languages-amd64 (rust)	3	4.7	5.2	34011750193
+Build and Release Docker Image	dind / build-dind-amd64 (ruby)	3	4.5	5.2	34056619231
+Build and Release Docker Image	pr-tests / pr-test / js	5	4.8	5.2	34278116323
+Build and Release Docker Image	languages / build-languages-arm64 (lean)	3	5.1	5.2	34011750193
+Build and Release Docker Image	dind / build-dind-arm64 (lean)	3	4.2	5.2	34056619231
+Build and Release Docker Image	pr-test / dotnet	2	4.5	5.0	34004951685
+Build and Release Docker Image	dind / build-dind-arm64 (perl)	3	3.4	4.9	34056619231
+Build and Release Docker Image	languages / build-languages-arm64 (ruby)	3	4.8	4.9	34011750193
+Build and Release Docker Image	dind / build-dind-amd64 (kotlin)	3	4.2	4.8	34056619231
+Build and Release Docker Image	pr-test / lean	2	4.7	4.8	34007285586
+Build and Release Docker Image	dind / build-dind-amd64 (essentials)	3	4.3	4.6	34056619231
+Build and Release Docker Image	languages / build-languages-arm64 (python)	3	3.9	4.4	34293699247
+Build and Release Docker Image	dind / build-dind-arm64 (go)	3	3.2	4.0	34056619231
+Build and Release Docker Image	dind / build-dind-arm64 (essentials)	3	3.4	3.9	34293699247
+Build and Release Docker Image	languages / build-languages-arm64 (kotlin)	3	3.3	3.9	34011750193
+Build and Release Docker Image	dind / build-dind-arm64 (rust)	3	3.2	3.7	34293699247
+Build and Release Docker Image	languages / build-languages-arm64 (go)	3	2.8	3.6	34293699247
+Build and Release Docker Image	dind / build-dind-arm64 (rocq)	3	3.2	3.5	34056619231
+Build and Release Docker Image	dind / build-dind-arm64 (ruby)	3	3.2	3.4	34293699247
+Build and Release Docker Image	dind / build-dind-arm64 (python)	3	3.0	3.4	34056619231
+Build and Release Docker Image	languages / build-languages-arm64 (rust)	3	2.9	3.3	34056619231
+Build and Release Docker Image	dind / build-dind-arm64 (js)	3	2.5	2.9	34056619231
+Build and Release Docker Image	languages / build-languages-arm64 (java)	3	2.8	2.8	34011750193
+Scripts	scripts / regression suites	42	1.3	1.9	34259551994
+Build and Release Docker Image	Cancel superseded runs	46	0.2	1.8	34277720730
+Build and Release Docker Image	dind / dind-manifest (go)	3	0.6	1.4	34056619231
+Build and Release Docker Image	languages / languages-manifest (rocq)	3	0.6	1.4	34056619231
+Build and Release Docker Image	dind / dind-manifest (ruby)	3	0.6	1.4	34056619231
+Build and Release Docker Image	languages / languages-manifest (java)	3	0.6	1.3	34056619231
+Build and Release Docker Image	languages / languages-manifest (swift)	3	0.6	1.3	34056619231
+Security	security / CodeQL (actions)	40	0.8	1.3	34334218966
+Security	security / CodeQL (javascript-typescript)	40	1.0	1.3	34293699154
+Build and Release Docker Image	languages / languages-manifest (ruby)	3	0.7	1.3	34056619231
+Build and Release Docker Image	dind / dind-manifest (python)	3	0.6	1.3	34056619231
+Build and Release Docker Image	languages / languages-manifest (rust)	3	0.6	1.3	34056619231
+Build and Release Docker Image	languages / languages-manifest (python)	3	0.6	1.3	34056619231
+Build and Release Docker Image	languages / languages-manifest (go)	3	0.6	1.3	34056619231
+Build and Release Docker Image	languages / languages-manifest (perl)	3	0.6	1.3	34056619231
+Build and Release Docker Image	dind / dind-manifest (rust)	3	0.6	1.3	34056619231
+Build and Release Docker Image	dind / dind-manifest (lean)	3	0.6	1.3	34056619231
+Build and Release Docker Image	dind / dind-manifest (java)	3	0.6	1.3	34056619231
+Build and Release Docker Image	dind / dind-manifest (php)	3	0.6	1.3	34056619231
+Build and Release Docker Image	dind / dind-manifest (essentials)	3	0.6	1.2	34056619231
+Build and Release Docker Image	full / docker-manifest	3	0.7	1.2	34056619231
+Build and Release Docker Image	dind / dind-manifest (perl)	3	0.6	1.2	34056619231
+Build and Release Docker Image	essentials / essentials-manifest	3	0.6	1.2	34056619231
+Build and Release Docker Image	languages / languages-manifest (php)	3	0.6	1.2	34056619231
+Build and Release Docker Image	js / js-manifest	3	0.6	1.2	34056619231
+Build and Release Docker Image	languages / languages-manifest (lean)	3	0.6	1.2	34056619231
+Build and Release Docker Image	languages / languages-manifest (kotlin)	3	0.6	1.2	34056619231
+Build and Release Docker Image	dind / dind-manifest (kotlin)	3	0.5	1.2	34056619231
+Build and Release Docker Image	dind / dind-manifest (js)	3	0.6	1.2	34056619231
+Build and Release Docker Image	dind / dind-manifest (full)	3	0.6	1.1	34056619231
+Build and Release Docker Image	dind / dind-manifest (swift)	3	0.6	1.1	34056619231
+Build and Release Docker Image	dind / dind-manifest (rocq)	3	0.5	1.1	34056619231
+Build and Release Docker Image	pr-tests / pr-test / version-policy	20	0.6	1.1	34053969334
+Security	security / CodeQL (python)	39	0.9	1.1	34004015409
+Scripts	scripts / formatting	31	0.3	0.9	34330112338
+Build and Release Docker Image	create-release	3	0.7	0.8	34011750193
+Links	links / lychee	36	0.4	0.7	34331783633
+File sizes	pipeline-status	5	0.2	0.7	34331783679
+Build and Release Docker Image	pr-test / version-policy	13	0.5	0.7	34007285586
+Scripts	scripts / shellcheck	42	0.4	0.6	34334219256
+Dockerfiles	dockerfiles / hadolint	25	0.3	0.4	34331783655
+Workflows	zizmor	45	0.2	0.3	34259551794
+Security	security / secretlint	40	0.2	0.3	34004746966
+Workflows	actionlint	45	0.2	0.3	34010892189
+Measure Disk Space and Update README	Validate measurement scripts	29	0.1	0.2	34011141184
+Scripts	scripts / heredoc variables	46	0.1	0.2	34053969217
+Build and Release Docker Image	preflight	26	0.1	0.2	34259552358
+Build and Release Docker Image	detect-changes	49	0.1	0.2	34335261693
+File sizes	file sizes / line limits	30	0.1	0.2	34287594327
+Build and Release Docker Image	Check for Manual Version Changes	46	0.1	0.1	34003416837
+Build and Release Docker Image	Check for Changesets	46	0.1	0.1	34335261693
+Scripts	pipeline-status	5	0.1	0.1	34331783586
+Security	pipeline-status	5	0.1	0.1	34334218966
+Build and Release Docker Image	pipeline-status	5	0.1	0.1	34332344847
+Workflows	pipeline-status	5	0.1	0.1	34335261292
+Links	pipeline-status	5	0.1	0.1	34330112230
+Dockerfiles	pipeline-status	5	0.1	0.1	34334219060
+Build and Release Docker Image	Apply Changesets	3	0.1	0.1	34293699247
+Measure Disk Space and Update README	pipeline-status	5	0.1	0.1	34335261614
+Build and Release Docker Image	js / js / status	3	0.1	0.1	34011750193
+Build and Release Docker Image	full / full / status	3	0.1	0.1	34056619231
+Build and Release Docker Image	pr-tests / docker-build-test	11	0.0	0.1	34331783884
+Build and Release Docker Image	essentials / essentials / status	3	0.1	0.1	34011750193
+Build and Release Docker Image	languages / languages / status	3	0.1	0.1	34293699247
+Build and Release Docker Image	docker-build-test	3	0.0	0.1	33997381059

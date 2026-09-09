@@ -17,6 +17,7 @@ The uncompressed copies are what the analysis was done against; read one with
 | `file-sizes-34293699000.log` | the `file-sizes` check |
 | `dockerfiles-34011750123.log` | the `dockerfiles` check, from the most recent run that reached hadolint. 10 advisory notices, all below the failure threshold |
 | `measure-disk-34011750117.log` | the `measure-disk-space` run of the same push |
+| `links-34335261245.log` | the `links` check of this pull request's branch, failing. Two `[ERROR] … docs/case-studies/issue-121/CASE-STUDY.md … File not found` from `docs/case-studies/issue-108/CASE-STUDY.md`, which links forward to a case study that had not been written yet. A true positive, and the reason the workflow had no successful run to measure durations from |
 
 `experiments/test-issue121-reclaim-large-packages.sh` reads the two job logs, so
 the claims in the table above are checked rather than asserted.

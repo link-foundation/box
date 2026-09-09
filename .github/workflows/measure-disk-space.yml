@@ -114,11 +114,17 @@ jobs:
 
   measure-disk-space:
     name: Measure Component Disk Space
-    # Pull requests stop at `validate`; measuring takes three hours and ends in
-    # a push to main.
+    # Pull requests stop at `validate`; measuring installs every toolchain on a
+    # bare runner and ends in a push to main.
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
-    timeout-minutes: 180  # 3 hours max for full installation measurement
+    # 180 was "3 hours max for full installation measurement" - a number nobody
+    # had checked against a run. Every successful run of this job in the
+    # repository's history finished inside 23.3 minutes, the slowest of them in
+    # February (dev/log/issues/121/pulls/122/analysis/); 60 leaves more than
+    # twice that and still bounds a hang at an hour instead of three (issue
+    # #121, docs/CI-TIMEOUT-BUDGETS.md).
+    timeout-minutes: 60
     # This job commits to main. Cancelling it mid-`git push` is worse than
     # letting a superseded run finish, so it queues instead of cancelling —
     # unlike the pre-merge checks above.
@@ -185,7 +191,12 @@ jobs:
           # sudo resets the environment (env_reset), so BOX_VERBOSE has to be
           # handed over explicitly rather than merely exported here.
           # pipefail ensures script failures propagate through tee.
-          sudo env "BOX_VERBOSE=$BOX_VERBOSE" ./scripts/measure-disk-space.sh \
+          # The budget wraps the measurement, not the pipeline: `tee` has to
+          # stay outside it so the log survives an overrun, and `pipefail` above
+          # still carries the wrapper's exit status - 124 when it runs out of
+          # budget (issue #121, docs/CI-TIMEOUT-BUDGETS.md).
+          bash scripts/ci/run-with-budget-warning.sh 2400 "disk space measurement" \
+            sudo env "BOX_VERBOSE=$BOX_VERBOSE" ./scripts/measure-disk-space.sh \
             --json-output data/disk-space-measurements.json 2>&1 | tee measurement.log
 
           echo "=== Measurement complete ==="

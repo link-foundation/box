@@ -1,0 +1,293 @@
+workflow	job	step	n	mean_s	max_s
+Build and Release Docker Image	pr-tests / pr-test / dind-full	Build base box for dind variant	1	2381	2381
+Build and Release Docker Image	pr-tests / pr-test / full	Build full chain (JS -> essentials -> languages -> full)	1	2342	2342
+Build and Release Docker Image	full / docker-build-push	Build and push full box (amd64)	3	1021	1239
+Build and Release Docker Image	full / docker-build-push-arm64	Build and push full box (arm64)	3	856	1149
+Build and Release Docker Image	pr-tests / pr-test / rocq	Build JS + essentials + rocq chain	3	991	1061
+Build and Release Docker Image	pr-tests / pr-test / dind-rocq	Build base box for dind variant	3	880	1018
+Build and Release Docker Image	languages / build-languages-amd64 (rocq)	Build and push rocq box (amd64)	3	928	961
+Measure Disk Space and Update README	Measure Component Disk Space	Run disk space measurement	1	832	832
+Build and Release Docker Image	dind / build-dind-amd64 (full)	Build and push full dind-box (amd64)	3	499	706
+Build and Release Docker Image	languages / build-languages-arm64 (rocq)	Build and push rocq box (arm64)	3	672	680
+Build and Release Docker Image	dind / build-dind-arm64 (java)	Mirror java dind-box (arm64) to Docker Hub	2	327	622
+Build and Release Docker Image	full / docker-build-push-arm64	Mirror full box (arm64) to Docker Hub	2	514	610
+Build and Release Docker Image	dind / build-dind-amd64 (rust)	Mirror rust dind-box (amd64) to Docker Hub	2	289	545
+Build and Release Docker Image	pr-tests / pr-test / ruby	Build JS + essentials + ruby chain	3	440	522
+Build and Release Docker Image	dind / build-dind-amd64 (swift)	Mirror swift dind-box (amd64) to Docker Hub	2	280	511
+Build and Release Docker Image	dind / build-dind-amd64 (rocq)	Mirror rocq dind-box (amd64) to Docker Hub	2	272	498
+Build and Release Docker Image	dind / build-dind-amd64 (go)	Mirror go dind-box (amd64) to Docker Hub	2	264	497
+Build and Release Docker Image	dind / build-dind-amd64 (java)	Free disk space	3	206	476
+Build and Release Docker Image	js / build-js-amd64	Free disk space	3	217	454
+Build and Release Docker Image	js / build-js-amd64	Build and push JS box (amd64)	3	385	451
+Build and Release Docker Image	dind / build-dind-arm64 (full)	Build and push full dind-box (arm64)	3	306	444
+Build and Release Docker Image	dind / build-dind-arm64 (swift)	Mirror swift dind-box (arm64) to Docker Hub	2	236	438
+Build and Release Docker Image	pr-tests / pr-test / dind-perl	Build base box for dind variant	3	405	438
+Build and Release Docker Image	pr-tests / pr-test / perl	Build JS + essentials + perl chain	3	407	424
+Build and Release Docker Image	pr-tests / pr-test / ruby	Free disk space	3	220	422
+Build and Release Docker Image	pr-tests / pr-test / dind-ruby	Build base box for dind variant	3	414	418
+Build and Release Docker Image	essentials / build-essentials-amd64	Build and push essentials box (amd64)	3	274	411
+Build and Release Docker Image	pr-tests / pr-test / dind-python	Build base box for dind variant	3	375	411
+Build and Release Docker Image	full / docker-build-push	Mirror full box (amd64) to Docker Hub	2	239	397
+Build and Release Docker Image	pr-tests / pr-test / dotnet	Build JS + essentials + dotnet chain	3	275	395
+Build and Release Docker Image	pr-tests / pr-test / dind-kotlin	Free disk space	3	196	388
+Build and Release Docker Image	pr-tests / pr-test / kotlin	Build JS + essentials + kotlin chain	3	323	385
+Build and Release Docker Image	languages / build-languages-amd64 (go)	Free disk space	3	187	373
+Build and Release Docker Image	full / docker-build-push	Smoke test released full box (amd64)	3	301	366
+Build and Release Docker Image	pr-tests / pr-test / dind-kotlin	Build base box for dind variant	3	269	360
+Build and Release Docker Image	pr-tests / pr-test / dind-rust	Build base box for dind variant	3	314	351
+Build and Release Docker Image	dind / build-dind-arm64 (full)	Mirror full dind-box (arm64) to Docker Hub	2	261	332
+Build and Release Docker Image	pr-tests / pr-test / dind-php	Build base box for dind variant	3	304	328
+Build and Release Docker Image	pr-tests / pr-test / python	Build JS + essentials + python chain	3	314	324
+Build and Release Docker Image	pr-tests / pr-test / dind-rust	Free disk space	3	226	323
+Build and Release Docker Image	pr-tests / pr-test / kotlin	Free disk space	3	258	323
+Build and Release Docker Image	dind / build-dind-amd64 (swift)	Free disk space	3	158	322
+Build and Release Docker Image	pr-tests / pr-test / php	Build JS + essentials + php chain	3	289	314
+Build and Release Docker Image	languages / build-languages-amd64 (ruby)	Build and push ruby box (amd64)	3	300	313
+Build and Release Docker Image	languages / build-languages-amd64 (perl)	Build and push perl box (amd64)	3	291	307
+Build and Release Docker Image	languages / build-languages-amd64 (swift)	Build and push swift box (amd64)	3	277	304
+Build and Release Docker Image	pr-tests / pr-test / dind-java	Build base box for dind variant	3	240	300
+Build and Release Docker Image	dind / build-dind-amd64 (full)	Mirror full dind-box (amd64) to Docker Hub	2	193	299
+Build and Release Docker Image	pr-tests / pr-test / dind-python	Free disk space	3	166	285
+Build and Release Docker Image	pr-tests / pr-test / dind-swift	Build base box for dind variant	3	260	279
+Build and Release Docker Image	languages / build-languages-amd64 (lean)	Build and push lean box (amd64)	3	243	276
+Build and Release Docker Image	pr-tests / pr-test / cpp	Build JS + essentials + cpp chain	3	237	276
+Build and Release Docker Image	languages / build-languages-arm64 (perl)	Build and push perl box (arm64)	3	268	274
+Build and Release Docker Image	pr-tests / pr-test / r	Build JS + essentials + r chain	3	230	266
+Build and Release Docker Image	pr-tests / pr-test / assembly	Build JS + essentials + assembly chain	3	223	264
+Build and Release Docker Image	pr-tests / pr-test / rust	Build JS + essentials + rust chain	3	239	263
+Build and Release Docker Image	pr-tests / pr-test / swift	Build JS + essentials + swift chain	3	254	260
+Build and Release Docker Image	languages / build-languages-amd64 (java)	Build and push java box (amd64)	3	177	259
+Build and Release Docker Image	pr-tests / pr-test / dind-essentials	Build base box for dind variant	3	214	257
+Build and Release Docker Image	pr-tests / pr-test / dind-lean	Build base box for dind variant	3	247	255
+Build and Release Docker Image	pr-tests / pr-test / dotnet	Free disk space	3	153	243
+Build and Release Docker Image	languages / build-languages-amd64 (perl)	Free disk space	3	135	240
+Build and Release Docker Image	languages / build-languages-amd64 (php)	Build and push php box (amd64)	3	211	238
+Build and Release Docker Image	pr-tests / pr-test / dind-full	Free disk space	3	198	234
+Build and Release Docker Image	pr-tests / pr-test / lean	Build JS + essentials + lean chain	3	215	229
+Build and Release Docker Image	languages / build-languages-arm64 (lean)	Build and push lean box (arm64)	3	217	228
+Build and Release Docker Image	languages / build-languages-arm64 (swift)	Build and push swift box (arm64)	3	212	226
+Build and Release Docker Image	dind / build-dind-amd64 (python)	Free disk space	3	148	226
+Build and Release Docker Image	dind / build-dind-amd64 (go)	Build and push go dind-box (amd64)	3	143	226
+Build and Release Docker Image	dind / build-dind-amd64 (php)	Build and push php dind-box (amd64)	3	184	223
+Build and Release Docker Image	dind / build-dind-amd64 (swift)	Build and push swift dind-box (amd64)	3	215	221
+Build and Release Docker Image	dind / build-dind-arm64 (swift)	Build and push swift dind-box (arm64)	3	165	220
+Build and Release Docker Image	js / build-js-arm64	Build and push JS box (arm64)	3	206	219
+Build and Release Docker Image	pr-tests / pr-test / java	Build JS + essentials + java chain	3	212	219
+Build and Release Docker Image	dind / build-dind-amd64 (perl)	Mirror perl dind-box (amd64) to Docker Hub	2	120	218
+Build and Release Docker Image	essentials / build-essentials-arm64	Build and push essentials box (arm64)	3	186	216
+Build and Release Docker Image	pr-tests / pr-test / java	Free disk space	3	122	216
+Build and Release Docker Image	pr-tests / pr-test / php	Free disk space	3	119	216
+Build and Release Docker Image	dind / build-dind-arm64 (kotlin)	Mirror kotlin dind-box (arm64) to Docker Hub	2	136	215
+Build and Release Docker Image	pr-tests / pr-test / essentials	Build JS + essentials chain	3	202	212
+Build and Release Docker Image	pr-tests / pr-test / dind-go	Build base box for dind variant	3	205	212
+Build and Release Docker Image	languages / build-languages-arm64 (ruby)	Build and push ruby box (arm64)	3	209	209
+Build and Release Docker Image	dind / build-dind-amd64 (lean)	Build and push lean dind-box (amd64)	3	173	204
+Build and Release Docker Image	dind / build-dind-amd64 (php)	Mirror php dind-box (amd64) to Docker Hub	2	114	202
+Build and Release Docker Image	pr-tests / pr-test / dind-rocq	Free disk space	3	184	201
+Build and Release Docker Image	languages / build-languages-amd64 (python)	Build and push python box (amd64)	3	192	200
+Build and Release Docker Image	languages / build-languages-arm64 (php)	Build and push php box (arm64)	3	175	196
+Build and Release Docker Image	pr-tests / pr-test / go	Build JS + essentials + go chain	3	186	193
+Build and Release Docker Image	dind / build-dind-arm64 (php)	Mirror php dind-box (arm64) to Docker Hub	2	183	192
+Build and Release Docker Image	pr-tests / pr-test / full	Free disk space	3	158	192
+Build and Release Docker Image	pr-tests / pr-test / lean	Free disk space	3	151	191
+Build and Release Docker Image	dind / build-dind-amd64 (python)	Mirror python dind-box (amd64) to Docker Hub	2	116	190
+Build and Release Docker Image	pr-tests / pr-test / dind-js	Free disk space	3	118	188
+Build and Release Docker Image	dind / build-dind-amd64 (perl)	Build and push perl dind-box (amd64)	3	141	185
+Build and Release Docker Image	dind / build-dind-amd64 (php)	Free disk space	3	133	177
+Build and Release Docker Image	full / docker-build-push	Free disk space	3	138	176
+Build and Release Docker Image	pr-tests / pr-test / js	Build JS box (amd64)	3	154	174
+Build and Release Docker Image	pr-tests / pr-test / assembly	Free disk space	3	132	171
+Build and Release Docker Image	dind / build-dind-amd64 (js)	Free disk space	3	129	169
+Build and Release Docker Image	pr-tests / pr-test / dind-js	Build base box for dind variant	3	150	169
+Build and Release Docker Image	pr-tests / pr-test / dind-lean	Free disk space	3	136	169
+Build and Release Docker Image	dind / build-dind-amd64 (rust)	Build and push rust dind-box (amd64)	3	150	167
+Build and Release Docker Image	languages / build-languages-amd64 (swift)	Free disk space	3	127	166
+Build and Release Docker Image	pr-tests / pr-test / dind-php	Free disk space	3	135	166
+Build and Release Docker Image	pr-tests / pr-test / dind-go	Free disk space	3	134	165
+Build and Release Docker Image	languages / build-languages-amd64 (kotlin)	Build and push kotlin box (amd64)	3	134	164
+Build and Release Docker Image	essentials / build-essentials-amd64	Free disk space	3	114	163
+Build and Release Docker Image	dind / build-dind-amd64 (full)	Free disk space	3	135	162
+Build and Release Docker Image	pr-tests / pr-test / essentials	Free disk space	3	128	162
+Build and Release Docker Image	dind / build-dind-amd64 (rocq)	Build and push rocq dind-box (amd64)	3	149	161
+Build and Release Docker Image	pr-tests / pr-test / dind-java	Free disk space	3	145	161
+Build and Release Docker Image	pr-tests / pr-test / rocq	Free disk space	3	152	159
+Build and Release Docker Image	languages / build-languages-amd64 (kotlin)	Free disk space	3	99	158
+Build and Release Docker Image	pr-tests / pr-test / js	Free disk space	3	142	156
+Build and Release Docker Image	languages / build-languages-amd64 (java)	Free disk space	3	142	154
+Build and Release Docker Image	dind / build-dind-arm64 (php)	Build and push php dind-box (arm64)	3	140	152
+Build and Release Docker Image	languages / build-languages-arm64 (python)	Build and push python box (arm64)	3	148	151
+Build and Release Docker Image	languages / build-languages-amd64 (rust)	Build and push rust box (amd64)	3	121	149
+Build and Release Docker Image	pr-tests / pr-test / swift	Free disk space	3	132	148
+Build and Release Docker Image	languages / build-languages-amd64 (rocq)	Free disk space	3	105	147
+Build and Release Docker Image	dind / build-dind-amd64 (essentials)	Free disk space	3	120	144
+Build and Release Docker Image	dind / build-dind-amd64 (lean)	Free disk space	3	114	144
+Build and Release Docker Image	dind / build-dind-arm64 (lean)	Build and push lean dind-box (arm64)	3	142	144
+Build and Release Docker Image	languages / build-languages-amd64 (rust)	Free disk space	3	125	143
+Build and Release Docker Image	dind / build-dind-amd64 (java)	Build and push java dind-box (amd64)	3	137	143
+Build and Release Docker Image	pr-tests / pr-test / dind-ruby	Free disk space	3	116	143
+Build and Release Docker Image	languages / build-languages-amd64 (lean)	Free disk space	3	100	142
+Build and Release Docker Image	pr-tests / pr-test / perl	Free disk space	3	127	141
+Build and Release Docker Image	languages / build-languages-amd64 (python)	Free disk space	3	99	140
+Build and Release Docker Image	dind / build-dind-amd64 (ruby)	Free disk space	3	133	138
+Build and Release Docker Image	dind / build-dind-amd64 (kotlin)	Free disk space	3	109	138
+Build and Release Docker Image	dind / build-dind-amd64 (rocq)	Free disk space	3	100	135
+Build and Release Docker Image	pr-tests / pr-test / r	Free disk space	3	98	135
+Build and Release Docker Image	languages / build-languages-arm64 (kotlin)	Build and push kotlin box (arm64)	3	109	134
+Build and Release Docker Image	pr-tests / pr-test / cpp	Free disk space	3	112	134
+Build and Release Docker Image	dind / build-dind-amd64 (rust)	Free disk space	3	97	133
+Build and Release Docker Image	pr-tests / pr-test / dind-swift	Free disk space	3	103	131
+Build and Release Docker Image	languages / build-languages-amd64 (ruby)	Free disk space	3	95	130
+Build and Release Docker Image	dind / build-dind-amd64 (perl)	Free disk space	3	113	129
+Build and Release Docker Image	dind / build-dind-amd64 (python)	Build and push python dind-box (amd64)	3	110	128
+Build and Release Docker Image	dind / build-dind-arm64 (kotlin)	Build and push kotlin dind-box (arm64)	3	115	128
+Build and Release Docker Image	dind / build-dind-arm64 (java)	Build and push java dind-box (arm64)	3	113	128
+Build and Release Docker Image	pr-tests / pr-test / dind-perl	Free disk space	3	108	126
+Build and Release Docker Image	full / docker-build-push-arm64	Free disk space	3	81	120
+Build and Release Docker Image	pr-tests / pr-test / rust	Free disk space	3	91	119
+Build and Release Docker Image	languages / build-languages-amd64 (php)	Tag PHP image with install method suffix (amd64)	3	93	116
+Build and Release Docker Image	dind / build-dind-arm64 (essentials)	Build and push essentials dind-box (arm64)	3	94	115
+Build and Release Docker Image	dind / build-dind-arm64 (rocq)	Build and push rocq dind-box (arm64)	3	103	114
+Build and Release Docker Image	dind / build-dind-arm64 (perl)	Build and push perl dind-box (arm64)	3	92	113
+Build and Release Docker Image	dind / build-dind-amd64 (essentials)	Build and push essentials dind-box (amd64)	3	95	111
+Build and Release Docker Image	dind / build-dind-amd64 (js)	Build and push js dind-box (amd64)	3	92	111
+Build and Release Docker Image	dind / build-dind-amd64 (kotlin)	Build and push kotlin dind-box (amd64)	3	108	110
+Build and Release Docker Image	dind / build-dind-amd64 (go)	Free disk space	3	86	108
+Scripts	scripts / regression suites	Run every experiment suite	18	78	106
+Build and Release Docker Image	dind / build-dind-arm64 (go)	Build and push go dind-box (arm64)	3	90	103
+Build and Release Docker Image	Cancel superseded runs	Cancel runs for superseded commits of this pull request	24	10	101
+Build and Release Docker Image	languages / build-languages-amd64 (go)	Build and push go box (amd64)	3	90	101
+Build and Release Docker Image	pr-tests / pr-test / dind-essentials	Free disk space	3	88	101
+Build and Release Docker Image	languages / build-languages-arm64 (java)	Build and push java box (arm64)	3	89	100
+Build and Release Docker Image	languages / build-languages-arm64 (rust)	Build and push rust box (arm64)	3	91	100
+Build and Release Docker Image	dind / build-dind-amd64 (ruby)	Build and push ruby dind-box (amd64)	3	94	97
+Build and Release Docker Image	dind / build-dind-arm64 (rust)	Build and push rust dind-box (arm64)	3	95	97
+Build and Release Docker Image	dind / build-dind-arm64 (perl)	Mirror perl dind-box (arm64) to Docker Hub	2	63	97
+Build and Release Docker Image	dind / build-dind-arm64 (ruby)	Build and push ruby dind-box (arm64)	3	83	96
+Build and Release Docker Image	pr-tests / pr-test / python	Free disk space	3	79	92
+Build and Release Docker Image	dind / build-dind-arm64 (full)	Free disk space	3	73	89
+Build and Release Docker Image	languages / build-languages-arm64 (php)	Tag PHP image with install method suffix (arm64)	3	76	85
+Build and Release Docker Image	pr-tests / pr-test / go	Free disk space	3	71	85
+Build and Release Docker Image	languages / build-languages-amd64 (php)	Free disk space	3	79	84
+Build and Release Docker Image	languages / build-languages-arm64 (rocq)	Free disk space	3	59	84
+Build and Release Docker Image	dind / build-dind-amd64 (java)	Mirror java dind-box (amd64) to Docker Hub	2	73	84
+Build and Release Docker Image	dind / build-dind-arm64 (python)	Build and push python dind-box (arm64)	3	79	83
+Build and Release Docker Image	dind / build-dind-arm64 (lean)	Mirror lean dind-box (arm64) to Docker Hub	2	58	83
+Build and Release Docker Image	languages / build-languages-arm64 (kotlin)	Free disk space	3	59	80
+Build and Release Docker Image	dind / build-dind-arm64 (rust)	Free disk space	3	60	79
+Build and Release Docker Image	dind / build-dind-arm64 (go)	Mirror go dind-box (arm64) to Docker Hub	2	58	77
+Build and Release Docker Image	languages / build-languages-arm64 (go)	Build and push go box (arm64)	3	67	76
+Build and Release Docker Image	dind / build-dind-arm64 (php)	Free disk space	3	72	75
+Build and Release Docker Image	dind / build-dind-arm64 (python)	Free disk space	3	61	73
+Build and Release Docker Image	dind / build-dind-arm64 (swift)	Free disk space	3	62	72
+Build and Release Docker Image	js / build-js-arm64	Free disk space	3	57	71
+Build and Release Docker Image	languages / build-languages-arm64 (ruby)	Free disk space	3	47	70
+Build and Release Docker Image	dind / build-dind-arm64 (essentials)	Free disk space	3	59	70
+Build and Release Docker Image	dind / build-dind-arm64 (ruby)	Free disk space	3	63	70
+Build and Release Docker Image	essentials / build-essentials-amd64	Mirror essentials box (amd64) to Docker Hub	2	48	69
+Build and Release Docker Image	languages / build-languages-amd64 (ruby)	Mirror ruby box (amd64) to Docker Hub	2	67	68
+Build and Release Docker Image	dind / build-dind-arm64 (lean)	Free disk space	3	54	68
+Build and Release Docker Image	essentials / build-essentials-arm64	Free disk space	3	54	66
+Build and Release Docker Image	languages / build-languages-arm64 (perl)	Free disk space	3	53	66
+Build and Release Docker Image	dind / build-dind-arm64 (js)	Free disk space	3	57	66
+Build and Release Docker Image	dind / build-dind-arm64 (kotlin)	Free disk space	3	57	66
+Build and Release Docker Image	dind / build-dind-arm64 (js)	Build and push js dind-box (arm64)	3	60	65
+Build and Release Docker Image	languages / build-languages-arm64 (swift)	Free disk space	3	62	64
+Build and Release Docker Image	dind / build-dind-arm64 (go)	Free disk space	3	47	64
+Build and Release Docker Image	dind / build-dind-arm64 (perl)	Free disk space	3	49	64
+Build and Release Docker Image	languages / languages-manifest (go)	Create and push go multi-arch manifests (Docker Hub)	1	64	64
+Build and Release Docker Image	languages / languages-manifest (perl)	Create and push perl multi-arch manifests (Docker Hub)	1	64	64
+Build and Release Docker Image	languages / languages-manifest (swift)	Create and push swift multi-arch manifests (Docker Hub)	1	64	64
+Build and Release Docker Image	languages / languages-manifest (rust)	Create and push rust multi-arch manifests (Docker Hub)	1	64	64
+Build and Release Docker Image	dind / dind-manifest (rust)	Create and push rust dind multi-arch manifests (Docker Hub)	1	64	64
+Build and Release Docker Image	dind / dind-manifest (go)	Create and push go dind multi-arch manifests (Docker Hub)	1	64	64
+Build and Release Docker Image	dind / dind-manifest (lean)	Create and push lean dind multi-arch manifests (Docker Hub)	1	64	64
+Build and Release Docker Image	languages / build-languages-arm64 (go)	Free disk space	3	54	63
+Build and Release Docker Image	languages / languages-manifest (python)	Create and push python multi-arch manifests (Docker Hub)	1	63	63
+Build and Release Docker Image	languages / languages-manifest (rocq)	Create and push rocq multi-arch manifests (Docker Hub)	1	63	63
+Build and Release Docker Image	languages / languages-manifest (java)	Create and push java multi-arch manifests (Docker Hub)	1	63	63
+Build and Release Docker Image	languages / languages-manifest (ruby)	Create and push ruby multi-arch manifests (Docker Hub)	1	63	63
+Build and Release Docker Image	dind / dind-manifest (perl)	Create and push perl dind multi-arch manifests (Docker Hub)	1	63	63
+Build and Release Docker Image	dind / dind-manifest (ruby)	Create and push ruby dind multi-arch manifests (Docker Hub)	1	63	63
+Build and Release Docker Image	dind / dind-manifest (python)	Create and push python dind multi-arch manifests (Docker Hub)	1	63	63
+Build and Release Docker Image	languages / build-languages-amd64 (kotlin)	Mirror kotlin box (amd64) to Docker Hub	2	49	62
+Build and Release Docker Image	languages / build-languages-arm64 (python)	Free disk space	3	56	62
+Build and Release Docker Image	dind / build-dind-amd64 (lean)	Mirror lean dind-box (amd64) to Docker Hub	2	42	62
+Build and Release Docker Image	essentials / essentials-manifest	Create and push essentials multi-arch manifests (Docker Hub)	1	62	62
+Build and Release Docker Image	languages / languages-manifest (php)	Create and push php multi-arch manifests (Docker Hub)	1	62	62
+Build and Release Docker Image	full / docker-manifest	Create and push multi-arch manifest (Docker Hub)	1	62	62
+Build and Release Docker Image	dind / dind-manifest (essentials)	Create and push essentials dind multi-arch manifests (Docker Hub)	1	62	62
+Build and Release Docker Image	dind / dind-manifest (java)	Create and push java dind multi-arch manifests (Docker Hub)	1	62	62
+Build and Release Docker Image	dind / dind-manifest (php)	Create and push php dind multi-arch manifests (Docker Hub)	1	62	62
+Build and Release Docker Image	dind / build-dind-arm64 (rocq)	Free disk space	3	46	61
+Build and Release Docker Image	js / js-manifest	Create and push JS multi-arch manifests (Docker Hub)	1	61	61
+Build and Release Docker Image	languages / languages-manifest (kotlin)	Create and push kotlin multi-arch manifests (Docker Hub)	1	61	61
+Build and Release Docker Image	languages / languages-manifest (lean)	Create and push lean multi-arch manifests (Docker Hub)	1	61	61
+Build and Release Docker Image	dind / dind-manifest (js)	Create and push js dind multi-arch manifests (Docker Hub)	1	61	61
+Build and Release Docker Image	dind / dind-manifest (swift)	Create and push swift dind multi-arch manifests (Docker Hub)	1	61	61
+Build and Release Docker Image	dind / dind-manifest (full)	Create and push full dind multi-arch manifests (Docker Hub)	1	61	61
+Build and Release Docker Image	dind / dind-manifest (rocq)	Create and push rocq dind multi-arch manifests (Docker Hub)	1	61	61
+Build and Release Docker Image	dind / dind-manifest (kotlin)	Create and push kotlin dind multi-arch manifests (Docker Hub)	1	61	61
+Build and Release Docker Image	languages / build-languages-arm64 (lean)	Free disk space	3	47	60
+Build and Release Docker Image	dind / build-dind-arm64 (essentials)	Mirror essentials dind-box (arm64) to Docker Hub	2	49	60
+Build and Release Docker Image	dind / build-dind-arm64 (java)	Free disk space	3	55	60
+Security	security / CodeQL (javascript-typescript)	Analyze	31	38	59
+Build and Release Docker Image	languages / build-languages-arm64 (go)	Mirror go box (arm64) to Docker Hub	2	40	59
+Build and Release Docker Image	languages / build-languages-arm64 (rust)	Free disk space	3	46	59
+Build and Release Docker Image	languages / build-languages-amd64 (lean)	Mirror lean box (amd64) to Docker Hub	2	41	59
+Build and Release Docker Image	languages / build-languages-amd64 (swift)	Mirror swift box (amd64) to Docker Hub	2	43	56
+Build and Release Docker Image	dind / build-dind-amd64 (ruby)	Mirror ruby dind-box (amd64) to Docker Hub	2	38	54
+Build and Release Docker Image	languages / build-languages-arm64 (php)	Free disk space	3	46	53
+Build and Release Docker Image	dind / build-dind-arm64 (rocq)	Mirror rocq dind-box (arm64) to Docker Hub	2	38	53
+Build and Release Docker Image	languages / build-languages-arm64 (java)	Free disk space	3	46	49
+Build and Release Docker Image	languages / build-languages-amd64 (go)	Mirror go box (amd64) to Docker Hub	2	44	48
+Measure Disk Space and Update README	Measure Component Disk Space	Free up disk space	1	48	48
+Build and Release Docker Image	pr-tests / pr-test / dind-js	Test documented dind examples	3	42	47
+Build and Release Docker Image	languages / build-languages-arm64 (rocq)	Mirror rocq box (arm64) to Docker Hub	2	44	46
+Build and Release Docker Image	pr-tests / pr-test / dind-full	Build dind-box variant	1	46	46
+Build and Release Docker Image	languages / build-languages-amd64 (perl)	Mirror perl box (amd64) to Docker Hub	2	36	45
+Build and Release Docker Image	languages / build-languages-amd64 (java)	Mirror java box (amd64) to Docker Hub	2	41	44
+Build and Release Docker Image	dind / build-dind-arm64 (python)	Mirror python dind-box (arm64) to Docker Hub	2	34	43
+Security	security / CodeQL (python)	Analyze	31	30	42
+Build and Release Docker Image	languages / build-languages-arm64 (swift)	Mirror swift box (arm64) to Docker Hub	2	34	42
+Build and Release Docker Image	dind / build-dind-amd64 (js)	Mirror js dind-box (amd64) to Docker Hub	2	34	42
+Build and Release Docker Image	languages / build-languages-arm64 (php)	Mirror php box (arm64) to Docker Hub	2	28	40
+Security	security / CodeQL (actions)	Analyze	31	29	39
+Build and Release Docker Image	languages / build-languages-arm64 (rust)	Mirror rust box (arm64) to Docker Hub	2	28	39
+Build and Release Docker Image	languages / build-languages-amd64 (rocq)	Mirror rocq box (amd64) to Docker Hub	2	34	39
+Build and Release Docker Image	dind / build-dind-arm64 (ruby)	Mirror ruby dind-box (arm64) to Docker Hub	2	38	39
+Build and Release Docker Image	js / build-js-amd64	Mirror JS box (amd64) to Docker Hub	2	32	38
+Build and Release Docker Image	create-release	Build release notes	3	27	38
+Build and Release Docker Image	essentials / build-essentials-arm64	Mirror essentials box (arm64) to Docker Hub	2	28	37
+Build and Release Docker Image	pr-tests / pr-test / full	Test full box	1	36	36
+Build and Release Docker Image	languages / build-languages-arm64 (lean)	Mirror lean box (arm64) to Docker Hub	2	31	34
+Build and Release Docker Image	pr-tests / pr-test / version-policy	Layer semantics behind the rustup refresh	18	14	33
+Build and Release Docker Image	pr-tests / pr-test / dind-rocq	Build dind-box variant	3	31	33
+Build and Release Docker Image	dind / build-dind-amd64 (essentials)	Mirror essentials dind-box (amd64) to Docker Hub	2	31	31
+Build and Release Docker Image	pr-tests / pr-test / dind-python	Build dind-box variant	3	26	31
+Links	links / lychee	Check links with lychee	29	15	30
+Build and Release Docker Image	languages / build-languages-arm64 (python)	Mirror python box (arm64) to Docker Hub	2	24	30
+Build and Release Docker Image	dind / build-dind-arm64 (rust)	Mirror rust dind-box (arm64) to Docker Hub	2	28	30
+Build and Release Docker Image	pr-tests / pr-test / dind-rust	Build dind-box variant	3	30	30
+Build and Release Docker Image	languages / build-languages-amd64 (python)	Mirror python box (amd64) to Docker Hub	2	26	29
+Build and Release Docker Image	pr-tests / pr-test / dind-php	Build dind-box variant	3	25	29
+Build and Release Docker Image	pr-tests / pr-test / dind-kotlin	Build dind-box variant	3	24	29
+Build and Release Docker Image	languages / build-languages-amd64 (rust)	Mirror rust box (amd64) to Docker Hub	2	26	28
+Build and Release Docker Image	languages / build-languages-amd64 (php)	Mirror php box (amd64) to Docker Hub	2	27	28
+Build and Release Docker Image	languages / build-languages-arm64 (perl)	Mirror perl box (arm64) to Docker Hub	2	23	26
+Build and Release Docker Image	dind / build-dind-arm64 (js)	Mirror js dind-box (arm64) to Docker Hub	2	20	26
+Build and Release Docker Image	dind / build-dind-amd64 (kotlin)	Mirror kotlin dind-box (amd64) to Docker Hub	2	26	26
+Build and Release Docker Image	pr-tests / pr-test / dind-go	Build dind-box variant	3	24	26
+Security	security / CodeQL (javascript-typescript)	Initialize CodeQL	31	14	25
+Build and Release Docker Image	languages / build-languages-arm64 (ruby)	Mirror ruby box (arm64) to Docker Hub	2	22	25
+Build and Release Docker Image	pr-tests / pr-test / dind-ruby	Build dind-box variant	3	24	25
+Build and Release Docker Image	pr-tests / pr-test / dind-essentials	Build dind-box variant	3	23	25
+Build and Release Docker Image	pr-tests / pr-test / dind-lean	Build dind-box variant	3	24	25
+Build and Release Docker Image	pr-tests / pr-test / dind-perl	Build dind-box variant	3	23	24
+Build and Release Docker Image	languages / build-languages-arm64 (java)	Mirror java box (arm64) to Docker Hub	2	22	23
+Build and Release Docker Image	pr-tests / pr-test / dind-swift	Build dind-box variant	3	21	23
+Security	security / CodeQL (python)	Initialize CodeQL	31	14	22
+Build and Release Docker Image	languages / build-languages-arm64 (kotlin)	Mirror kotlin box (arm64) to Docker Hub	2	20	22
+Build and Release Docker Image	full / docker-build-push	Post Set up Docker Buildx	3	18	21
+Build and Release Docker Image	pr-tests / pr-test / dind-java	Build dind-box variant	3	21	21
+Build and Release Docker Image	js / build-js-arm64	Mirror JS box (arm64) to Docker Hub	2	19	20
+Build and Release Docker Image	pr-tests / pr-test / dind-js	Build dind-box variant	3	19	20

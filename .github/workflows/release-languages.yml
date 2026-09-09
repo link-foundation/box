@@ -211,6 +211,15 @@ jobs:
         id: build-push
         continue-on-error: true
         if: steps.check-lang.outputs.should_build == 'true'
+        # A `uses:` step cannot be routed through
+        # scripts/ci/run-with-budget-warning.sh, so its budget is the one
+        # GitHub applies to a whole step (issue #121,
+        # docs/CI-TIMEOUT-BUDGETS.md). A step that runs out of it fails and
+        # names itself; the job's `timeout-minutes` backstop would instead
+        # report the whole job *cancelled*, with no indication of where the
+        # time went. Sized from measurement: rocq, the slowest of the eleven
+        # languages, took 16.0 minutes.
+        timeout-minutes: 25
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -422,6 +431,7 @@ jobs:
         id: build-push
         continue-on-error: true
         if: steps.check-lang.outputs.should_build == 'true'
+        timeout-minutes: 25
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -517,7 +527,8 @@ jobs:
   # === CREATE LANGUAGE MULTI-ARCH MANIFESTS ===
   languages-manifest:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # Measured maximum 1.4 minutes: this job only assembles manifests.
+    timeout-minutes: 10
     needs: [build-languages-amd64, build-languages-arm64]
     strategy:
       fail-fast: false

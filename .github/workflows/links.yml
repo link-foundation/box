@@ -73,8 +73,16 @@ jobs:
       - name: Simulate a fresh merge with the base branch
         uses: ./.github/actions/simulate-fresh-merge
 
+      # A `uses:` step takes the budget GitHub applies to a whole step, since it
+      # cannot be routed through scripts/ci/run-with-budget-warning.sh (issue
+      # #121, docs/CI-TIMEOUT-BUDGETS.md). The slowest run measured took 30
+      # seconds; 5 minutes bounds a slow external host without waiting for the
+      # job cap, which would report the job *cancelled* and skip the reporting
+      # steps below - including the recovery pass that tells a false positive
+      # from a real broken link.
       - name: Check links with lychee
         id: lychee
+        timeout-minutes: 5
         uses: lycheeverse/lychee-action@v2
         with:
           args: >-

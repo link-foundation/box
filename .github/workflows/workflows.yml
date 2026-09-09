@@ -65,6 +65,16 @@ jobs:
       - name: Every workflow's status gate covers every job in it
         run: node scripts/ci/check-status-gate-covers-all-jobs.mjs .github/workflows/*.yml
 
+      # The same argument one level down (issue #121). A long step's execution
+      # budget only reports the overrun if it expires *before* the job's
+      # `timeout-minutes` backstop cancels the job; a budget that meets or
+      # exceeds its cap is a check that can never fire, and the run goes grey
+      # with no indication of which step ran long. This derives both numbers
+      # from the workflow and fails when a budget claims too much of its cap -
+      # per matrix leg, because this repository sizes caps and budgets per leg.
+      - name: Every execution budget fits inside its job's timeout
+        run: node scripts/ci/check-timeout-budgets.mjs .github/workflows/*.yml
+
   zizmor:
     name: zizmor
     runs-on: ubuntu-24.04

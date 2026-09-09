@@ -187,8 +187,15 @@ jobs:
       - name: List the suites that will run
         run: bash scripts/ci/run-experiments.sh --list
 
+      # The budget belongs on this step, not on the job: `Upload suite logs`
+      # below runs `if: !cancelled()`, and a job killed by `timeout-minutes` is
+      # cancelled - so an overrun would take the logs that explain it with it
+      # (issue #121, docs/CI-TIMEOUT-BUDGETS.md). The slowest run measured took
+      # 106 seconds across all suites.
       - name: Run every experiment suite
-        run: bash scripts/ci/run-experiments.sh
+        run: |
+          bash scripts/ci/run-with-budget-warning.sh 600 "every experiment suite" \
+            bash scripts/ci/run-experiments.sh
 
       - name: Upload suite logs
         if: ${{ !cancelled() }}
