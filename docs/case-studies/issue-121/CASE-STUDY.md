@@ -39,7 +39,7 @@ way to go red.
 | o | The assertion written for finding **g** could not fail on the machine that ran it | `scripts` | It extracted a `run:` block with `awk '/^\s+run: \|/,0'`. `\s` is a GNU extension: under mawk (Debian's and Ubuntu's default `awk`) it matches nothing, the range never opens, and the negated grep passes. Under gawk — what GitHub's runner ships — `,0` never closes, so the "block" is the rest of the file and correct `with:` mappings are reported. | The block is bounded by indentation; `scripts/ci/check-awk-portability.sh` fails CI on any GNU-only escape in an awk program, over every tracked file. |
 | p | Ten of this repository's fourteen JavaScript modules were parsed by nothing | structural | shellcheck, shfmt and `check-heredoc-vars.sh` discover `*.sh`; `run-experiments.sh` discovers `experiments/*.sh`; `check-file-line-limits.sh` reads `*.mjs` but only counts lines. Two of the four modules CI does execute run **only** on the recovery path, after the links check has already failed. | `scripts/ci/check-mjs-syntax.sh` parses every tracked module and resolves every relative import, ported from the js template's gate of the same name. |
 | q | The job that commits the README could commit another run's numbers | `measure-disk-space` | `update-readme-sizes.sh` rendered its table to `/tmp/markdown_table_content.txt` — one fixed path, shared by every invocation on the machine — and the branch that runs when the README has lost its markers read that file three lines *before* writing it. With no leftover it died with a Python traceback naming a path in `/tmp`; with a leftover it wrote **that** run's table into this README and exited 0. `--readme-file` and `--json-file` were parsed into shell variables the Python child process never saw, so the script announced one file and rewrote another. | One render into a `mktemp` file of the run's own, one write path for both branches, and both paths exported. `experiments/test-issue121-readme-updater.sh` holds 25 assertions, 10 of which fail against the previous script; the transcripts are in `dev/log/issues/121/pulls/122/readme-updater/`. |
-| r | The link checker resolved every link and checked no anchor | `links` | lychee stops at the document: `docs/RELEASING.md#making-the-ghcr-packages-public` passes because that file exists, whatever headings it contains. An anchor is the part of a link a heading rename breaks, and 27 links in the corpus carry one (14 into this repository, 13 remote). | `--include-fragments`. A mutation fixture pins that the flag is what does it — the same two files, both target headings renamed, report `2 OK 🚫 0 Errors` without it and `Cannot find fragment` twice with it. Turning it on found 4 errors on 3 URLs, each confirmed dead in a browser and fixed; the full corpus is then 678 links, 664 OK, **0 errors** in 12.8 s. Evidence: `dev/log/issues/121/pulls/122/doc-fragments/`. |
+| r | The link checker resolved every link and checked no anchor | `links` | lychee stops at the document: `docs/RELEASING.md#making-the-ghcr-packages-public` passes because that file exists, whatever headings it contains. An anchor is the part of a link a heading rename breaks, and 27 links in the corpus carry one (14 into this repository, 13 remote). | `--include-fragments`. A mutation fixture pins that the flag is what does it — the same two files, both target headings renamed, report `2 OK 🚫 0 Errors` without it and `Cannot find fragment` twice with it. Turning it on found 4 errors on 3 URLs, each confirmed dead in a browser and fixed; the full corpus was then 678 links, 664 OK, **0 errors** in 12.8 s, and 681/667/**0** in 14.6 s on the finished branch, which added documents of its own. Evidence: `dev/log/issues/121/pulls/122/doc-fragments/`. |
 | s | A heading two scripts depend on could be renamed by anyone | structural | `update-readme-sizes.sh` inserts the generated table before README's `## License`, falling back to `## Documentation`; rename either and the section is appended to the end of the file with the job still green. `preflight-credentials.sh:222` sends an operator holding a rejected credential to "the 'Releasing' section of README.md", and two other scripts name `docs/RELEASING.md` — messages read on the worst day of a release, pointing at headings nothing verified. | `scripts/ci/check-required-docs.sh`: six documents, 24 sections, both component-sizes markers, and every `docs/…md` path named anywhere in `scripts/` or `.github/`. Ported from the js template's gate of the same name; run by a new `docs.yml`, whose triggers are the union of the markdown and the shell. 32 assertions in `experiments/test-issue121-required-docs.sh`, built from the checker's own `--list` so the fixtures cannot drift from the table. |
 
 One sentence covers the whole table: **an annotation is a claim about the run,
@@ -741,8 +741,8 @@ That reasoning was right about the tool and wrong about the practice. husky and
 lint-staged need an npm project; `core.hooksPath` and `git checkout-index` need
 git, which is already a hard dependency of every one of these scripts. So the
 hook is `.githooks/pre-commit`, eleven lines, delegating to
-`scripts/ci/run-precommit-checks.sh`, which runs the same ten gates CI runs, with
-the same arguments, over the same content.
+`scripts/ci/run-precommit-checks.sh`, which runs the same thirteen gates CI runs,
+with the same arguments, over the same content.
 
 **The same content is the whole design.** `git commit` records the index, not the
 working tree, and the two differ whenever somebody uses `git add -p`, or fixes
@@ -751,14 +751,14 @@ directions — it passes a commit that breaks CI when the fix is unstaged, and
 fails a commit that is fine when the breakage is unstaged — which is this
 issue's defect class, reproduced by the thing meant to prevent it. So the gates
 run inside a throwaway mirror of the index: `git ls-files -z | git checkout-index
--z --stdin --prefix=…`, then `git init && git add -A -f`. Measured at 1357 ms for
-658 files. lint-staged solves the same problem by stashing unstaged changes in
+-z --stdin --prefix=…`, then `git init && git add -A -f`. Measured at 0.9 s to
+write the 774 tracked files and 2.8 s including the mirror's own index. lint-staged solves the same problem by stashing unstaged changes in
 the real worktree; a mirror was chosen because a crash mid-run then leaves
 nothing to recover.
 
 `add -A -f` is load-bearing rather than defensive. Without `-f`, `.gitignore`'s
 `*.log` drops the ten tracked `docs/case-studies/*/ci-logs/*.log` files and every
-gate silently sees 648 files instead of 658 — a checker quietly not checking
+gate silently sees 764 files instead of 774 — a checker quietly not checking
 something, which is finding (g) in a different costume. `dev/log/` stays in the
 mirror for the same reason: it is where downloaded CI logs land, which is where
 an accidentally pasted token would land, so the secret scan has to see it.
@@ -847,7 +847,7 @@ Read from `templates/hive-mind-CI-CD-BEST-PRACTICES.md` as it stood on
 | 5 | Fast-fail job ordering | Already held — the `scripts`, `file-sizes` and `workflows` checks are minutes; the builds are the tail |
 | 6 | Changeset-based versioning | Already held — `.changeset/`, `check-changesets.sh`, `apply-changesets.sh` |
 | 7 | Validate the actual merge result | Already held — `.github/actions/simulate-fresh-merge` in every check job |
-| 8 | Pre-commit hooks | **Adopted in full here** — not the template's tool. `install-git-hooks.mjs` drives husky, which needs a `package.json` lifecycle this repository does not have, so the same guarantee is built from `core.hooksPath` and `git checkout-index` alone: `.githooks/pre-commit` → `run-precommit-checks.sh`, ten gates over the **index**, ~14 s. See §12 |
+| 8 | Pre-commit hooks | **Adopted in full here** — not the template's tool. `install-git-hooks.mjs` drives husky, which needs a `package.json` lifecycle this repository does not have, so the same guarantee is built from `core.hooksPath` and `git checkout-index` alone: `.githooks/pre-commit` → `run-precommit-checks.sh`, thirteen gates over the **index**, ~13 s. See §12 |
 | 9 | Release automation | Already held — `release.yml` and its five called workflows |
 | 10 | Concurrency control | Already held — 14 per-job groups plus `scripts/ci/supersede.sh`; §7 is what makes a cancellation from one of them visible |
 | 11 | Secrets detection | Already held — `secretlint` in `security.yml` |
@@ -1057,7 +1057,11 @@ Deliberately diverged, with the divergence filed upstream: the template's
 `all_recovered` (§9, [js#184](https://github.com/link-foundation/js-ai-driven-development-pipeline-template/issues/184)
 and [rust#170](https://github.com/link-foundation/rust-ai-driven-development-pipeline-template/issues/170)),
 and the budget checker's per-matrix-leg evaluation plus its "unreadable is a
-violation" rule (§8).
+violation" rule (§8). Sent upstream without a divergence to declare, because the gap is
+the js template's alone and its python sibling already holds the fix: the
+unverified `docker-publish`
+([js#185](https://github.com/link-foundation/js-ai-driven-development-pipeline-template/issues/185),
+§13.4).
 
 Considered and deliberately **not** filed upstream:
 

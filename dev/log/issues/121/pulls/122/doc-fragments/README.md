@@ -59,3 +59,17 @@ docker run --rm -v "$PWD:/repo" -w /repo lycheeverse/lychee:0.24.2 \
 
 bash experiments/test-issue115-links-gate.sh    # offline + the docker fixture
 ```
+
+## Re-measured on the finished branch (2026-09-09)
+
+The run above was taken when `--include-fragments` was turned on. The branch
+then added documents of its own — the case study's later sections and the
+upstream report bodies — so the corpus is larger than it was:
+
+    docker run --rm -v "$PWD:/repo" -w /repo lycheeverse/lychee:0.24.2 \
+      --no-progress --include-fragments --max-retries 2 --timeout 30 \
+      --exclude-path dev/log './**/*.md'
+
+    🔍 681 Total (in 14s 585ms) 🔗 473 Unique ✅ 667 OK 🚫 0 Errors 👻 14 Excluded 🔀 15 Redirects
+
+Still **0 errors**, so every link and every anchor added by this branch resolves.

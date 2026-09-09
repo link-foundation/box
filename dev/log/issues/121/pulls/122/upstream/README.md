@@ -6,10 +6,14 @@
 | `link-foundation/rust-ai-driven-development-pipeline-template` | [#170](https://github.com/link-foundation/rust-ai-driven-development-pipeline-template/issues/170) | `f63a061fb3e23e647de0455886528a121b997678` | same script, same output |
 | `docker/buildx` | [#4067](https://github.com/docker/buildx/issues/4067) | `v0.36.1` (regression in `v0.36.0`, commit [`8db02212`](https://github.com/docker/buildx/commit/8db022122dfb7315bb553f47265552fbbae05596)) | `experiments/issue-121-buildx-rm-timeout/reproduce-rm-timeout.sh` |
 | `docker/setup-buildx-action` | [#615](https://github.com/docker/setup-buildx-action/issues/615) | `v4` post step, `src/main.ts:245-252` | the same script, plus box run 34293699247 |
+| `link-foundation/js-ai-driven-development-pipeline-template` | [#185](https://github.com/link-foundation/js-ai-driven-development-pipeline-template/issues/185) | `c3a6d23b693972a70097430f01e69fcee5a51ad2` | read from the snapshot in `dev/log/issues/121/pulls/122/templates/`; see the honest-limits section of the body |
 
 `all-recovered-false-negative.md` is the shared body, with the per-repository
 values left as `__SHA__`, `__SHORTSHA__`, `__WFLINES__`, `__PRIOR__`, `__REPO__`
 and `__SIBLING__`; its first line is the issue title.
+
+`js-docker-publish-unverified.md` is the body of the js template report, which
+states in its own section what it did and did not observe.
 
 `buildx-rm-timeout.md` and `setup-buildx-post-rm-warning.md` are the bodies of
 the two docker reports, laid out in each repository's own bug-template sections;

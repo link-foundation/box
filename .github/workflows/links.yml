@@ -102,7 +102,7 @@ jobs:
       # gate had never checked one (issue #121). Measured on this tree: a
       # fixture that renames the target heading of a same-file and a cross-file
       # anchor passes without the flag and fails with it; over the whole corpus
-      # the flag reports 678 links, 470 unique, 664 OK, 0 errors in 12.8s, after
+      # the flag reports 681 links, 473 unique, 667 OK, 0 errors in 14.6s, after
       # the three genuinely dead remote anchors it found were fixed (docker's
       # #entrypoint-default-command-to-execute-at-runtime, jpetazzo/dind's
       # #warning-..., and a GitHub docs page that moved). Evidence:

@@ -29,10 +29,10 @@ the loop.
 
 `.githooks/pre-commit` delegates to `scripts/ci/run-precommit-checks.sh`, which
 checks **the staged content** — not the working tree. It mirrors the index into
-a throwaway directory with `git checkout-index` (measured at 1.4 s for this
-repository) and runs the gates in there, so `git add -p`, a fix made after
-staging, or an unsaved editor buffer cannot make the answer wrong in either
-direction.
+a throwaway directory with `git checkout-index` (measured at 0.9 s to write this
+repository's 774 tracked files, 2.8 s including the mirror's own index) and runs
+the gates in there, so `git add -p`, a fix made after staging, or an unsaved
+editor buffer cannot make the answer wrong in either direction.
 
 Gates are scoped by what is staged:
 
@@ -44,6 +44,7 @@ Gates are scoped by what is staged:
 | `*.py`                              | py-syntax                                           |
 | `.github/workflows/*.yml`           | status-gate coverage, timeout budgets               |
 | `.github/workflows/*.yml`, `scripts/ci/*` | path coverage                                 |
+| `*.sh`, `*.mjs`, `*.js`, `.github/workflows/*.yml` | checkout credentials              |
 | `*.md`, `*.sh`, `.github/**`        | required-docs                                       |
 | anything                            | file-line-limits, secretlint (on the staged paths)  |
 
@@ -52,8 +53,8 @@ because its two halves are edited in different places: a `paths:` filter lives
 in `.github/workflows`, and the set of files a gate reads lives in
 `scripts/ci`. Either one alone can make a check unreachable.
 
-A full commit of this repository's shell takes about 14 seconds; a
-markdown-only commit takes about 5. The slow gates — actionlint, zizmor,
+A full commit of this repository's shell takes about 13 seconds; a
+markdown-only commit takes about 9. The slow gates — actionlint, zizmor,
 hadolint, the link check, the experiment suites and the image builds — stay in
 CI.
 
@@ -91,6 +92,7 @@ bash scripts/ci/run-hadolint.sh
 node scripts/ci/check-status-gate-covers-all-jobs.mjs .github/workflows/*.yml
 node scripts/ci/check-timeout-budgets.mjs .github/workflows/*.yml
 node scripts/ci/check-workflow-path-coverage.mjs
+node scripts/ci/check-checkout-credentials.mjs
 bash scripts/ci/run-experiments.sh                   # every fixtures suite
 ```
 

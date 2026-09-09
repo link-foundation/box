@@ -85,3 +85,20 @@ bash experiments/test-issue121-git-hooks.sh          # 80 passed, 0 failed
 bash scripts/install-git-hooks.sh --check            # is it installed here?
 bash scripts/ci/run-precommit-checks.sh --verbose    # every gate's output
 ```
+
+## Re-measured on the finished branch (2026-09-09)
+
+The branch added its own case-study sections, evidence directories and template
+snapshots, so the index the hook mirrors is larger than it was above. The two
+timings are separated here because they answer different questions — writing the
+files, and giving the mirror the index the gates discover their inputs from:
+
+| Mirror | `checkout-index` | including `git init && git add -A -f` | Size | Files |
+| --- | --- | --- | --- | --- |
+| whole index, including `dev/log/` | 920 ms | 2821 ms | 85 MB | 774 |
+| index without `dev/log/` | 633 ms | 2387 ms | 78 MB | 400 |
+
+The conclusion is unchanged: excluding `dev/log/` from the mirror saves 0.4 s and
+7 MB, and would take the secret scan's eyes off the directory downloaded CI logs
+land in. Without `add -A -f` the mirror's index holds 764 of the 774 files —
+still exactly the ten `*.log` files `.gitignore` would drop.

@@ -18,7 +18,8 @@
 #   fine (the breakage is unstaged). Both are false results, which is the
 #   defect class issue #121 is about, so this builds a throwaway mirror of the
 #   index with `git checkout-index` and runs the gates inside it. Measured on
-#   this repository: 1.4 s for 658 files.
+#   this repository: 0.9 s to write 774 files, 2.8 s including the mirror's
+#   own index.
 #
 #   lint-staged solves the same problem by stashing unstaged changes in the
 #   real worktree. A mirror was chosen instead because a crash mid-run leaves
