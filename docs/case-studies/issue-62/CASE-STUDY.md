@@ -125,7 +125,7 @@ NVM is explicitly documented as a shell function, not a binary. It must be sourc
 
 ### Docker ENTRYPOINT and CMD Interaction
 
-**Source**: [Docker documentation](https://docs.docker.com/engine/containers/run/#entrypoint-default-command-to-execute-at-runtime)
+**Source**: [Docker documentation](https://docs.docker.com/engine/containers/run/#default-entrypoint)
 
 When a Docker image has `ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]` and is run as:
 ```
@@ -175,7 +175,7 @@ The Cyrillic 'с' (U+0441) is visually indistinguishable from ASCII 'c' (U+0063)
 
 - [Issue #62](https://github.com/link-foundation/box/issues/62)
 - [NVM README — NVM is a shell function](https://github.com/nvm-sh/nvm/blob/master/README.md)
-- [Docker ENTRYPOINT documentation](https://docs.docker.com/engine/containers/run/#entrypoint-default-command-to-execute-at-runtime)
+- [Docker ENTRYPOINT documentation](https://docs.docker.com/engine/containers/run/#default-entrypoint)
 - [Unicode Confusables — Unicode.org](https://www.unicode.org/reports/tr39/#Confusable_Detection)
 - [CAPEC-632: Homograph Attack via Homoglyphs](https://capec.mitre.org/data/definitions/632.html)
   (this entry used to cite `owasp.org/www-community/attacks/Unicode_Characters`,

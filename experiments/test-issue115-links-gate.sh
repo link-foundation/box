@@ -30,6 +30,9 @@ set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
 IGNORE=".lycheeignore"
+# The image the workflow's comments tell a reader to reproduce with; the
+# fixtures below use the same one so "it passes locally" means the same thing.
+LYCHEE_IMAGE="lycheeverse/lychee:0.24.2"
 WORKFLOW=".github/workflows/links.yml"
 ARCHIVE="scripts/ci/check-web-archive.mjs"
 PASS=0
@@ -108,6 +111,26 @@ if [[ "$WORKFLOW_SRC" == *"--exclude-path dev/log"* ]]; then
   pass "the vendored evidence tree is excluded, like every other linter here"
 else
   fail "dev/log is not excluded; other projects' links are not ours to fix"
+fi
+
+# Issue #121. Without --include-fragments lychee resolves the document and
+# stops, so every `#anchor` in the tree was unchecked: a heading rename broke
+# the link and this gate stayed green. Part 6 below proves the flag is what
+# makes the difference; this asserts it is still passed.
+if [[ "$WORKFLOW_SRC" == *"--include-fragments"* ]]; then
+  pass "anchors are checked, not just the documents they point into"
+else
+  fail "--include-fragments is not passed; a renamed heading breaks links silently"
+fi
+
+# The failure message hands the reader a command to reproduce with. A command
+# that omits a flag the job uses reproduces something else, and the difference
+# shows up as "it passes locally" - the same drift as a stale README.
+REPRODUCE_LINES="$(grep -c -- '--include-fragments' "$WORKFLOW")"
+if [ "$REPRODUCE_LINES" -ge 3 ]; then
+  pass "the header comment, the args and the failure message all carry the flag"
+else
+  fail "--include-fragments appears $REPRODUCE_LINES time(s); the documented reproduce command does not match the job"
 fi
 
 if [[ "$WORKFLOW_SRC" == *"schedule:"* ]] && [[ "$WORKFLOW_SRC" == *"cron:"* ]]; then
@@ -283,12 +306,86 @@ else
   fail "a clean report fails the check"
 fi
 
+# --- the fragment flag is load-bearing ----------------------------------------
+
+# Asserting that a flag is present is not the same as knowing what it does, and
+# what it does is the whole finding: run the same corpus with it and without it
+# and only one of the two reports the broken anchor. `--offline` keeps this to
+# the filesystem, so the fixture needs docker but no network and finishes in
+# milliseconds once the image is local.
+echo "--- the --include-fragments mutation fixture ---"
+FRAG_SKIP=""
+if ! command -v docker >/dev/null 2>&1; then
+  FRAG_SKIP="docker is not on PATH"
+elif ! docker image inspect "$LYCHEE_IMAGE" >/dev/null 2>&1 \
+  && ! docker pull -q "$LYCHEE_IMAGE" >/dev/null 2>&1; then
+  FRAG_SKIP="$LYCHEE_IMAGE could not be pulled"
+fi
+
+if [ -n "$FRAG_SKIP" ]; then
+  # Named, not silent: the reader has to be able to tell "this passed" from
+  # "this did not run". The CI runners have docker, so this is a local-only
+  # gap.
+  echo "SKIP: the fragment mutation fixture did not run ($FRAG_SKIP)"
+else
+  FRAG_DIR="$FIXTURE_DIR/fragments"
+  mkdir -p "$FRAG_DIR"
+  cat >"$FRAG_DIR/a.md" <<'MD'
+# Title
+
+See [the section](#the-section) and [another file](b.md#other-heading).
+MD
+  cat >"$FRAG_DIR/b.md" <<'MD'
+# B
+
+## Other Heading
+MD
+
+  frag_run() {
+    docker run --rm -v "$FRAG_DIR:/repo" -w /repo "$LYCHEE_IMAGE" \
+      --no-progress --offline "$@" './**/*.md' 2>&1
+  }
+
+  # Intact: the same-file heading exists, so both anchors resolve.
+  printf '\n## The Section\n' >>"$FRAG_DIR/a.md"
+  if frag_run --include-fragments | grep -q '0 Errors'; then
+    pass "with the flag, anchors that resolve are reported OK (no false positive)"
+  else
+    fail "with the flag, valid anchors are reported broken"
+  fi
+
+  # Rename both targets: one same-file anchor, one cross-file anchor.
+  sed -i 's/## The Section/## Renamed Section/' "$FRAG_DIR/a.md"
+  sed -i 's/## Other Heading/## Renamed Other/' "$FRAG_DIR/b.md"
+
+  BROKEN_WITH="$(frag_run --include-fragments)"
+  if grep -q 'a.md#the-section' <<<"$BROKEN_WITH"; then
+    pass "with the flag, a renamed same-file heading is reported broken"
+  else
+    fail "with the flag, a renamed same-file heading is not reported"
+  fi
+  if grep -q 'b.md#other-heading' <<<"$BROKEN_WITH"; then
+    pass "with the flag, a renamed heading in another file is reported broken"
+  else
+    fail "with the flag, a cross-file anchor is not checked"
+  fi
+
+  # The false negative this repository shipped until issue #121: the identical
+  # corpus, one flag short, reports nothing wrong.
+  BROKEN_WITHOUT="$(frag_run)"
+  if grep -q '0 Errors' <<<"$BROKEN_WITHOUT"; then
+    pass "without the flag the same broken anchors pass, so the flag is what checks them"
+  else
+    fail "the fixture does not isolate the flag: the run without it also fails"
+  fi
+fi
+
 # --- optional live run --------------------------------------------------------
 
 if [ "${LINKS_LIVE:-0}" = "1" ]; then
   echo "--- LINKS_LIVE=1: running lychee over the tracked markdown ---"
-  if docker run --rm -v "$PWD:/repo" -w /repo lycheeverse/lychee:0.24.2 \
-    --no-progress --exclude-path dev/log './**/*.md'; then
+  if docker run --rm -v "$PWD:/repo" -w /repo "$LYCHEE_IMAGE" \
+    --no-progress --include-fragments --exclude-path dev/log './**/*.md'; then
     pass "the live link check passes"
   else
     fail "the live link check found broken links"

@@ -14,8 +14,8 @@ name: Links
 # Reproduce locally with the same image and the same arguments:
 #
 #   docker run --rm -v "$PWD:/repo" -w /repo lycheeverse/lychee:0.24.2 \
-#     --no-progress --max-retries 2 --timeout 30 --exclude-path dev/log \
-#     './**/*.md'
+#     --no-progress --include-fragments --max-retries 2 --timeout 30 \
+#     --exclude-path dev/log './**/*.md'
 #
 # dev/log/ is excluded because it holds verbatim copies of other projects'
 # documentation, collected as issue evidence; their links are not ours to fix.
@@ -80,6 +80,21 @@ jobs:
       # job cap, which would report the job *cancelled* and skip the reporting
       # steps below - including the recovery pass that tells a false positive
       # from a real broken link.
+      #
+      # --include-fragments: without it lychee resolves a link's *document* and
+      # stops, so `docs/RELEASING.md#making-the-ghcr-packages-public` passes as
+      # long as the file exists, whatever the headings inside it say - and an
+      # anchor is exactly the part of a link that a heading rename breaks. This
+      # gate had never checked one (issue #121). Measured on this tree: a
+      # fixture that renames the target heading of a same-file and a cross-file
+      # anchor passes without the flag and fails with it; over the whole corpus
+      # the flag reports 678 links, 470 unique, 664 OK, 0 errors in 12.8s, after
+      # the three genuinely dead remote anchors it found were fixed (docker's
+      # #entrypoint-default-command-to-execute-at-runtime, jpetazzo/dind's
+      # #warning-..., and a GitHub docs page that moved). Evidence:
+      # dev/log/issues/121/pulls/122/doc-fragments/. It applies to remote
+      # anchors too, which is why the number of requests does not change: lychee
+      # already fetched those pages, it just discarded their ids.
       - name: Check links with lychee
         id: lychee
         timeout-minutes: 5
@@ -89,6 +104,7 @@ jobs:
             --no-progress
             --cache
             --max-cache-age 1d
+            --include-fragments
             --max-retries 2
             --timeout 30
             --exclude-path dev/log
@@ -155,7 +171,8 @@ jobs:
           echo
           echo "Reproduce locally:"
           echo "  docker run --rm -v \"\$PWD:/repo\" -w /repo lycheeverse/lychee:0.24.2 \\"
-          echo "    --no-progress --max-retries 2 --timeout 30 --exclude-path dev/log './**/*.md'"
+          echo "    --no-progress --include-fragments --max-retries 2 --timeout 30 \\"
+          echo "    --exclude-path dev/log './**/*.md'"
           exit 1
 
       - name: The gate's own fixtures still hold
