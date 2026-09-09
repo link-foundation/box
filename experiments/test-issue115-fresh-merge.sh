@@ -336,6 +336,7 @@ echo "== Part 6: every pull-request check runs it =="
 # worth catching.
 declare -A EXPECTED=(
   ['.github/workflows/dockerfiles.yml']=1
+  ['.github/workflows/docs.yml']=1
   ['.github/workflows/links.yml']=1
   ['.github/workflows/measure-disk-space.yml']=1
   ['.github/workflows/scripts.yml']=6
@@ -362,6 +363,20 @@ for wf in $(cd "$REPO_ROOT" && bash scripts/ci/list-release-workflows.sh); do
     fail "$wf is not in the expected-count map; add it with its count"
   fi
 done
+
+# And every workflow in the directory, reachable from the release entry point or
+# not. The loop above only sees the release graph, so a *new* standalone check
+# workflow - docs.yml was one (issue #121) - could be added without the action
+# and without this suite noticing: the map would simply not mention it, and an
+# unmentioned file is not a failure anywhere else. Deriving the list from the
+# directory makes "I wrote a new workflow" the thing that fails here, which is
+# the moment to decide whether its jobs judge the tree.
+while IFS= read -r wf; do
+  [ -n "$wf" ] || continue
+  if [ -z "${EXPECTED[$wf]+set}" ]; then
+    fail "$wf is not in the expected-count map; add it with its count"
+  fi
+done < <(cd "$REPO_ROOT" && git ls-files '.github/workflows/*.yml' '.github/workflows/*.yaml')
 
 for wf in "${!EXPECTED[@]}"; do
   want="${EXPECTED[$wf]}"

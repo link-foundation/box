@@ -39,6 +39,8 @@ way to go red.
 | o | The assertion written for finding **g** could not fail on the machine that ran it | `scripts` | It extracted a `run:` block with `awk '/^\s+run: \|/,0'`. `\s` is a GNU extension: under mawk (Debian's and Ubuntu's default `awk`) it matches nothing, the range never opens, and the negated grep passes. Under gawk — what GitHub's runner ships — `,0` never closes, so the "block" is the rest of the file and correct `with:` mappings are reported. | The block is bounded by indentation; `scripts/ci/check-awk-portability.sh` fails CI on any GNU-only escape in an awk program, over every tracked file. |
 | p | Ten of this repository's fourteen JavaScript modules were parsed by nothing | structural | shellcheck, shfmt and `check-heredoc-vars.sh` discover `*.sh`; `run-experiments.sh` discovers `experiments/*.sh`; `check-file-line-limits.sh` reads `*.mjs` but only counts lines. Two of the four modules CI does execute run **only** on the recovery path, after the links check has already failed. | `scripts/ci/check-mjs-syntax.sh` parses every tracked module and resolves every relative import, ported from the js template's gate of the same name. |
 | q | The job that commits the README could commit another run's numbers | `measure-disk-space` | `update-readme-sizes.sh` rendered its table to `/tmp/markdown_table_content.txt` — one fixed path, shared by every invocation on the machine — and the branch that runs when the README has lost its markers read that file three lines *before* writing it. With no leftover it died with a Python traceback naming a path in `/tmp`; with a leftover it wrote **that** run's table into this README and exited 0. `--readme-file` and `--json-file` were parsed into shell variables the Python child process never saw, so the script announced one file and rewrote another. | One render into a `mktemp` file of the run's own, one write path for both branches, and both paths exported. `experiments/test-issue121-readme-updater.sh` holds 25 assertions, 10 of which fail against the previous script; the transcripts are in `dev/log/issues/121/pulls/122/readme-updater/`. |
+| r | The link checker resolved every link and checked no anchor | `links` | lychee stops at the document: `docs/RELEASING.md#making-the-ghcr-packages-public` passes because that file exists, whatever headings it contains. An anchor is the part of a link a heading rename breaks, and 27 links in the corpus carry one (14 into this repository, 13 remote). | `--include-fragments`. A mutation fixture pins that the flag is what does it — the same two files, both target headings renamed, report `2 OK 🚫 0 Errors` without it and `Cannot find fragment` twice with it. Turning it on found 4 errors on 3 URLs, each confirmed dead in a browser and fixed; the full corpus is then 678 links, 664 OK, **0 errors** in 12.8 s. Evidence: `dev/log/issues/121/pulls/122/doc-fragments/`. |
+| s | A heading two scripts depend on could be renamed by anyone | structural | `update-readme-sizes.sh` inserts the generated table before README's `## License`, falling back to `## Documentation`; rename either and the section is appended to the end of the file with the job still green. `preflight-credentials.sh:222` sends an operator holding a rejected credential to "the 'Releasing' section of README.md", and two other scripts name `docs/RELEASING.md` — messages read on the worst day of a release, pointing at headings nothing verified. | `scripts/ci/check-required-docs.sh`: six documents, 24 sections, both component-sizes markers, and every `docs/…md` path named anywhere in `scripts/` or `.github/`. Ported from the js template's gate of the same name; run by a new `docs.yml`, whose triggers are the union of the markdown and the shell. 32 assertions in `experiments/test-issue121-required-docs.sh`, built from the checker's own `--list` so the fixtures cannot drift from the table. |
 
 One sentence covers the whole table: **an annotation is a claim about the run,
 and every mechanism here was making claims it had not checked** — in both
@@ -60,7 +62,7 @@ it:
 | `templates/` | the two reference templates' full file trees and the hive-mind best-practices document, as they stood when compared |
 | `probes/provenance-injection/` | four `docker buildx build` runs and their metadata files, which is what turned finding (a) from a theory into a chain |
 | `upstream/` | the bodies of the reports filed on other projects, kept verbatim so this stays readable if one is edited or closed |
-| `push-rejection/`, `apt-recommends/`, `playwright-deps/`, `cancelled-survey/`, `readme-updater/` | the transcripts behind findings (l), (e), (f), (i) and (q) |
+| `push-rejection/`, `apt-recommends/`, `playwright-deps/`, `cancelled-survey/`, `readme-updater/`, `doc-fragments/` | the transcripts behind findings (l), (e), (f), (i), (q) and (r) |
 
 The survey in `run-conclusions/README.md` is worth stating on its own, because
 it bounds the problem:
@@ -719,7 +721,7 @@ Read from `templates/hive-mind-CI-CD-BEST-PRACTICES.md` as it stood on
 | 9 | Release automation | Already held — `release.yml` and its five called workflows |
 | 10 | Concurrency control | Already held — 14 per-job groups plus `scripts/ci/supersede.sh`; §7 is what makes a cancellation from one of them visible |
 | 11 | Secrets detection | Already held — `secretlint` in `security.yml` |
-| 12 | Documentation validation | Partly — `links.yml` with the Wayback fallback, strengthened in §9. `check-required-docs.sh` not yet evaluated; see §14 |
+| 12 | Documentation validation | **Adopted in full here** — `links.yml` with the Wayback fallback (§9), now checking anchors as well as documents (finding **r**), plus `check-required-docs.sh` in a new `docs.yml` for the half no link checker can do (finding **s**) |
 | 13 | Container images: native runners per architecture | Already held — `ubuntu-24.04-arm` for every arm64 job, which is how §2 was found at all |
 | 14 | Lint the workflows themselves | Already held and now complete — actionlint with shellcheck inside the image, zizmor over workflows *and* composite actions |
 | 15 | Audit the dependency tree | Held differently — no package manifest exists here; CodeQL and `assert-base-image.sh` are the equivalents |
@@ -730,7 +732,7 @@ Read from `templates/hive-mind-CI-CD-BEST-PRACTICES.md` as it stood on
 Adopted in this pull request, ported rather than copied:
 `check-pipeline-status.sh` (§7), `check-status-gate-covers-all-jobs.mjs` (§7),
 `recheck-broken-links.mjs` (§9), `run-with-budget-warning.sh` (§8),
-`check-mjs-syntax.sh`.
+`check-mjs-syntax.sh`, `check-required-docs.sh`.
 
 The last one is finding **p**, and it is worth stating why a repository of
 Dockerfiles and shell needs a JavaScript gate at all. `git ls-files '*.mjs'`
@@ -761,6 +763,47 @@ path today, so the rule is proved by fixtures rather than by the sweep —
 `experiments/test-issue121-mjs-syntax.sh`, 31 assertions, of which three feed it
 a specifier that resolves to nothing and four feed it specifiers it must leave
 alone.
+
+`check-required-docs.sh` is finding **s**, and the port changes more than the
+mjs one did, because what a document owes the code is not the same in the two
+repositories. The template checks that a fixed list of files exists. Here the
+list is a table of file **and headings**, because two scripts read a heading at
+runtime: `update-readme-sizes.sh` looks for `## License` and falls back to
+`## Documentation` to decide where the generated component-sizes section goes,
+and `preflight-credentials.sh` sends an operator to "the 'Releasing' section of
+README.md" when a credential is rejected. Both of those are load-bearing strings
+in a shell script pointing at a markdown heading, which is a dependency with no
+compiler and, until now, no gate. Three rules follow from that: the heading must
+match exactly (`## Licensing` and `### Releasing` are both failures — the first
+is what a rename looks like, the second is what a demotion looks like, and the
+`grep -Fxq "## $section"` that finds neither is the point), the component-sizes
+marker pair must exist exactly once and in order, and every `docs/…md` path
+named in `scripts/` or `.github/` must resolve to a tracked file.
+
+That last rule is drawn narrowly on purpose, and the boundary was measured
+rather than guessed. Matching any bare `NAME.md` fired on the checker's own
+prose; broadening to any `dir/NAME.md` added `lychee/out.md` — an artefact path
+that exists only mid-run — and the repository's own `README.md` from a
+`$REPO_ROOT/README.md` expansion. `docs/…` is the prefix that means "a document
+in this tree", so that is the prefix the rule uses; the excluded shapes are
+asserted as out of scope in the fixtures, not left to be rediscovered. Two
+defects in the checker were caught by its own fixtures before it was wired up: a
+`grep` that found nothing inside a `while` loop aborted the loop under
+`set -euo pipefail`, so the sweep reported OK after reading 3 files instead of
+61; and `grep -oE '(^|[^A-Za-z0-9_/-])…'` matches nothing at all under GNU grep
+3.11 while `( |^)` matches — a false negative that would have made the whole
+rule inert.
+
+It runs in a new `.github/workflows/docs.yml` rather than in `links.yml` or
+`scripts.yml`, because it is the only gate whose input is both the markdown and
+the shell: in `links.yml` a one-line change to a script would fetch every
+external host in the corpus, and in `scripts.yml` a typo in a case study would
+run shellcheck, shfmt and 68 experiment suites. The new file is also why
+`test-issue115-fresh-merge.sh` now derives its list from the workflow directory
+instead of from `list-release-workflows.sh` alone: a standalone check workflow
+is not reachable from the release entry point, so adding one without
+`simulate-fresh-merge` was a gap that suite could not see. Verified by adding a
+throwaway workflow and watching it fail.
 
 Deliberately diverged, with the divergence filed upstream: the template's
 `all_recovered` (§9, [js#184](https://github.com/link-foundation/js-ai-driven-development-pipeline-template/issues/184)
@@ -795,6 +838,8 @@ survey, and the reason each answer went the way it did:
 | Retry a rejected push | The template's `push-failure-classifier.mjs` | Same idea, re-derived in shell against a live `git` (§10), because the strings are the contract and they are a git version's to change |
 | Re-ask an unanswered URL | The template's `recheck-broken-links.mjs` | Ported, with one condition added (§9) |
 | Parse the repository's JavaScript | The js template's `check-mjs-syntax.sh` | **Ported**, with `git ls-files` discovery instead of three hard-coded directories, a missing `node` as exit 2 rather than a skip, and relative-import resolution added (§12.3) |
+| Check a link's anchor, not just its document | lychee's own `--include-fragments` | **Adopted** — the capability was already in the tool this repository runs; what was missing was the flag. Proved load-bearing by a mutation fixture rather than by reading the manual (finding **r**) |
+| Keep a heading a script depends on | The js template's `check-required-docs.sh` | **Ported**, with the file list turned into a file-and-headings table, marker-pair checking, and `docs/…md` reference resolution over `scripts/` and `.github/` (§12.3) |
 | Suppress a false link failure | `.lycheeignore` | **Rejected** — it converts a false positive into a permanent false negative |
 | Stop a log injection | `provenance: false` | **Insufficient**, and the difference matters: it governs the attestation, not the metadata file (§1) |
 | Measure job durations | `gh run list` / the jobs API | Wrapped as `measure-job-durations.sh`, using `gh --jq` so no `jq` binary is required on a runner |
@@ -803,12 +848,12 @@ survey, and the reason each answer went the way it did:
 
 ## 14. Still outstanding
 
-- **The remaining template comparison.** `check-required-docs.sh`,
-  `lint-changed-lines.mjs` and `install-git-hooks.mjs` have counterparts in the
-  js template and none here. Each has to be judged against a repository whose
-  sources are Dockerfiles and shell rather than a package, which is why they are
-  named here rather than adopted by reflex. `check-mjs-syntax.sh` was judged the
-  same way and adopted; see §12.3.
+- **The remaining template comparison.** `lint-changed-lines.mjs` and
+  `install-git-hooks.mjs` have counterparts in the js template and none here.
+  Each has to be judged against a repository whose sources are Dockerfiles and
+  shell rather than a package, which is why they are named here rather than
+  adopted by reflex. `check-mjs-syntax.sh` and `check-required-docs.sh` were
+  judged the same way and adopted; see §12.3.
 - **`security.yml` and `release.yml` against both templates**, file by file, at
   the same level of detail as §12.2.
 - Nothing in this pull request rewrites an annotation that is already published.
