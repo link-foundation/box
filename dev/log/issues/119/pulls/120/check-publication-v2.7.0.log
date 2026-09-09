@@ -1,0 +1,54 @@
+# scripts/release/check-publication.sh run against the released v2.7.0, anonymously,
+# from a checkout of this branch. No docker login, no credentials in the environment.
+# Recorded 2026-09-08T17:27:31Z. Reproduce with:
+#   VERSION=2.7.0 PREVIOUS_VERSION=2.6.0 GHCR_IMAGE=ghcr.io/link-foundation/box \
+#     DOCKERHUB_IMAGE=konard/box bash scripts/release/check-publication.sh
+
+==> Checking v2.7.0 the way a reader does: no credentials, no docker login.
+==> Tags: 2.7.0 latest; every reference must carry [linux/amd64 linux/arm64].
+==> Comparing coverage against v2.6.0.
+ghcr.io/link-foundation/box:2.7.0                            published  linux/amd64 linux/arm64  anonymous GET of the manifest returned HTTP 200
+ghcr.io/link-foundation/box:latest                           published  linux/amd64 linux/arm64  anonymous GET of the manifest returned HTTP 200
+konard/box:2.7.0                                             published  linux/amd64              anonymous GET of the manifest returned HTTP 200
+konard/box:latest                                            published  linux/amd64              anonymous GET of the manifest returned HTTP 200
+ghcr.io/link-foundation/box-essentials:2.7.0                 published  linux/amd64 linux/arm64  anonymous GET of the manifest returned HTTP 200
+ghcr.io/link-foundation/box-essentials:latest                published  linux/amd64 linux/arm64  anonymous GET of the manifest returned HTTP 200
+konard/box-essentials:2.7.0                                  missing    -                        the registry has no 2.7.0 tag for konard/box-essentials (HTTP 404)
+konard/box-essentials:latest                                 published  linux/amd64 linux/arm64  anonymous GET of the manifest returned HTTP 200
+ghcr.io/link-foundation/box-js:2.7.0                         published  linux/amd64 linux/arm64  anonymous GET of the manifest returned HTTP 200
+ghcr.io/link-foundation/box-js:latest                        published  linux/amd64 linux/arm64  anonymous GET of the manifest returned HTTP 200
+konard/box-js:2.7.0                                          missing    -                        the registry has no 2.7.0 tag for konard/box-js (HTTP 404)
+konard/box-js:latest                                         published  linux/amd64 linux/arm64  anonymous GET of the manifest returned HTTP 200
+ghcr.io/link-foundation/box-dind:2.7.0                       published  linux/amd64 linux/arm64  anonymous GET of the manifest returned HTTP 200
+ghcr.io/link-foundation/box-dind:latest                      published  linux/amd64 linux/arm64  anonymous GET of the manifest returned HTTP 200
+konard/box-dind:2.7.0                                        missing    -                        the registry has no 2.7.0 tag for konard/box-dind (HTTP 404)
+konard/box-dind:latest                                       published  linux/amd64 linux/arm64  anonymous GET of the manifest returned HTTP 200
+
+==> GHCR (registry of record): 8/8 pullable anonymously.
+==> Docker Hub (mirror):       5/8 pullable anonymously.
+    konard/box:2.7.0 carries [linux/amd64], missing linux/arm64
+    konard/box:latest carries [linux/amd64], missing linux/arm64
+::error title=The Docker Hub mirror of v2.7.0 is single-architecture::2 mirrored reference(s) resolve but do not carry linux/amd64 linux/arm64. This is what konard/box:latest looked like after v2.7.0: it pulls, and on arm64 it fails. An absent mirror tag would be a warning; a wrong one is not.
+exit=1
+
+# --- $GITHUB_STEP_SUMMARY written by the same run ---
+### Anonymous publication check for v2.7.0
+
+| Reference | State | Platforms | Detail |
+|-----------|-------|-----------|--------|
+| `ghcr.io/link-foundation/box:2.7.0` | published | linux/amd64 linux/arm64 | anonymous GET of the manifest returned HTTP 200 |
+| `ghcr.io/link-foundation/box:latest` | published | linux/amd64 linux/arm64 | anonymous GET of the manifest returned HTTP 200 |
+| `konard/box:2.7.0` | published | linux/amd64 | anonymous GET of the manifest returned HTTP 200 |
+| `konard/box:latest` | published | linux/amd64 | anonymous GET of the manifest returned HTTP 200 |
+| `ghcr.io/link-foundation/box-essentials:2.7.0` | published | linux/amd64 linux/arm64 | anonymous GET of the manifest returned HTTP 200 |
+| `ghcr.io/link-foundation/box-essentials:latest` | published | linux/amd64 linux/arm64 | anonymous GET of the manifest returned HTTP 200 |
+| `konard/box-essentials:2.7.0` | missing | — | the registry has no 2.7.0 tag for konard/box-essentials (HTTP 404) |
+| `konard/box-essentials:latest` | published | linux/amd64 linux/arm64 | anonymous GET of the manifest returned HTTP 200 |
+| `ghcr.io/link-foundation/box-js:2.7.0` | published | linux/amd64 linux/arm64 | anonymous GET of the manifest returned HTTP 200 |
+| `ghcr.io/link-foundation/box-js:latest` | published | linux/amd64 linux/arm64 | anonymous GET of the manifest returned HTTP 200 |
+| `konard/box-js:2.7.0` | missing | — | the registry has no 2.7.0 tag for konard/box-js (HTTP 404) |
+| `konard/box-js:latest` | published | linux/amd64 linux/arm64 | anonymous GET of the manifest returned HTTP 200 |
+| `ghcr.io/link-foundation/box-dind:2.7.0` | published | linux/amd64 linux/arm64 | anonymous GET of the manifest returned HTTP 200 |
+| `ghcr.io/link-foundation/box-dind:latest` | published | linux/amd64 linux/arm64 | anonymous GET of the manifest returned HTTP 200 |
+| `konard/box-dind:2.7.0` | missing | — | the registry has no 2.7.0 tag for konard/box-dind (HTTP 404) |
+| `konard/box-dind:latest` | published | linux/amd64 linux/arm64 | anonymous GET of the manifest returned HTTP 200 |

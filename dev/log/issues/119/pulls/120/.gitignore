@@ -1,0 +1,5 @@
+# The repository root .gitignore excludes `logs/` and `*.log`. This evidence
+# folder is exactly the place where CI logs are supposed to be committed, so
+# re-include them here (a child .gitignore overrides its parents).
+!logs/
+!*.log

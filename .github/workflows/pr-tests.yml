@@ -62,6 +62,19 @@ jobs:
   # ~30 GB before building, fixing the "no space left on device" regression
   # captured in run 25075335426 (see docs/case-studies/issue-82/).
   #
+  # pr-test-full and pr-test-dind's `full` variant are the two jobs that have to
+  # hold the whole chain - JS, essentials, 11 language images and the full box -
+  # on one VM at once, and they are the two that kept dying mid-build (run
+  # 34259552358, SIGKILL during the full box's `exporting layers`). Both sample
+  # memory and disk while they build (scripts/ci/resource-monitor.sh), and those
+  # samples name the resource: the export grows to 18.8 GB of committed memory
+  # on a 16 GB runner while 88 GB of disk stays free, so both jobs reclaim the
+  # tool cache they never use, keep the kernel's swap, and turn a slice of the
+  # idle disk into more of it (scripts/ci/ensure-swap.sh). The free-disk-space
+  # step is job-level, so the other 13 dind variants inherit the same reclaim -
+  # which costs them nothing - while the swap step is gated on the variant that
+  # needs it.
+  #
   # See: docs/case-studies/issue-82/CASE-STUDY.md
 
   # --- Tier 0: version policy (no image build, runs in seconds) ---
@@ -398,20 +411,51 @@ jobs:
       - name: Free disk space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
-          tool-cache: false
+          # The two full-chain jobs are the only ones that hold every language
+          # image and the full box on one VM at the same time, so they reclaim
+          # more than the others (issue #119 follow-up):
+          #
+          #   tool-cache  /opt/hostedtoolcache is ~8 GB of Python/Node/Go/Ruby
+          #               builds for `actions/setup-*`. Nothing here calls one:
+          #               these jobs run bash and docker, and the Node that
+          #               `actions/checkout` needs lives in the runner's own
+          #               externals directory, not in the tool cache.
+          #   swap        removing it reclaims nothing on this image - there is
+          #               no /mnt filesystem for /mnt/swapfile to be on (see the
+          #               `df -a` in run 34259552358) - while `swapoff -a` still
+          #               takes away every page of swap the kernel had. That is
+          #               the wrong side of the trade for a job whose build was
+          #               last seen being SIGKILLed.
+          tool-cache: true
           android: true
           dotnet: true
           haskell: true
           large-packages: true
           docker-images: true
-          swap-storage: true
+          swap-storage: false
 
-      - name: Set up Docker Buildx
-        uses: ./.github/actions/setup-buildx-resilient
+      # Disk is not what these jobs run out of. With the sampler below in
+      # place, run 34278116323 (job 102247036552) recorded the full box's
+      # export climbing from 2.3 GB to 18.8 GB committed - RAM plus every page
+      # of swap - in 4.5 minutes, while the root filesystem gained 11 MB and
+      # kept 88 GB free. The runner has 16 GB of RAM and larger runners are not
+      # available here, so the headroom comes from the disk that measurement
+      # shows sitting idle (issue #119 follow-up).
+      - name: Trade idle disk for swap the full-box export can grow into
+        run: bash scripts/ci/ensure-swap.sh
 
       - name: Build full chain (JS -> essentials -> languages -> full)
         run: |
           set -e
+          # Keep sampling memory, disk and the biggest processes into this
+          # step's own log. That is what turned the SIGKILL in run 34259552358
+          # into a diagnosis in run 34278116323, and it is how the swap step
+          # above gets checked: the export's committed memory should now cross
+          # 16 GB and keep going instead of taking the runner down with it.
+          bash scripts/ci/resource-monitor.sh &
+          RESOURCE_MONITOR_PID=$!
+          trap 'kill "$RESOURCE_MONITOR_PID" 2>/dev/null || true' EXIT
+
           echo "=== Building JS box ==="
           docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
 
@@ -463,7 +507,12 @@ jobs:
   pr-test-dind:
     name: pr-test / dind-${{ matrix.variant }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # 60 minutes fits 13 of the 14 variants with room to spare. The `full` one
+    # reaches the full box's export around 37 minutes in and then spends that
+    # export paging - which is the point of the swap step below, and slower than
+    # RAM by construction. Killing it at 60 would report a timeout for a build
+    # that is making progress (issue #119 follow-up).
+    timeout-minutes: ${{ matrix.variant == 'full' && 90 || 60 }}
     needs: [pr-test-version-policy, pr-test-essentials]
     if: |
       !cancelled() &&
@@ -511,20 +560,55 @@ jobs:
       - name: Free disk space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
-          tool-cache: false
+          # Same reclaim as pr-test-full, and for the same reason: the
+          # `full` variant of this matrix builds the identical chain - JS,
+          # essentials, 11 language images, the full box - before it layers
+          # dind on top, and it died the identical way in run 34259552358.
+          # A matrix cannot vary a step's inputs per variant without an
+          # expression, and there is nothing to gain by withholding the
+          # reclaim from the 13 lighter variants, so all 14 get it (issue
+          # #119 follow-up):
+          #
+          #   tool-cache  /opt/hostedtoolcache is ~8 GB of Python/Node/Go/Ruby
+          #               builds for `actions/setup-*`. Nothing here calls one:
+          #               these jobs run bash and docker, and the Node that
+          #               `actions/checkout` needs lives in the runner's own
+          #               externals directory, not in the tool cache.
+          #   swap        removing it reclaims nothing on this image - there is
+          #               no /mnt filesystem for /mnt/swapfile to be on (see the
+          #               `df -a` in run 34259552358) - while `swapoff -a` still
+          #               takes away every page of swap the kernel had. That is
+          #               the wrong side of the trade for a job whose build was
+          #               last seen being SIGKILLed.
+          tool-cache: true
           android: true
           dotnet: true
           haskell: true
           large-packages: true
           docker-images: true
-          swap-storage: true
+          swap-storage: false
 
-      - name: Set up Docker Buildx
-        uses: ./.github/actions/setup-buildx-resilient
+      # Same measurement, same fix as pr-test-full: the full box's export needs
+      # more memory than this runner has, and the idle disk is the only place
+      # left to get it (issue #119 follow-up). Gated on the variant because
+      # `full` is the only one of the 14 that builds the full box; the other 13
+      # would pay ~30 GB of disk for headroom they never touch.
+      - name: Trade idle disk for swap the full-box export can grow into
+        if: matrix.variant == 'full'
+        run: bash scripts/ci/ensure-swap.sh
 
       - name: Build base box for dind variant
         run: |
           set -e
+          # Keep sampling memory, disk and the biggest processes into this
+          # step's own log. That is what turned the SIGKILL in run 34259552358
+          # into a diagnosis in run 34278116323, and it is how the swap step
+          # above gets checked: the export's committed memory should now cross
+          # 16 GB and keep going instead of taking the runner down with it.
+          bash scripts/ci/resource-monitor.sh &
+          RESOURCE_MONITOR_PID=$!
+          trap 'kill "$RESOURCE_MONITOR_PID" 2>/dev/null || true' EXIT
+
           VARIANT="${{ matrix.variant }}"
 
           echo "=== Building JS box (base layer) ==="

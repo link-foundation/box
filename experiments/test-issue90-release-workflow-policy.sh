@@ -98,20 +98,37 @@ manifest_jobs.each do |job_name|
   end
 
   # Issue #115: the ten byte-identical `docker manifest create --amend` blocks
-  # were replaced by scripts/release/create-multiarch-manifest.sh. Match both
-  # forms - a policy suite that only knows the old spelling passes vacuously on
-  # the new one, which is the exact false negative this file exists to prevent.
+  # were replaced by scripts/release/create-multiarch-manifest.sh. Issue #119a
+  # then replaced the Docker Hub half again: Docker Hub no longer assembles a
+  # manifest of its own from the mirrored per-architecture tags - it cannot,
+  # because `imagetools create` writes an index and `docker manifest create`
+  # refuses an index source - it receives a copy of the finished GHCR index
+  # through scripts/release/mirror-to-dockerhub.sh. All three spellings are
+  # matched: a policy suite that only knows the old one passes vacuously on the
+  # new one, which is the exact false negative this file exists to prevent.
   manifest_steps = steps.select do |step|
     next false unless step.is_a?(Hash)
     run = step["run"].to_s
-    run.include?("docker manifest") || run.include?("create-multiarch-manifest.sh")
+    run.include?("docker manifest") ||
+      run.include?("create-multiarch-manifest.sh") ||
+      run.include?("mirror-to-dockerhub.sh")
   end
 
-  dockerhub_steps = manifest_steps.select do |step|
+  # A mirror step names both registries by construction - GHCR is what it
+  # reads, Docker Hub is what it writes - so the "one registry per step" rule
+  # below is asked only of the steps that *assemble* a manifest. What that rule
+  # protects is unchanged: no step may publish to both registries, because then
+  # a Docker Hub failure costs the GHCR publication (issue #115 RC-3).
+  mirror_steps = manifest_steps.select do |step|
+    step["run"].to_s.include?("mirror-to-dockerhub.sh")
+  end
+  assembly_steps = manifest_steps - mirror_steps
+
+  dockerhub_steps = mirror_steps + assembly_steps.select do |step|
     step["run"].to_s.include?("DOCKERHUB_IMAGE_NAME")
   end
 
-  ghcr_steps = manifest_steps.select do |step|
+  ghcr_steps = assembly_steps.select do |step|
     step["run"].to_s.include?("GHCR_REGISTRY") || step["run"].to_s.include?("GHCR_IMAGE_NAME")
   end
 
@@ -124,9 +141,7 @@ manifest_jobs.each do |job_name|
   end
 
   dockerhub_steps.each do |step|
-    if step["run"].to_s.include?("GHCR_REGISTRY") || step["run"].to_s.include?("GHCR_IMAGE_NAME")
-      errors << "#{job_name}: #{step["name"]} mixes Docker Hub and GHCR manifest commands"
-    end
+    run = step["run"].to_s
 
     unless step["if"] == "steps.dockerhub-login.outcome == 'success'"
       errors << "#{job_name}: #{step["name"]} is not guarded by successful Docker Hub login"
@@ -135,10 +150,37 @@ manifest_jobs.each do |job_name|
     # Issue #115 RC-3: GHCR is the registry of record (written with the run's
     # own GITHUB_TOKEN, which cannot expire); Docker Hub is a mirror written
     # with a long-lived secret that can. A mirror failure must degrade to a
-    # warning, never fail a release whose GHCR side already published.
-    next unless step["run"].to_s.include?("create-multiarch-manifest.sh")
-    if step.dig("env", "MANIFEST_REQUIRED").to_s != "0"
-      errors << "#{job_name}: #{step["name"]} must set MANIFEST_REQUIRED: '0' so an expired Docker Hub token cannot fail the release"
+    # warning, never fail a release whose GHCR side already published. The two
+    # scripts spell that policy differently, and each spelling is checked
+    # where it applies.
+    if run.include?("create-multiarch-manifest.sh")
+      if run.include?("GHCR_REGISTRY") || run.include?("GHCR_IMAGE_NAME")
+        errors << "#{job_name}: #{step["name"]} mixes Docker Hub and GHCR manifest commands"
+      end
+      if step.dig("env", "MANIFEST_REQUIRED").to_s != "0"
+        errors << "#{job_name}: #{step["name"]} must set MANIFEST_REQUIRED: '0' so an expired Docker Hub token cannot fail the release"
+      end
+    end
+
+    next unless run.include?("mirror-to-dockerhub.sh")
+
+    if step.dig("env", "MIRROR_REQUIRED").to_s == "1"
+      errors << "#{job_name}: #{step["name"]} must not set MIRROR_REQUIRED: '1' so an expired Docker Hub token cannot fail the release"
+    end
+
+    # The mirror reads GHCR and writes Docker Hub, never the other way round.
+    # A mirror step that publishes to GHCR would be the coupling this file
+    # bans, wearing the mirror's name.
+    if run.include?("create-multiarch-manifest.sh") || run.include?("docker manifest push")
+      errors << "#{job_name}: #{step["name"]} publishes to GHCR from a Docker Hub mirror step"
+    end
+
+    unless run.include?("GHCR_REGISTRY") || run.include?("GHCR_IMAGE_NAME")
+      errors << "#{job_name}: #{step["name"]} does not mirror from the registry of record"
+    end
+
+    unless run.include?("DOCKERHUB_IMAGE_NAME")
+      errors << "#{job_name}: #{step["name"]} does not name a Docker Hub target"
     end
   end
 

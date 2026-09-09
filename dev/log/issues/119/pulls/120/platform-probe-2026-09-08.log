@@ -1,0 +1,15 @@
+# registry-probe.sh platforms <ref> linux/amd64 linux/arm64
+# Anonymous, no docker login, no credentials. Recorded 2026-09-08T16:41:47Z.
+# state / reference / platforms served / reason; exit 1 = not published with both architectures.
+
+published	ghcr.io/link-foundation/box:2.7.0	linux/amd64 linux/arm64	anonymous GET of the manifest returned HTTP 200	exit=0
+published	ghcr.io/link-foundation/box:latest	linux/amd64 linux/arm64	anonymous GET of the manifest returned HTTP 200	exit=0
+published	ghcr.io/link-foundation/box:20260907	linux/amd64	anonymous GET of the manifest returned HTTP 200; a plain manifest for linux/amd64, not a multi-arch index	exit=1
+published	ghcr.io/link-foundation/box-dind:2.7.0	linux/amd64 linux/arm64	anonymous GET of the manifest returned HTTP 200	exit=0
+published	konard/box:2.7.0	linux/amd64	anonymous GET of the manifest returned HTTP 200	exit=1
+published	konard/box:latest	linux/amd64	anonymous GET of the manifest returned HTTP 200	exit=1
+published	konard/box:2.4.0	linux/amd64 linux/arm64	anonymous GET of the manifest returned HTTP 200	exit=0
+missing	konard/box-dind:2.7.0	-	the registry has no 2.7.0 tag for konard/box-dind (HTTP 404)	exit=1
+published	konard/box-dind:latest	linux/amd64 linux/arm64	anonymous GET of the manifest returned HTTP 200	exit=0
+missing	konard/box-js:2.7.0	-	the registry has no 2.7.0 tag for konard/box-js (HTTP 404)	exit=1
+missing	konard/box-essentials:2.7.0	-	the registry has no 2.7.0 tag for konard/box-essentials (HTTP 404)	exit=1

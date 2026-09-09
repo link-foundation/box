@@ -1,0 +1,18 @@
+# Anonymous manifest GET for each reference, no docker login: media type and platforms.
+# Recorded 2026-09-08, before any fix. Reproduce with:
+#   bash scripts/release/registry-probe.sh platforms <reference> linux/amd64 linux/arm64
+# (see platform-probe-2026-09-08.log for that command's output on the same references).
+
+ghcr.io/link-foundation/box:2.7.0              application/vnd.oci.image.index.v1+json              linux/amd64, linux/arm64
+ghcr.io/link-foundation/box:latest             application/vnd.oci.image.index.v1+json              linux/amd64, linux/arm64
+ghcr.io/link-foundation/box:20260907           application/vnd.oci.image.manifest.v1+json           plain manifest (one platform, undeclared)
+ghcr.io/link-foundation/box:fd4742b            application/vnd.oci.image.manifest.v1+json           plain manifest (one platform, undeclared)
+ghcr.io/link-foundation/box-dind:2.7.0         application/vnd.oci.image.index.v1+json              linux/amd64, linux/arm64
+konard/box:2.7.0                               application/vnd.oci.image.index.v1+json              linux/amd64
+konard/box:latest                              application/vnd.oci.image.index.v1+json              linux/amd64
+konard/box:2.4.0                               application/vnd.docker.distribution.manifest.list.v2+json linux/amd64, linux/arm64
+konard/box-dind:latest                         application/vnd.docker.distribution.manifest.list.v2+json linux/amd64, linux/arm64
+konard/box-dind:2.7.0                          -                                                    MANIFEST_UNKNOWN
+konard/box-dind:2.7.0-amd64                    application/vnd.oci.image.index.v1+json              linux/amd64
+ghcr.io/link-foundation/box-dind:2.7.0-amd64   application/vnd.oci.image.manifest.v1+json           plain manifest (one platform, undeclared)
+konard/box:2.7.0-amd64                         application/vnd.oci.image.index.v1+json              linux/amd64

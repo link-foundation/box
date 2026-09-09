@@ -1,0 +1,5 @@
+# Docker Hub digests for konard/box, read anonymously 2026-09-08.
+# latest and 2.7.0 are the same object: the amd64-only 2.7.0 index took over latest.
+latest sha256:9ac6727659c4e66116d8cdbdf95ff9829b06bcdb11db6115f7c8d184f48c3a24
+2.7.0  sha256:9ac6727659c4e66116d8cdbdf95ff9829b06bcdb11db6115f7c8d184f48c3a24
+2.6.0  <no manifest: the tag does not exist>

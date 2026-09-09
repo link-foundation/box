@@ -1,0 +1,57 @@
+# Evidence: pr-test / dind-full, run 34259552358, job 102215605228
+#
+# Excerpt from the job log of the failing run on commit 6c05795, kept here
+# because GitHub replaces attempt-1 logs when a run is re-run (an earlier
+# attempt of the sibling 'full' job, 102184490387, already returns 404
+# BlobNotFound). Full log: 12,000+ lines; this is the kill window plus the
+# last disk reading that preceded it by ~30 minutes.
+#
+# Reproduced with: gh api repos/link-foundation/box/actions/jobs/102215605228/logs
+
+=== last resource reading in the whole job (the 'Free disk space' step) ===
+257:2026-09-08T19:58:02.9174023Z [36;1m    echo "=> Saved $(formatByteCount $saved)"[0m
+410:2026-09-08T19:58:02.9234491Z [36;1mecho "/dev/root:"[0m
+421:2026-09-08T19:58:02.9754787Z Filesystem      Size  Used Avail Use% Mounted on
+422:2026-09-08T19:58:02.9755354Z /dev/root       145G   59G   86G  41% /
+425:2026-09-08T19:58:02.9763736Z Filesystem     1K-blocks     Used Available Use% Mounted on
+426:2026-09-08T19:58:02.9764332Z /dev/root      151263856 61093140  90154332  41% /
+429:2026-09-08T19:58:02.9774629Z Filesystem      1K-blocks     Used Available Use% Mounted on
+430:2026-09-08T19:58:02.9775221Z /dev/root       151263856 61093140  90154332  41% /
+1940:2026-09-08T20:01:56.1235360Z Filesystem      Size  Used Avail Use% Mounted on
+1941:2026-09-08T20:01:56.1235839Z /dev/root       145G   32G  113G  22% /
+1944:2026-09-08T20:01:56.1244592Z Filesystem     1K-blocks     Used Available Use% Mounted on
+1945:2026-09-08T20:01:56.1247029Z /dev/root      151263856 33220148 118027324  22% /
+1948:2026-09-08T20:01:56.1255430Z Filesystem      1K-blocks     Used Available Use% Mounted on
+1949:2026-09-08T20:01:56.1255922Z /dev/root       151263856 33220148 118027324  22% /
+1976:2026-09-08T20:01:56.1263990Z /dev/root:
+1979:2026-09-08T20:01:56.1279039Z => Saved 26GiB
+1985:2026-09-08T20:01:56.1300299Z => Saved 26GiB
+2164:2026-09-08T20:02:01.9361196Z   Backing Filesystem: extfs
+
+=== the kill itself (lines 10225-10240 of the raw log) ===
+2026-09-08T20:33:40.1831120Z 
+2026-09-08T20:33:40.1831849Z #63 [stage-11 34/34] WORKDIR /home/box
+2026-09-08T20:33:40.1832375Z #63 DONE 0.0s
+2026-09-08T20:33:40.1832607Z 
+2026-09-08T20:33:40.1832784Z #64 exporting to image
+2026-09-08T20:33:40.1833207Z #64 exporting layers
+2026-09-08T20:34:45.1203671Z /home/runner/work/_temp/7e30a597-6677-41d5-9c43-78b7e179691f.sh: line 51: 122206 Killed                  docker build -f ubuntu/24.04/full-box/Dockerfile --build-arg ESSENTIALS_IMAGE=box-essentials --build-arg PYTHON_IMAGE=box-python --build-arg GO_IMAGE=box-go --build-arg RUST_IMAGE=box-rust --build-arg JAVA_IMAGE=box-java --build-arg KOTLIN_IMAGE=box-kotlin --build-arg RUBY_IMAGE=box-ruby --build-arg PHP_IMAGE=box-php --build-arg PERL_IMAGE=box-perl --build-arg SWIFT_IMAGE=box-swift --build-arg LEAN_IMAGE=box-lean --build-arg ROCQ_IMAGE=box-rocq -t box-full .
+2026-09-08T20:34:45.1749363Z ##[error]The runner has received a shutdown signal. This can happen when the runner service is stopped, or a manually started runner is canceled.
+2026-09-08T20:34:45.1750596Z ##[error]Process completed with exit code 137.
+2026-09-08T20:34:45.4328681Z Cleaning up orphan processes
+
+=== every 'building with' line, showing the buildx builder was never used ===
+2408:2026-09-08T20:02:03.5348538Z #0 building with "default" instance using docker driver
+6482:2026-09-08T20:04:46.8464606Z #0 building with "default" instance using docker driver
+7677:2026-09-08T20:05:55.5197026Z #0 building with "default" instance using docker driver
+7778:2026-09-08T20:07:46.7839003Z #0 building with "default" instance using docker driver
+7825:2026-09-08T20:07:57.1270431Z #0 building with "default" instance using docker driver
+7928:2026-09-08T20:08:28.3860333Z #0 building with "default" instance using docker driver
+8112:2026-09-08T20:08:56.6167372Z #0 building with "default" instance using docker driver
+8314:2026-09-08T20:09:28.2130927Z #0 building with "default" instance using docker driver
+8383:2026-09-08T20:12:21.9234571Z #0 building with "default" instance using docker driver
+8961:2026-09-08T20:14:02.6593909Z #0 building with "default" instance using docker driver
+9047:2026-09-08T20:17:00.4107496Z #0 building with "default" instance using docker driver
+9094:2026-09-08T20:17:55.5439834Z #0 building with "default" instance using docker driver
+9147:2026-09-08T20:18:28.3009643Z #0 building with "default" instance using docker driver
+9377:2026-09-08T20:28:56.8848982Z #0 building with "default" instance using docker driver
