@@ -127,5 +127,16 @@ attestation on the published image, and the contents of the metadata file — an
 dropping the first would put `unknown/unknown` platforms back into every
 published index, which is issue #119 arriving through a different door.
 
+## Reported upstream
+
+Each link of the chain is a separate defect and each was filed with this
+reproduction attached:
+
+- [docker/buildx#4066](https://github.com/docker/buildx/issues/4066) — the payload in the metadata file, and `--provenance=false` not covering it
+- [docker/build-push-action#1612](https://github.com/docker/build-push-action/issues/1612) — printing that file to the log unescaped
+- [actions/runner#4692](https://github.com/actions/runner/issues/4692) — `##[` matched mid-line while `::` is anchored
+
+Bodies as filed: `../../upstream/`.
+
 Held in place by `experiments/test-issue121-log-injection.sh` (offline) and
 `experiments/test-issue121-provenance-metadata-leak.sh` (needs Docker).
