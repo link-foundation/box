@@ -49,6 +49,23 @@ def extract_broken_urls(content: str) -> list[str]:
     return urls
 
 
+def split_recovered_urls(
+    urls: list[str], recovered_text: str | None
+) -> tuple[list[str], list[str]]:
+    """Drop URLs the link re-check found healthy from the archive lookup.
+
+    A URL that never answered lychee but answers the re-check is not a broken
+    link; keeping it in this report would send a healthy URL to the Wayback
+    Machine and fail the job on it.
+    """
+    recovered_set = {
+        line.strip() for line in (recovered_text or "").splitlines() if line.strip()
+    }
+    remaining = [url for url in urls if url not in recovered_set]
+    recovered = [url for url in urls if url in recovered_set]
+    return remaining, recovered
+
+
 def fetch_json(url: str) -> dict[str, Any]:
     """Fetch a JSON object with a bounded Wayback Machine request."""
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
@@ -139,6 +156,13 @@ def main() -> int:
         return 0
 
     broken_urls = extract_broken_urls(output_path.read_text(encoding="utf-8"))
+    recovered_file = Path(os.environ.get("RECOVERED_URLS", "lychee/recovered.txt"))
+    recovered_text = (
+        recovered_file.read_text(encoding="utf-8") if recovered_file.exists() else ""
+    )
+    broken_urls, rechecked_healthy = split_recovered_urls(broken_urls, recovered_text)
+    for url in rechecked_healthy:
+        print(f"  {url} never answered lychee but answers the re-check -- not broken")
     if not broken_urls:
         print("No broken URLs found in lychee output.")
         set_output("all_archived", "true")

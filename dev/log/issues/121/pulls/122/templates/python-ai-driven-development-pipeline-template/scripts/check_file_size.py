@@ -13,7 +13,14 @@ from pathlib import Path
 
 MAX_LINES = 1000
 WARN_LINES = 900
-FILE_EXTENSIONS = [".py"]
+# Documentation gets a separate budget (issue #72): prose is naturally longer
+# than code, but an unbounded markdown file is just as hard to review.
+MAX_DOC_LINES = 2500
+WARN_DOC_LINES = 2250
+LIMITS = {
+    ".py": (MAX_LINES, WARN_LINES),
+    ".md": (MAX_DOC_LINES, WARN_DOC_LINES),
+}
 EXCLUDE_PATTERNS = [
     "node_modules",
     ".venv",
@@ -42,6 +49,8 @@ class Finding:
 
     file: Path
     lines: int
+    max_lines: int = MAX_LINES
+    warn_lines: int = WARN_LINES
 
 
 @dataclass(frozen=True)
@@ -66,8 +75,8 @@ def should_exclude(path: Path, exclude_patterns: list[str]) -> bool:
     return any(pattern in path_str for pattern in exclude_patterns)
 
 
-def find_python_files(directory: Path, exclude_patterns: list[str]) -> list[Path]:
-    """Recursively find all Python files in a directory.
+def find_files(directory: Path, exclude_patterns: list[str]) -> list[Path]:
+    """Recursively find all size-checked files in a directory.
 
     Args:
         directory: Directory to search
@@ -80,7 +89,7 @@ def find_python_files(directory: Path, exclude_patterns: list[str]) -> list[Path
     for path in directory.rglob("*"):
         if should_exclude(path, exclude_patterns):
             continue
-        if path.is_file() and path.suffix in FILE_EXTENSIONS:
+        if path.is_file() and path.suffix in LIMITS:
             files.append(path)
     return sorted(files)
 
@@ -97,24 +106,31 @@ def count_lines(file_path: Path) -> int:
     return len(file_path.read_text(encoding="utf-8").split("\n"))
 
 
-def classify_line_count(line_count: int) -> LineStatus:
+def classify_line_count(
+    line_count: int,
+    *,
+    max_lines: int = MAX_LINES,
+    warn_lines: int = WARN_LINES,
+) -> LineStatus:
     """Classify a file by line count.
 
     Args:
         line_count: Number of lines in the file
+        max_lines: Hard limit for the file type
+        warn_lines: Warning threshold for the file type
 
     Returns:
         File-size status
     """
-    if line_count > MAX_LINES:
+    if line_count > max_lines:
         return LineStatus.VIOLATION
-    if line_count > WARN_LINES:
+    if line_count > warn_lines:
         return LineStatus.WARNING
     return LineStatus.OK
 
 
 def check_directory(directory: Path) -> CheckResult:
-    """Check Python files under a directory for warning and hard limits.
+    """Check size-tracked files under a directory for warning and hard limits.
 
     Args:
         directory: Directory to scan
@@ -126,11 +142,18 @@ def check_directory(directory: Path) -> CheckResult:
     warnings = []
     violations = []
 
-    files = find_python_files(root, EXCLUDE_PATTERNS)
-    for file in files:
+    for file in find_files(root, EXCLUDE_PATTERNS):
+        max_lines, warn_lines = LIMITS[file.suffix]
         line_count = count_lines(file)
-        finding = Finding(file=file.relative_to(root), lines=line_count)
-        status = classify_line_count(line_count)
+        finding = Finding(
+            file=file.relative_to(root),
+            lines=line_count,
+            max_lines=max_lines,
+            warn_lines=warn_lines,
+        )
+        status = classify_line_count(
+            line_count, max_lines=max_lines, warn_lines=warn_lines
+        )
 
         if status == LineStatus.VIOLATION:
             violations.append(finding)
@@ -159,9 +182,9 @@ def escape_annotation_message(value: str) -> str:
 def warning_annotation(finding: Finding) -> str:
     """Build a GitHub Actions warning annotation for a near-limit file."""
     message = (
-        f"File has {finding.lines} lines (approaching limit of {MAX_LINES}). "
-        f"Consider extracting code to keep at or below {WARN_LINES} lines and "
-        "prevent concurrent PR merge limit violations."
+        f"File has {finding.lines} lines (approaching limit of {finding.max_lines}). "
+        f"Consider extracting content to keep at or below {finding.warn_lines} lines "
+        "and prevent concurrent PR merge limit violations."
     )
 
     return (
@@ -179,15 +202,17 @@ def print_warnings(warnings: list[Finding]) -> None:
         print(warning_annotation(warning))
         print(
             f"WARNING: {warning.file} has {warning.lines} lines "
-            f"(approaching limit of {MAX_LINES}, warning threshold: {WARN_LINES})"
+            f"(approaching limit of {warning.max_lines}, "
+            f"warning threshold: {warning.warn_lines})"
         )
 
     print()
-    print(f"The following files are approaching the {MAX_LINES} line limit:")
+    print("The following files are approaching their line limit:")
     for warning in warnings:
         print(f"  {warning.file}")
     print(
-        "\nConsider extracting code to prevent concurrent PR merge limit violations.\n"
+        "\nConsider extracting content to prevent concurrent PR merge limit "
+        "violations.\n"
     )
 
 
@@ -198,16 +223,20 @@ def print_violations(violations: list[Finding]) -> None:
 
     print("✗ Found files exceeding the line limit:\n")
     for violation in violations:
-        print(f"  {violation.file}: {violation.lines} lines (exceeds {MAX_LINES})")
-    print(f"\nPlease refactor these files to be under {MAX_LINES} lines\n")
+        print(
+            f"  {violation.file}: {violation.lines} lines "
+            f"(exceeds {violation.max_lines})"
+        )
+    print("\nPlease refactor these files to be under their hard limit\n")
 
 
 def main() -> None:
     """Main function."""
     cwd = Path.cwd()
     print(
-        f"\nChecking Python files for maximum {MAX_LINES} lines "
-        f"(warning above {WARN_LINES})...\n"
+        f"\nChecking files for maximum {MAX_LINES} lines "
+        f"(warning above {WARN_LINES}) and {MAX_DOC_LINES} lines for markdown "
+        f"(warning above {WARN_DOC_LINES})...\n"
     )
 
     result = check_directory(cwd)

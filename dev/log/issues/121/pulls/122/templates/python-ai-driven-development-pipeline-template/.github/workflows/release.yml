@@ -48,6 +48,7 @@ jobs:
     if: github.event_name != 'workflow_dispatch'
     outputs:
       any-code-changed: ${{ steps.changes.outputs.any-code-changed }}
+      docs-changed: ${{ steps.changes.outputs.docs-changed }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -194,6 +195,75 @@ jobs:
           bash "${{ steps.python_layout.outputs.root }}/scripts/run-with-budget-warning.sh" \
             "$SECRETLINT_BUDGET_SECONDS" "Check for secrets" \
             npx --yes -p secretlint -p @secretlint/secretlint-rule-preset-recommend secretlint "**/*"
+
+  # === DOCUMENTATION VALIDATION ===
+  # Principle 12 (issue #72): documentation-only pull requests skip the
+  # changelog gate, so this is the one job that observes docs changes. It
+  # verifies the required documents exist with the sections other documents
+  # link to, and enforces the markdown size budget.
+  validate-docs:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-validate-docs
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+    needs: [detect-changes]
+    # !cancelled() lets this job evaluate even though detect-changes is skipped
+    # for workflow_dispatch while still propagating workflow cancellation.
+    if: |
+      !cancelled() && (
+        github.event_name == 'workflow_dispatch' ||
+        needs.detect-changes.outputs.docs-changed == 'true'
+      )
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Check required documents and sections
+        run: bash scripts/check-required-docs.sh
+
+      - name: Check file size limit
+        run: python scripts/check_file_size.py
+
+  # Prove the release credentials can write before any expensive job runs
+  # (issues #74 and #77). Principle 16: a non-empty secret proves nothing and
+  # a login proves authentication, not authorisation -- so the preflight
+  # attempts a write (PyPI trusted-publishing token mint, Docker Hub
+  # blob-upload session) and refuses to release if a credential is refused.
+  # In report mode (pull requests -- a fork has no publishing secrets) the
+  # same probes annotate without blocking, which is why the publishing jobs
+  # gate on `result == 'success'` rather than on the run being green.
+  release-preflight:
+    name: Release Preflight (credentials)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      # The PyPI probe exchanges this job's OIDC token for a short-lived
+      # upload token -- the same exchange the publish step performs.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Probe every release credential
+        env:
+          # Expressions have no ternary operator; this idiom is safe because
+          # both branch values are non-empty string literals.
+          PREFLIGHT_MODE: >-
+            ${{
+              (
+                (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+                github.event_name == 'workflow_dispatch'
+              ) && 'release' || 'report'
+            }}
+          DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_IMAGE }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME || secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: bash scripts/preflight-credentials.sh
 
   # === TEST ===
   # Test on latest Python version only
@@ -486,22 +556,31 @@ jobs:
           push: false
           load: true
           tags: app:pr-check
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Scoped like the per-platform writes below (issue #66): an unscoped
+          # GHA cache export lands in the shared `buildkit` scope, where builds
+          # overwrite each other and crowd out actions/cache entries.
+          cache-from: type=gha,scope=docker-pr-check
+          cache-to: type=gha,mode=max,scope=docker-pr-check
 
   # RELEASE JOBS - Only run after all CI checks pass
 
   # Automatic release on push to main (if version changed)
   auto-release:
     name: Auto Release
-    needs: [lint, test, build]
+    needs: [lint, test, build, release-preflight]
     outputs:
       released: ${{ steps.github_release.outputs.released }}
       version: ${{ steps.github_release.outputs.version }}
     concurrency:
       group: ${{ github.workflow }}-main-write
       cancel-in-progress: false
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: |
+      !cancelled() &&
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      needs.lint.result == 'success' &&
+      needs.test.result == 'success' &&
+      needs.build.result == 'success' &&
+      needs.release-preflight.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -554,8 +633,12 @@ jobs:
           PYTHON_ROOT="${{ steps.python_layout.outputs.root }}"
           PYPROJECT="$PYTHON_ROOT/pyproject.toml"
 
-          # Get current version from pyproject.toml
-          CURRENT_VERSION=$(grep -Po '(?<=^version = ")[^"]*' "$PYPROJECT")
+          # Read project.version by its table path (issue #67): a grep cannot
+          # see TOML tables, so a `version` key in any other table -- the one
+          # scriv's documentation recommends adding to [tool.scriv], for
+          # instance -- used to surface as a second match and break this step
+          # with a multi-line $GITHUB_OUTPUT value.
+          CURRENT_VERSION=$(python scripts/read_manifest.py "$PYPROJECT" --field project.version)
           echo "current_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
 
           if [ "${{ steps.python_layout.outputs.multi_language }}" = "true" ]; then
@@ -608,7 +691,7 @@ jobs:
   # Manual release via workflow_dispatch - only after CI passes
   manual-release:
     name: Manual Release
-    needs: [lint, test, build]
+    needs: [lint, test, build, release-preflight]
     outputs:
       released: ${{ steps.github_release.outputs.released }}
       version: ${{ steps.github_release.outputs.version }}
@@ -623,7 +706,8 @@ jobs:
       github.event_name == 'workflow_dispatch' &&
       needs.lint.result == 'success' &&
       needs.test.result == 'success' &&
-      needs.build.result == 'success'
+      needs.build.result == 'success' &&
+      needs.release-preflight.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -749,9 +833,10 @@ jobs:
   # DOCKERHUB_TOKEN secret to enable it in repositories that ship a Dockerfile.
   docker-publish-config:
     name: Configure Docker Hub Publish
-    needs: [auto-release, manual-release]
+    needs: [auto-release, manual-release, release-preflight]
     if: |
-      !cancelled() && (
+      !cancelled() &&
+      needs.release-preflight.result == 'success' && (
         needs.auto-release.outputs.released == 'true' ||
         needs.manual-release.outputs.released == 'true'
       )
@@ -794,8 +879,10 @@ jobs:
   # digests. This avoids the performance and reliability cost of QEMU.
   docker-publish-build:
     name: Build Docker Image (${{ matrix.platform }})
-    needs: [docker-publish-config]
-    if: needs.docker-publish-config.outputs.enabled == 'true'
+    needs: [docker-publish-config, release-preflight]
+    if: |
+      needs.release-preflight.result == 'success' &&
+      needs.docker-publish-config.outputs.enabled == 'true'
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -850,8 +937,10 @@ jobs:
 
   docker-publish:
     name: Publish Multi-Architecture Docker Image
-    needs: [docker-publish-config, docker-publish-build]
-    if: needs.docker-publish-build.result == 'success'
+    needs: [docker-publish-config, docker-publish-build, release-preflight]
+    if: |
+      needs.release-preflight.result == 'success' &&
+      needs.docker-publish-build.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -903,9 +992,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [detect-changes, lint, test, build, changelog, docker-build,
-            auto-release, manual-release, docker-publish-config,
-            docker-publish-build, docker-publish]
+    needs: [detect-changes, validate-docs, release-preflight, lint, test, build,
+            changelog, docker-build, auto-release, manual-release,
+            docker-publish-config, docker-publish-build, docker-publish]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -915,4 +1004,6 @@ jobs:
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
           IS_MAIN: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+          RUN_SHA: ${{ github.sha }}
+          BRANCH_REF: ${{ github.ref_name }}
         run: bash scripts/check-pipeline-status.sh

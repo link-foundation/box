@@ -28,6 +28,7 @@ Environment variables (set by GitHub Actions):
 
 Outputs (written to GITHUB_OUTPUT):
     - any-code-changed: 'true' if any code files changed outside excluded paths
+    - docs-changed: 'true' if any markdown file or file under docs/ changed
 """
 
 from __future__ import annotations
@@ -130,6 +131,17 @@ def is_excluded_from_code_changes(file_path: str) -> bool:
     return relative_path.startswith(EXCLUDED_FOLDERS)
 
 
+def is_docs_change(file_path: str) -> bool:
+    """Check if a file is a documentation change (issue #72).
+
+    Documentation-only pull requests skip the changelog-fragment requirement,
+    so they need their own gate: markdown anywhere, or anything under docs/.
+    """
+    if file_path.endswith(".md"):
+        return True
+    return file_path.removeprefix("python/").startswith("docs/")
+
+
 def detect_change_types(
     changed_files: list[str], *, event_name: str
 ) -> dict[str, bool]:
@@ -146,7 +158,8 @@ def detect_change_types(
         and not is_excluded_from_code_changes(file_path)
         for file_path in changed_files
     )
-    return {"any-code-changed": code_changed}
+    docs_changed = any(is_docs_change(file_path) for file_path in changed_files)
+    return {"any-code-changed": code_changed, "docs-changed": docs_changed}
 
 
 def detect_changes() -> None:

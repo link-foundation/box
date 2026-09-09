@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Resolve and audit every Python dependency surface supported by the template."""
+"""Resolve and audit every Python dependency surface supported by the template.
+
+The audit runs pip-audit over the resolved environment, never over pip
+itself: the target environment is created ``--without-pip`` and populated
+through the running interpreter's pip (issue #68). Auditing a bundled pip
+reports known PYSEC advisories against the tool used to install, which the
+application cannot fix and which masks advisories in real dependencies.
+"""
 
 from __future__ import annotations
 
@@ -13,16 +20,22 @@ PIP_AUDIT_VERSION = "2.10.1"
 DEPENDENCY_SURFACES = ("pyproject.toml", "docs/requirements.txt")
 
 
-def run(command: list[str], *, cwd: Path) -> str:
-    """Run a command, failing the audit when dependency resolution fails."""
+def run(command: list[str], *, cwd: Path, capture: bool = False) -> str:
+    """Run a command, streaming output so failures stay visible.
+
+    pip-audit prints its advisory table on stdout and then exits non-zero;
+    capturing that stdout under check=True threw the table away exactly when
+    it mattered (issue #68). Stream by default and capture only when the
+    caller needs the output value.
+    """
     completed = subprocess.run(
         command,
         cwd=cwd,
         check=True,
         text=True,
-        stdout=subprocess.PIPE,
+        capture_output=capture,
     )
-    output = completed.stdout.strip()
+    output = completed.stdout.strip() if capture else ""
     if output:
         print(output)
     return output
@@ -59,16 +72,23 @@ def audit_dependencies(project_root: Path) -> None:
         temporary_root = Path(temporary)
         target_venv = temporary_root / "target"
         audit_venv = temporary_root / "audit"
-        run([sys.executable, "-m", "venv", str(target_venv)], cwd=project_root)
+        # --without-pip keeps pip itself out of the audited environment; the
+        # running interpreter's pip populates the target through --python.
+        run(
+            [sys.executable, "-m", "venv", "--without-pip", str(target_venv)],
+            cwd=project_root,
+        )
         run([sys.executable, "-m", "venv", str(audit_venv)], cwd=project_root)
 
         target_python = python_executable(target_venv)
         audit_python = python_executable(audit_venv)
         run(
             [
-                str(target_python),
+                sys.executable,
                 "-m",
                 "pip",
+                "--python",
+                str(target_python),
                 "install",
                 project_install_target(project_root),
             ],
@@ -76,9 +96,11 @@ def audit_dependencies(project_root: Path) -> None:
         )
         run(
             [
-                str(target_python),
+                sys.executable,
                 "-m",
                 "pip",
+                "--python",
+                str(target_python),
                 "install",
                 "-r",
                 "docs/requirements.txt",
@@ -102,6 +124,7 @@ def audit_dependencies(project_root: Path) -> None:
                 "import sysconfig; print(sysconfig.get_paths()['purelib'])",
             ],
             cwd=project_root,
+            capture=True,
         )
         run(
             [
