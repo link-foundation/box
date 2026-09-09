@@ -50,8 +50,15 @@ cd "$REPO_ROOT"
 # evidence tree. --others --exclude-standard adds untracked files that .gitignore
 # does not cover; --deduplicate keeps a staged-and-modified file from appearing
 # twice.
+#
+# .githooks/* alongside *.sh: git requires a hook to be named exactly
+# `pre-commit`, with no extension, so the hook installed by
+# scripts/install-git-hooks.sh matches no glob in this repository and was
+# formatted and linted by nothing at all until this glob was added (issue
+# #121). Every file in that directory is a shell script for the same reason -
+# git only runs executables it finds by hook name.
 collect_files() {
-  git ls-files -z --cached --others --exclude-standard --deduplicate '*.sh' \
+  git ls-files -z --cached --others --exclude-standard --deduplicate '*.sh' '.githooks/*' \
     | tr '\0' '\n' | grep -v '^dev/log/' | sort -u || true
 }
 

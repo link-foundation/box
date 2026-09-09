@@ -429,6 +429,7 @@ See [`docs/case-studies/issue-82/CASE-STUDY.md`](docs/case-studies/issue-82/CASE
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and design decisions
 - [REQUIREMENTS.md](REQUIREMENTS.md) - Project requirements and constraints
 - [docs/RELEASING.md](docs/RELEASING.md) - Release credentials, trusted publishing, and package visibility
+- [docs/LOCAL-CHECKS.md](docs/LOCAL-CHECKS.md) - Running CI's gates locally, and the pre-commit hook
 - [docs/case-studies/](docs/case-studies/) - Case studies and incident analysis
 
 ## License

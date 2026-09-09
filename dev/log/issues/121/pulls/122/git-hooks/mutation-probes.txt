@@ -1,0 +1,35 @@
+=== mutation probes: is each assertion load-bearing? ===
+Recorded 2026-09-09T12:00:43Z on f97a54b
+
+--- mutation: add-f
+ scripts/ci/run-precommit-checks.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+FAIL: the mirror dropped a tracked but ignored file
+passed: 69
+failed: 1
+
+--- mutation: index
+ scripts/ci/run-precommit-checks.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+FAIL: the gates read the wrong tree
+passed: 69
+failed: 1
+
+--- mutation: empty-tree
+ scripts/ci/run-precommit-checks.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+FAIL: the initial commit ran no gates
+passed: 69
+failed: 1
+
+--- mutation: verify
+ scripts/install-git-hooks.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+FAIL: expected exit 1 from the unverified install, got 0
+FAIL: the failure did not name the outcome
+passed: 68
+failed: 2
+
+--- unmutated
+passed: 70
+failed: 0

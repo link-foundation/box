@@ -293,14 +293,23 @@ echo ""
 echo "== Part 6: the file set is discovered, and misuse is rejected =="
 
 LISTED="$(bash "$RUNNER" --list)"
-EXPECTED="$(git ls-files --cached --others --exclude-standard --deduplicate '*.sh' \
+# '.githooks/*' as well as '*.sh': git requires an extensionless `pre-commit`
+# under core.hooksPath, so the hook this repository ships is a shell script that
+# no '*.sh' glob can ever see (issue #121).
+EXPECTED="$(git ls-files --cached --others --exclude-standard --deduplicate '*.sh' '.githooks/*' \
   | grep -vc '^dev/log/')"
 LISTED_COUNT="$(printf '%s\n' "$LISTED" | grep -c .)"
 
 if [ "$LISTED_COUNT" = "$EXPECTED" ]; then
-  pass "every tracked or newly added *.sh outside dev/log/ is listed ($EXPECTED file(s))"
+  pass "every tracked or newly added shell file outside dev/log/ is listed ($EXPECTED file(s))"
 else
-  fail "every tracked or newly added *.sh outside dev/log/ is listed (listed $LISTED_COUNT, expected $EXPECTED)"
+  fail "every tracked or newly added shell file outside dev/log/ is listed (listed $LISTED_COUNT, expected $EXPECTED)"
+fi
+
+if printf '%s\n' "$LISTED" | grep -qx '.githooks/pre-commit'; then
+  pass "the extensionless git hook is among them"
+else
+  fail "the extensionless git hook .githooks/pre-commit is not discovered"
 fi
 
 if printf '%s\n' "$LISTED" | grep -q '^dev/log/'; then

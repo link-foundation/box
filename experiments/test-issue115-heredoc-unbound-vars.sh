@@ -208,6 +208,69 @@ FIX
 run_check "$TMP/case-exported.sh"
 check "an exported variable read by a plain child process is not a leak" "0" "$rc"
 
+# One `export` statement may name several variables, and pass 1 only ever
+# recorded the first of them (issue #121): `export RECORD=... EXITS=...` taught
+# the checker about RECORD and left EXITS looking unset, so every quoted
+# heredoc reading $EXITS was reported as a leak that could never happen. Found
+# by the pre-commit hook running this checker over
+# experiments/test-issue121-git-hooks.sh, whose stub gates are written exactly
+# that way. A checker that fails a correct commit is the false positive this
+# issue is about, so the shape is a fixture now.
+# heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
+cat >"$TMP/case-exported-multi.sh" <<'FIX'
+export FIRST_VAR="/tmp/first" SECOND_VAR="/tmp/second"
+cat > /tmp/out.sh << 'EOF'
+echo "$FIRST_VAR" "$SECOND_VAR"
+EOF
+bash /tmp/out.sh
+FIX
+run_check "$TMP/case-exported-multi.sh"
+check "every name in a multi-variable export is collected, not just the first" "0" "$rc"
+check "  (SECOND_VAR is not reported)" "0" "$(grep -c 'SECOND_VAR is expanded' <<<"$check_out" || true)"
+
+# The same statement with a value that itself contains whitespace. Splitting the
+# statement on whitespace without tracking the quotes would read `y"` as a name
+# and stop there, losing THIRD_VAR.
+# heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
+cat >"$TMP/case-exported-multi-quoted.sh" <<'FIX'
+export MESSAGE="hello there" THIRD_VAR="/tmp/third"
+cat > /tmp/out.sh << 'EOF'
+echo "$THIRD_VAR"
+EOF
+bash /tmp/out.sh
+FIX
+run_check "$TMP/case-exported-multi-quoted.sh"
+check "a quoted value containing spaces does not hide the names after it" "0" "$rc"
+
+# And the collection must not over-reach: a NAME= that appears inside a quoted
+# value is prose, not an export, so a heredoc reading it is still a leak. This
+# is the assertion that keeps the fix above from becoming a false negative.
+# heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
+cat >"$TMP/case-exported-lookalike.sh" <<'FIX'
+export MESSAGE="run with INNER_VAR=1 first"
+cat > /tmp/out.sh << 'EOF'
+echo "$INNER_VAR"
+EOF
+env -i bash /tmp/out.sh
+FIX
+run_check "$TMP/case-exported-lookalike.sh"
+check "a NAME= inside a quoted value is not an export" "1" "$([ "$rc" -ne 0 ] && echo 1 || echo 0)"
+check "  (INNER_VAR is still reported)" "1" "$(grep -c 'INNER_VAR is expanded' <<<"$check_out" || true)"
+
+# `export -f name` exports a function, not a variable, and the names after it
+# are functions too - collecting them would silence a real leak.
+# heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
+cat >"$TMP/case-export-function.sh" <<'FIX'
+helper() { echo hi; }
+export -f helper
+cat > /tmp/out.sh << 'EOF'
+echo "$HELPER_PATH"
+EOF
+env -i bash /tmp/out.sh
+FIX
+run_check "$TMP/case-export-function.sh"
+check "export -f does not register a variable of that name" "1" "$([ "$rc" -ne 0 ] && echo 1 || echo 0)"
+
 # ...but it does NOT survive su -/sudo -i/env -i/ssh, which is the RC-1 shape.
 # heredoc-vars: ignore — a fixture, checked explicitly via run_check below.
 cat >"$TMP/case-exported-barrier.sh" <<'FIX'

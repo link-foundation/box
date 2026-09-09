@@ -63,6 +63,7 @@ it:
 | `probes/provenance-injection/` | four `docker buildx build` runs and their metadata files, which is what turned finding (a) from a theory into a chain |
 | `upstream/` | the bodies of the reports filed on other projects, kept verbatim so this stays readable if one is edited or closed |
 | `push-rejection/`, `apt-recommends/`, `playwright-deps/`, `cancelled-survey/`, `readme-updater/`, `doc-fragments/` | the transcripts behind findings (l), (e), (f), (i), (q) and (r) |
+| `git-hooks/` | the mirror, cost and mutation measurements behind the pre-commit adoption (§13.2 row 8), including the false positive it found on its first run |
 
 The survey in `run-conclusions/README.md` is worth stating on its own, because
 it bounds the problem:
@@ -684,7 +685,94 @@ where a CI user actually meets this.
 
 ---
 
-## 12. The requirement list, item by item
+## 12. The cheapest place to find any of this
+
+Every finding above was found by reading a run that had already happened. The
+reference templates' best practice #8 says the obvious thing about that: the
+same check costs seconds on a laptop and minutes on a runner, and the difference
+is not the money, it is that the developer is still holding the change in their
+head. Box had adopted fifteen of the sixteen practices; this was the one left,
+recorded until now as "not adopted — the template's `install-git-hooks.mjs`
+assumes a `package.json` lifecycle this repository does not have".
+
+That reasoning was right about the tool and wrong about the practice. husky and
+lint-staged need an npm project; `core.hooksPath` and `git checkout-index` need
+git, which is already a hard dependency of every one of these scripts. So the
+hook is `.githooks/pre-commit`, eleven lines, delegating to
+`scripts/ci/run-precommit-checks.sh`, which runs the same ten gates CI runs, with
+the same arguments, over the same content.
+
+**The same content is the whole design.** `git commit` records the index, not the
+working tree, and the two differ whenever somebody uses `git add -p`, or fixes
+something after staging it. A hook reading the working tree is wrong in both
+directions — it passes a commit that breaks CI when the fix is unstaged, and
+fails a commit that is fine when the breakage is unstaged — which is this
+issue's defect class, reproduced by the thing meant to prevent it. So the gates
+run inside a throwaway mirror of the index: `git ls-files -z | git checkout-index
+-z --stdin --prefix=…`, then `git init && git add -A -f`. Measured at 1357 ms for
+658 files. lint-staged solves the same problem by stashing unstaged changes in
+the real worktree; a mirror was chosen because a crash mid-run then leaves
+nothing to recover.
+
+`add -A -f` is load-bearing rather than defensive. Without `-f`, `.gitignore`'s
+`*.log` drops the ten tracked `docs/case-studies/*/ci-logs/*.log` files and every
+gate silently sees 648 files instead of 658 — a checker quietly not checking
+something, which is finding (g) in a different costume. `dev/log/` stays in the
+mirror for the same reason: it is where downloaded CI logs land, which is where
+an accidentally pasted token would land, so the secret scan has to see it.
+
+Three rules keep the hook from becoming a liability of its own:
+
+- **It does not rewrite files.** lint-staged runs `prettier --write` and re-adds
+  the result, which means `git commit` records something the author never read.
+  Formatting failures print `run-shfmt.sh --fix` instead.
+- **A gate that cannot run does not block.** No docker, no node, no network for
+  `npx` — that is `could not run: <label> (exit N) — CI will run it`, and the
+  commit proceeds. Blocking somebody because their docker daemon is down is a
+  false positive with no defect behind it.
+- **The hook is never the only place a check exists.** Part 7 of
+  `experiments/test-issue121-git-hooks.sh` derives the gate list from the script
+  itself and asserts that each one is also invoked by a workflow, so the previous
+  rule can never turn into a hole.
+
+The installer ports the template's *insight*, not its code. `install-git-hooks.mjs`
+carries the comment that husky "exits 0 even when it fails", so the template
+verifies the outcome afterwards instead of trusting the exit code. The same is
+true of `git config --local core.hooksPath`, and of git silently ignoring a hook
+that is not executable — so `scripts/install-git-hooks.sh` reads the key back and
+stats the hook, and exits 1 with an annotation if either disagrees.
+
+**It found a false positive on its first real run**, which is the argument for it
+in one line. It failed `heredoc-vars` on its own test suite, claiming `$EXITS`
+leaked out of a quoted heredoc. It does not: the suite writes
+`export RECORD=… EXITS=…`, and pass 1 of `check-heredoc-vars.sh` matched the
+keyword plus exactly one name, so every variable after the first in any `export`
+statement looked unset to it. A gate that fails a correct commit is what this
+issue is about, and it had been latent in the tree since the gate was written.
+`collect_exports()` now walks the whole statement, tracking quote state so a
+value containing spaces does not hide the names after it, and stopping at the
+first token that is not a name so `export -f helper` still registers nothing.
+Four fixtures hold both directions.
+
+Cost, for a commit touching shell: about 14 s, of which secretlint is 3.9 s and
+the two shell linters are 4.7 s. A markdown-only commit runs neither linter and
+takes about 5 s. Gates are scoped by what is staged, `git commit --no-verify` and
+`BOX_SKIP_HOOKS=1` are both documented by the failure itself, and
+`docs/LOCAL-CHECKS.md` gives the copy-pasteable command for every gate for the
+case where somebody would rather not install anything at all.
+
+`experiments/test-issue121-git-hooks.sh` is 80 assertions with every gate stubbed
+as a recorder, so it asserts *which* gate saw *which* content — including a
+staged-versus-worktree pair proving the index is what is read, a tracked file
+matching `.gitignore` proving `-f`, an initial commit with no `HEAD`, and a stub
+`git` that accepts `config core.hooksPath` and drops it, reproducing husky's
+"exit 0, did nothing" against our installer. Four mutations of the shipped
+scripts each produce exactly one intended failure
+(`dev/log/issues/121/pulls/122/git-hooks/`).
+
+---
+
+## 13. The requirement list, item by item
 
 Issue #121 has three requirements, and the third is the one that generates work
 after this pull request is merged: *"We should compare all files, so we don't
@@ -693,7 +781,7 @@ templates."* Both template trees were cloned and recorded verbatim under
 `dev/log/issues/121/pulls/122/templates/` so the comparison is against a fixed
 state rather than a moving one.
 
-### 12.1 Every false positive, false negative, warning and error
+### 13.1 Every false positive, false negative, warning and error
 
 | Requirement | Where it landed |
 |---|---|
@@ -703,7 +791,7 @@ state rather than a moving one.
 | A red run must be reachable from a failed job | §7 — a terminal gate in every entry-point workflow, and a checker that keeps its `needs` complete |
 | A long step must be able to report its own overrun | §8 — 22 wrapped steps, caps measured, budgets checked per matrix leg |
 
-### 12.2 The hive-mind best practices, against this repository
+### 13.2 The hive-mind best practices, against this repository
 
 Read from `templates/hive-mind-CI-CD-BEST-PRACTICES.md` as it stood on
 2026-09-09.
@@ -717,7 +805,7 @@ Read from `templates/hive-mind-CI-CD-BEST-PRACTICES.md` as it stood on
 | 5 | Fast-fail job ordering | Already held — the `scripts`, `file-sizes` and `workflows` checks are minutes; the builds are the tail |
 | 6 | Changeset-based versioning | Already held — `.changeset/`, `check-changesets.sh`, `apply-changesets.sh` |
 | 7 | Validate the actual merge result | Already held — `.github/actions/simulate-fresh-merge` in every check job |
-| 8 | Pre-commit hooks | **Not adopted.** The template's `install-git-hooks.mjs` assumes a `package.json` lifecycle this repository does not have; see §14 |
+| 8 | Pre-commit hooks | **Adopted in full here** — not the template's tool. `install-git-hooks.mjs` drives husky, which needs a `package.json` lifecycle this repository does not have, so the same guarantee is built from `core.hooksPath` and `git checkout-index` alone: `.githooks/pre-commit` → `run-precommit-checks.sh`, ten gates over the **index**, ~14 s. See §12 |
 | 9 | Release automation | Already held — `release.yml` and its five called workflows |
 | 10 | Concurrency control | Already held — 14 per-job groups plus `scripts/ci/supersede.sh`; §7 is what makes a cancellation from one of them visible |
 | 11 | Secrets detection | Already held — `secretlint` in `security.yml` |
@@ -727,12 +815,14 @@ Read from `templates/hive-mind-CI-CD-BEST-PRACTICES.md` as it stood on
 | 15 | Audit the dependency tree | Held differently — no package manifest exists here; CodeQL and `assert-base-image.sh` are the equivalents |
 | 16 | Prove you can publish before you build | Already held — `preflight-credentials.sh` and `registry-probe.sh` run before the release builds |
 
-### 12.3 Template files with no counterpart here
+### 13.3 Template files with no counterpart here
 
 Adopted in this pull request, ported rather than copied:
 `check-pipeline-status.sh` (§7), `check-status-gate-covers-all-jobs.mjs` (§7),
 `recheck-broken-links.mjs` (§9), `run-with-budget-warning.sh` (§8),
-`check-mjs-syntax.sh`, `check-required-docs.sh`.
+`check-mjs-syntax.sh`, `check-required-docs.sh`. `install-git-hooks.mjs` is the
+one adopted at the level of the idea rather than the file, for the reasons in
+§12.
 
 The last one is finding **p**, and it is worth stating why a repository of
 Dockerfiles and shell needs a JavaScript gate at all. `git ls-files '*.mjs'`
@@ -824,7 +914,7 @@ Considered and deliberately **not** filed upstream:
 
 ---
 
-## 13. Existing components, and what was written instead
+## 14. Existing components, and what was written instead
 
 Nothing here was written before looking for something that already did it. The
 survey, and the reason each answer went the way it did:
@@ -837,25 +927,27 @@ survey, and the reason each answer went the way it did:
 | Free disk on a runner | `jlumbroso/free-disk-space` | Kept, with `large-packages: false` — the action is right about *what* to remove and wrong about *how* on arm64 (§2) |
 | Retry a rejected push | The template's `push-failure-classifier.mjs` | Same idea, re-derived in shell against a live `git` (§10), because the strings are the contract and they are a git version's to change |
 | Re-ask an unanswered URL | The template's `recheck-broken-links.mjs` | Ported, with one condition added (§9) |
-| Parse the repository's JavaScript | The js template's `check-mjs-syntax.sh` | **Ported**, with `git ls-files` discovery instead of three hard-coded directories, a missing `node` as exit 2 rather than a skip, and relative-import resolution added (§12.3) |
+| Parse the repository's JavaScript | The js template's `check-mjs-syntax.sh` | **Ported**, with `git ls-files` discovery instead of three hard-coded directories, a missing `node` as exit 2 rather than a skip, and relative-import resolution added (§13.3) |
 | Check a link's anchor, not just its document | lychee's own `--include-fragments` | **Adopted** — the capability was already in the tool this repository runs; what was missing was the flag. Proved load-bearing by a mutation fixture rather than by reading the manual (finding **r**) |
-| Keep a heading a script depends on | The js template's `check-required-docs.sh` | **Ported**, with the file list turned into a file-and-headings table, marker-pair checking, and `docs/…md` reference resolution over `scripts/` and `.github/` (§12.3) |
+| Keep a heading a script depends on | The js template's `check-required-docs.sh` | **Ported**, with the file list turned into a file-and-headings table, marker-pair checking, and `docs/…md` reference resolution over `scripts/` and `.github/` (§13.3) |
 | Suppress a false link failure | `.lycheeignore` | **Rejected** — it converts a false positive into a permanent false negative |
 | Stop a log injection | `provenance: false` | **Insufficient**, and the difference matters: it governs the attestation, not the metadata file (§1) |
+| Run CI's gates before the commit exists | The templates' husky + lint-staged, driven by `install-git-hooks.mjs` | **Insight ported, tool rejected** — both need a `package.json` lifecycle absent here, and lint-staged's worktree stash can leave a developer's tree to recover after a crash. `core.hooksPath` + a `git checkout-index` mirror instead; what *was* taken from the template is that an installer must verify its own outcome rather than trust an exit code (§12) |
 | Measure job durations | `gh run list` / the jobs API | Wrapped as `measure-job-durations.sh`, using `gh --jq` so no `jq` binary is required on a runner |
 
 ---
 
-## 14. Still outstanding
+## 15. Still outstanding
 
-- **The remaining template comparison.** `lint-changed-lines.mjs` and
-  `install-git-hooks.mjs` have counterparts in the js template and none here.
-  Each has to be judged against a repository whose sources are Dockerfiles and
-  shell rather than a package, which is why they are named here rather than
-  adopted by reflex. `check-mjs-syntax.sh` and `check-required-docs.sh` were
-  judged the same way and adopted; see §12.3.
+- **The remaining template comparison.** `lint-changed-lines.mjs` is the last
+  js-template script with no counterpart here. It has to be judged against a
+  repository whose sources are Dockerfiles and shell rather than a package,
+  which is why it is named here rather than adopted by reflex.
+  `check-mjs-syntax.sh`, `check-required-docs.sh` and `install-git-hooks.mjs`
+  were judged the same way — the first two ported, the third's insight taken and
+  its tool rejected; see §13.3 and §12.
 - **`security.yml` and `release.yml` against both templates**, file by file, at
-  the same level of detail as §12.2.
+  the same level of detail as §13.2.
 - Nothing in this pull request rewrites an annotation that is already published.
   The 98 annotations of run 34293699247 stay as they are; what changes is what
   the next release run produces.
