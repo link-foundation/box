@@ -1,0 +1,1 @@
+{"after": "deadbeef", "commits": [{"id": "a2e6420", "message": "ci: spend the idle disk (issue #119)\n\n##[error]Process completed with exit code 143.\n  ##[error]The runner has received a shutdown signal.\n\nrest of the body"}], "repository": {"full_name": "link-foundation/box"}}

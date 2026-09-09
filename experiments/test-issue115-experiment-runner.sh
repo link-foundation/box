@@ -58,10 +58,18 @@ SKIP_COUNT="$(printf '%s\n' "$LIST" | grep -c '^SKIP ')"
 RUN_COUNT="$(printf '%s\n' "$LIST" | grep -c '^RUN ')"
 DISCOVERED="$(find experiments -maxdepth 1 -name '*.sh' -type f | wc -l)"
 
-if [ "$SKIP_COUNT" -eq 3 ]; then
-  pass "exactly the three documented suites are skipped"
+# Derived from the runner's own list rather than written down here as a
+# number. A hard-coded 3 is a check that fails the day somebody adds a
+# justified exclusion - which says nothing about the runner and everything
+# about this assertion - while still passing if an entry stops matching, since
+# that lowers the count in the same direction. What the runner promises is that
+# every declared exclusion applies, so that is what is compared.
+DECLARED_SKIPS="$(grep -cE "^\s*\['[^']+'\]=" "$RUNNER")"
+
+if [ "$DECLARED_SKIPS" -gt 0 ] && [ "$SKIP_COUNT" -eq "$DECLARED_SKIPS" ]; then
+  pass "every one of the $DECLARED_SKIPS declared exclusions applies"
 else
-  fail "exactly the three documented suites are skipped (found $SKIP_COUNT)"
+  fail "every one of the $DECLARED_SKIPS declared exclusions applies (skipped $SKIP_COUNT)"
   printf '%s\n' "$LIST" | sed 's/^/      /' >&2
 fi
 
@@ -73,10 +81,11 @@ fi
 
 # Each skip line carries its reason: an exclusion nobody can justify is the
 # first step to a check that nobody runs.
-if [ "$(printf '%s\n' "$LIST" | grep '^SKIP ' | grep -c 'needs ')" -eq 3 ]; then
-  pass "each skipped suite states what it needs"
+JUSTIFIED="$(printf '%s\n' "$LIST" | grep '^SKIP ' | grep -c 'needs ')"
+if [ "$JUSTIFIED" -eq "$SKIP_COUNT" ]; then
+  pass "each of the $SKIP_COUNT skipped suites states what it needs"
 else
-  fail "each skipped suite states what it needs"
+  fail "each of the $SKIP_COUNT skipped suites states what it needs (only $JUSTIFIED do)"
 fi
 
 echo ""

@@ -75,6 +75,19 @@ env:
   # enables BuildKit implicitly; the plain `docker build` steps below need it
   # switched on explicitly or that syntax is a parse error.
   DOCKER_BUILDKIT: "1"
+  # Keep the build's provenance out of the log (issue #121). buildx resolves
+  # provenance for `--metadata-file` even when the attestation is switched off
+  # (`provenance: false` on every build step here), docker/build-push-action
+  # prints that metadata verbatim, and on the docker-container driver the
+  # provenance carries `invocation.environment.github_event_payload` - the whole
+  # push event, every commit message included. The runner matches the legacy
+  # `##[command]` form *anywhere* in a line, so commit a2e6420, whose body
+  # quotes `##[error]Process completed with exit code 143.` while explaining a
+  # fix, put 56 failure annotations on build jobs that had every one succeeded
+  # (release run 34293699247). `disabled` means buildx writes no provenance to
+  # the metadata file, so there is nothing to print and nothing to misread.
+  # experiments/test-issue121-log-injection.sh holds this in place.
+  BUILDX_METADATA_PROVENANCE: disabled
   # GitHub Container Registry
   GHCR_REGISTRY: ghcr.io
   GHCR_IMAGE_NAME: ${{ github.repository }}
