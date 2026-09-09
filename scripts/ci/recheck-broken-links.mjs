@@ -28,7 +28,9 @@
  * both the Web Archive step and the "Fail if broken links were found" step on
  * `all_recovered != 'true'`. So a report holding one 404 and one connection
  * reset ends green with the 404 in it. Reproduced against the template's own
- * script by experiments/issue-121-template-recheck/, reported upstream, and
+ * script by experiments/issue-121-template-recheck/, reported upstream as
+ * link-foundation/js-ai-driven-development-pipeline-template#184 and
+ * link-foundation/rust-ai-driven-development-pipeline-template#170, and
  * not copied: here `all_recovered` means "the whole report was noise", so it
  * is written only when the report contained nothing but unanswered failures
  * and all of them recovered.

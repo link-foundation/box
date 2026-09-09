@@ -22,8 +22,10 @@
 #      of them answers now. The reference template writes it while answered
 #      failures are still in the report, which ends the job green with a 404 in
 #      it; reproduced against the template's own script by
-#      experiments/issue-121-template-recheck/, reported upstream, and
-#      deliberately not copied;
+#      experiments/issue-121-template-recheck/, reported upstream as
+#      js-ai-driven-development-pipeline-template#184 and
+#      rust-ai-driven-development-pipeline-template#170, and deliberately
+#      not copied;
 #   3. the workflow reads that output with `!= 'true'`, so a skipped or crashed
 #      re-check fails safe;
 #   4. the Wayback step skips a recovered URL rather than looking it up.

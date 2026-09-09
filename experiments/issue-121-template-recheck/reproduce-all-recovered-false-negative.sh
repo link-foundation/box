@@ -7,9 +7,11 @@
 #
 # Run:  bash experiments/issue-121-template-recheck/reproduce-all-recovered-false-negative.sh
 #
-# Exit 0 means the defect reproduced and the upstream report still stands;
-# exit 1 means it did not, and the report can be closed against the checkout in
-# dev/log/. It is a demonstration of somebody else's code, not an assertion
+# Exit 0 means the defect reproduced and the upstream reports still stand -
+# link-foundation/js-ai-driven-development-pipeline-template#184 and
+# link-foundation/rust-ai-driven-development-pipeline-template#170, which carry
+# a reduced form of this script. Exit 1 means it did not, and those reports can
+# be closed against the checkout in dev/log/. It is a demonstration of somebody else's code, not an assertion
 # about this repository, which is why it sits in a subdirectory: scripts/ci/
 # run-experiments.sh discovers experiments/*.sh at depth 1 only. This
 # repository's own behaviour - which is deliberately not the template's - is
