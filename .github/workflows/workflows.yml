@@ -13,6 +13,7 @@ on:
       - 'scripts/ci/check-timeout-budgets.mjs'
       - 'scripts/ci/check-workflow-path-coverage.mjs'
       - 'experiments/test-issue121-path-coverage.sh'
+      - 'experiments/test-issue121-git-init-hint.sh'
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
@@ -24,11 +25,26 @@ on:
       - 'scripts/ci/check-timeout-budgets.mjs'
       - 'scripts/ci/check-workflow-path-coverage.mjs'
       - 'experiments/test-issue121-path-coverage.sh'
+      - 'experiments/test-issue121-git-init-hint.sh'
   workflow_dispatch:
 
 # Least-privilege default; these jobs only read the checked-out tree.
 permissions:
   contents: read
+
+env:
+  # actions/checkout's first act is `git init`, and a git with no configured
+  # `init.defaultBranch` answers it with a thirteen-line advice block - "Using
+  # 'master' as the name for the initial branch... this default branch name will
+  # change" - at the top of every job log. 19 checkouts in the runs issue #121
+  # lists printed 247 lines of it, in jobs where nothing was wrong. No step can
+  # fix it, because it is printed before the first step of ours runs; git reads
+  # configuration from the environment too, and the environment is there from
+  # the start. Ported from the js template, which carries the same three lines
+  # with the same reasoning.
+  GIT_CONFIG_COUNT: '1'
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
 
 jobs:
   actionlint:
@@ -102,6 +118,14 @@ jobs:
       # quietly passing a repository it should have reported.
       - name: Path-coverage fixtures
         run: bash experiments/test-issue121-path-coverage.sh
+
+      # Every job log used to open with git's thirteen-line "Using 'master' as
+      # the name for the initial branch" advice, because actions/checkout runs
+      # `git init` before any step can configure it. The fix is three `env:`
+      # entries per workflow, and the thing that rots is the next workflow
+      # added without them - so this reads all of them, every time one changes.
+      - name: Git advice hints
+        run: bash experiments/test-issue121-git-init-hint.sh
 
   zizmor:
     name: zizmor

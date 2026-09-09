@@ -339,7 +339,9 @@ declare -A EXPECTED=(
   ['.github/workflows/docs.yml']=1
   ['.github/workflows/links.yml']=1
   ['.github/workflows/measure-disk-space.yml']=1
-  ['.github/workflows/scripts.yml']=6
+  # Seven jobs judge the tree: the six linters and the experiment runner.
+  # py-syntax joined them with issue #121's Python parser.
+  ['.github/workflows/scripts.yml']=7
   ['.github/workflows/security.yml']=2
   ['.github/workflows/workflows.yml']=2
   ['.github/workflows/file-sizes.yml']=1
