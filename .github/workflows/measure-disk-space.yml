@@ -126,8 +126,11 @@ jobs:
       group: measure-disk-space-${{ github.ref }}
       cancel-in-progress: false
 
+    # pull-requests: write is for the fallback path in
+    # scripts/release/git-push-with-retry.sh only (issue #121).
     permissions:
       contents: write
+      pull-requests: write
 
     env:
       # Off by default. `workflow_dispatch` can turn it on without editing the
@@ -241,6 +244,10 @@ jobs:
 
       - name: Commit and push changes
         if: steps.changes.outputs.has_changes == 'true' && steps.validate.outputs.valid == 'true'
+        env:
+          # Only read on the fallback path, when a repository rule declines the
+          # direct push and the commit has to arrive as a pull request.
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -252,13 +259,16 @@ jobs:
 
           git commit -m "chore: update component disk space measurements (${TOTAL_SIZE}MB total)"
 
-          # Pull-rebase before push to handle concurrent pushes that may have occurred
-          # during the ~18 minute measurement (e.g., version bump from release workflow).
-          # Measurement data (README.md, data/) and version bumps (VERSION) touch different
-          # files, so the rebase always succeeds cleanly. See docs/case-studies/issue-51.
-          git pull --rebase origin main
-
-          git push origin main
+          # This job runs for about 18 minutes before it pushes, which is a wide
+          # window for the release workflow to land a version bump. A single
+          # pull-rebase closes most of it but not the seconds between the
+          # rebase and the push, and it never retries; the helper rebases and
+          # retries, and answers a repository-rule rejection with a pull
+          # request rather than a rebase that cannot satisfy it (issue #121,
+          # and see docs/case-studies/issue-51 for the original race).
+          # Measurement data (README.md, data/) and version bumps (VERSION)
+          # touch different files, so the rebase resolves cleanly.
+          bash scripts/release/git-push-with-retry.sh origin main "disk-space-measurements"
 
           echo "Changes committed and pushed successfully"
 

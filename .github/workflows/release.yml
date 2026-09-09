@@ -201,8 +201,13 @@ jobs:
     # should not be created by it.
     needs: [preflight]
     if: needs.preflight.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # pull-requests: write is for the fallback path only. If a repository rule
+    # ever declines the direct push, the bump lands through a pull request
+    # instead of dying after the version has already been committed on the
+    # runner (issue #121).
     permissions:
       contents: write
+      pull-requests: write
     outputs:
       version_bumped: ${{ steps.apply.outputs.version_bumped }}
       new_version: ${{ steps.apply.outputs.new_version }}
@@ -221,6 +226,10 @@ jobs:
       - name: Apply changesets
         id: apply
         if: steps.check.outputs.has_changesets == 'true'
+        env:
+          # Only read on the fallback path, when a repository rule declines the
+          # direct push and the bump has to arrive as a pull request.
+          GH_TOKEN: ${{ github.token }}
         run: |
           chmod +x scripts/release/apply-changesets.sh
           ./scripts/release/apply-changesets.sh
@@ -233,8 +242,10 @@ jobs:
     # already proved it cannot publish.
     needs: [preflight]
     if: needs.preflight.result == 'success' && github.event_name == 'workflow_dispatch' && github.event.inputs.release_mode == 'bump-and-release'
+    # pull-requests: write is for the fallback path only; see apply-changesets.
     permissions:
       contents: write
+      pull-requests: write
     outputs:
       version: ${{ steps.bump.outputs.new_version }}
       version_bumped: ${{ steps.bump.outputs.bumped }}
@@ -257,6 +268,9 @@ jobs:
         env:
           BUMP_TYPE: ${{ github.event.inputs.bump_type }}
           DESCRIPTION: ${{ github.event.inputs.description }}
+          # Only read on the fallback path, when a repository rule declines the
+          # direct push and the bump has to arrive as a pull request.
+          GH_TOKEN: ${{ github.token }}
         run: |
           # Read current version
           CURRENT_VERSION=$(tr -d '[:space:]' < VERSION)
@@ -294,7 +308,9 @@ jobs:
           else
             git commit -m "$NEW_VERSION"
           fi
-          git push origin main
+          # Not a bare `git push`: see scripts/release/git-push-with-retry.sh
+          # (issue #121).
+          bash scripts/release/git-push-with-retry.sh origin main "$NEW_VERSION"
 
           echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           echo "bumped=true" >> "$GITHUB_OUTPUT"
