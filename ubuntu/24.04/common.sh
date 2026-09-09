@@ -66,6 +66,27 @@ maybe_sudo() {
 
 # Retry apt metadata refreshes. Ubuntu mirrors can briefly serve mismatched
 # Release and Packages files while syncing, which exits as apt code 100.
+#
+# The three -o options below restate apt's own defaults on Ubuntu 24.04 (apt
+# 2.8.3), which is worth writing down because the asymmetry between this line
+# and the ~40 plain `apt-get install` lines in this repository reads like a
+# defect and is not one. Measured: an `apt-get update` given no options at all
+# opens 8 connections to a server that resets them - exactly what an explicit
+# Acquire::Retries=3 opens, against 2 for Retries=0 - and gives up on a
+# connection that is accepted and never answered after 30s, exactly what an
+# explicit Acquire::http::Timeout=30 does. So restating the flags at every
+# install site, or dropping them into /etc/apt/apt.conf.d, would change nothing.
+# They stay here because stating the intent locally is cheaper than inheriting
+# it.
+#
+# What is *not* an apt default is the loop around them: up to 5 attempts with
+# exponential backoff, clearing /var/lib/apt/lists between them. apt's internal
+# retries re-fetch over the same broken mirror state; clearing the lists is what
+# a mirror mid-sync needs. The invariant that matters for the install sites,
+# then, is that each one is preceded by this function in the same shell - which
+# experiments/test-issue123-apt-retry-defaults.sh checks per Dockerfile RUN
+# block, alongside the measurement above, and it fails if a future apt changes
+# either default (issue #123).
 apt_update_with_retry() {
   local max_retries="${APT_UPDATE_MAX_RETRIES:-5}"
   local initial_delay="${APT_UPDATE_INITIAL_DELAY:-5}"
