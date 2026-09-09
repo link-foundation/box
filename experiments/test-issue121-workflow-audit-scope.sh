@@ -38,6 +38,11 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
 WORKFLOW=".github/workflows/workflows.yml"
 CONFIG=".github/zizmor.yml"
+# Both zizmor passes moved behind this runner when issue #123 gave them a token
+# (see its header). The invocation is still the thing being asserted on; it is
+# read from the runner now rather than from the workflow, and `--print` answers
+# with the exact command the job runs.
+RUNNER="scripts/ci/run-zizmor.sh"
 LOGIN_ACTION=".github/actions/dockerhub-login/action.yml"
 PASS=0
 FAIL=0
@@ -59,21 +64,34 @@ else
   fail "$WORKFLOW exists"
 fi
 
-# The scan targets are the last argument of each zizmor invocation. Requiring
-# both paths on the same line is deliberate: a second `zizmor` step that only
-# reads .github/actions would leave the two sets of findings on different
-# failure surfaces.
-ZIZMOR_TARGET_LINES="$(grep -c '^\s*\.github/workflows \.github/actions\s*$' "$WORKFLOW")"
-if [ "$ZIZMOR_TARGET_LINES" -eq 2 ]; then
-  pass "both zizmor passes scan .github/workflows and .github/actions"
+REGULAR_CMD="$(bash "$RUNNER" --print regular 2>&1)"
+PEDANTIC_CMD="$(bash "$RUNNER" --print pedantic 2>&1)"
+
+# The scan targets are the last arguments of each zizmor invocation. Requiring
+# both paths of every pass is deliberate: a pass that only read .github/actions
+# would leave the two sets of findings on different failure surfaces.
+for named in "regular:$REGULAR_CMD" "pedantic:$PEDANTIC_CMD"; do
+  name="${named%%:*}"
+  cmd="${named#*:}"
+  if [[ "$cmd" == *".github/workflows .github/actions"* ]]; then
+    pass "the $name pass scans .github/workflows and .github/actions"
+  else
+    fail "the $name pass scans .github/workflows and .github/actions (got: $cmd)"
+  fi
+done
+
+# And no step may go around the runner back to a bare `docker run`, which is
+# how both passes lost their token in the first place (issue #123).
+if ! grep -rn 'zizmorcore/zizmor' .github/workflows/*.yml >/dev/null 2>&1; then
+  pass "no workflow invokes the zizmor image directly; both passes go through $RUNNER"
 else
-  fail "both zizmor passes scan .github/workflows and .github/actions (found $ZIZMOR_TARGET_LINES such target lines, want 2)"
+  fail "no workflow invokes the zizmor image directly; both passes go through $RUNNER"
 fi
 
-if ! grep -qE '^\s*\.github/workflows\s*$' "$WORKFLOW"; then
-  pass "no zizmor pass is scoped to .github/workflows alone"
+if grep -c 'bash scripts/ci/run-zizmor.sh' "$WORKFLOW" | grep -qx 2; then
+  pass "$WORKFLOW runs both passes through $RUNNER"
 else
-  fail "no zizmor pass is scoped to .github/workflows alone"
+  fail "$WORKFLOW runs both passes through $RUNNER"
 fi
 
 for action in .github/actions/*/action.yml; do
@@ -91,7 +109,7 @@ else
   fail "$CONFIG still declares the '*': hash-pin policy"
 fi
 
-if grep -q -- '--persona pedantic' "$WORKFLOW"; then
+if [[ "$PEDANTIC_CMD" == *"--persona pedantic"* ]]; then
   pass "a zizmor pass runs the pedantic persona (unpinned-images is pedantic-only)"
 else
   fail "a zizmor pass runs the pedantic persona (unpinned-images is pedantic-only)"
@@ -99,13 +117,13 @@ fi
 
 # Pedantic without both floors is hundreds of stylistic findings; that pass
 # would be reverted within a week, and the enforcement with it.
-if grep -q -- '--min-severity high' "$WORKFLOW" && grep -q -- '--min-confidence high' "$WORKFLOW"; then
+if [[ "$PEDANTIC_CMD" == *"--min-severity high"* && "$PEDANTIC_CMD" == *"--min-confidence high"* ]]; then
   pass "the pedantic pass is floored at high severity and high confidence"
 else
   fail "the pedantic pass is floored at high severity and high confidence"
 fi
 
-if grep -q -- '--min-severity medium' "$WORKFLOW" && grep -q -- '--min-confidence medium' "$WORKFLOW"; then
+if [[ "$REGULAR_CMD" == *"--min-severity medium"* && "$REGULAR_CMD" == *"--min-confidence medium"* ]]; then
   pass "the regular pass keeps its medium/medium floors"
 else
   fail "the regular pass keeps its medium/medium floors"

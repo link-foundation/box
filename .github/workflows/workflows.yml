@@ -13,6 +13,7 @@ on:
       - 'scripts/ci/check-timeout-budgets.mjs'
       - 'scripts/ci/check-workflow-path-coverage.mjs'
       - 'scripts/ci/check-checkout-credentials.mjs'
+      - 'scripts/ci/run-zizmor.sh'
       - 'experiments/test-issue121-path-coverage.sh'
       - 'experiments/test-issue121-git-init-hint.sh'
       - 'experiments/test-issue121-checkout-credentials.sh'
@@ -27,6 +28,7 @@ on:
       - 'scripts/ci/check-timeout-budgets.mjs'
       - 'scripts/ci/check-workflow-path-coverage.mjs'
       - 'scripts/ci/check-checkout-credentials.mjs'
+      - 'scripts/ci/run-zizmor.sh'
       - 'experiments/test-issue121-path-coverage.sh'
       - 'experiments/test-issue121-git-init-hint.sh'
       - 'experiments/test-issue121-checkout-credentials.sh'
@@ -185,34 +187,26 @@ jobs:
       - name: Simulate a fresh merge with the base branch
         uses: ./.github/actions/simulate-fresh-merge
 
-      # Run the image rather than the action so the command is identical to the
-      # local one and the thresholds are visible here.
+      # Both passes run through scripts/ci/run-zizmor.sh, which pins the image,
+      # the floors and the scan targets in one place, and - the reason it
+      # exists - hands zizmor a GitHub API token and fails the job if zizmor
+      # says it is running offline anyway.
       #
-      # --min-severity medium: the remaining low findings are `self-repository`
-      # (a `./.github/actions/...` reference style) and template expansions of
-      # `matrix.language` / this repository's own step outputs, none of which
-      # are attacker-controllable. The reference template is in the same state.
-      # Everything at medium and above is fixed and must stay fixed.
+      # Since 1.0 zizmor is offline unless it has a token, and `docker run`
+      # forwards no environment, so the two invocations that used to live here
+      # ran with the online audits switched off. The run on 1d9fb3e logged
+      # `zizmor is running in offline mode by default; some audits and
+      # auto-fixes will not be available` twice and reported no findings - about
+      # a question it never asked, because `known-vulnerable-actions` needs the
+      # GitHub Advisory Database (issue #123).
       #
-      # Scoped to .github: dev/log/ holds verbatim copies of other projects'
-      # workflows collected as issue evidence, and they are not ours to fix.
-      #
-      # .github/actions is scanned as well as .github/workflows. It was not,
-      # and the four composite actions in it had never been audited by anything
-      # — the omission was hiding a High-confidence `template-injection` in
-      # dockerhub-login/action.yml (issue #121). A composite action runs in the
-      # calling job, with the calling job's credentials; there is no reason for
-      # it to be held to a lower standard than the workflow that calls it.
+      # GH_TOKEN, not GITHUB_TOKEN, because that is the name zizmor reads first
+      # and the name the container is given. `contents: read` is all it needs;
+      # the advisory data is public.
       - name: zizmor
-        run: |
-          docker run --rm -v "$PWD:/repo" -w /repo \
-            ghcr.io/zizmorcore/zizmor:1.30.0 \
-            --min-confidence medium \
-            --min-severity medium \
-            --no-progress \
-            --format plain \
-            --config .github/zizmor.yml \
-            .github/workflows .github/actions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/ci/run-zizmor.sh regular
 
       # The pass above runs zizmor's default `regular` persona, which is the
       # right default: `pedantic` surfaces hundreds of stylistic findings. But
@@ -225,16 +219,9 @@ jobs:
       # the digest pin above it reports nothing, and stays silent until someone
       # reintroduces a mutable image reference.
       - name: Audit for pedantic-only high-severity findings
-        run: |
-          docker run --rm -v "$PWD:/repo" -w /repo \
-            ghcr.io/zizmorcore/zizmor:1.30.0 \
-            --persona pedantic \
-            --min-severity high \
-            --min-confidence high \
-            --no-progress \
-            --format plain \
-            --config .github/zizmor.yml \
-            .github/workflows .github/actions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/ci/run-zizmor.sh pedantic
 
   # === TERMINAL STATUS GATE ===
   #
