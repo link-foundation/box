@@ -142,6 +142,49 @@ else
   fail "the actionlint digest pin carries the version it was resolved from"
 fi
 
+# A digest pin freezes the check set as well as the binary, so the version it
+# names is an invariant of this gate and not a detail. The floor is v1.7.11,
+# the release that added `glob` - the check that reports a `paths:` entry
+# beginning with `./`, which matches nothing and so leaves a workflow that
+# never starts. `if-cond` (v1.7.9) and the removed runner labels (v1.7.8)
+# arrived earlier and come with it.
+# experiments/reproduce-issue121-actionlint-version-gap.sh measures all three
+# against both versions; this only holds the floor.
+PINNED_VERSION="$(sed -n 's|.*uses: docker://rhysd/actionlint@sha256:[0-9a-f]\{64\} # v\([0-9.]*\).*|\1|p' "$WORKFLOW" | head -1)"
+FLOOR="1.7.11"
+
+if [ -n "$PINNED_VERSION" ] \
+  && [ "$(printf '%s\n%s\n' "$FLOOR" "$PINNED_VERSION" | sort -V | head -1)" = "$FLOOR" ]; then
+  pass "the pinned actionlint ($PINNED_VERSION) is at least $FLOOR, so it can report a dead paths: filter"
+else
+  fail "the pinned actionlint (${PINNED_VERSION:-unreadable}) is at least $FLOOR, so it can report a dead paths: filter"
+fi
+
+# The reproduction command in the comment tells a reader how to get the same
+# answer CI got. Naming a different version than the pin makes it a wrong
+# answer that looks authoritative.
+DOCUMENTED_VERSION="$(sed -n 's|.*docker run .*rhysd/actionlint:\([0-9.]*\) .*|\1|p' "$WORKFLOW" | head -1)"
+
+if [ -n "$DOCUMENTED_VERSION" ] && [ "$DOCUMENTED_VERSION" = "$PINNED_VERSION" ]; then
+  pass "the reproduce-locally command names the version that is pinned ($PINNED_VERSION)"
+else
+  fail "the reproduce-locally command names the version that is pinned (says ${DOCUMENTED_VERSION:-nothing}, pinned $PINNED_VERSION)"
+fi
+
+# Nothing else may name an actionlint version of its own: a suite that runs a
+# different analyser than CI reports about a tree CI never saw.
+# Comment lines are excluded: the history of the pin is worth recording, and a
+# sentence about v1.7.7 does not run an analyser. What matters is a command.
+STRAY="$(grep -rn 'rhysd/actionlint:[0-9]' --include='*.sh' --include='*.mjs' \
+  scripts experiments 2>/dev/null | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' || true)"
+
+if [ -z "$STRAY" ]; then
+  pass "no script names an actionlint version independently of the workflow's pin"
+else
+  printf '%s\n' "$STRAY" | sed 's/^/  /'
+  fail "no script names an actionlint version independently of the workflow's pin"
+fi
+
 echo
 echo "=== Part 4: the template-injection the widened scope found ==="
 

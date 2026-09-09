@@ -121,7 +121,15 @@ echo "== Invariant 6: the workflows lint clean =="
 if ! command -v docker >/dev/null 2>&1; then
   echo "  SKIP: docker unavailable, cannot run actionlint/zizmor"
 else
-  if docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 >/tmp/actionlint-policy.log 2>&1; then
+  # Read the image out of the workflow instead of naming a version here. Two
+  # places naming a linter independently is how a local run and a CI run end up
+  # disagreeing about what passed - and this suite restated `1.7.7` as a
+  # mutable tag while the workflow had moved to a digest pin (issue #121).
+  ACTIONLINT_IMAGE="$(sed -n 's|^[[:space:]]*- uses: docker://\(rhysd/actionlint@sha256:[0-9a-f]\{64\}\).*|\1|p' \
+    "$WORKFLOW_DIR/workflows.yml" | head -1)"
+  if [ -z "$ACTIONLINT_IMAGE" ]; then
+    bad "workflows.yml pins actionlint by digest (could not read the image to run)"
+  elif docker run --rm -v "$PWD:/repo" -w /repo "$ACTIONLINT_IMAGE" >/tmp/actionlint-policy.log 2>&1; then
     ok "actionlint (with its bundled shellcheck) reports no problems"
   else
     sed 's/^/    /' /tmp/actionlint-policy.log

@@ -75,7 +75,7 @@ jobs:
       # thousands of lines of shell that no other linter sees. A native
       # actionlint binary without shellcheck on PATH silently skips the shell
       # checks and exits 0, so reproduce failures with the image:
-      #   docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
+      #   docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
       #
       # Pinned by digest, not by tag: a mutable tag of a repository we do not
       # control is arbitrary code execution in any job that holds credentials,
@@ -83,7 +83,25 @@ jobs:
       # .github/zizmor.yml. Re-resolve when bumping:
       #   docker pull rhysd/actionlint:<tag> &&
       #   docker buildx imagetools inspect rhysd/actionlint:<tag>
-      - uses: docker://rhysd/actionlint@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9 # v1.7.7
+      #
+      # A digest pin also freezes the check set, which is why the version it
+      # resolves to is part of this gate rather than an implementation detail.
+      # v1.7.7 (2025-01-25) predates three checks that report exactly what this
+      # workflow exists to catch, a check that cannot fail:
+      #   * `glob`         - a `paths:` entry beginning with `./` matches
+      #                      nothing, so the workflow never starts (v1.7.11).
+      #   * `if-cond`      - `if: false` on a job that is still listed in the
+      #                      status gate's `needs` (v1.7.9, v1.7.10).
+      #   * `runner-label` - a label GitHub has removed, so the job never
+      #                      starts (v1.7.8, v1.7.10).
+      # Measured against fixtures for all three plus a YAML merge key, v1.7.7
+      # reports one finding and describes it wrongly; v1.7.12 reports four:
+      # experiments/reproduce-issue121-actionlint-version-gap.sh. Against this
+      # repository as it stands both are clean, so the bump costs nothing now
+      # and is the only thing here that can make those three findings - the
+      # coverage gate below cannot see a dead `paths:` entry that has a live
+      # sibling.
+      - uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 # v1.7.12
         with:
           args: -color
 
