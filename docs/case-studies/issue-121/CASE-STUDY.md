@@ -59,7 +59,7 @@ it:
 | `analysis/` | all 98 annotations of the eight runs (`annotations-main.tsv`), plus job- and step-duration samples used to size the timeout caps |
 | `run-conclusions/` | the 200 most recent runs (2026-09-06 .. 2026-09-09), each compared against its own jobs |
 | `ci-logs/` | the job logs the claims are read from, gzipped because `.gitignore` excludes `*.log` |
-| `templates/` | the two reference templates' full file trees and the hive-mind best-practices document, as they stood when compared |
+| `templates/` | the two reference templates and the hive-mind best-practices document, at the two commits named in `SNAPSHOT.txt` — workflows, scripts and tests stored in full, plus `*.file-tree.txt` listings of every path so the file-tree comparison is answerable where the content is not stored |
 | `probes/provenance-injection/` | four `docker buildx build` runs and their metadata files, which is what turned finding (a) from a theory into a chain |
 | `upstream/` | the bodies of the reports filed on other projects, kept verbatim so this stays readable if one is edited or closed |
 | `push-rejection/`, `apt-recommends/`, `playwright-deps/`, `cancelled-survey/`, `readme-updater/`, `doc-fragments/` | the transcripts behind findings (l), (e), (f), (i), (q) and (r) |
@@ -346,8 +346,49 @@ A declared policy that no mechanism enforces is the documentation-shaped version
 of a check that cannot fail. A second pass floored at high severity **and** high
 confidence restores the enforcement without importing pedantic's several hundred
 stylistic findings; measured, it reports nothing once the image is pinned by
-digest (`sha256:887a259a…`, resolved from v1.7.7 and verified against the
-registry with `docker buildx imagetools inspect`).
+digest, verified against the registry with `docker buildx imagetools inspect`.
+
+**And then the pin froze the wrong thing.** The first digest written here was
+`sha256:887a259a…`, resolved from whatever the mutable tag pointed at, which
+was v1.7.7 — January 2025. That closed the supply-chain hole and opened a
+quieter one, because *a digest pin freezes the check set, not just the binary*.
+The version an image reference resolves to stops being an implementation detail
+the moment it can no longer drift: it becomes an invariant of the gate, and
+nothing in the repository stated it.
+
+What v1.7.7 could not report turns out to be this issue's own subject three
+times over — each one a workflow that never runs, which is a check that cannot
+fail wearing a different costume:
+
+| Check | Added | What it reports |
+|---|---|---|
+| `glob` | v1.7.11 | a `paths:` entry beginning with `./` matches nothing, so the workflow never starts |
+| `if-cond` | v1.7.9, extended v1.7.10 | `if: false` on a job that is still listed in the status gate's `needs` |
+| `runner-label` | v1.7.8, v1.7.10 | a label GitHub has removed, so the job never starts |
+
+`experiments/reproduce-issue121-actionlint-version-gap.sh` runs both pinned
+images over one fixture per check plus a YAML merge key. v1.7.7 reports **one**
+finding and describes it wrongly — it calls the merge key a node-type mismatch
+and stops parsing that file there, which is why the fixtures are four separate
+files; v1.7.12 reports **four**, including that GitHub Actions ignores `<<`
+outright. Against this repository as it stands both are clean, so the bump costs
+nothing today and is the only thing here that can make those three findings: the
+`paths:`-coverage gate cannot see a dead entry that has a live sibling, because
+it asks whether every input path is covered by some pattern, not whether every
+pattern covers something.
+
+The floor is asserted offline rather than left to the comment that explains it.
+`test-issue121-workflow-audit-scope.sh` reads the version out of the `# v…`
+trailer, fails below v1.7.11, and fails when the `docker run` line in the same
+comment documents a different version than the pin — two places naming a linter
+independently is how a local reproduction and a CI run end up disagreeing about
+what passed. That had already happened once: `test-issue115-ci-policy.sh` was
+still running the mutable tag `rhysd/actionlint:1.7.7` while the workflow had
+moved to a digest, so the suite asserting the CI policy was not running the CI
+policy's analyser. It reads the image out of the workflow now. A third assertion
+sweeps `scripts/` and `experiments/` for any other command naming a version of
+its own, excluding comments — the history of a pin is worth recording, and a
+sentence about v1.7.7 does not run an analyser.
 
 **The assertion that could not fail either.** The suite written to hold the
 first of those two fixes in place — "no `run:` block in a composite action
@@ -398,9 +439,10 @@ fails the run on `\s \S \w \W \d \D \< \> \y`. Naming `gawk` explicitly
 is the supported way to depend on them. A `# awk-portability: ignore` line
 suppresses one finding, and suppressions are counted and printed.
 
-**Tests.** `experiments/test-issue121-workflow-audit-scope.sh` — 20 offline
+**Tests.** `experiments/test-issue121-workflow-audit-scope.sh` — 23 offline
 assertions, mutation-verified: unpinning the image, narrowing the scan back to
-`.github/workflows`, and reintroducing the interpolation each fail the suite,
+`.github/workflows`, reintroducing the interpolation and lowering the version
+floor each fail the suite,
 and the extractor is itself exercised against a fixture that interpolates and
 one that does not. `experiments/test-issue121-awk-portability.sh` — 28
 assertions covering six escapes that must be reported, nine constructs that must
@@ -895,6 +937,101 @@ is not reachable from the release entry point, so adding one without
 `simulate-fresh-merge` was a gap that suite could not see. Verified by adding a
 throwaway workflow and watching it fail.
 
+### 13.4 `security.yml`, `release.yml`, and the invariants every job is supposed to carry
+
+The two files §15 left open, and the three job-level invariants the templates
+apply more uniformly than this repository does. The result is no code change,
+which is worth writing down at the same length as a fix would be — an
+unrecorded "I checked and it was fine" gets checked again by the next person.
+
+**`security.yml`.** Both templates run a `dependency-review` job and a
+dependency audit (`npm-audit` there, `dependency-audit` in the python one).
+Neither is adopted, for the same reason twice: outside `dev/log/`, which holds
+other projects' files as evidence, this repository tracks **zero** dependency
+manifests — no `package.json`, no lockfile, no `requirements.txt`, no
+`pyproject.toml`, no `Cargo.toml`, no `go.mod`. `dependency-review-action`
+compares the manifests a pull request changed; with none to change it reports
+success on every run forever. Adding it would buy a green check that means
+nothing, which is the exact defect this pull request spent 98 annotations
+removing. The dependency surface here is real but lives somewhere those tools
+do not look — apt packages and toolchains inside Dockerfiles, and the action and
+image references in the workflows — and the second of those is audited: the
+`hash-pin` policy of §6, now with a pass that can actually apply it.
+
+**`release.yml`.** Most of the template's release job is npm's — trusted
+publishing via OIDC, changeset versioning, lockfile declaration checks, the
+smoke test of the published package — and none of it applies to a repository
+that publishes container images and no package. The shared surface is the Docker
+path, and there the two pipelines have the same shape: build each architecture
+by digest, then merge the digests into one index, then mirror. This repository
+reached that shape through issue #119 and holds it with
+`scripts/release/image-tags.sh`, `create-multiarch-manifest.sh` and the tag
+policy asserted by `test-issue119-tag-policy.sh`.
+
+Comparing the two turned up one thing worth sending back rather than importing.
+The python template's `docker-publish` verifies what it just published —
+`docker buildx imagetools inspect` on the versioned tag, grepped for
+`linux/amd64` and `linux/arm64`. The js template's `docker-publish` is the same
+job, built from the same `imagetools create` call, with **no verification step
+at all**. Two sibling templates disagreeing about whether to check a publish is
+better evidence of an oversight than any argument about it, and the fix is
+already written in one of them. It is issue #119's finding pointed at somebody
+else's repository: *"it resolves" is not "it was published"*.
+
+**The invariants: `timeout-minutes`, `permissions`, `concurrency`.** A first
+sweep over all 67 jobs here against the templates' 34 and 26 reported six jobs
+with no `timeout-minutes`, 50 with no `concurrency` and 31 with no
+`permissions`. All three numbers were wrong, and the way each was wrong is the
+same way a CI check goes wrong:
+
+- The six without `timeout-minutes` are `release.yml`'s `js`, `essentials`,
+  `languages`, `full`, `dind` and `pr-tests` — every one a `uses:` job calling a
+  reusable workflow, where GitHub **rejects** the key outright. Not a gap; a
+  rule applied where it does not hold. `check-timeout-budgets.mjs:533` already
+  knew this and says so. Counting jobs that can carry the key: 0 of 61 here, 0
+  of 34, 0 of 26.
+- The 31 without `permissions` counted the job level and ignored the
+  workflow-level default. All 15 workflows here declare one, as do all 10
+  across the templates. Real total: **0**, everywhere.
+- Of the 50 without `concurrency`, 27 are inside the five `release-*.yml` files
+  and `pr-tests.yml` — all six `workflow_call`-only, so they never run except as
+  part of a `release.yml` run, which the caller's top-level group governs. The
+  scan did not follow the call graph.
+
+That leaves eight `pipeline-status` jobs genuinely carrying no concurrency
+group, against a js template that gives its own one. That divergence is
+deliberate and already argued in `workflows.yml`: a per-job group with
+`cancel-in-progress` would cancel the gate in exactly the runs it exists to
+report on, and this repository's gate is the thing that tells a superseded run
+from an overrun (§7). A cancelled gate reports nothing at all.
+
+So: three dimensions, no findings, and three false positives — produced here, by
+me, in the course of looking for them. Each came from measuring a rule without
+its exceptions, which is the shape of finding (b) and finding (d) in §0's table.
+It is the cheapest possible demonstration of why this pull request measures
+instead of asserts.
+
+One of the three is additionally gated rather than merely true today. Run
+zizmor exactly as this repository runs it (`--min-confidence medium
+--min-severity medium`) against a workflow with no `permissions:` block and it
+exits **13**, on `excessive-permissions` at Medium/Medium — above both floors.
+The invariant that matters most of the three cannot silently lapse. Concurrency
+has no such gate and does not get one here: the correct rule is not "every job"
+— it is "every job except the one whose job is to survive a cancellation" — and
+a gate encoding a rule with an exception nobody has needed twice is speculation,
+not enforcement.
+
+**`lint-changed-lines.mjs`** is the last js-template script with no counterpart
+here, and it stays that way. It exists to report ESLint findings only on the
+lines a pull request touched, so a repository with a backlog of tolerated
+warnings can adopt a rule without a flag day. Neither half of that applies:
+there is no ESLint here and no tolerated-warning tier — every gate in this
+repository fails the run. Worse, the mechanism argues against this branch's
+whole thesis. A checker that reports on changed lines only is one that cannot
+fail on the file it was not pointed at, and §6, §3 and §1 are all instances of
+that costing something. The judgement is the same one `install-git-hooks.mjs`
+got in §12: the insight is worth having, the tool is not the one for this tree.
+
 Deliberately diverged, with the divergence filed upstream: the template's
 `all_recovered` (§9, [js#184](https://github.com/link-foundation/js-ai-driven-development-pipeline-template/issues/184)
 and [rust#170](https://github.com/link-foundation/rust-ai-driven-development-pipeline-template/issues/170)),
@@ -939,15 +1076,10 @@ survey, and the reason each answer went the way it did:
 
 ## 15. Still outstanding
 
-- **The remaining template comparison.** `lint-changed-lines.mjs` is the last
-  js-template script with no counterpart here. It has to be judged against a
-  repository whose sources are Dockerfiles and shell rather than a package,
-  which is why it is named here rather than adopted by reflex.
-  `check-mjs-syntax.sh`, `check-required-docs.sh` and `install-git-hooks.mjs`
-  were judged the same way — the first two ported, the third's insight taken and
-  its tool rejected; see §13.3 and §12.
-- **`security.yml` and `release.yml` against both templates**, file by file, at
-  the same level of detail as §13.2.
+- The template comparison is finished: §13.2 for the best-practices document,
+  §13.3 for the scripts, §13.4 for `security.yml`, `release.yml` and the
+  job-level invariants. Every js-template script now has a recorded verdict —
+  ported, ported with changes, or judged and declined with the reason.
 - Nothing in this pull request rewrites an annotation that is already published.
   The 98 annotations of run 34293699247 stay as they are; what changes is what
   the next release run produces.
