@@ -46,7 +46,14 @@ jobs:
       # actionlint binary without shellcheck on PATH silently skips the shell
       # checks and exits 0, so reproduce failures with the image:
       #   docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
-      - uses: docker://rhysd/actionlint:1.7.7
+      #
+      # Pinned by digest, not by tag: a mutable tag of a repository we do not
+      # control is arbitrary code execution in any job that holds credentials,
+      # which is the `'*': hash-pin` policy this repository already declares in
+      # .github/zizmor.yml. Re-resolve when bumping:
+      #   docker pull rhysd/actionlint:<tag> &&
+      #   docker buildx imagetools inspect rhysd/actionlint:<tag>
+      - uses: docker://rhysd/actionlint@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9 # v1.7.7
         with:
           args: -color
 
@@ -80,6 +87,13 @@ jobs:
       #
       # Scoped to .github: dev/log/ holds verbatim copies of other projects'
       # workflows collected as issue evidence, and they are not ours to fix.
+      #
+      # .github/actions is scanned as well as .github/workflows. It was not,
+      # and the four composite actions in it had never been audited by anything
+      # — the omission was hiding a High-confidence `template-injection` in
+      # dockerhub-login/action.yml (issue #121). A composite action runs in the
+      # calling job, with the calling job's credentials; there is no reason for
+      # it to be held to a lower standard than the workflow that calls it.
       - name: zizmor
         run: |
           docker run --rm -v "$PWD:/repo" -w /repo \
@@ -89,4 +103,26 @@ jobs:
             --no-progress \
             --format plain \
             --config .github/zizmor.yml \
-            .github/workflows
+            .github/workflows .github/actions
+
+      # The pass above runs zizmor's default `regular` persona, which is the
+      # right default: `pedantic` surfaces hundreds of stylistic findings. But
+      # the audits covering container image references — `unpinned-images`
+      # among them — are Pedantic-only, so the `'*': hash-pin` policy declared
+      # in .github/zizmor.yml was never enforced against `uses: docker://` or
+      # `container:` at all: a policy the CI could not apply (issue #121).
+      # Narrowing this second pass to high severity *and* high confidence
+      # restores the enforcement without importing the noise. Measured: after
+      # the digest pin above it reports nothing, and stays silent until someone
+      # reintroduces a mutable image reference.
+      - name: Audit for pedantic-only high-severity findings
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo \
+            ghcr.io/zizmorcore/zizmor:1.30.0 \
+            --persona pedantic \
+            --min-severity high \
+            --min-confidence high \
+            --no-progress \
+            --format plain \
+            --config .github/zizmor.yml \
+            .github/workflows .github/actions
