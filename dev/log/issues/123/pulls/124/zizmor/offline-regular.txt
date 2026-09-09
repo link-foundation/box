@@ -1,0 +1,22 @@
+ INFO zizmor: 🌈 zizmor v1.30.0
+ WARN audit: zizmor: zizmor is running in offline mode by default; some audits and auto-fixes will not be available. see https://docs.zizmor.sh/usage/#operating-modes for details
+ INFO audit: zizmor: 🌈 completed .github/actions/dockerhub-login/action.yml
+ INFO audit: zizmor: 🌈 completed .github/actions/free-disk-space/action.yml
+ INFO audit: zizmor: 🌈 completed .github/actions/setup-buildx-resilient/action.yml
+ INFO audit: zizmor: 🌈 completed .github/actions/simulate-fresh-merge/action.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/dockerfiles.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/docs.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/file-sizes.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/links.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/measure-disk-space.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/pr-tests.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-dind.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-essentials.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-full.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-js.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-languages.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/scripts.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/security.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/workflows.yml
+No findings to report. Good job! (246 ignored, 248 suppressed)
