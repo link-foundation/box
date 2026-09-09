@@ -22,8 +22,9 @@
 # Run:  bash experiments/issue-121-buildx-rm-timeout/reproduce-rm-timeout.sh
 #       BUILDX_VERSION=v0.35.0 bash .../reproduce-rm-timeout.sh   # passes
 #
-# Exit 0 means the defect reproduced and the upstream report still stands;
-# exit 1 means it did not. This is a demonstration of somebody else's code, not
+# Exit 0 means the defect reproduced and the upstream reports still stand -
+# docker/buildx#4067 and docker/setup-buildx-action#615, which carry a reduced
+# form of this script; exit 1 means it did not. This is a demonstration of somebody else's code, not
 # an assertion about this repository, which is why it sits in a subdirectory:
 # scripts/ci/run-experiments.sh discovers experiments/*.sh at depth 1 only. It
 # needs docker, python3 and network access to fetch the buildx release, none of

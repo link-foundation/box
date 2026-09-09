@@ -46,7 +46,13 @@ inputs:
         Delete ".../volumes/buildx_buildkit_builder-<id>0_state":
         context deadline exceeded
 
-      after exactly 20.05s. A warning that appears on a green run and means
+      after exactly 20.05s. Reported upstream as docker/buildx#4067 (the
+      removal inheriting a status timeout, a regression in v0.36.0) and
+      docker/setup-buildx-action#615 (the post step not passing one), and
+      reproduced against a real daemon by
+      experiments/issue-121-buildx-rm-timeout/.
+
+      A warning that appears on a green run and means
       nothing an operator can act on is noise of the kind this repository is
       trying to remove; and a GitHub-hosted runner is destroyed whole the
       moment the job ends, so the volume it warns about outlives the warning by
