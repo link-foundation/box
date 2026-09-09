@@ -90,6 +90,51 @@ says() {
   fi
 }
 
+# Since issue #123 the gate excuses a cancellation only when the job could
+# actually have been superseded - `concurrency.cancel-in-progress: true` -
+# so the cases below that expect an excuse have to say which workflow the jobs
+# come from. This fixture declares every job name they use, all of them
+# cancelling in progress; the overrun that cannot be excused this way has its
+# own suite in experiments/test-issue123-overrun-not-supersede.sh.
+CANCELS_IN_PROGRESS="$TMP/cancels-in-progress.yml"
+cat >"$CANCELS_IN_PROGRESS" <<'YAML'
+name: Cancels in progress
+on:
+  push:
+
+concurrency:
+  group: fixture-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: 'true'
+  manifest:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: 'true'
+  pr-test-dind-full:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: 'true'
+  pr-test-full:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: 'true'
+  pr-test-js:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: 'true'
+  pipeline-status:
+    runs-on: ubuntu-24.04
+    needs: [build, manifest, pr-test-dind-full, pr-test-full, pr-test-js]
+    if: ${{ !cancelled() }}
+    steps:
+      - run: 'true'
+YAML
+
 ALL_GREEN='{"build":{"result":"success"},"manifest":{"result":"success"}}'
 WITH_SKIP='{"build":{"result":"success"},"manifest":{"result":"skipped"}}'
 WITH_FAILURE='{"build":{"result":"failure"},"manifest":{"result":"skipped"}}'
@@ -115,7 +160,8 @@ run_status 1 "a cancellation in a current run fails the gate" \
 says "::error title=Pipeline has cancelled jobs" "it says the cancellation is not a supersede"
 
 run_status 0 "a cancellation in a superseded run only warns" \
-  "$WITH_CANCEL" RUN_SHA=aaaa BRANCH_HEAD_SHA=bbbb BRANCH_NAME=main
+  "$WITH_CANCEL" RUN_SHA=aaaa BRANCH_HEAD_SHA=bbbb BRANCH_NAME=main \
+  WORKFLOW_FILE="$CANCELS_IN_PROGRESS"
 says "::warning title=Cancelled jobs in a superseded run" "it says the run was superseded"
 
 # An unresolvable head must not silently downgrade an overrun to a warning:
@@ -134,7 +180,8 @@ says "RUN_SHA is unset" "it says which input was missing"
 # The measured run. Its failure must reach the gate whatever the cancellation
 # does, which is the whole point: run 34259552358 was concluded `cancelled`.
 run_status 1 "the shape of run 34259552358 fails the gate" \
-  "$RUN_34259552358" RUN_SHA=aaaa BRANCH_HEAD_SHA=bbbb BRANCH_NAME=issue-119
+  "$RUN_34259552358" RUN_SHA=aaaa BRANCH_HEAD_SHA=bbbb BRANCH_NAME=issue-119 \
+  WORKFLOW_FILE="$CANCELS_IN_PROGRESS"
 says "Failing jobs: pr-test-dind-full" "it names the job that actually failed"
 says "::warning title=Cancelled jobs in a superseded run" "the supersede stays a warning next to it"
 
