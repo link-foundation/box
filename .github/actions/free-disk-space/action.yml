@@ -1,0 +1,81 @@
+name: Free disk space
+description: >
+  jlumbroso/free-disk-space, with the one part of it that annotates every arm64
+  job replaced by scripts/ci/reclaim-large-packages.sh (issue #121).
+
+# The action removes a fixed list of package names in its `large-packages`
+# block, and `ubuntu-24.04-arm` has no Google Chrome apt source, so apt stops at
+# `E: Unable to locate package google-chrome-stable`, exits 100 having removed
+# none of the six, and the action reports:
+#
+#   ##[warning]The command [sudo apt-get remove -y azure-cli
+#   google-chrome-stable firefox powershell mono-devel libgl1-mesa-dri
+#   --fix-missing] failed to complete successfully. Proceeding...
+#
+# Release run 34293699247 collected 28 of those, one per arm64 job, on a release
+# where nothing was wrong. So `large-packages` is switched off here and the same
+# removal is done by a script that first asks dpkg what is installed: apt is
+# handed only names that exist, the same packages go, and a green run has
+# nothing to say.
+#
+# Every other input is passed straight through, defaults included, so a caller
+# reads the same as it did when it called the action directly.
+
+inputs:
+  tool-cache:
+    description: Remove /opt/hostedtoolcache (~8 GB); breaks actions/setup-* that expect a cached build
+    required: false
+    default: 'false'
+  android:
+    description: Remove the Android SDK/NDK (~14 GB)
+    required: false
+    default: 'true'
+  dotnet:
+    description: Remove the .NET runtime directory (~2.7 GB)
+    required: false
+    default: 'true'
+  haskell:
+    description: Remove GHC/Stack (~0 GB on ubuntu-24.04, which does not preinstall them)
+    required: false
+    default: 'true'
+  large-packages:
+    description: Remove the bulk apt packages (~5.3 GB) via scripts/ci/reclaim-large-packages.sh
+    required: false
+    default: 'true'
+  docker-images:
+    description: Remove images already present in the local docker store
+    required: false
+    default: 'true'
+  swap-storage:
+    description: Remove the swapfile (~4 GB). Off for jobs whose build was last seen being SIGKILLed
+    required: false
+    default: 'true'
+  verbose:
+    description: Print the pattern-by-pattern package selection. Off by default; on automatically under a debug re-run
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Free disk space (everything except the bulk packages)
+      uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+      with:
+        tool-cache: ${{ inputs.tool-cache }}
+        android: ${{ inputs.android }}
+        dotnet: ${{ inputs.dotnet }}
+        haskell: ${{ inputs.haskell }}
+        large-packages: 'false'
+        docker-images: ${{ inputs.docker-images }}
+        swap-storage: ${{ inputs.swap-storage }}
+
+    - name: Remove the bulk packages that are actually installed
+      if: inputs.large-packages == 'true'
+      shell: bash
+      env:
+        # Re-running a workflow with debug logging turns the selection on
+        # without anybody having to edit a workflow to find out what was
+        # removed.
+        BOX_VERBOSE: ${{ (inputs.verbose == 'true' || runner.debug == '1') && '1' || '0' }}
+      run: |
+        bash "${GITHUB_WORKSPACE}/scripts/ci/reclaim-large-packages.sh"

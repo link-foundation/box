@@ -36,14 +36,19 @@ USER box
 
 COPY --chown=box:box ubuntu/24.04/common.sh /tmp/common.sh
 COPY --chown=box:box ubuntu/24.04/php/install.sh /tmp/install.sh
-RUN chmod +x /tmp/install.sh /tmp/common.sh
-
 # Run install script - tries Homebrew with timeout, writes marker file
 # PHP_VERBOSE=1 enables detailed logging to debug potential hangs (Issue #53)
-RUN PHP_HOMEBREW_TIMEOUT=${PHP_HOMEBREW_TIMEOUT} PHP_VERBOSE=${PHP_VERBOSE} bash /tmp/install.sh
+RUN chmod +x /tmp/install.sh /tmp/common.sh && \
+    PHP_HOMEBREW_TIMEOUT=${PHP_HOMEBREW_TIMEOUT} PHP_VERBOSE=${PHP_VERBOSE} bash /tmp/install.sh
 
 # --- Step 3: Handle global fallback (apt-get install as root if needed) ---
 USER root
+# Recommends are kept here: measured, --no-install-recommends drops 7 packages
+# from this set, among them ca-certificates and openssl - the trust store PHP's
+# HTTPS streams verify against. Saving seven packages is not worth an https://
+# request that fails certificate verification at runtime.
+# Measured by experiments/measure-issue121-apt-recommends.sh (issue #121).
+# hadolint ignore=DL3015
 RUN . /tmp/common.sh && \
     PHP_METHOD=$(cat /home/box/.php-install-method 2>/dev/null || echo "unknown") && \
     echo "PHP install method: $PHP_METHOD" && \

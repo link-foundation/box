@@ -74,11 +74,36 @@ permissions:
 # read from release.yml. experiments/test-issue115-workflow-split.sh asserts that
 # every release-*.yml carries the same set with the same values.
 env:
+  # actions/checkout's first act is `git init`, and a git with no configured
+  # `init.defaultBranch` answers it with a thirteen-line advice block - "Using
+  # 'master' as the name for the initial branch... this default branch name will
+  # change" - at the top of every job log. 19 checkouts in the runs issue #121
+  # lists printed 247 lines of it, in jobs where nothing was wrong. No step can
+  # fix it, because it is printed before the first step of ours runs; git reads
+  # configuration from the environment too, and the environment is there from
+  # the start. Ported from the js template, which carries the same three lines
+  # with the same reasoning.
+  GIT_CONFIG_COUNT: '1'
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
   # The full-box Dockerfiles use `RUN --mount=type=bind,from=<stage>` to refresh
   # the copied rustup toolchains inside the same layer (issue #112). buildx
   # enables BuildKit implicitly; the plain `docker build` steps below need it
   # switched on explicitly or that syntax is a parse error.
   DOCKER_BUILDKIT: "1"
+  # Keep the build's provenance out of the log (issue #121). buildx resolves
+  # provenance for `--metadata-file` even when the attestation is switched off
+  # (`provenance: false` on every build step here), docker/build-push-action
+  # prints that metadata verbatim, and on the docker-container driver the
+  # provenance carries `invocation.environment.github_event_payload` - the whole
+  # push event, every commit message included. The runner matches the legacy
+  # `##[command]` form *anywhere* in a line, so commit a2e6420, whose body
+  # quotes `##[error]Process completed with exit code 143.` while explaining a
+  # fix, put 56 failure annotations on build jobs that had every one succeeded
+  # (release run 34293699247). `disabled` means buildx writes no provenance to
+  # the metadata file, so there is nothing to print and nothing to misread.
+  # experiments/test-issue121-log-injection.sh holds this in place.
+  BUILDX_METADATA_PROVENANCE: disabled
   # GitHub Container Registry
   GHCR_REGISTRY: ghcr.io
   GHCR_IMAGE_NAME: ${{ github.repository }}
@@ -91,7 +116,12 @@ jobs:
   # === BUILD AND PUSH FULL BOX (MAIN - amd64) ===
   docker-build-push:
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    # Caps are sized from measured job durations, not guessed (issue #121,
+    # docs/CI-TIMEOUT-BUDGETS.md): this job's slowest run of the last 300 took 35.6 minutes. A cap far
+    # above the work it bounds is the number of minutes a hung job burns
+    # before anyone hears about it, and it is reported as a *cancelled* job
+    # rather than a failed one.
+    timeout-minutes: 90
     # Run on push to main with changes, OR on workflow_dispatch
     if: |
       !cancelled() &&
@@ -115,13 +145,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
           ref: main  # Always use latest main for releases
 
       # Fix for issue #41: Free disk space to prevent "No space left on device" errors
       # This step removes unnecessary pre-installed software from the runner to free ~30 GB
       # See: docs/case-studies/issue-41/CASE-STUDY.md
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           tool-cache: false  # Keep tool cache for setup-* action compatibility
           android: true      # Free ~14 GB
@@ -239,6 +272,15 @@ jobs:
       - name: Build and push full box (amd64)
         id: build
         continue-on-error: true
+        # A `uses:` step cannot be routed through
+        # scripts/ci/run-with-budget-warning.sh, so its budget is the one
+        # GitHub applies to a whole step (issue #121,
+        # docs/CI-TIMEOUT-BUDGETS.md). A step that runs out of it fails and
+        # names itself; the job's `timeout-minutes` backstop would instead
+        # report the whole job *cancelled*, with no indication of where the
+        # time went. Sized from measurement: the slowest full-box build over
+        # the last 200 runs took 20.7 minutes.
+        timeout-minutes: 40
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -334,13 +376,16 @@ jobs:
       - name: Smoke test released full box (amd64)
         env:
           IMAGE: ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${{ steps.version.outputs.version }}-amd64
-        run: bash scripts/ci/test-box.sh full "$IMAGE"
+        run: |
+          bash scripts/ci/run-with-budget-warning.sh 600 "full box smoke test" \
+            bash scripts/ci/test-box.sh full "$IMAGE"
 
   # === BUILD AND PUSH ARM64 IMAGE ===
   # Using native ARM64 runner for optimal build performance
   docker-build-push-arm64:
     runs-on: ubuntu-24.04-arm  # Native ARM64 runner (free for public repos since Jan 2025)
-    timeout-minutes: 120       # Safety timeout to prevent runaway builds
+    # Measured maximum 30.8 minutes; kept level with the amd64 job above.
+    timeout-minutes: 90
     needs: [docker-build-push]
     if: |
       !cancelled() &&
@@ -362,13 +407,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          persist-credentials: false
           ref: main  # Always use latest main for releases
 
       # Fix for issue #41: Free disk space to prevent "No space left on device" errors
       # ARM64 runners have more disk space (~45 GB) but we still clean up for safety
       # See: docs/case-studies/issue-41/CASE-STUDY.md
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           tool-cache: false  # Keep tool cache for setup-* action compatibility
           android: true      # Free ~14 GB
@@ -468,6 +514,7 @@ jobs:
       - name: Build and push full box (arm64)
         id: build
         continue-on-error: true
+        timeout-minutes: 40
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -554,7 +601,8 @@ jobs:
 
   docker-manifest:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # Measured maximum 1.4 minutes: this job only assembles manifests.
+    timeout-minutes: 10
     needs: [docker-build-push, docker-build-push-arm64]
     if: |
       !cancelled() &&
@@ -572,6 +620,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          persist-credentials: false
           ref: main
 
       - name: Get latest version

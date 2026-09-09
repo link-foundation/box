@@ -7,7 +7,17 @@
 #
 # Reproduce locally: bash scripts/ci/run-hadolint.sh
 
-failure-threshold: warning
+# Threshold: `info`, which is hadolint's own default and one step stricter than
+# the `warning` this started at.
+#
+# Issue #121 is about checks that cannot fail. At `warning`, every DL3015 and
+# DL3059 in this repository - ten of them - was printed as a GitHub notice on
+# every run and could never turn a run red, which is the same thing as not
+# checking. Those ten were resolved one site at a time (measured, not
+# blanket-ignored: see experiments/measure-issue121-apt-recommends.sh and the
+# `hadolint ignore=` comments, each with the measurement that justifies it), so
+# the threshold can now sit where the next one will be seen.
+failure-threshold: info
 
 ignored:
   # DL3008 "Pin versions in apt get install".

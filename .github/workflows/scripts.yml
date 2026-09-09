@@ -8,6 +8,15 @@ name: Scripts
 # Update README` on main (run 33972074753); the other, scripts/ubuntu-24-server-install.sh,
 # had the identical defect and no job that would ever have run it. Checks that
 # only ever run on a developer's laptop are not checks, so they run here.
+#
+# The filters below are the union of what every gate in this file reads, not a
+# guess at it: the shell for shellcheck, shfmt and the heredoc scan; .githooks/
+# because git requires an extensionless `pre-commit`, which no `*.sh` glob ever
+# sees; the JavaScript for the syntax gate; and .mjs, .js, .py, .yml and .yaml
+# for the awk scan, which reads every language that can embed an awk program.
+# `scripts/ci/check-workflow-path-coverage.mjs` derives that requirement from
+# these lines and fails when a gate here reads a file none of them can match -
+# which is what the mjs-syntax job did for its entire first day (issue #121).
 
 on:
   push:
@@ -15,6 +24,13 @@ on:
       - main
     paths:
       - '**.sh'
+      - '**.bash'
+      - '**.mjs'
+      - '**.js'
+      - '**.py'
+      - '**.yml'
+      - '**.yaml'
+      - '.githooks/**'
       - '.github/workflows/**'
       - 'ubuntu/**'
       - 'tests/**'
@@ -22,6 +38,13 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - '**.sh'
+      - '**.bash'
+      - '**.mjs'
+      - '**.js'
+      - '**.py'
+      - '**.yml'
+      - '**.yaml'
+      - '.githooks/**'
       - '.github/workflows/**'
       - 'ubuntu/**'
       - 'tests/**'
@@ -30,6 +53,20 @@ on:
 # Least-privilege default; these jobs only read the checked-out tree.
 permissions:
   contents: read
+
+env:
+  # actions/checkout's first act is `git init`, and a git with no configured
+  # `init.defaultBranch` answers it with a thirteen-line advice block - "Using
+  # 'master' as the name for the initial branch... this default branch name will
+  # change" - at the top of every job log. 19 checkouts in the runs issue #121
+  # lists printed 247 lines of it, in jobs where nothing was wrong. No step can
+  # fix it, because it is printed before the first step of ours runs; git reads
+  # configuration from the environment too, and the environment is there from
+  # the start. Ported from the js template, which carries the same three lines
+  # with the same reasoning.
+  GIT_CONFIG_COUNT: '1'
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
 
 jobs:
   heredoc-vars:
@@ -65,6 +102,146 @@ jobs:
       # false-negative fixtures still hold.
       - name: Checker fixtures and the run 33972074753 reproduction
         run: bash experiments/test-issue115-heredoc-unbound-vars.sh
+
+  # Issue #121. `awk` on a GitHub ubuntu-24.04 runner is gawk; `awk` on Debian
+  # and Ubuntu generally - including the containers the rest of these jobs shell
+  # into - is mawk. A regex escape gawk implements and mawk does not (`\s`, `\w`,
+  # `\<`) is not a syntax error under mawk: the pattern simply never matches, and
+  # nothing is printed. A check written that way passes everywhere it is silent.
+  #
+  # That is not hypothetical here. The suite asserting that no composite action
+  # interpolates a `${{ }}` expansion into a `run:` block extracted the block
+  # with `awk '/^\s+run: \|/,0'`, passed locally on mawk while reading nothing,
+  # and failed in CI on gawk - where `,0` then ran the range to end of file and
+  # reported `with:` mappings that were correct. Both halves are reproduced in
+  # experiments/reproduce-issue121-awk-run-block-range.sh.
+  #
+  # Reproduce a finding locally:
+  #   bash scripts/ci/check-awk-portability.sh --verbose
+  awk-portability:
+    name: scripts / awk portability
+    runs-on: ubuntu-24.04
+    # Typical run: under a second over ~40 files. The limit is a backstop.
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-awk-portability
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      # Fails the job on any GNU-only regex escape inside an awk program, with a
+      # file/line annotation.
+      - name: No awk program depends on a GNU-only regex escape
+        run: bash scripts/ci/check-awk-portability.sh
+
+      # The checker is only worth trusting if its own false-positive and
+      # false-negative fixtures still hold - and this one exists because a check
+      # that could not fail went unnoticed.
+      - name: Checker fixtures and the mawk/gawk reproduction
+        run: bash experiments/test-issue121-awk-portability.sh
+
+  # Issue #121. This repository is Dockerfiles and shell, so its JavaScript is
+  # easy to forget: ten of the fourteen tracked modules outside dev/log/ were
+  # named by no workflow and no suite, and nothing parsed them. Two of the four
+  # that are named only *execute* on the recovery path - links.yml runs
+  # recheck-broken-links.mjs after lychee has already failed - so a syntax error
+  # there would surface on the one run that needed it and on no run before.
+  # `node --check` is milliseconds a file; the js template gates on it, and
+  # experiments/reproduce-issue121-mjs-syntax-gap.sh measures the gap it closes.
+  mjs-syntax:
+    name: scripts / JavaScript syntax
+    runs-on: ubuntu-24.04
+    # Typical run: under two seconds over 16 modules. The limit is a backstop.
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-mjs-syntax
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      # No setup-node step: this uses the Node the runner image ships, the same
+      # as the `workflows` job's two .mjs checkers. A newer parser accepts more
+      # syntax, not less, so the drift a pinned version would prevent can only
+      # make this gate more permissive - never a false positive.
+      #
+      # Fails the job on a module that does not parse, or a relative import
+      # that resolves to nothing, with a file/line annotation.
+      - name: Every JavaScript module parses
+        run: bash scripts/ci/check-mjs-syntax.sh
+
+      # The checker is only worth trusting if its own false-positive and
+      # false-negative fixtures still hold.
+      - name: Checker fixtures and the coverage-gap reproduction
+        run: bash experiments/test-issue121-mjs-syntax.sh
+
+  # The same question asked of the Python, and it had the same answer: three
+  # tracked *.py files outside dev/log/, parsed by nothing (issue #121).
+  # shellcheck and shfmt take *.sh, run-experiments.sh discovers *.sh, and the
+  # pyflakes inside actionlint's image reads the `run:` blocks of workflows, not
+  # the files those blocks call. Two of the three decide what happens to a
+  # three-hour disk measurement - whether it is valid, and what the job summary
+  # says about it - so a SyntaxError in either would first be seen by the run
+  # that needed it.
+  py-syntax:
+    name: scripts / Python syntax
+    runs-on: ubuntu-24.04
+    # Typical run: well under a second over three files. The limit is a backstop.
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-py-syntax
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      # No setup-python step: this uses the Python the runner image ships, the
+      # same interpreter measure-disk-space.yml calls these files with. Pinning
+      # a different one would report on a version this repository never runs.
+      #
+      # Fails the job on a file that does not compile, with a file/line/column
+      # annotation.
+      - name: Every Python file parses
+        run: bash scripts/ci/check-py-syntax.sh
+
+      # The checker is only worth trusting if its own false-positive and
+      # false-negative fixtures still hold.
+      - name: Checker fixtures
+        run: bash experiments/test-issue121-py-syntax.sh
 
   # Issue #115. actionlint runs shellcheck over the `run:` blocks inside
   # .github/workflows/**, and nothing ran it over the 75 tracked *.sh files that
@@ -187,8 +364,15 @@ jobs:
       - name: List the suites that will run
         run: bash scripts/ci/run-experiments.sh --list
 
+      # The budget belongs on this step, not on the job: `Upload suite logs`
+      # below runs `if: !cancelled()`, and a job killed by `timeout-minutes` is
+      # cancelled - so an overrun would take the logs that explain it with it
+      # (issue #121, docs/CI-TIMEOUT-BUDGETS.md). The slowest run measured took
+      # 106 seconds across all suites.
       - name: Run every experiment suite
-        run: bash scripts/ci/run-experiments.sh
+        run: |
+          bash scripts/ci/run-with-budget-warning.sh 600 "every experiment suite" \
+            bash scripts/ci/run-experiments.sh
 
       - name: Upload suite logs
         if: ${{ !cancelled() }}
@@ -198,3 +382,48 @@ jobs:
           path: /tmp/experiment-logs/
           if-no-files-found: warn
           retention-days: 7
+
+  # === TERMINAL STATUS GATE ===
+  #
+  # The job that makes every other job's result reach the run's conclusion
+  # (issue #121, reference-template best practice "every workflow gets a
+  # terminal status gate").
+  #
+  # GitHub derives a run's conclusion from its jobs, and one cancellation
+  # outranks any number of failures - so a run holding a failed job can still
+  # come out grey, and everything that reads the run rather than each job (the
+  # badge, `gh run list`, the run list quoted in issue #121 itself) reads that
+  # as "no verdict" rather than "something broke". A gate's own conclusion is a
+  # job conclusion, so when it errors the run is red no matter what else was
+  # cancelled. The rationale, the measured run and the supersede-versus-overrun
+  # rule are in scripts/ci/check-pipeline-status.sh.
+  #
+  # `!cancelled()`, not `always()`: cancelling a whole run is somebody's
+  # decision and repainting it red would be a false positive, so this job is
+  # skipped there. `cancelled()` is run-level, so a job cancelled on its own -
+  # an overrun, or a per-job concurrency group firing - still reaches the gate.
+  #
+  # `needs` must name every other job in this file, or a job's result cannot
+  # reach here at all. That is not left to review:
+  # scripts/ci/check-status-gate-covers-all-jobs.mjs derives the list from this
+  # workflow and fails when the two disagree.
+  pipeline-status:
+    name: pipeline-status
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [heredoc-vars, awk-portability, mjs-syntax, py-syntax, shellcheck, shfmt, experiments]
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # Anonymous `git ls-remote` is enough to resolve the branch head, which is
+      # how the script tells a superseded run from an overrun; no token is
+      # persisted for it.
+      - name: Check pipeline status
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          RUN_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: bash scripts/ci/check-pipeline-status.sh

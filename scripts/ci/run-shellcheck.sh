@@ -25,6 +25,7 @@
 # Usage:
 #   bash scripts/ci/run-shellcheck.sh              # lint the whole repository
 #   bash scripts/ci/run-shellcheck.sh --list       # print the files, lint none
+#   bash scripts/ci/run-shellcheck.sh --list-inputs  # the same set, paths only
 #   bash scripts/ci/run-shellcheck.sh path/to.sh   # lint only these files
 #
 # Environment:
@@ -50,10 +51,28 @@ cd "$REPO_ROOT"
 # evidence tree. --others --exclude-standard adds untracked files that .gitignore
 # does not cover; --deduplicate keeps a staged-and-modified file from appearing
 # twice.
+#
+# .githooks/* alongside *.sh: git requires a hook to be named exactly
+# `pre-commit`, with no extension, so the hook installed by
+# scripts/install-git-hooks.sh matches no glob in this repository and was
+# formatted and linted by nothing at all until this glob was added (issue
+# #121). Every file in that directory is a shell script for the same reason -
+# git only runs executables it finds by hook name.
 collect_files() {
-  git ls-files -z --cached --others --exclude-standard --deduplicate '*.sh' \
+  git ls-files -z --cached --others --exclude-standard --deduplicate '*.sh' '.githooks/*' \
     | tr '\0' '\n' | grep -v '^dev/log/' | sort -u || true
 }
+
+# --list-inputs prints the discovered set and nothing else, one
+# repository-relative path per line, exit 0. That is the contract
+# scripts/ci/check-workflow-path-coverage.mjs reads to check that a workflow's
+# `paths:` filter can actually be matched by the files this gate reads —
+# without it, a gate runs under a filter its own inputs never match and the
+# job silently never starts (issue #121).
+if [ "$#" -gt 0 ] && [ "$1" = "--list-inputs" ]; then
+  collect_files
+  exit 0
+fi
 
 FILES=()
 LIST_ONLY=0

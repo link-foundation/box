@@ -526,3 +526,47 @@ assert_single_runtime_versions() {
   fi
   return 0
 }
+
+# assert_no_playwright_host_warning <log-file>
+#
+# `playwright install` prints
+#
+#   Playwright Host validation warning:
+#   ╔══════════════════════════════════════════════════════╗
+#   ║ Host system is missing dependencies to run browsers. ║
+#   ...
+#   ║     sudo apt-get install libavif16                   ║
+#
+# when a downloaded browser links against a shared library the image does not
+# have — and then exits 0. The layer is committed and the box ships browsers
+# that cannot start. That is how ubuntu/24.04/js/Dockerfile stayed seven
+# packages short of Playwright's own ubuntu24.04 list while both JS build jobs
+# printed the warning on every run, unread (issue #121).
+#
+# A warning nothing acts on is not a check. This turns it into the build
+# failure it is, and names the packages on one line so the fix is readable from
+# the job summary. JS_ALLOW_PLAYWRIGHT_HOST_WARNING=1 downgrades it back to a
+# warning, for the case where Playwright adds a dependency Ubuntu has not
+# published yet and the image still has to build. Default off.
+assert_no_playwright_host_warning() {
+  local log_file="${1:-}" missing
+
+  [ -n "$log_file" ] && [ -f "$log_file" ] || return 0
+  grep -q "Host validation warning" "$log_file" || return 0
+
+  # Playwright names the packages on the `apt-get install` line it suggests,
+  # inside the box drawing, so strip the trailing frame character.
+  missing="$(sed -n 's/.*sudo apt-get install //p' "$log_file" \
+    | tr -d '\r' | sed 's/[[:space:]]*║[[:space:]]*$//' | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
+  [ -n "$missing" ] || missing="(Playwright did not name them; see the log above)"
+
+  if [ "${JS_ALLOW_PLAYWRIGHT_HOST_WARNING:-0}" = "1" ]; then
+    log_warning "Playwright reports missing host dependencies: $missing (JS_ALLOW_PLAYWRIGHT_HOST_WARNING=1, continuing)"
+    return 0
+  fi
+
+  log_error "Playwright reports missing host dependencies: $missing"
+  log_error "Add them to the apt-get install block in ubuntu/24.04/js/Dockerfile."
+  log_error "Set JS_ALLOW_PLAYWRIGHT_HOST_WARNING=1 to build anyway."
+  return 1
+}

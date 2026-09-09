@@ -1,0 +1,31 @@
+# Mutation fixture: is --include-fragments what checks an anchor?
+# Recorded 2026-09-09T11:39:08Z with lycheeverse/lychee:0.24.2, --offline (no network).
+
+$ cat a.md
+# Title
+
+See [the section](#the-section) and [other](b.md#other-heading).
+
+## Renamed Section
+$ cat b.md
+# B
+
+## Renamed Other
+
+# Both target headings have been renamed (## Renamed Section, ## Renamed Other).
+
+$ lychee --no-progress --offline --include-fragments ./**/*.md
+Issues found in 1 input. Find details below.
+
+[a.md]:
+[ERROR] file:///repo/a.md#the-section (at 3:5) | Cannot find fragment
+[ERROR] file:///repo/b.md#other-heading (at 3:37) | Cannot find fragment
+
+🔍 2 Total (in 8ms) 🔗 2 Unique ✅ 0 OK 🚫 2 Errors
+
+exit=2
+
+$ lychee --no-progress --offline ./**/*.md          # the flag removed, nothing else changed
+🔍 2 Total (in 8ms) 🔗 2 Unique ✅ 2 OK 🚫 0 Errors
+
+exit=0

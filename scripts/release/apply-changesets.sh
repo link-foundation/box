@@ -151,7 +151,12 @@ else
 fi
 
 echo "Pushing to main..."
-git push origin main
+# Not a bare `git push`: the concurrency group orders the writers of main, it
+# does not rebase them, so this job can be behind the branch by the time it
+# pushes. The helper rebases a lost race and answers a repository-rule
+# rejection with a pull request, which no rebase could ever satisfy (issue
+# #121).
+"$(dirname "${BASH_SOURCE[0]}")/git-push-with-retry.sh" origin main "$NEW_VERSION"
 
 echo ""
 echo "Version bump completed: $CURRENT_VERSION -> $NEW_VERSION"

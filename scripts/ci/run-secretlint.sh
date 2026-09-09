@@ -21,7 +21,17 @@
 # is how this check was first written and why it passed against a planted secret
 # (measured, 2026-09-06).
 #
-# Usage: bash scripts/ci/run-secretlint.sh   (canary self-check, then the scan)
+# Usage:
+#   bash scripts/ci/run-secretlint.sh              # canary self-check, then the
+#                                                  # whole working tree
+#   bash scripts/ci/run-secretlint.sh path ...     # ... then only these paths
+#
+# The argument form exists for the pre-commit hook (issue #121): it scans the
+# paths a commit is about to record, which is where a new credential can still
+# be introduced, and skips the rest of the tree, which was scanned when it was
+# committed. CI keeps scanning everything - a rule added to a later version of
+# the preset has to be applied to the files that were already here. The canary
+# runs either way, so silence still means the rules loaded.
 
 set -euo pipefail
 
@@ -68,9 +78,16 @@ echo "==> Canary detected (secretlint exit $CANARY_STATUS); the rules are live"
 
 # --- 2. scan the repository ---------------------------------------------------
 
-echo "==> secretlint ${SECRETLINT_VERSION} over the working tree"
+TARGETS=("$@")
+if [ "${#TARGETS[@]}" -eq 0 ]; then
+  TARGETS=("**/*")
+  echo "==> secretlint ${SECRETLINT_VERSION} over the working tree"
+else
+  echo "==> secretlint ${SECRETLINT_VERSION} over ${#TARGETS[@]} named path(s)"
+fi
+
 set +e
-secretlint_run "**/*"
+secretlint_run "${TARGETS[@]}"
 STATUS=$?
 set -e
 

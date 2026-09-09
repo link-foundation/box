@@ -22,6 +22,7 @@
 # Usage:
 #   bash scripts/ci/check-file-line-limits.sh          # check
 #   bash scripts/ci/check-file-line-limits.sh --list   # print what is checked
+#   bash scripts/ci/check-file-line-limits.sh --list-inputs  # the same, paths only
 #
 # Environment variables:
 #   LIMIT            Hard limit, in lines (default: 1500)
@@ -45,6 +46,11 @@ WARN_THRESHOLD="${WARN_THRESHOLD:-1350}"
 LIST_ONLY=0
 case "${1:-}" in
   --list) LIST_ONLY=1 ;;
+  # Same set as --list, under the machine-readable contract
+  # scripts/ci/check-workflow-path-coverage.mjs reads: paths only, one per
+  # line, exit 0, so a workflow's `paths:` filter can be checked against the
+  # files this gate reads (issue #121).
+  --list-inputs) LIST_ONLY=1 ;;
   -h | --help)
     sed -n '2,34p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
@@ -56,10 +62,20 @@ case "${1:-}" in
     ;;
 esac
 
-if ! git rev-parse --git-dir >/dev/null 2>&1; then
+# `git ls-files` answers about the current directory, not about the repository:
+# run from a subdirectory it lists that subtree alone, and lists it with paths
+# relative to that subdirectory. A gate that discovers its own inputs without
+# anchoring first therefore sweeps a fraction of the tree and exits 0 over it,
+# which reads exactly like a clean repository — and answers --list-inputs with
+# paths no repository-root `paths:` pattern can match (issue #121). Anchor at
+# the top of whichever repository the caller is standing in, not at this
+# script's own location, so the fixtures can still drive it inside a throwaway
+# repository.
+if ! REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; then
   echo "::error title=check-file-line-limits::not inside a git repository" >&2
   exit 2
 fi
+cd "$REPO_ROOT" || exit 2
 
 # Tracked files only. `find` would also walk build output, a stray venv and
 # anything a previous job left in the working tree, and a limit that fires on

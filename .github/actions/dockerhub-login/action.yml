@@ -89,6 +89,12 @@ runs:
     - name: Report that no Docker Hub credential is configured
       if: inputs.oidc-connection-id == '' && inputs.password == ''
       shell: bash
+      # `registry` is read from the environment rather than interpolated into
+      # the script: an expansion inside `run:` is substituted before bash sees
+      # the line, so a value carrying a quote or a `$(...)` becomes code
+      # (zizmor `template-injection`). An env var is data whatever it holds.
+      env:
+        REGISTRY: ${{ inputs.registry }}
       run: |
-        echo "::error title=Docker Hub credential missing::No DOCKERHUB_TOKEN and no DOCKERHUB_OIDC_CONNECTIONID variable, so this job cannot authenticate to ${{ inputs.registry }}. Nothing will be mirrored. See docs/RELEASING.md." >&2
+        echo "::error title=Docker Hub credential missing::No DOCKERHUB_TOKEN and no DOCKERHUB_OIDC_CONNECTIONID variable, so this job cannot authenticate to ${REGISTRY}. Nothing will be mirrored. See docs/RELEASING.md." >&2
         exit 1

@@ -26,6 +26,13 @@ on:
       - 'ubuntu/24.04/common.sh'
       - 'data/disk-space-measurements.json'
       - '.github/workflows/measure-disk-space.yml'
+      # The preflight and validation jobs, which are what a pull request can
+      # run here, are the only place these three are executed at all. They are
+      # deliberately absent from the push filter above: editing a validator
+      # should re-run the validation, not spend three hours measuring disk.
+      - 'scripts/ci/extract-quoted-heredoc.sh'
+      - 'scripts/ci/validate-measurements.py'
+      - 'scripts/ci/summarize-measurements.py'
   # Allow manual trigger
   workflow_dispatch:
     inputs:
@@ -44,6 +51,20 @@ on:
 # for its push. The validation job never needs more than a read.
 permissions:
   contents: read
+
+env:
+  # actions/checkout's first act is `git init`, and a git with no configured
+  # `init.defaultBranch` answers it with a thirteen-line advice block - "Using
+  # 'master' as the name for the initial branch... this default branch name will
+  # change" - at the top of every job log. 19 checkouts in the runs issue #121
+  # lists printed 247 lines of it, in jobs where nothing was wrong. No step can
+  # fix it, because it is printed before the first step of ours runs; git reads
+  # configuration from the environment too, and the environment is there from
+  # the start. Ported from the js template, which carries the same three lines
+  # with the same reasoning.
+  GIT_CONFIG_COUNT: '1'
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
 
 jobs:
   # Fast pre-merge gate. Nothing here installs anything, so it finishes in
@@ -114,11 +135,17 @@ jobs:
 
   measure-disk-space:
     name: Measure Component Disk Space
-    # Pull requests stop at `validate`; measuring takes three hours and ends in
-    # a push to main.
+    # Pull requests stop at `validate`; measuring installs every toolchain on a
+    # bare runner and ends in a push to main.
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
-    timeout-minutes: 180  # 3 hours max for full installation measurement
+    # 180 was "3 hours max for full installation measurement" - a number nobody
+    # had checked against a run. Every successful run of this job in the
+    # repository's history finished inside 23.3 minutes, the slowest of them in
+    # February (dev/log/issues/121/pulls/122/analysis/); 60 leaves more than
+    # twice that and still bounds a hang at an hour instead of three (issue
+    # #121, docs/CI-TIMEOUT-BUDGETS.md).
+    timeout-minutes: 60
     # This job commits to main. Cancelling it mid-`git push` is worse than
     # letting a superseded run finish, so it queues instead of cancelling —
     # unlike the pre-merge checks above.
@@ -126,8 +153,11 @@ jobs:
       group: measure-disk-space-${{ github.ref }}
       cancel-in-progress: false
 
+    # pull-requests: write is for the fallback path in
+    # scripts/release/git-push-with-retry.sh only (issue #121).
     permissions:
       contents: write
+      pull-requests: write
 
     env:
       # Off by default. `workflow_dispatch` can turn it on without editing the
@@ -138,6 +168,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          # Kept, unlike every other checkout here: this job commits the
+          # measured table back to main, so the push needs the credential
+          # checkout leaves in .git/config. Stated rather than left to the
+          # default, so the one job that needs it is the one that says so.
+          persist-credentials: true
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -182,7 +217,12 @@ jobs:
           # sudo resets the environment (env_reset), so BOX_VERBOSE has to be
           # handed over explicitly rather than merely exported here.
           # pipefail ensures script failures propagate through tee.
-          sudo env "BOX_VERBOSE=$BOX_VERBOSE" ./scripts/measure-disk-space.sh \
+          # The budget wraps the measurement, not the pipeline: `tee` has to
+          # stay outside it so the log survives an overrun, and `pipefail` above
+          # still carries the wrapper's exit status - 124 when it runs out of
+          # budget (issue #121, docs/CI-TIMEOUT-BUDGETS.md).
+          bash scripts/ci/run-with-budget-warning.sh 2400 "disk space measurement" \
+            sudo env "BOX_VERBOSE=$BOX_VERBOSE" ./scripts/measure-disk-space.sh \
             --json-output data/disk-space-measurements.json 2>&1 | tee measurement.log
 
           echo "=== Measurement complete ==="
@@ -230,17 +270,41 @@ jobs:
       # "valid". A measurement reporting 5 MB with a plausible component count
       # would have been committed as good. The checks live in a script now, so
       # they are testable and shared with the pull request gate (issue #115).
+      #
+      # `if ... then valid=true else valid=false` was wrong in the same way the
+      # `[ -lt ]` test was, one level up: the validator documents 0 = valid,
+      # 1 = invalid, 2 = usage error, and argparse exits 2 as well - so a
+      # SyntaxError, a renamed flag or a missing file all read as "these
+      # measurements are invalid" and quietly threw away three hours of work
+      # with the job green (issue #121). Only 1 means invalid. Anything else
+      # means the question was not answered, which is an error, not a verdict.
       - name: Validate measurements
         id: validate
         run: |
-          if python3 scripts/ci/validate-measurements.py data/disk-space-measurements.json; then
-            echo "valid=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "valid=false" >> "$GITHUB_OUTPUT"
-          fi
+          set +e
+          python3 scripts/ci/validate-measurements.py data/disk-space-measurements.json
+          rc=$?
+          set -e
+          case "$rc" in
+            0)
+              echo "valid=true" >> "$GITHUB_OUTPUT"
+              ;;
+            1)
+              echo "valid=false" >> "$GITHUB_OUTPUT"
+              echo "::warning::The measurements are invalid; nothing will be committed."
+              ;;
+            *)
+              echo "::error title=Measurement validation could not run::validate-measurements.py exited $rc, which is neither valid (0) nor invalid (1). The measurement is not being discarded on the strength of an answer nobody got."
+              exit 1
+              ;;
+          esac
 
       - name: Commit and push changes
         if: steps.changes.outputs.has_changes == 'true' && steps.validate.outputs.valid == 'true'
+        env:
+          # Only read on the fallback path, when a repository rule declines the
+          # direct push and the commit has to arrive as a pull request.
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -252,13 +316,16 @@ jobs:
 
           git commit -m "chore: update component disk space measurements (${TOTAL_SIZE}MB total)"
 
-          # Pull-rebase before push to handle concurrent pushes that may have occurred
-          # during the ~18 minute measurement (e.g., version bump from release workflow).
-          # Measurement data (README.md, data/) and version bumps (VERSION) touch different
-          # files, so the rebase always succeeds cleanly. See docs/case-studies/issue-51.
-          git pull --rebase origin main
-
-          git push origin main
+          # This job runs for about 18 minutes before it pushes, which is a wide
+          # window for the release workflow to land a version bump. A single
+          # pull-rebase closes most of it but not the seconds between the
+          # rebase and the push, and it never retries; the helper rebases and
+          # retries, and answers a repository-rule rejection with a pull
+          # request rather than a rebase that cannot satisfy it (issue #121,
+          # and see docs/case-studies/issue-51 for the original race).
+          # Measurement data (README.md, data/) and version bumps (VERSION)
+          # touch different files, so the rebase resolves cleanly.
+          bash scripts/release/git-push-with-retry.sh origin main "disk-space-measurements"
 
           echo "Changes committed and pushed successfully"
 
@@ -301,3 +368,48 @@ jobs:
           else
             echo "Measurement JSON not found" >> "$GITHUB_STEP_SUMMARY"
           fi
+
+  # === TERMINAL STATUS GATE ===
+  #
+  # The job that makes every other job's result reach the run's conclusion
+  # (issue #121, reference-template best practice "every workflow gets a
+  # terminal status gate").
+  #
+  # GitHub derives a run's conclusion from its jobs, and one cancellation
+  # outranks any number of failures - so a run holding a failed job can still
+  # come out grey, and everything that reads the run rather than each job (the
+  # badge, `gh run list`, the run list quoted in issue #121 itself) reads that
+  # as "no verdict" rather than "something broke". A gate's own conclusion is a
+  # job conclusion, so when it errors the run is red no matter what else was
+  # cancelled. The rationale, the measured run and the supersede-versus-overrun
+  # rule are in scripts/ci/check-pipeline-status.sh.
+  #
+  # `!cancelled()`, not `always()`: cancelling a whole run is somebody's
+  # decision and repainting it red would be a false positive, so this job is
+  # skipped there. `cancelled()` is run-level, so a job cancelled on its own -
+  # an overrun, or a per-job concurrency group firing - still reaches the gate.
+  #
+  # `needs` must name every other job in this file, or a job's result cannot
+  # reach here at all. That is not left to review:
+  # scripts/ci/check-status-gate-covers-all-jobs.mjs derives the list from this
+  # workflow and fails when the two disagree.
+  pipeline-status:
+    name: pipeline-status
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [validate, measure-disk-space]
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # Anonymous `git ls-remote` is enough to resolve the branch head, which is
+      # how the script tells a superseded run from an overrun; no token is
+      # persisted for it.
+      - name: Check pipeline status
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          RUN_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: bash scripts/ci/check-pipeline-status.sh

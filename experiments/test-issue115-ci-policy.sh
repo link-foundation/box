@@ -89,14 +89,19 @@ else
 fi
 
 echo "== Invariant 4: no always() in job gates =="
-always_count="$(grep -rc 'always()' "$WORKFLOW_DIR" | awk -F: '{s+=$2} END {print s+0}')"
-if [ "$always_count" -eq 0 ]; then
-  ok "no always() remains (use !cancelled())"
+# Comment lines are excluded deliberately. This check used to grep the raw
+# text, so a comment *explaining* why a job uses !cancelled() instead of
+# always() failed the policy it was documenting - a checker reporting on its
+# own prose rather than on the workflow (issue #121). The rule is about the
+# expressions GitHub evaluates, so only those are read.
+always_hits="$(grep -rn 'always()' "$WORKFLOW_DIR" | grep -vE '^[^:]+:[0-9]+: *#' || true)"
+if [ -z "$always_hits" ]; then
+  ok "no always() remains in an evaluated expression (use !cancelled())"
 else
-  grep -rn 'always()' "$WORKFLOW_DIR" | sed 's/^/    /'
-  bad "no always() remains (use !cancelled())"
+  printf '%s\n' "$always_hits" | sed 's/^/    /'
+  bad "no always() remains in an evaluated expression (use !cancelled())"
 fi
-cancelled_count="$(grep -rc '!cancelled()' "$WORKFLOW_DIR" | awk -F: '{s+=$2} END {print s+0}')"
+cancelled_count="$(grep -rn '!cancelled()' "$WORKFLOW_DIR" | grep -vcE '^[^:]+:[0-9]+: *#' || true)"
 if [ "$cancelled_count" -gt 0 ]; then
   ok "!cancelled() is used instead ($cancelled_count gates)"
 else
@@ -116,7 +121,15 @@ echo "== Invariant 6: the workflows lint clean =="
 if ! command -v docker >/dev/null 2>&1; then
   echo "  SKIP: docker unavailable, cannot run actionlint/zizmor"
 else
-  if docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 >/tmp/actionlint-policy.log 2>&1; then
+  # Read the image out of the workflow instead of naming a version here. Two
+  # places naming a linter independently is how a local run and a CI run end up
+  # disagreeing about what passed - and this suite restated `1.7.7` as a
+  # mutable tag while the workflow had moved to a digest pin (issue #121).
+  ACTIONLINT_IMAGE="$(sed -n 's|^[[:space:]]*- uses: docker://\(rhysd/actionlint@sha256:[0-9a-f]\{64\}\).*|\1|p' \
+    "$WORKFLOW_DIR/workflows.yml" | head -1)"
+  if [ -z "$ACTIONLINT_IMAGE" ]; then
+    bad "workflows.yml pins actionlint by digest (could not read the image to run)"
+  elif docker run --rm -v "$PWD:/repo" -w /repo "$ACTIONLINT_IMAGE" >/tmp/actionlint-policy.log 2>&1; then
     ok "actionlint (with its bundled shellcheck) reports no problems"
   else
     sed 's/^/    /' /tmp/actionlint-policy.log

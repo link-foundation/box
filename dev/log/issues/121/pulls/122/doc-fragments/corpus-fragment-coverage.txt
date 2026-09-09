@@ -1,0 +1,20 @@
+# How much of the corpus was going unchecked?
+# Recorded 2026-09-09T11:39:27Z.
+
+$ git ls-files "*.md" | grep -v "^dev/log/" | wc -l    # files lychee reads
+66
+
+# Markdown links carrying a #fragment - the part lychee was discarding:
+$ ... | grep -oE "\]\([^) ]*#[^) ]*\)" | wc -l
+27
+
+# ... of which point inside this repository (relative or same-file):
+14
+
+# ... and remote:
+13
+
+# Offline pass over the real tree with the flag (local anchors only, no network):
+$ lychee --no-progress --offline --include-fragments --exclude-path dev/log ./**/*.md
+🔍 678 Total (in 52ms) 🔗 470 Unique ✅ 147 OK 🚫 0 Errors 👻 531 Excluded
+

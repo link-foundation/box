@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+#
+# pre-commit — run this repository's own gates over the content being committed.
+#
+# Issue #121, hive-mind best practice #8. Installed by
+# scripts/install-git-hooks.sh, which points core.hooksPath at this directory;
+# see docs/LOCAL-CHECKS.md.
+#
+# This file is deliberately tiny. git requires a hook to be named exactly
+# `pre-commit`, with no extension, so nothing that discovers files by `*.sh`
+# can see it - it took extending run-shellcheck.sh and run-shfmt.sh to
+# `.githooks/*` for this file to be linted by anything at all. Logic that lives
+# here is logic under weaker review than the rest of the repository, so all of
+# it lives in scripts/ci/run-precommit-checks.sh instead, where it is also
+# runnable, testable and reachable without installing anything.
+#
+# Bypass: `git commit --no-verify`, or BOX_SKIP_HOOKS=1 for a whole session.
+
+set -uo pipefail
+
+if [ "${BOX_SKIP_HOOKS:-0}" = "1" ]; then
+  echo "==> BOX_SKIP_HOOKS=1; skipping the pre-commit checks"
+  exit 0
+fi
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+CHECKS="$ROOT/scripts/ci/run-precommit-checks.sh"
+
+# A checkout of a commit predating the script - `git bisect`, an old branch -
+# still has to be committable: hooksPath survives a checkout, the script does
+# not. Missing means "nothing to run here", not "refuse the commit".
+if [ ! -f "$CHECKS" ]; then
+  exit 0
+fi
+
+exec bash "$CHECKS" "$@"

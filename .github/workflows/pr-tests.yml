@@ -33,6 +33,20 @@ on:
 permissions:
   contents: read
 
+env:
+  # actions/checkout's first act is `git init`, and a git with no configured
+  # `init.defaultBranch` answers it with a thirteen-line advice block - "Using
+  # 'master' as the name for the initial branch... this default branch name will
+  # change" - at the top of every job log. 19 checkouts in the runs issue #121
+  # lists printed 247 lines of it, in jobs where nothing was wrong. No step can
+  # fix it, because it is printed before the first step of ours runs; git reads
+  # configuration from the environment too, and the environment is there from
+  # the start. Ported from the js template, which carries the same three lines
+  # with the same reasoning.
+  GIT_CONFIG_COUNT: '1'
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+
 jobs:
 
   # === BUILD AND TEST DOCKER IMAGES (PR) — issue #82 ===
@@ -58,9 +72,15 @@ jobs:
   # has 30 GB freed up front and the parallel matrix means wall-clock is bound
   # by the slowest single image, not by the depth of the chain.
   #
-  # Every build job runs `jlumbroso/free-disk-space@main` first to reclaim
-  # ~30 GB before building, fixing the "no space left on device" regression
-  # captured in run 25075335426 (see docs/case-studies/issue-82/).
+  # Every build job frees ~30 GB before building, fixing the "no space left on
+  # device" regression captured in run 25075335426 (see
+  # docs/case-studies/issue-82/). The step is `./.github/actions/free-disk-space`
+  # rather than the upstream action it wraps: upstream removes a fixed list of
+  # package names, and `google-chrome-stable` has no arm64 apt source, so on
+  # every arm64 job apt exited 100 without removing any of the batch and the
+  # action turned that into a warning - 28 of them on release run 34293699247,
+  # which was green. The wrapper asks dpkg what is installed first, so the same
+  # packages go and nothing is annotated (issue #121).
   #
   # pr-test-full and pr-test-dind's `full` variant are the two jobs that have to
   # hold the whole chain - JS, essentials, 11 language images and the full box -
@@ -86,7 +106,12 @@ jobs:
   pr-test-version-policy:
     name: pr-test / version-policy
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # Caps are sized from what the jobs actually take, measured over the last
+    # 300 runs and tabulated in docs/CI-TIMEOUT-BUDGETS.md; this one has never
+    # exceeded 1.1 minutes. A cap far above the work it bounds is not free
+    # caution - it is the number of minutes a hung job burns before anyone hears
+    # about it (issue #121).
+    timeout-minutes: 10
     if: |
       !cancelled() &&
       (inputs.version-check-result == 'success' || inputs.version-check-result == 'skipped') &&
@@ -100,6 +125,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
 
       # A queued matrix job can start long after the run was created, by which
       # time the pull request may have moved on (issue #112 follow-up). Check
@@ -150,7 +179,8 @@ jobs:
   pr-test-js:
     name: pr-test / js
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # Measured maximum 7.9 minutes; the budgets below reserve 13 of these 20.
+    timeout-minutes: 20
     needs: [pr-test-version-policy]
     if: |
       !cancelled() &&
@@ -167,6 +197,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       # A queued matrix job can start long after the run was created, by which
       # time the pull request may have moved on (issue #112 follow-up). Check
@@ -192,7 +224,7 @@ jobs:
         uses: ./.github/actions/simulate-fresh-merge
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           tool-cache: false
           android: true
@@ -202,20 +234,30 @@ jobs:
           docker-images: true
           swap-storage: true
 
+      # Every build and test step below owns an execution budget rather than
+      # relying on the job's `timeout-minutes` (issue #121,
+      # docs/CI-TIMEOUT-BUDGETS.md). A job killed by `timeout-minutes` is
+      # reported *cancelled*, stops where it stands, and names neither the step
+      # nor the deadline; a step that fails names both and leaves the rest of
+      # the job's reporting running. The cap stays as the backstop for the parts
+      # of a job no budget covers, and scripts/ci/check-timeout-budgets.mjs
+      # keeps each budget - and their concurrent total - inside it.
       - name: Build JS box (amd64)
         run: |
-          set -e
-          echo "=== Building JS box ==="
-          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
+          bash scripts/ci/run-with-budget-warning.sh 600 "JS box build" \
+            bash scripts/ci/build-chain.sh js
 
       - name: Test JS box
-        run: bash scripts/ci/test-box.sh js box-js
+        run: |
+          bash scripts/ci/run-with-budget-warning.sh 180 "JS box tests" \
+            bash scripts/ci/test-box.sh js box-js
 
   # --- Tier 2: essentials box ---
   pr-test-essentials:
     name: pr-test / essentials
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # Measured maximum 6.5 minutes; the budgets below reserve 13 of these 20.
+    timeout-minutes: 20
     needs: [pr-test-js]
     if: |
       !cancelled() &&
@@ -230,6 +272,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       # A queued matrix job can start long after the run was created, by which
       # time the pull request may have moved on (issue #112 follow-up). Check
@@ -255,7 +299,7 @@ jobs:
         uses: ./.github/actions/simulate-fresh-merge
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           tool-cache: false
           android: true
@@ -267,22 +311,20 @@ jobs:
 
       - name: Build JS + essentials chain
         run: |
-          set -e
-          echo "=== Building JS box ==="
-          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
-
-          echo ""
-          echo "=== Building essentials box (on JS) ==="
-          docker build -f ubuntu/24.04/essentials-box/Dockerfile \
-            --build-arg JS_IMAGE=box-js -t box-essentials .
+          bash scripts/ci/run-with-budget-warning.sh 600 "essentials chain build" \
+            bash scripts/ci/build-chain.sh essentials
 
       - name: Test essentials box
-        run: bash scripts/ci/test-box.sh essentials box-essentials
+        run: |
+          bash scripts/ci/run-with-budget-warning.sh 180 "essentials box tests" \
+            bash scripts/ci/test-box.sh essentials box-essentials
 
   # --- Tier 3: per-language boxes (parallel matrix, one VM each) ---
   pr-test-language:
     name: pr-test / ${{ matrix.language }}
     runs-on: ubuntu-24.04
+    # Stays at 45: rocq, the slowest leg, has been measured at 20.4 minutes and
+    # the budgets below reserve 30 of these 45.
     timeout-minutes: 45
     needs: [pr-test-version-policy, pr-test-essentials]
     if: |
@@ -308,6 +350,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       # A queued matrix job can start long after the run was created, by which
       # time the pull request may have moved on (issue #112 follow-up). Check
@@ -333,7 +377,7 @@ jobs:
         uses: ./.github/actions/simulate-fresh-merge
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           tool-cache: false
           android: true
@@ -343,32 +387,28 @@ jobs:
           docker-images: true
           swap-storage: true
 
+      # 1500s is a little under three times the slowest chain measured over the
+      # last 200 runs (rocq, 1061s); see docs/CI-TIMEOUT-BUDGETS.md.
       - name: Build JS + essentials + ${{ matrix.language }} chain
+        env:
+          LANGUAGE: ${{ matrix.language }}
         run: |
-          set -e
-          echo "=== Building JS box ==="
-          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
-
-          echo ""
-          echo "=== Building essentials box (on JS) ==="
-          docker build -f ubuntu/24.04/essentials-box/Dockerfile \
-            --build-arg JS_IMAGE=box-js -t box-essentials .
-
-          echo ""
-          echo "=== Building ${{ matrix.language }} box (on essentials) ==="
-          docker build -f "ubuntu/24.04/${{ matrix.language }}/Dockerfile" \
-            --build-arg ESSENTIALS_IMAGE=box-essentials \
-            -t "box-${{ matrix.language }}" .
+          bash scripts/ci/run-with-budget-warning.sh 1500 "${LANGUAGE} chain build" \
+            bash scripts/ci/build-chain.sh "$LANGUAGE"
 
       - name: Test ${{ matrix.language }} box
         env:
           LANGUAGE: ${{ matrix.language }}
-        run: bash scripts/ci/test-box.sh "$LANGUAGE" "box-$LANGUAGE"
+        run: |
+          bash scripts/ci/run-with-budget-warning.sh 300 "${LANGUAGE} box tests" \
+            bash scripts/ci/test-box.sh "$LANGUAGE" "box-$LANGUAGE"
 
   # --- Tier 4: full box (integration smoke test, all languages on one VM) ---
   pr-test-full:
     name: pr-test / full
     runs-on: ubuntu-24.04
+    # Stays at 90: measured at 43.0 minutes, and the budgets below reserve 60
+    # of these 90 for a chain that pages through swap when it exports.
     timeout-minutes: 90
     needs: [pr-test-language]
     if: |
@@ -384,6 +424,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       # A queued matrix job can start long after the run was created, by which
       # time the pull request may have moved on (issue #112 follow-up). Check
@@ -409,7 +451,7 @@ jobs:
         uses: ./.github/actions/simulate-fresh-merge
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           # The two full-chain jobs are the only ones that hold every language
           # image and the full box on one VM at the same time, so they reclaim
@@ -456,40 +498,13 @@ jobs:
           RESOURCE_MONITOR_PID=$!
           trap 'kill "$RESOURCE_MONITOR_PID" 2>/dev/null || true' EXIT
 
-          echo "=== Building JS box ==="
-          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
-
-          echo ""
-          echo "=== Building essentials box (on JS) ==="
-          docker build -f ubuntu/24.04/essentials-box/Dockerfile \
-            --build-arg JS_IMAGE=box-js -t box-essentials .
-
-          echo ""
-          echo "=== Building language images (on essentials) ==="
-          for lang in python go rust java kotlin ruby php perl swift lean rocq; do
-            echo ""
-            echo "--- Building ${lang} box ---"
-            docker build -f "ubuntu/24.04/${lang}/Dockerfile" \
-              --build-arg ESSENTIALS_IMAGE=box-essentials \
-              -t "box-${lang}" .
-          done
-
-          echo ""
-          echo "=== Building full box (multi-stage from all language images) ==="
-          docker build -f ubuntu/24.04/full-box/Dockerfile \
-            --build-arg ESSENTIALS_IMAGE=box-essentials \
-            --build-arg PYTHON_IMAGE=box-python \
-            --build-arg GO_IMAGE=box-go \
-            --build-arg RUST_IMAGE=box-rust \
-            --build-arg JAVA_IMAGE=box-java \
-            --build-arg KOTLIN_IMAGE=box-kotlin \
-            --build-arg RUBY_IMAGE=box-ruby \
-            --build-arg PHP_IMAGE=box-php \
-            --build-arg PERL_IMAGE=box-perl \
-            --build-arg SWIFT_IMAGE=box-swift \
-            --build-arg LEAN_IMAGE=box-lean \
-            --build-arg ROCQ_IMAGE=box-rocq \
-            -t box-test .
+          # 3000s against a slowest-measured 2342s: the smallest budget that
+          # still clears the run where the full box's export paged into swap
+          # (docs/CI-TIMEOUT-BUDGETS.md). The chain itself lives in
+          # scripts/ci/build-chain.sh, which derives the language list from
+          # ubuntu/24.04/full-box/Dockerfile rather than repeating it here.
+          bash scripts/ci/run-with-budget-warning.sh 3000 "full chain build" \
+            bash scripts/ci/build-chain.sh full
 
       - name: Test full box
         env:
@@ -497,7 +512,9 @@ jobs:
           # in the full box; printing both catches a COPY that silently took the
           # wrong stage.
           PHP_METHOD_REFERENCE_IMAGE: box-php
-        run: bash scripts/ci/test-box.sh full box-test
+        run: |
+          bash scripts/ci/run-with-budget-warning.sh 600 "full box tests" \
+            bash scripts/ci/test-box.sh full box-full
 
   # --- Tier 5: dind-box variants (parallel matrix: 14 variants, one VM each) — issue #80 ---
   # Each dind variant rebuilds its base chain (JS + essentials + optional lang/full)
@@ -533,6 +550,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       # A queued matrix job can start long after the run was created, by which
       # time the pull request may have moved on (issue #112 follow-up). Check
@@ -558,7 +577,7 @@ jobs:
         uses: ./.github/actions/simulate-fresh-merge
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           # Same reclaim as pr-test-full, and for the same reason: the
           # `full` variant of this matrix builds the identical chain - JS,
@@ -597,7 +616,16 @@ jobs:
         if: matrix.variant == 'full'
         run: bash scripts/ci/ensure-swap.sh
 
+      # The budget is per matrix leg, because the cap is: `full` rebuilds the
+      # whole chain inside a 90-minute job, the other 13 build one language at
+      # most inside a 60-minute one, and a single worst-case number would either
+      # be unreachable for the 13 or exceed 70% of their cap. 3000s against a
+      # slowest-measured 2381s for `full`; 1350s against 1018s for rocq, the
+      # slowest of the rest (docs/CI-TIMEOUT-BUDGETS.md).
       - name: Build base box for dind variant
+        env:
+          VARIANT: ${{ matrix.variant }}
+          BUDGET_SECONDS: ${{ matrix.variant == 'full' && 3000 || 1350 }}
         run: |
           set -e
           # Keep sampling memory, disk and the biggest processes into this
@@ -609,71 +637,34 @@ jobs:
           RESOURCE_MONITOR_PID=$!
           trap 'kill "$RESOURCE_MONITOR_PID" 2>/dev/null || true' EXIT
 
-          VARIANT="${{ matrix.variant }}"
+          bash scripts/ci/run-with-budget-warning.sh "$BUDGET_SECONDS" \
+            "dind-${VARIANT} base chain build" \
+            bash scripts/ci/build-chain.sh "$VARIANT"
 
-          echo "=== Building JS box (base layer) ==="
-          docker build -f ubuntu/24.04/js/Dockerfile -t box-js .
-
-          if [ "$VARIANT" = "js" ]; then
-            BASE_IMAGE="box-js"
-          else
-            echo ""
-            echo "=== Building essentials box ==="
-            docker build -f ubuntu/24.04/essentials-box/Dockerfile \
-              --build-arg JS_IMAGE=box-js -t box-essentials .
-
-            if [ "$VARIANT" = "essentials" ]; then
-              BASE_IMAGE="box-essentials"
-            elif [ "$VARIANT" = "full" ]; then
-              echo ""
-              echo "=== Building all language images (full-box prerequisites) ==="
-              for lang in python go rust java kotlin ruby php perl swift lean rocq; do
-                echo "--- Building ${lang} box ---"
-                docker build -f "ubuntu/24.04/${lang}/Dockerfile" \
-                  --build-arg ESSENTIALS_IMAGE=box-essentials \
-                  -t "box-${lang}" .
-              done
-              echo ""
-              echo "=== Building full box ==="
-              docker build -f ubuntu/24.04/full-box/Dockerfile \
-                --build-arg ESSENTIALS_IMAGE=box-essentials \
-                --build-arg PYTHON_IMAGE=box-python \
-                --build-arg GO_IMAGE=box-go \
-                --build-arg RUST_IMAGE=box-rust \
-                --build-arg JAVA_IMAGE=box-java \
-                --build-arg KOTLIN_IMAGE=box-kotlin \
-                --build-arg RUBY_IMAGE=box-ruby \
-                --build-arg PHP_IMAGE=box-php \
-                --build-arg PERL_IMAGE=box-perl \
-                --build-arg SWIFT_IMAGE=box-swift \
-                --build-arg LEAN_IMAGE=box-lean \
-                --build-arg ROCQ_IMAGE=box-rocq \
-                -t box-full .
-              BASE_IMAGE="box-full"
-            else
-              echo ""
-              echo "=== Building ${VARIANT} box ==="
-              docker build -f "ubuntu/24.04/${VARIANT}/Dockerfile" \
-                --build-arg ESSENTIALS_IMAGE=box-essentials \
-                -t "box-${VARIANT}" .
-              BASE_IMAGE="box-${VARIANT}"
-            fi
-          fi
-
-          echo "BASE_IMAGE=${BASE_IMAGE}" >> "$GITHUB_ENV"
+          # scripts/ci/build-chain.sh always tags its result `box-<variant>`,
+          # so the name needs no bookkeeping through the chain's branches.
+          echo "BASE_IMAGE=box-${VARIANT}" >> "$GITHUB_ENV"
 
       - name: Build dind-box variant
+        env:
+          VARIANT: ${{ matrix.variant }}
         run: |
-          set -e
-          echo "=== Building dind-${{ matrix.variant }} on ${BASE_IMAGE} ==="
-          docker build -f ubuntu/24.04/dind/Dockerfile \
+          bash scripts/ci/run-with-budget-warning.sh 300 "dind-${VARIANT} image build" \
+            docker build -f ubuntu/24.04/dind/Dockerfile \
             --build-arg BASE_IMAGE="${BASE_IMAGE}" \
-            -t "box-dind-${{ matrix.variant }}" .
+            -t "box-dind-${VARIANT}" .
 
+      # A smoke test made of a dozen short `docker run` calls has no single
+      # command to wrap, so it takes the budget GitHub can apply to a whole
+      # step. It is a budget all the same, and counted as one by
+      # scripts/ci/check-timeout-budgets.mjs.
       - name: Test dind-box variant
+        timeout-minutes: 5
+        env:
+          VARIANT: ${{ matrix.variant }}
         run: |
           set -e
-          IMG="box-dind-${{ matrix.variant }}"
+          IMG="box-dind-${VARIANT}"
           echo "=== Testing ${IMG} (no privileged mode in PR CI) ==="
           # Regression check for issue #88: docker exec and entrypoint-bypassed
           # shells use the image's configured USER, so dind variants must keep
@@ -698,6 +689,7 @@ jobs:
 
       - name: Test documented dind examples
         if: matrix.variant == 'js'
+        timeout-minutes: 3
         env:
           DIND_IMAGE: box-dind-js
           DIND_WAIT_SECONDS: "60"

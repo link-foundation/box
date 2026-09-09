@@ -43,17 +43,29 @@ if [[ ! -f "$README_FILE" ]]; then
   exit 1
 fi
 
+# Both paths are read by the Python below, which runs in a child process: an
+# unexported variable would leave it on its own defaults, so `--readme-file`
+# would announce one file and rewrite another (issue #121).
+export JSON_FILE README_FILE
+
 echo "Reading measurements from: $JSON_FILE"
 echo "Updating README at: $README_FILE"
 
+# Render the table into a file of this run's own, not a fixed path under /tmp
+# that every invocation on the machine shares (issue #121): with a leftover
+# there, this script used to write another run's measurements into the README
+# and report success.
+TABLE_FILE="$(mktemp "${TMPDIR:-/tmp}/component-sizes.XXXXXX")"
+trap 'rm -f "$TABLE_FILE"' EXIT
+export TABLE_FILE
+
 # Generate the markdown table using Python
-MARKDOWN_TABLE=$(
-  python3 <<'PYTHON_SCRIPT'
+python3 >"$TABLE_FILE" <<'PYTHON_SCRIPT'
 import json
 import sys
 import os
 
-json_file = os.environ.get('JSON_FILE', 'data/disk-space-measurements.json')
+json_file = os.environ['JSON_FILE']
 
 with open(json_file, 'r') as f:
     data = json.load(f)
@@ -103,137 +115,48 @@ lines.append("_Note: Sizes are measured after cleanup and may vary based on syst
 
 print('\n'.join(lines))
 PYTHON_SCRIPT
-)
 
-# Check if the README already has a component sizes section
-if grep -q "<!-- COMPONENT_SIZES_START -->" "$README_FILE"; then
-  # Replace existing section
-  echo "Updating existing component sizes section..."
-
-  # Create temporary file with updated content
-  awk '
-    /<!-- COMPONENT_SIZES_START -->/ {
-      print
-      print "'"$(echo "$MARKDOWN_TABLE" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')"'"
-      skip = 1
-      next
-    }
-    /<!-- COMPONENT_SIZES_END -->/ {
-      skip = 0
-    }
-    !skip {
-      print
-    }
-  ' "$README_FILE" >"$README_FILE.tmp"
-
-  # Actually, let's use a simpler approach with sed
-  # First, let's create the content to insert
-  echo "$MARKDOWN_TABLE" >/tmp/markdown_table_content.txt
-
-  # Use Python for reliable replacement
-  python3 <<PYTHON_REPLACE
+# One pass writes the README, whichever branch it takes: replace the marked
+# section when the markers are there, and put the marked section back when they
+# are not. The two used to be separate branches, and the second one read the
+# table from a file it wrote three lines later.
+python3 <<'PYTHON_UPDATE'
+import os
 import re
-import os
 
-readme_file = os.environ.get('README_FILE', 'README.md')
+readme_file = os.environ['README_FILE']
+
+with open(os.environ['TABLE_FILE'], 'r') as f:
+    table = f.read().strip('\n')
+
 with open(readme_file, 'r') as f:
     content = f.read()
 
-with open('/tmp/markdown_table_content.txt', 'r') as f:
-    table_content = f.read()
+START = '<!-- COMPONENT_SIZES_START -->'
+END = '<!-- COMPONENT_SIZES_END -->'
+section = f'{START}\n{table}\n\n{END}'
 
-# Pattern to match the section between markers
-pattern = r'(<!-- COMPONENT_SIZES_START -->).*?(<!-- COMPONENT_SIZES_END -->)'
-replacement = r'\1\n' + table_content + r'\n\2'
+pattern = re.compile(re.escape(START) + '.*?' + re.escape(END), re.DOTALL)
 
-new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
-
-with open(readme_file, 'w') as f:
-    f.write(new_content)
-
-print(f"Updated {readme_file}")
-PYTHON_REPLACE
-
-  rm -f /tmp/markdown_table_content.txt "$README_FILE.tmp"
-
-else
-  # Add section before License
-  echo "Adding component sizes section..."
-
-  # Find where to insert (before ## License or at end)
-  python3 <<PYTHON_INSERT
-import os
-
-readme_file = os.environ.get('README_FILE', 'README.md')
-with open(readme_file, 'r') as f:
-    content = f.read()
-
-with open('/tmp/markdown_table_content.txt', 'r') as f:
-    table_content = f.read()
-
-# Create the full section with markers
-section = f'''
-<!-- COMPONENT_SIZES_START -->
-{table_content}
-<!-- COMPONENT_SIZES_END -->
-
-'''
-
-# Try to insert before ## License
-if '## License' in content:
-    content = content.replace('## License', section + '## License')
+if pattern.search(content):
+    # A lambda, so a backslash or a \1 in the measurements is data rather than
+    # a replacement-template escape.
+    content = pattern.sub(lambda _match: section, content, count=1)
+    action = 'Updated'
+elif '## License' in content:
+    content = content.replace('## License', section + '\n\n## License', 1)
+    action = 'Added'
 elif '## Documentation' in content:
-    content = content.replace('## Documentation', section + '## Documentation')
+    content = content.replace('## Documentation', section + '\n\n## Documentation', 1)
+    action = 'Added'
 else:
-    # Append at end
-    content = content + '\n' + section
+    content = content.rstrip('\n') + '\n\n' + section + '\n'
+    action = 'Appended'
 
 with open(readme_file, 'w') as f:
     f.write(content)
 
-print(f"Added component sizes section to {readme_file}")
-PYTHON_INSERT
-
-  echo "$MARKDOWN_TABLE" >/tmp/markdown_table_content.txt
-
-  # Re-run the insert script
-  python3 <<PYTHON_INSERT
-import os
-
-readme_file = os.environ.get('README_FILE', 'README.md')
-with open(readme_file, 'r') as f:
-    content = f.read()
-
-with open('/tmp/markdown_table_content.txt', 'r') as f:
-    table_content = f.read()
-
-# Create the full section with markers
-section = f'''<!-- COMPONENT_SIZES_START -->
-{table_content}
-<!-- COMPONENT_SIZES_END -->
-
-'''
-
-# Check if markers already exist (from previous partial run)
-if '<!-- COMPONENT_SIZES_START -->' in content:
-    print("Markers already exist, skipping insert")
-else:
-    # Try to insert before ## License
-    if '## License' in content:
-        content = content.replace('## License', section + '## License')
-    elif '## Documentation' in content:
-        content = content.replace('## Documentation', section + '## Documentation')
-    else:
-        # Append at end
-        content = content + '\n' + section
-
-    with open(readme_file, 'w') as f:
-        f.write(content)
-
-    print(f"Added component sizes section to {readme_file}")
-PYTHON_INSERT
-
-  rm -f /tmp/markdown_table_content.txt
-fi
+print(f'{action} the component sizes section in {readme_file}')
+PYTHON_UPDATE
 
 echo "README update complete!"

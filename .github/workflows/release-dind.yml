@@ -37,6 +37,16 @@ on:
         required: false
         type: string
         default: ''
+    outputs:
+      amd64-result:
+        description: 'Rollup result of the build-dind-amd64 matrix'
+        value: ${{ jobs.status.outputs.amd64-result }}
+      arm64-result:
+        description: 'Rollup result of the build-dind-arm64 matrix'
+        value: ${{ jobs.status.outputs.arm64-result }}
+      manifest-result:
+        description: 'Rollup result of the dind-manifest matrix'
+        value: ${{ jobs.status.outputs.manifest-result }}
     secrets:
       # Optional on purpose: Docker Hub is a mirror of GHCR, and every job that
       # uses these tolerates a failed login (issue #82). A fork or a repository
@@ -54,11 +64,36 @@ permissions:
 # read from release.yml. experiments/test-issue115-workflow-split.sh asserts that
 # every release-*.yml carries the same set with the same values.
 env:
+  # actions/checkout's first act is `git init`, and a git with no configured
+  # `init.defaultBranch` answers it with a thirteen-line advice block - "Using
+  # 'master' as the name for the initial branch... this default branch name will
+  # change" - at the top of every job log. 19 checkouts in the runs issue #121
+  # lists printed 247 lines of it, in jobs where nothing was wrong. No step can
+  # fix it, because it is printed before the first step of ours runs; git reads
+  # configuration from the environment too, and the environment is there from
+  # the start. Ported from the js template, which carries the same three lines
+  # with the same reasoning.
+  GIT_CONFIG_COUNT: '1'
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
   # The full-box Dockerfiles use `RUN --mount=type=bind,from=<stage>` to refresh
   # the copied rustup toolchains inside the same layer (issue #112). buildx
   # enables BuildKit implicitly; the plain `docker build` steps below need it
   # switched on explicitly or that syntax is a parse error.
   DOCKER_BUILDKIT: "1"
+  # Keep the build's provenance out of the log (issue #121). buildx resolves
+  # provenance for `--metadata-file` even when the attestation is switched off
+  # (`provenance: false` on every build step here), docker/build-push-action
+  # prints that metadata verbatim, and on the docker-container driver the
+  # provenance carries `invocation.environment.github_event_payload` - the whole
+  # push event, every commit message included. The runner matches the legacy
+  # `##[command]` form *anywhere* in a line, so commit a2e6420, whose body
+  # quotes `##[error]Process completed with exit code 143.` while explaining a
+  # fix, put 56 failure annotations on build jobs that had every one succeeded
+  # (release run 34293699247). `disabled` means buildx writes no provenance to
+  # the metadata file, so there is nothing to print and nothing to misread.
+  # experiments/test-issue121-log-injection.sh holds this in place.
+  BUILDX_METADATA_PROVENANCE: disabled
   # GitHub Container Registry
   GHCR_REGISTRY: ghcr.io
   GHCR_IMAGE_NAME: ${{ github.repository }}
@@ -73,7 +108,13 @@ jobs:
   # "<base>-dind" sibling. Runs after the source variant's manifest is published.
   build-dind-amd64:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # Caps are sized from measured job durations, not guessed (issue #121,
+    # docs/CI-TIMEOUT-BUDGETS.md): the `full` variant, the slowest of the 14, took 19.2 minutes - which is
+    # 64% of the 30-minute cap this job used to carry, too close to leave. A cap far
+    # above the work it bounds is the number of minutes a hung job burns
+    # before anyone hears about it, and it is reported as a *cancelled* job
+    # rather than a failed one.
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -98,13 +139,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
           ref: main
 
       # Issue #82: free disk space on every build job's runner before pulling
       # base images / running buildx so that COPY --from=*-stage and large
       # apt installs never hit "no space left on device" mid-build.
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           tool-cache: false
           android: true
@@ -179,6 +223,15 @@ jobs:
       - name: Build and push ${{ matrix.variant }} dind-box (amd64)
         id: build-push
         continue-on-error: true
+        # A `uses:` step cannot be routed through
+        # scripts/ci/run-with-budget-warning.sh, so its budget is the one
+        # GitHub applies to a whole step (issue #121,
+        # docs/CI-TIMEOUT-BUDGETS.md). A step that runs out of it fails and
+        # names itself; the job's `timeout-minutes` backstop would instead
+        # report the whole job *cancelled*, with no indication of where the
+        # time went. Sized from measurement: the slowest dind build (the
+        # `full` variant) took 11.8 minutes.
+        timeout-minutes: 20
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -247,13 +300,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          persist-credentials: false
           ref: main
 
       # Issue #82: free disk space on every build job's runner before pulling
       # base images / running buildx so that COPY --from=*-stage and large
       # apt installs never hit "no space left on device" mid-build.
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           tool-cache: false
           android: true
@@ -326,6 +380,7 @@ jobs:
       - name: Build and push ${{ matrix.variant }} dind-box (arm64)
         id: build-push
         continue-on-error: true
+        timeout-minutes: 20
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -371,7 +426,8 @@ jobs:
 
   dind-manifest:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # Measured maximum 1.4 minutes: this job only assembles manifests.
+    timeout-minutes: 10
     needs: [build-dind-amd64, build-dind-arm64]
     strategy:
       fail-fast: false
@@ -389,6 +445,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          persist-credentials: false
           ref: main
 
       - name: Get latest version
@@ -458,3 +515,40 @@ jobs:
         if: steps.dockerhub-login.outcome != 'success'
         run: |
           echo "::warning title=Docker Hub manifest skipped::Skipping the Docker Hub mirror of the ${{ matrix.variant }} dind multi-arch manifests because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
+
+  # === STATUS ===
+  #
+  # The fifth release family had no status job and declared no `workflow_call`
+  # outputs, while the other four exported theirs from `jobs.status.outputs.*`
+  # (issue #121). Two spellings of one step is the shape of defect that produced
+  # issue #119: the convention nobody wrote down is the one a later job picks
+  # wrong. The run summary now carries a dind table like every other family, and
+  # the results are readable by the caller.
+  #
+  # This job summarises; it does not gate. The gate is `pipeline-status` in
+  # release.yml, which needs `dind` along with every other job there. Keeping
+  # the two apart is deliberate: a reusable workflow's declared outputs come
+  # from a job that has to be allowed to complete, so the job that reports the
+  # results must not be the job that fails on them.
+  status:
+    name: dind / status
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [build-dind-amd64, build-dind-arm64, dind-manifest]
+    if: ${{ !cancelled() }}
+    outputs:
+      amd64-result: ${{ needs.build-dind-amd64.result }}
+      arm64-result: ${{ needs.build-dind-arm64.result }}
+      manifest-result: ${{ needs.dind-manifest.result }}
+    steps:
+      - name: Summarise
+        run: |
+          {
+            echo "### dind / status"
+            echo ""
+            echo "| job | result |"
+            echo "| --- | --- |"
+            echo "| build-dind-amd64 | ${{ needs.build-dind-amd64.result }} |"
+            echo "| build-dind-arm64 | ${{ needs.build-dind-arm64.result }} |"
+            echo "| dind-manifest | ${{ needs.dind-manifest.result }} |"
+          } >> "$GITHUB_STEP_SUMMARY"

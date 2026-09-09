@@ -73,11 +73,36 @@ permissions:
   contents: read
 
 env:
+  # actions/checkout's first act is `git init`, and a git with no configured
+  # `init.defaultBranch` answers it with a thirteen-line advice block - "Using
+  # 'master' as the name for the initial branch... this default branch name will
+  # change" - at the top of every job log. 19 checkouts in the runs issue #121
+  # lists printed 247 lines of it, in jobs where nothing was wrong. No step can
+  # fix it, because it is printed before the first step of ours runs; git reads
+  # configuration from the environment too, and the environment is there from
+  # the start. Ported from the js template, which carries the same three lines
+  # with the same reasoning.
+  GIT_CONFIG_COUNT: '1'
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
   # The full-box Dockerfiles use `RUN --mount=type=bind,from=<stage>` to refresh
   # the copied rustup toolchains inside the same layer (issue #112). buildx
   # enables BuildKit implicitly; the plain `docker build` steps below need it
   # switched on explicitly or that syntax is a parse error.
   DOCKER_BUILDKIT: "1"
+  # Keep the build's provenance out of the log (issue #121). buildx resolves
+  # provenance for `--metadata-file` even when the attestation is switched off
+  # (`provenance: false` on every build step here), docker/build-push-action
+  # prints that metadata verbatim, and on the docker-container driver the
+  # provenance carries `invocation.environment.github_event_payload` - the whole
+  # push event, every commit message included. The runner matches the legacy
+  # `##[command]` form *anywhere* in a line, so commit a2e6420, whose body
+  # quotes `##[error]Process completed with exit code 143.` while explaining a
+  # fix, put 56 failure annotations on build jobs that had every one succeeded
+  # (release run 34293699247). `disabled` means buildx writes no provenance to
+  # the metadata file, so there is nothing to print and nothing to misread.
+  # experiments/test-issue121-log-injection.sh holds this in place.
+  BUILDX_METADATA_PROVENANCE: disabled
   # GitHub Container Registry
   GHCR_REGISTRY: ghcr.io
   GHCR_IMAGE_NAME: ${{ github.repository }}
@@ -107,6 +132,10 @@ jobs:
       actions: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
 
       - name: Cancel runs for superseded commits of this pull request
         env:
@@ -127,6 +156,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Check for version changes in VERSION file
@@ -147,6 +177,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Check for changesets
@@ -188,8 +219,13 @@ jobs:
     # should not be created by it.
     needs: [preflight]
     if: needs.preflight.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # pull-requests: write is for the fallback path only. If a repository rule
+    # ever declines the direct push, the bump lands through a pull request
+    # instead of dying after the version has already been committed on the
+    # runner (issue #121).
     permissions:
       contents: write
+      pull-requests: write
     outputs:
       version_bumped: ${{ steps.apply.outputs.version_bumped }}
       new_version: ${{ steps.apply.outputs.new_version }}
@@ -197,6 +233,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          # Kept: scripts/release/apply-changesets.sh pushes the version bump
+          # and the changelog back to main through git-push-with-retry.sh, so
+          # this job needs the credential checkout leaves in .git/config.
+          persist-credentials: true
           fetch-depth: 0
 
       - name: Check for changesets
@@ -208,6 +248,10 @@ jobs:
       - name: Apply changesets
         id: apply
         if: steps.check.outputs.has_changesets == 'true'
+        env:
+          # Only read on the fallback path, when a repository rule declines the
+          # direct push and the bump has to arrive as a pull request.
+          GH_TOKEN: ${{ github.token }}
         run: |
           chmod +x scripts/release/apply-changesets.sh
           ./scripts/release/apply-changesets.sh
@@ -220,8 +264,10 @@ jobs:
     # already proved it cannot publish.
     needs: [preflight]
     if: needs.preflight.result == 'success' && github.event_name == 'workflow_dispatch' && github.event.inputs.release_mode == 'bump-and-release'
+    # pull-requests: write is for the fallback path only; see apply-changesets.
     permissions:
       contents: write
+      pull-requests: write
     outputs:
       version: ${{ steps.bump.outputs.new_version }}
       version_bumped: ${{ steps.bump.outputs.bumped }}
@@ -229,6 +275,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          # Kept: this job pushes the bumped VERSION back to main through
+          # git-push-with-retry.sh, so it needs the credential checkout
+          # leaves in .git/config.
+          persist-credentials: true
           fetch-depth: 0
 
       - name: Configure git
@@ -244,6 +294,9 @@ jobs:
         env:
           BUMP_TYPE: ${{ github.event.inputs.bump_type }}
           DESCRIPTION: ${{ github.event.inputs.description }}
+          # Only read on the fallback path, when a repository rule declines the
+          # direct push and the bump has to arrive as a pull request.
+          GH_TOKEN: ${{ github.token }}
         run: |
           # Read current version
           CURRENT_VERSION=$(tr -d '[:space:]' < VERSION)
@@ -281,7 +334,9 @@ jobs:
           else
             git commit -m "$NEW_VERSION"
           fi
-          git push origin main
+          # Not a bare `git push`: see scripts/release/git-push-with-retry.sh
+          # (issue #121).
+          bash scripts/release/git-push-with-retry.sh origin main "$NEW_VERSION"
 
           echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           echo "bumped=true" >> "$GITHUB_OUTPUT"
@@ -327,6 +382,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       # Trusted publishing leaves a short-lived credential in the Docker CLI
       # config and puts no token in the environment; preflight-credentials.sh
@@ -432,6 +489,9 @@ jobs:
           # commit's parents (HEAD^2^..HEAD^2 per-commit PR diff — issue #108).
           fetch-depth: 0
           ref: ${{ github.ref }}
+          # `git fetch origin main` below is an anonymous read of a public
+          # repository; nothing in this job writes to the remote.
+          persist-credentials: false
 
       # Re-fetch if version was bumped to get latest commit
       - name: Fetch latest changes
@@ -652,6 +712,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          persist-credentials: false
           ref: main
 
       - name: Get latest version
@@ -747,3 +808,48 @@ jobs:
           PREVIOUS_VERSION: ${{ steps.previous.outputs.version }}
         run: |
           bash scripts/release/check-publication.sh
+
+  # === TERMINAL STATUS GATE ===
+  #
+  # The job that makes every other job's result reach the run's conclusion
+  # (issue #121, reference-template best practice "every workflow gets a
+  # terminal status gate").
+  #
+  # GitHub derives a run's conclusion from its jobs, and one cancellation
+  # outranks any number of failures - so a run holding a failed job can still
+  # come out grey, and everything that reads the run rather than each job (the
+  # badge, `gh run list`, the run list quoted in issue #121 itself) reads that
+  # as "no verdict" rather than "something broke". A gate's own conclusion is a
+  # job conclusion, so when it errors the run is red no matter what else was
+  # cancelled. The rationale, the measured run and the supersede-versus-overrun
+  # rule are in scripts/ci/check-pipeline-status.sh.
+  #
+  # `!cancelled()`, not `always()`: cancelling a whole run is somebody's
+  # decision and repainting it red would be a false positive, so this job is
+  # skipped there. `cancelled()` is run-level, so a job cancelled on its own -
+  # an overrun, or a per-job concurrency group firing - still reaches the gate.
+  #
+  # `needs` must name every other job in this file, or a job's result cannot
+  # reach here at all. That is not left to review:
+  # scripts/ci/check-status-gate-covers-all-jobs.mjs derives the list from this
+  # workflow and fails when the two disagree.
+  pipeline-status:
+    name: pipeline-status
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [cancel-superseded, version-check, changeset-check, apply-changesets, version-bump, preflight, detect-changes, js, essentials, languages, full, dind, pr-tests, create-release]
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # Anonymous `git ls-remote` is enough to resolve the branch head, which is
+      # how the script tells a superseded run from an overrun; no token is
+      # persisted for it.
+      - name: Check pipeline status
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          RUN_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: bash scripts/ci/check-pipeline-status.sh

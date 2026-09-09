@@ -58,10 +58,18 @@ SKIP_COUNT="$(printf '%s\n' "$LIST" | grep -c '^SKIP ')"
 RUN_COUNT="$(printf '%s\n' "$LIST" | grep -c '^RUN ')"
 DISCOVERED="$(find experiments -maxdepth 1 -name '*.sh' -type f | wc -l)"
 
-if [ "$SKIP_COUNT" -eq 3 ]; then
-  pass "exactly the three documented suites are skipped"
+# Derived from the runner's own list rather than written down here as a
+# number. A hard-coded 3 is a check that fails the day somebody adds a
+# justified exclusion - which says nothing about the runner and everything
+# about this assertion - while still passing if an entry stops matching, since
+# that lowers the count in the same direction. What the runner promises is that
+# every declared exclusion applies, so that is what is compared.
+DECLARED_SKIPS="$(grep -cE "^\s*\['[^']+'\]=" "$RUNNER")"
+
+if [ "$DECLARED_SKIPS" -gt 0 ] && [ "$SKIP_COUNT" -eq "$DECLARED_SKIPS" ]; then
+  pass "every one of the $DECLARED_SKIPS declared exclusions applies"
 else
-  fail "exactly the three documented suites are skipped (found $SKIP_COUNT)"
+  fail "every one of the $DECLARED_SKIPS declared exclusions applies (skipped $SKIP_COUNT)"
   printf '%s\n' "$LIST" | sed 's/^/      /' >&2
 fi
 
@@ -73,10 +81,11 @@ fi
 
 # Each skip line carries its reason: an exclusion nobody can justify is the
 # first step to a check that nobody runs.
-if [ "$(printf '%s\n' "$LIST" | grep '^SKIP ' | grep -c 'needs ')" -eq 3 ]; then
-  pass "each skipped suite states what it needs"
+JUSTIFIED="$(printf '%s\n' "$LIST" | grep '^SKIP ' | grep -c 'needs ')"
+if [ "$JUSTIFIED" -eq "$SKIP_COUNT" ]; then
+  pass "each of the $SKIP_COUNT skipped suites states what it needs"
 else
-  fail "each skipped suite states what it needs"
+  fail "each of the $SKIP_COUNT skipped suites states what it needs (only $JUSTIFIED do)"
 fi
 
 echo ""
@@ -246,6 +255,83 @@ if grep -q 'run-experiments.sh --list' .github/workflows/scripts.yml; then
 else
   fail "scripts.yml prints the list first"
 fi
+
+# ---------------------------------------------------------------------------
+echo
+echo "== The --list-inputs contract =="
+#
+# The discovered set, one repository-relative path per line, nothing else, exit
+# 0. scripts/ci/check-workflow-path-coverage.mjs reads it to decide whether a
+# workflow's `paths:` filter can be matched by the files this gate reads. A
+# gate that answers this wrongly makes that check wrong in whichever direction
+# the error points: paths the filter cannot match are reported as unreachable
+# when they are fine, or - worse - the real inputs are never compared at all
+# and a job that can never start goes on looking like a clean tree (issue #121).
+
+CONTRACT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CONTRACT_GATE="scripts/ci/run-experiments.sh"
+CONTRACT_RC=0
+CONTRACT_OUT="$(cd "$CONTRACT_ROOT" && bash "$CONTRACT_ROOT/$CONTRACT_GATE" --list-inputs 2>&1)" || CONTRACT_RC=$?
+
+[ "$CONTRACT_RC" -eq 0 ] \
+  && pass "--list-inputs exits 0" \
+  || fail "--list-inputs exited $CONTRACT_RC"
+
+CONTRACT_COUNT="$(printf '%s\n' "$CONTRACT_OUT" | grep -c .)"
+[ "$CONTRACT_COUNT" -gt 0 ] \
+  && pass "--list-inputs names $CONTRACT_COUNT input(s)" \
+  || fail "--list-inputs named nothing, so the coverage check compares an empty set"
+
+# Paths only: no banner, no count, no option echo, no blank line. Anything else
+# here is read by the coverage gate as a file name and matched against `paths:`
+# patterns, where it can only ever be a finding about a file that is not there.
+CONTRACT_STRAY=""
+while IFS= read -r contract_line; do
+  if [ -z "$contract_line" ]; then
+    CONTRACT_STRAY="(a blank line)"
+    break
+  fi
+  case "$contract_line" in
+    -*)
+      CONTRACT_STRAY="$contract_line"
+      break
+      ;;
+  esac
+  if [ ! -f "$CONTRACT_ROOT/$contract_line" ]; then
+    CONTRACT_STRAY="$contract_line"
+    break
+  fi
+done <<<"$CONTRACT_OUT"
+[ -z "$CONTRACT_STRAY" ] \
+  && pass "every line is a repository-relative path that exists" \
+  || fail "--list-inputs printed something that is not a tracked path" "$CONTRACT_STRAY"
+
+CONTRACT_DUPES="$(printf '%s\n' "$CONTRACT_OUT" | sort | uniq -d)"
+[ -z "$CONTRACT_DUPES" ] \
+  && pass "and names each of them once" \
+  || fail "--list-inputs repeats a path" "$CONTRACT_DUPES"
+
+printf '%s\n' "$CONTRACT_OUT" | grep -qx -- 'experiments/test-issue115-experiment-runner.sh' \
+  && pass "and names experiments/test-issue115-experiment-runner.sh, which this gate demonstrably reads" \
+  || fail "--list-inputs omits experiments/test-issue115-experiment-runner.sh"
+
+# dev/log holds downloaded evidence and verbatim copies of other projects'
+# files. They are not ours to fix, and every gate here excludes them.
+printf '%s\n' "$CONTRACT_OUT" | grep -q '^dev/log/' \
+  && fail "--list-inputs includes the vendored evidence tree" \
+  || pass "and excludes dev/log, as the sweep itself does"
+
+# `git ls-files` answers about the current directory. Run from a subdirectory
+# it lists that subtree alone, with paths relative to it - so a gate that does
+# not anchor at the top level first sweeps a fraction of the tree, exits 0 over
+# it, and answers this contract with paths that no repository-root pattern can
+# match. experiments/reproduce-issue121-subdirectory-discovery.sh measures it
+# for every gate at once; this is the assertion for this one.
+CONTRACT_SUB="$(cd "$CONTRACT_ROOT/scripts" && bash "$CONTRACT_ROOT/$CONTRACT_GATE" --list-inputs 2>&1)" || true
+[ "$CONTRACT_SUB" = "$CONTRACT_OUT" ] \
+  && pass "and gives the same answer from a subdirectory, being about the repository" \
+  || fail "--list-inputs reports on whichever directory it is started from" \
+    "$(printf '%s\n' "$CONTRACT_SUB" | head -3)"
 
 echo ""
 echo "================================"

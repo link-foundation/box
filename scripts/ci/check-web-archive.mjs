@@ -24,6 +24,11 @@
  *
  * Environment variables:
  *   LYCHEE_OUTPUT   Path to lychee's markdown output (default: lychee/out.md)
+ *   RECOVERED_URLS  Path to the list of URLs the re-check
+ *                   (scripts/ci/recheck-broken-links.mjs) found healthy after
+ *                   lychee got no answer at all, one per line
+ *                   (default: lychee/recovered.txt). Those URLs are skipped;
+ *                   a missing file skips nothing.
  *   GITHUB_OUTPUT   Set by GitHub Actions; receives `all_archived`
  *
  * Exit codes:
@@ -130,6 +135,32 @@ export function extractBrokenLinks(content) {
  */
 export function extractBrokenUrls(content) {
   return extractBrokenLinks(content).urls;
+}
+
+/**
+ * Drop the URLs the re-check found healthy.
+ *
+ * A URL that never answered lychee but answers the re-check is not a broken
+ * link (issue #121, lycheeverse/lychee#2297). Leaving it in this report would
+ * send a healthy URL to the Wayback Machine and fail the job on whatever came
+ * back - a false positive laundered through a second service.
+ *
+ * @param {string[]} urls - Broken http(s) URLs from the lychee report
+ * @param {string} recoveredText - The re-check's output file, one URL per line
+ * @returns {{remaining: string[], recovered: string[]}}
+ */
+export function splitRecoveredUrls(urls, recoveredText) {
+  const recoveredSet = new Set(
+    (recoveredText || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+  );
+
+  return {
+    remaining: urls.filter((url) => !recoveredSet.has(url)),
+    recovered: urls.filter((url) => recoveredSet.has(url)),
+  };
 }
 
 /**
@@ -298,8 +329,21 @@ async function main() {
   }
 
   const content = readFileSync(lycheeOutput, 'utf-8');
-  const { urls: brokenUrls, others: unarchivableLinks } =
+  const { urls: reportedUrls, others: unarchivableLinks } =
     extractBrokenLinks(content);
+
+  const recoveredFile = process.env.RECOVERED_URLS || 'lychee/recovered.txt';
+  const recoveredText = existsSync(recoveredFile)
+    ? readFileSync(recoveredFile, 'utf-8')
+    : '';
+  const { remaining: brokenUrls, recovered: recheckedHealthy } =
+    splitRecoveredUrls(reportedUrls, recoveredText);
+
+  for (const url of recheckedHealthy) {
+    console.log(
+      `\u2713 ${url} never answered lychee but answers the re-check - not broken`
+    );
+  }
 
   reportUnarchivableLinks(unarchivableLinks);
 

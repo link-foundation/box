@@ -275,7 +275,7 @@ To prevent this issue from recurring:
 
 ## References
 
-- [GitHub Actions Runner Disk Space](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources)
+- [GitHub Actions Runner Disk Space](https://docs.github.com/en/actions/reference/runners/github-hosted-runners#supported-runners-and-hardware-resources)
 - [Common GitHub Actions Pitfalls](https://docs.github.com/en/actions/learn-github-actions/understanding-github-actions)
 - [APT Package Management](https://wiki.debian.org/apt)
 

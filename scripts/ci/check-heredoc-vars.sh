@@ -55,7 +55,7 @@
 #   counted and printed, so they cannot pile up unnoticed.
 #
 # USAGE
-#   scripts/ci/check-heredoc-vars.sh [--verbose] [file ...]
+#   scripts/ci/check-heredoc-vars.sh [--verbose] [--list-inputs] [file ...]
 #
 #   With no files, checks every tracked *.sh in the repository.
 #   --verbose (default off) prints every heredoc found and every expansion
@@ -67,12 +67,17 @@
 set -euo pipefail
 
 VERBOSE=0
+LIST_INPUTS=0
 FILES=()
 
 while [ $# -gt 0 ]; do
   case "$1" in
     -v | --verbose)
       VERBOSE=1
+      shift
+      ;;
+    --list-inputs)
+      LIST_INPUTS=1
       shift
       ;;
     -h | --help)
@@ -98,7 +103,23 @@ FILES+=("$@")
 if [ "${#FILES[@]}" -eq 0 ]; then
   ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
   cd "$ROOT"
-  while IFS= read -r f; do FILES+=("$f"); done < <(git ls-files '*.sh')
+  # dev/log/ holds evidence: downloaded logs and verbatim copies of other
+  # projects' scripts, kept so a claim in a case study can be re-checked. They
+  # are not this repository's code, and reporting our heredoc rule against a
+  # template we did not write is a false positive by construction — which is
+  # why shellcheck, shfmt, the awk scan and the JavaScript parse all exclude
+  # the same directory (issue #121).
+  while IFS= read -r f; do FILES+=("$f"); done < <(git ls-files '*.sh' | grep -v '^dev/log/')
+fi
+
+# The discovered set, one repository-relative path per line, nothing else,
+# exit 0. scripts/ci/check-workflow-path-coverage.mjs reads it to check that a
+# change to any of these files can start the workflow that runs this gate — a
+# `paths:` filter matching none of them makes the job unreachable, which looks
+# exactly like a clean tree (issue #121).
+if [ "$LIST_INPUTS" -eq 1 ]; then
+  [ "${#FILES[@]}" -gt 0 ] && printf '%s\n' "${FILES[@]}"
+  exit 0
 fi
 
 # Standard environment and shell variables. A generated script may rely on these
@@ -122,7 +143,45 @@ for file in "${FILES[@]}"; do
   out="$(
     VERBOSE="$VERBOSE" ENV_ALLOWLIST="$ENV_ALLOWLIST" \
       awk -v FILE="$file" '
+      # Is there an odd number of quotes of either kind in this token? If so
+      # the value it opened continues into the next whitespace-separated token,
+      # and that token is a fragment of a value rather than a name.
+      # SQ rather than a literal: the whole program is inside a single-quoted
+      # shell string, and \x27 is an escape POSIX awk does not define.
+      function odd_quotes(t,   dq, sq) {
+        dq = gsub(/"/, "&", t)
+        sq = gsub(SQ, "&", t)
+        return (dq % 2) || (sq % 2)
+      }
+
+      # Record every variable named by one export/declare -x statement. Stops at
+      # the first token that is not a name or NAME=value - a flag (`export -f`
+      # exports functions, not variables), a redirection, a `;`, a `&&` - so
+      # nothing beyond the statement is collected.
+      function collect_exports(rest,   n, parts, i, tok, name, in_value) {
+        n = split(rest, parts, /[ \t]+/)
+        in_value = 0
+        for (i = 1; i <= n; i++) {
+          tok = parts[i]
+          if (in_value) {
+            # still inside a quoted value; a name cannot start here
+            if (odd_quotes(tok)) in_value = 0
+            continue
+          }
+          if (tok ~ /^[A-Za-z_][A-Za-z0-9_]*$/) { exported[tok] = 1; continue }
+          if (tok ~ /^[A-Za-z_][A-Za-z0-9_]*=/) {
+            name = tok
+            sub(/=.*/, "", name)
+            exported[name] = 1
+            if (odd_quotes(tok)) in_value = 1
+            continue
+          }
+          return
+        }
+      }
+
       BEGIN {
+        SQ = sprintf("%c", 39)
         verbose = (ENVIRON["VERBOSE"] == "1")
         n = split(ENVIRON["ENV_ALLOWLIST"], a, /[ \t\n]+/)
         for (i = 1; i <= n; i++) if (a[i] != "") allowed[a[i]] = 1
@@ -131,12 +190,12 @@ for file in "${FILES[@]}"; do
 
       # ======================= pass 1: whole-file facts ======================
       NR == FNR {
-        # export NAME / export NAME=value / declare -x NAME
-        if (match($0, /(^|[ \t;&|(])(export|declare[ \t]+-x|typeset[ \t]+-x)[ \t]+[A-Za-z_][A-Za-z0-9_]*/)) {
-          t = substr($0, RSTART, RLENGTH)
-          sub(/.*[ \t]/, "", t)
-          exported[t] = 1
-        }
+        # export NAME / export NAME=value / declare -x NAME - and one statement
+        # may name several: `export RECORD=... EXITS=...`. Reading only the
+        # first name left every later one looking unset, which reported a
+        # perfectly correct heredoc as a leak (issue #121).
+        if (match($0, /(^|[ \t;&|(])(export|declare[ \t]+-x|typeset[ \t]+-x)[ \t]+/))
+          collect_exports(substr($0, RSTART + RLENGTH))
         # Commands that start from a clean environment. Exporting does not
         # survive these, so they are what makes a leak fatal.
         if ($0 !~ /^[ \t]*#/ &&

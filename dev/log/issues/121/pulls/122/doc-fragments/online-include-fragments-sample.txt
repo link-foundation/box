@@ -1,0 +1,15 @@
+Hint: Followed 4 redirects. You might want to consider replacing redirecting URLs with the resolved URLs. Use verbose mode (`-v`/`-vv`) to see redirection details.
+Issues found in 3 inputs. Find details below.
+
+[docs/case-studies/issue-29/README.md]:
+[ERROR] https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources (at 278:3) | Cannot find fragment
+
+[docs/case-studies/issue-62/CASE-STUDY.md]:
+[ERROR] https://docs.docker.com/engine/containers/run/#entrypoint-default-command-to-execute-at-runtime (at 128:13) | Cannot find fragment
+[ERROR] https://docs.docker.com/engine/containers/run/#entrypoint-default-command-to-execute-at-runtime (at 178:3) | Cannot find fragment
+
+[docs/case-studies/issue-80/research.md]:
+[ERROR] https://github.com/jpetazzo/dind#warning-the-resulting-images-are-not-meant-to-replace-real-vms (at 32:4) | Cannot find fragment
+
+🔍 141 Total (in 5s 68ms) 🔗 112 Unique ✅ 132 OK 🚫 4 Errors 👻 5 Excluded 🔀 4 Redirects
+

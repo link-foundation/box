@@ -1,0 +1,43 @@
+{
+  "buildx.build.provenance": {
+    "builder": {
+      "id": ""
+    },
+    "buildType": "https://mobyproject.org/buildkit@v1",
+    "invocation": {
+      "configSource": {
+        "entryPoint": "Dockerfile"
+      },
+      "parameters": {
+        "frontend": "dockerfile.v0",
+        "locals": [
+          {
+            "name": "context"
+          },
+          {
+            "name": "dockerfile"
+          }
+        ],
+        "compatibilityVersion": 30
+      },
+      "environment": {
+        "dockerfileVersion": "1.26.0",
+        "github_event_name": "push",
+        "github_event_payload": {
+          "after": "deadbeef",
+          "commits": [
+            {
+              "id": "a2e6420",
+              "message": "ci: spend the idle disk (issue #119)\n\n##[error]Process completed with exit code 143.\n  ##[error]The runner has received a shutdown signal.\n\nrest of the body"
+            }
+          ],
+          "repository": {
+            "full_name": "link-foundation/box"
+          }
+        },
+        "platform": "linux/amd64"
+      }
+    }
+  },
+  "buildx.build.ref": "provrepro/provrepro0/06gawqty97i5gmz6onef8xju9"
+}

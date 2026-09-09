@@ -1,0 +1,151 @@
+name: Docs
+
+# Documentation validation (hive-mind principle #12), the half of it that no
+# link checker can do.
+#
+# links.yml asks whether the links in the markdown resolve. It cannot ask
+# whether a document that nothing links to is still there, and it never reads a
+# shell script or a workflow - so the two things this repository's code actually
+# depends on were unchecked (issue #121):
+#
+#   * scripts/update-readme-sizes.sh inserts the generated component-sizes
+#     section before README's `## License`, falling back to `## Documentation`,
+#     and measure-disk-space.yml commits the result to main. Rename either
+#     heading and the section is appended to the end of the file, job green.
+#   * scripts/release/preflight-credentials.sh sends an operator holding a
+#     rejected credential to "the 'Releasing' section of README.md", and
+#     check-publication.sh and docker-push-failure-classifier.sh send them to
+#     docs/RELEASING.md. Those messages are read on the worst day of a release;
+#     a heading renamed six months earlier is discovered then.
+#
+# Its own workflow rather than a job in links.yml or scripts.yml, because it is
+# the only gate whose input is *both* the markdown and the shell: links.yml
+# would then run lychee against every external host on a one-line change to a
+# script, and scripts.yml would run shellcheck, shfmt and the experiment suites
+# on a typo in a case study.
+#
+# `scripts/**` and `.github/**` are in the filter because check-required-docs.sh
+# reads both trees whole, looking for documentation paths named in code: a
+# reference added in a .mjs or a workflow is exactly the kind that goes stale,
+# and `**.sh` alone could not start this workflow for it (issue #121).
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.md'
+      - '**.sh'
+      - 'scripts/**'
+      - '.github/**'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**.md'
+      - '**.sh'
+      - 'scripts/**'
+      - '.github/**'
+  workflow_dispatch:
+
+# Least-privilege default; this job only reads the checked-out tree.
+permissions:
+  contents: read
+
+env:
+  # actions/checkout's first act is `git init`, and a git with no configured
+  # `init.defaultBranch` answers it with a thirteen-line advice block - "Using
+  # 'master' as the name for the initial branch... this default branch name will
+  # change" - at the top of every job log. 19 checkouts in the runs issue #121
+  # lists printed 247 lines of it, in jobs where nothing was wrong. No step can
+  # fix it, because it is printed before the first step of ours runs; git reads
+  # configuration from the environment too, and the environment is there from
+  # the start. Ported from the js template, which carries the same three lines
+  # with the same reasoning.
+  GIT_CONFIG_COUNT: '1'
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+
+jobs:
+  required-docs:
+    name: docs / required documents
+    runs-on: ubuntu-24.04
+    # Typical run: under two seconds over six documents and ~50 mentions. The
+    # limit is a backstop, not a budget.
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-required-docs
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      # Fails the job with a file/line annotation on a missing document, a
+      # renamed section something outside the document depends on, a broken
+      # component-sizes marker pair, or a docs/ path named in scripts/ or
+      # .github/ that resolves to nothing.
+      #
+      # Reproduce locally with the identical command:
+      #   bash scripts/ci/check-required-docs.sh --verbose
+      - name: Required documents, sections and references
+        run: bash scripts/ci/check-required-docs.sh
+
+      # The checker is only worth trusting if its own false-positive and
+      # false-negative fixtures still hold.
+      - name: Checker fixtures
+        run: bash experiments/test-issue121-required-docs.sh
+
+  # === TERMINAL STATUS GATE ===
+  #
+  # The job that makes every other job's result reach the run's conclusion
+  # (issue #121, reference-template best practice "every workflow gets a
+  # terminal status gate").
+  #
+  # GitHub derives a run's conclusion from its jobs, and one cancellation
+  # outranks any number of failures - so a run holding a failed job can still
+  # come out grey, and everything that reads the run rather than each job (the
+  # badge, `gh run list`, the run list quoted in issue #121 itself) reads that
+  # as "no verdict" rather than "something broke". A gate's own conclusion is a
+  # job conclusion, so when it errors the run is red no matter what else was
+  # cancelled. The rationale, the measured run and the supersede-versus-overrun
+  # rule are in scripts/ci/check-pipeline-status.sh.
+  #
+  # `!cancelled()`, not `always()`: cancelling a whole run is somebody's
+  # decision and repainting it red would be a false positive, so this job is
+  # skipped there. `cancelled()` is run-level, so a job cancelled on its own -
+  # an overrun, or a per-job concurrency group firing - still reaches the gate.
+  #
+  # `needs` must name every other job in this file, or a job's result cannot
+  # reach here at all. That is not left to review:
+  # scripts/ci/check-status-gate-covers-all-jobs.mjs derives the list from this
+  # workflow and fails when the two disagree.
+  pipeline-status:
+    name: pipeline-status
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [required-docs]
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # Anonymous `git ls-remote` is enough to resolve the branch head, which is
+      # how the script tells a superseded run from an overrun; no token is
+      # persisted for it.
+      - name: Check pipeline status
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          RUN_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: bash scripts/ci/check-pipeline-status.sh

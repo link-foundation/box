@@ -2,7 +2,7 @@
 # run-experiments.sh - Run the repository's experiment/regression suites.
 #
 # Usage:
-#   bash scripts/ci/run-experiments.sh [--list] [--verbose]
+#   bash scripts/ci/run-experiments.sh [--list] [--list-inputs] [--verbose]
 #
 # Why this exists (issue #115, RC-9). The repository had 27 suites under
 # experiments/ and the workflows referenced 5 of them. The other 22 ran only
@@ -26,11 +26,16 @@ cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 SUITE_TIMEOUT="${SUITE_TIMEOUT:-300}"
 BOX_VERBOSE="${BOX_VERBOSE:-0}"
 LIST_ONLY=0
+LIST_INPUTS=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --list)
       LIST_ONLY=1
+      shift
+      ;;
+    --list-inputs)
+      LIST_INPUTS=1
       shift
       ;;
     -v | --verbose)
@@ -63,6 +68,9 @@ declare -A SKIP_SUITES=(
   ['node-lts-integration-test.sh']="needs network: resolves the live Node LTS feed (covered by the version-policy CI tier)"
   ['rust-refresh-layer-test.sh']="needs docker: builds layers to measure image size"
   ['verify-full-box-tooling.sh']="needs docker and a pulled full-box image (tens of GB); manual probe behind scripts/ci/test-box.sh"
+  ['test-issue121-provenance-metadata-leak.sh']="needs docker: drives a real buildx build to reproduce the metadata provenance leak (its offline twin, test-issue121-log-injection.sh, runs here)"
+  ['measure-issue121-apt-recommends.sh']="needs docker and a network: resolves apt dependency plans in ubuntu:24.04 to measure what --no-install-recommends drops; a measurement, not an assertion (its recorded output is in dev/log/issues/121/pulls/122/apt-recommends/)"
+  ['reproduce-issue121-actionlint-version-gap.sh']="needs docker and a network: runs two pinned actionlint images over the same fixtures to measure which checks the older one cannot make; a measurement, not an assertion (the version floor it argues for is asserted offline by test-issue121-workflow-audit-scope.sh)"
 )
 
 # Where the skip names come from, which is the repository's suite directory
@@ -89,6 +97,15 @@ mapfile -t SUITES < <(find "$EXPERIMENTS_DIR" -maxdepth 1 -name '*.sh' -type f |
 if [ "${#SUITES[@]}" -eq 0 ]; then
   echo "::error::No suites found under $EXPERIMENTS_DIR/ - the discovery glob is wrong."
   exit 1
+fi
+
+# --list-inputs is --list with the annotations removed: the suite paths, one
+# per line, exit 0, including the ones this runner skips — a skipped suite is
+# still a file whose change should start the workflow that runs this. It is the
+# contract scripts/ci/check-workflow-path-coverage.mjs reads (issue #121).
+if [ "$LIST_INPUTS" = "1" ]; then
+  printf '%s\n' "${SUITES[@]}"
+  exit 0
 fi
 
 if [ "$LIST_ONLY" = "1" ]; then

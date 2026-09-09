@@ -26,6 +26,40 @@ inputs:
       registry outages. Set to an empty string to disable the mirror fallback.
     required: false
     default: 'mirror.gcr.io'
+  cleanup:
+    description: >
+      Whether docker/setup-buildx-action's post step removes the builder when
+      the job ends. Left empty it decides from the runner: never on a
+      GitHub-hosted runner, always on a self-hosted one. Set to "true" or
+      "false" to override.
+
+      The reason is measured (issue #121). The post step runs `docker buildx
+      rm`, which deletes the BuildKit state volume; after a full-box build that
+      volume holds the whole build cache, and the delete does not finish inside
+      the 20 seconds buildx allows it by default (docker/buildx
+      commands/root.go: `--timeout` defaults to 20s, and the action does not
+      pass one). The action ignores the exit code and reports the stderr with
+      `core.warning`, so run 34293699247's `full / docker-build-push` job -
+      which succeeded, pushed, and published - carries the annotation
+      "ERROR: failed to remove one or more builders" with
+
+        Delete ".../volumes/buildx_buildkit_builder-<id>0_state":
+        context deadline exceeded
+
+      after exactly 20.05s. Reported upstream as docker/buildx#4067 (the
+      removal inheriting a status timeout, a regression in v0.36.0) and
+      docker/setup-buildx-action#615 (the post step not passing one), and
+      reproduced against a real daemon by
+      experiments/issue-121-buildx-rm-timeout/.
+
+      A warning that appears on a green run and means
+      nothing an operator can act on is noise of the kind this repository is
+      trying to remove; and a GitHub-hosted runner is destroyed whole the
+      moment the job ends, so the volume it warns about outlives the warning by
+      seconds. A persistent self-hosted runner is the case the cleanup exists
+      for, and it keeps it.
+    required: false
+    default: ''
   verbose:
     description: >
       Set to "true" to enable shell tracing (set -x) in the pre-pull step for
@@ -108,3 +142,8 @@ runs:
       uses: docker/setup-buildx-action@v4
       with:
         driver-opts: image=${{ inputs.buildkit-image }}
+        # An explicit input wins; otherwise the runner decides. `runner.environment`
+        # is 'github-hosted' on the ephemeral runners every job in this
+        # repository uses, and anything else is a machine that outlives the job
+        # and does want its builder removed.
+        cleanup: ${{ inputs.cleanup != '' && inputs.cleanup || runner.environment != 'github-hosted' }}

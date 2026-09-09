@@ -59,6 +59,14 @@ COPY ubuntu/24.04/common.sh /tmp/common.sh
 
 # --- Install system-level packages (cannot be COPY'd from images) ---
 # Note: PHP is NOT installed here unconditionally - it depends on the php-stage method
+# Recommends are kept here, and the measurement says why: on ubuntu:24.04 this
+# set resolves to 379 packages with recommends and 149 without, and the 230 that
+# --no-install-recommends would drop include build-essential, gcc, g++, make,
+# perl, python3, pkg-config and the -dev headers r-base needs to build a CRAN
+# package from source. A box is a development environment, so a package Debian
+# merely "recommends" is a tool the user expects to find.
+# Measured by experiments/measure-issue121-apt-recommends.sh (issue #121).
+# hadolint ignore=DL3015
 RUN . /tmp/common.sh && \
     (add_cran_repo || true) && \
     apt_update_with_retry && \
@@ -104,6 +112,12 @@ COPY --from=php-stage --chown=box:box /home/box/.php-install-method /home/box/.p
 RUN mkdir -p /home/linuxbrew/.linuxbrew && \
     chown -R box:box /home/linuxbrew
 COPY --from=php-stage --chown=box:box /home/linuxbrew/.linuxbrew/ /home/linuxbrew/.linuxbrew/
+# Recommends are kept here: measured, --no-install-recommends drops 7 packages
+# from this set, among them ca-certificates and openssl - the trust store PHP's
+# HTTPS streams verify against. Saving seven packages is not worth an https://
+# request that fails certificate verification at runtime.
+# Measured by experiments/measure-issue121-apt-recommends.sh (issue #121).
+# hadolint ignore=DL3015
 RUN . /tmp/common.sh && \
     PHP_METHOD=$(cat /home/box/.php-install-method 2>/dev/null || echo "unknown") && \
     echo "PHP install method from php-stage: $PHP_METHOD" && \

@@ -1,0 +1,12 @@
+# The template revisions this pull request was compared against.
+# Refreshed 2026-09-09; both had moved since the earlier snapshot in this directory.
+#
+# Stored here: workflows, the scripts they run, the tests that hold their
+# invariants, root-level tool configuration and prose. Excluded: docs/case-studies
+# and docs/screenshots (7.4 MB of the JS template's own evidence), lockfiles, and
+# the application source each template ships as an example. The *.file-tree.txt
+# files list every path, including the excluded ones, so the comparison of file
+# trees the issue asks for is complete even where the content is not stored.
+
+js-ai-driven-development-pipeline-template  c3a6d23b693972a70097430f01e69fcee5a51ad2  2026-09-08T20:40:50Z
+python-ai-driven-development-pipeline-template  470e17605fc37b33fd7ea4e8aa8d16eaab1d9253  2026-09-09T11:35:49Z

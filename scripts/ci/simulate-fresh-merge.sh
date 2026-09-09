@@ -72,10 +72,17 @@ if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
     || echo "::warning title=simulate-fresh-merge::could not deepen the checkout"
 fi
 
-# Every checkout in this repository sets `persist-credentials: false`
+# Every checkout that does not push sets `persist-credentials: false`
 # (zizmor's artipacked rule), so this fetch is anonymous. That is fine here
 # because the repository is public; making this work on a private repository
 # would mean handing the action a token, not dropping the hardening.
+#
+# This comment claimed "every checkout in this repository" and was false for
+# thirty of the fifty-five when it was written: nothing validated it, and the
+# zizmor gate's severity floor sat above artipacked's Low, so nothing could.
+# scripts/ci/check-checkout-credentials.mjs validates it now (issue #121), and
+# it is the narrower claim above that is true - three jobs do push, and they
+# say `persist-credentials: true` and why.
 #
 # Retried, because this step now runs in sixteen jobs: a single flaky fetch
 # would fail all of them, and a check that fails for a reason unrelated to the

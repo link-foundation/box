@@ -8,17 +8,47 @@ on:
       - '.github/workflows/**'
       - '.github/actions/**'
       - '.github/zizmor.yml'
+      # The gates below read the workflows, so editing one has to re-run it.
+      - 'scripts/ci/check-status-gate-covers-all-jobs.mjs'
+      - 'scripts/ci/check-timeout-budgets.mjs'
+      - 'scripts/ci/check-workflow-path-coverage.mjs'
+      - 'scripts/ci/check-checkout-credentials.mjs'
+      - 'experiments/test-issue121-path-coverage.sh'
+      - 'experiments/test-issue121-git-init-hint.sh'
+      - 'experiments/test-issue121-checkout-credentials.sh'
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
       - '.github/workflows/**'
       - '.github/actions/**'
       - '.github/zizmor.yml'
+      # The gates below read the workflows, so editing one has to re-run it.
+      - 'scripts/ci/check-status-gate-covers-all-jobs.mjs'
+      - 'scripts/ci/check-timeout-budgets.mjs'
+      - 'scripts/ci/check-workflow-path-coverage.mjs'
+      - 'scripts/ci/check-checkout-credentials.mjs'
+      - 'experiments/test-issue121-path-coverage.sh'
+      - 'experiments/test-issue121-git-init-hint.sh'
+      - 'experiments/test-issue121-checkout-credentials.sh'
   workflow_dispatch:
 
 # Least-privilege default; these jobs only read the checked-out tree.
 permissions:
   contents: read
+
+env:
+  # actions/checkout's first act is `git init`, and a git with no configured
+  # `init.defaultBranch` answers it with a thirteen-line advice block - "Using
+  # 'master' as the name for the initial branch... this default branch name will
+  # change" - at the top of every job log. 19 checkouts in the runs issue #121
+  # lists printed 247 lines of it, in jobs where nothing was wrong. No step can
+  # fix it, because it is printed before the first step of ours runs; git reads
+  # configuration from the environment too, and the environment is there from
+  # the start. Ported from the js template, which carries the same three lines
+  # with the same reasoning.
+  GIT_CONFIG_COUNT: '1'
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
 
 jobs:
   actionlint:
@@ -45,10 +75,96 @@ jobs:
       # thousands of lines of shell that no other linter sees. A native
       # actionlint binary without shellcheck on PATH silently skips the shell
       # checks and exits 0, so reproduce failures with the image:
-      #   docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
-      - uses: docker://rhysd/actionlint:1.7.7
+      #   docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+      #
+      # Pinned by digest, not by tag: a mutable tag of a repository we do not
+      # control is arbitrary code execution in any job that holds credentials,
+      # which is the `'*': hash-pin` policy this repository already declares in
+      # .github/zizmor.yml. Re-resolve when bumping:
+      #   docker pull rhysd/actionlint:<tag> &&
+      #   docker buildx imagetools inspect rhysd/actionlint:<tag>
+      #
+      # A digest pin also freezes the check set, which is why the version it
+      # resolves to is part of this gate rather than an implementation detail.
+      # v1.7.7 (2025-01-25) predates three checks that report exactly what this
+      # workflow exists to catch, a check that cannot fail:
+      #   * `glob`         - a `paths:` entry beginning with `./` matches
+      #                      nothing, so the workflow never starts (v1.7.11).
+      #   * `if-cond`      - `if: false` on a job that is still listed in the
+      #                      status gate's `needs` (v1.7.9, v1.7.10).
+      #   * `runner-label` - a label GitHub has removed, so the job never
+      #                      starts (v1.7.8, v1.7.10).
+      # Measured against fixtures for all three plus a YAML merge key, v1.7.7
+      # reports one finding and describes it wrongly; v1.7.12 reports four:
+      # experiments/reproduce-issue121-actionlint-version-gap.sh. Against this
+      # repository as it stands both are clean, so the bump costs nothing now
+      # and is the only thing here that can make those three findings - the
+      # coverage gate below cannot see a dead `paths:` entry that has a live
+      # sibling.
+      - uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 # v1.7.12
         with:
           args: -color
+
+      # actionlint validates a workflow's syntax; it cannot know that a job was
+      # left out of the terminal gate's `needs` and so cannot turn the run red
+      # (issue #121). That requirement is derived from each workflow rather than
+      # kept in a list, so adding a job to any file here fails this step until
+      # the gate names it.
+      - name: Every workflow's status gate covers every job in it
+        run: node scripts/ci/check-status-gate-covers-all-jobs.mjs .github/workflows/*.yml
+
+      # The same argument one level down (issue #121). A long step's execution
+      # budget only reports the overrun if it expires *before* the job's
+      # `timeout-minutes` backstop cancels the job; a budget that meets or
+      # exceeds its cap is a check that can never fire, and the run goes grey
+      # with no indication of which step ran long. This derives both numbers
+      # from the workflow and fails when a budget claims too much of its cap -
+      # per matrix leg, because this repository sizes caps and budgets per leg.
+      - name: Every execution budget fits inside its job's timeout
+        run: node scripts/ci/check-timeout-budgets.mjs .github/workflows/*.yml
+
+      # And one level up again (issue #121). A `paths:` filter is the cheapest
+      # way to build a check that cannot fail: the job exists, the gate works,
+      # its fixtures pass, and because the filter matches none of the files the
+      # gate reads, the pull request that breaks exactly what it was written for
+      # never starts it - nothing red, nothing skipped, just absent from the
+      # list. scripts.yml ran the JavaScript syntax gate under a filter of
+      # '**.sh', 'ubuntu/**' and 'tests/**' for a day. This asks, of every
+      # script a workflow runs, whether every file it reads can start a run.
+      - name: Every gate can be started by the files it reads
+        run: node scripts/ci/check-workflow-path-coverage.mjs
+
+      # The gate's own fixtures: throwaway repositories whose filters are known
+      # to cover or to miss, so a change to the pattern translation - GitHub's
+      # `*` stops at a slash and `**` does not - fails here rather than by
+      # quietly passing a repository it should have reported.
+      - name: Path-coverage fixtures
+        run: bash experiments/test-issue121-path-coverage.sh
+
+      # Every job log used to open with git's thirteen-line "Using 'master' as
+      # the name for the initial branch" advice, because actions/checkout runs
+      # `git init` before any step can configure it. The fix is three `env:`
+      # entries per workflow, and the thing that rots is the next workflow
+      # added without them - so this reads all of them, every time one changes.
+      - name: Git advice hints
+        run: bash experiments/test-issue121-git-init-hint.sh
+
+      # actions/checkout authenticates by writing the job's token into
+      # .git/config, and unless told otherwise leaves it there for every later
+      # step. Thirty of this repository's fifty-five checkouts said nothing, so
+      # thirty jobs kept it - `js / build-js-amd64` for 427 seconds while a
+      # docker build ran with the workspace as its context, against 1.1-2.1s in
+      # the jobs that had been hardened. zizmor audits this (`artipacked`) and
+      # ran on every one of them, but reports at severity Low and the job below
+      # floors at medium: filtered out thirty times (issue #121). This asks the
+      # narrower question the floor cannot - whether the setting *matches what
+      # the job does* - by following each job's run blocks into the scripts
+      # they call and looking for a push.
+      - name: Every checkout says what happens to the job token
+        run: node scripts/ci/check-checkout-credentials.mjs
+
+      - name: Checkout-credential fixtures
+        run: bash experiments/test-issue121-checkout-credentials.sh
 
   zizmor:
     name: zizmor
@@ -80,6 +196,13 @@ jobs:
       #
       # Scoped to .github: dev/log/ holds verbatim copies of other projects'
       # workflows collected as issue evidence, and they are not ours to fix.
+      #
+      # .github/actions is scanned as well as .github/workflows. It was not,
+      # and the four composite actions in it had never been audited by anything
+      # — the omission was hiding a High-confidence `template-injection` in
+      # dockerhub-login/action.yml (issue #121). A composite action runs in the
+      # calling job, with the calling job's credentials; there is no reason for
+      # it to be held to a lower standard than the workflow that calls it.
       - name: zizmor
         run: |
           docker run --rm -v "$PWD:/repo" -w /repo \
@@ -89,4 +212,71 @@ jobs:
             --no-progress \
             --format plain \
             --config .github/zizmor.yml \
-            .github/workflows
+            .github/workflows .github/actions
+
+      # The pass above runs zizmor's default `regular` persona, which is the
+      # right default: `pedantic` surfaces hundreds of stylistic findings. But
+      # the audits covering container image references — `unpinned-images`
+      # among them — are Pedantic-only, so the `'*': hash-pin` policy declared
+      # in .github/zizmor.yml was never enforced against `uses: docker://` or
+      # `container:` at all: a policy the CI could not apply (issue #121).
+      # Narrowing this second pass to high severity *and* high confidence
+      # restores the enforcement without importing the noise. Measured: after
+      # the digest pin above it reports nothing, and stays silent until someone
+      # reintroduces a mutable image reference.
+      - name: Audit for pedantic-only high-severity findings
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo \
+            ghcr.io/zizmorcore/zizmor:1.30.0 \
+            --persona pedantic \
+            --min-severity high \
+            --min-confidence high \
+            --no-progress \
+            --format plain \
+            --config .github/zizmor.yml \
+            .github/workflows .github/actions
+
+  # === TERMINAL STATUS GATE ===
+  #
+  # The job that makes every other job's result reach the run's conclusion
+  # (issue #121, reference-template best practice "every workflow gets a
+  # terminal status gate").
+  #
+  # GitHub derives a run's conclusion from its jobs, and one cancellation
+  # outranks any number of failures - so a run holding a failed job can still
+  # come out grey, and everything that reads the run rather than each job (the
+  # badge, `gh run list`, the run list quoted in issue #121 itself) reads that
+  # as "no verdict" rather than "something broke". A gate's own conclusion is a
+  # job conclusion, so when it errors the run is red no matter what else was
+  # cancelled. The rationale, the measured run and the supersede-versus-overrun
+  # rule are in scripts/ci/check-pipeline-status.sh.
+  #
+  # `!cancelled()`, not `always()`: cancelling a whole run is somebody's
+  # decision and repainting it red would be a false positive, so this job is
+  # skipped there. `cancelled()` is run-level, so a job cancelled on its own -
+  # an overrun, or a per-job concurrency group firing - still reaches the gate.
+  #
+  # `needs` must name every other job in this file, or a job's result cannot
+  # reach here at all. That is not left to review:
+  # scripts/ci/check-status-gate-covers-all-jobs.mjs derives the list from this
+  # workflow and fails when the two disagree.
+  pipeline-status:
+    name: pipeline-status
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [actionlint, zizmor]
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # Anonymous `git ls-remote` is enough to resolve the branch head, which is
+      # how the script tells a superseded run from an overrun; no token is
+      # persisted for it.
+      - name: Check pipeline status
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          RUN_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: bash scripts/ci/check-pipeline-status.sh

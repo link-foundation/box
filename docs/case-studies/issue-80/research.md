@@ -29,7 +29,7 @@ inside the container. It is the canonical pattern documented by Docker and used 
 - Gotchas: storage-driver issues on overlay-on-overlay, MTU/DNS quirks for the inner daemon,
   TLS handshake noise from `dockerd`, and the fact that a privileged DinD is roughly equivalent to giving the
   container root on the host
-  ([jpetazzo's classic warning](https://github.com/jpetazzo/dind#warning-the-resulting-images-are-not-meant-to-replace-real-vms)).
+  ([jpetazzo's classic warning](https://github.com/jpetazzo/dind#a-word-of-warning)).
 
 ### 1b. Docker-out-of-Docker (DooD) by mounting `/var/run/docker.sock`
 

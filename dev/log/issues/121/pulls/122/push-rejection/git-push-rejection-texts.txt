@@ -1,0 +1,58 @@
+===== CASE 1: push accepted =====
+To /tmp/tmp.sybNwARz9L/r1.git
+ * [new branch]      HEAD -> main
+PASS: an accepted push still prints: [new branch]
+PASS: an accepted push does not classify as a repository rule
+PASS: an accepted push does not classify as a lost race
+
+===== CASE 2: lost race -- the remote branch advanced (rebase fixes it) =====
+To /tmp/tmp.sybNwARz9L/r2.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: failed to push some refs to '/tmp/tmp.sybNwARz9L/r2.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+PASS: a lost race still prints: ! [rejected]
+PASS: a lost race still prints: fetch first
+PASS: a lost race still prints: Updates were rejected
+PASS: a lost race does not classify as a repository rule
+PASS: a lost race classifies as a lost race
+
+===== CASE 3: repository rule -- no rebase can ever satisfy it =====
+remote: error: GH013: Repository rule violations found for refs/heads/main.        
+remote: error: - Changes must be made through a pull request.        
+To /tmp/tmp.sybNwARz9L/r3.git
+ ! [remote rejected] HEAD -> main (pre-receive hook declined)
+error: failed to push some refs to '/tmp/tmp.sybNwARz9L/r3.git'
+PASS: a repository rule rejection still prints: GH013
+PASS: a repository rule rejection still prints: Changes must be made through a pull request
+PASS: a repository rule rejection still prints: ! [remote rejected]
+PASS: a repository rule rejection classifies as a repository rule
+PASS: a repository rule rejection does not classify as a lost race
+
+===== CASE 4: BOTH at once -- one ref behind, one ref rule-declined =====
+(this is why the classifier tests for a rule BEFORE it tests for a race)
+remote: error: GH013: Repository rule violations found for refs/heads/main.        
+remote: error: - Changes must be made through a pull request.        
+remote: error: hook declined to update refs/heads/main        
+To /tmp/tmp.sybNwARz9L/r4.git
+ ! [rejected]        HEAD -> topic (fetch first)
+ ! [remote rejected] HEAD -> main (hook declined)
+error: failed to push some refs to '/tmp/tmp.sybNwARz9L/r4.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+PASS: a mixed rejection still prints: ! [rejected]
+PASS: a mixed rejection still prints: Updates were rejected
+PASS: a mixed rejection still prints: GH013
+PASS: a mixed rejection still prints: ! [remote rejected]
+PASS: a mixed rejection classifies as a repository rule
+PASS: a mixed rejection does not classify as a lost race
+
+===== Summary =====
+Passed: 19
+Failed: 0

@@ -28,11 +28,28 @@ on:
 permissions:
   contents: read
 
+env:
+  # actions/checkout's first act is `git init`, and a git with no configured
+  # `init.defaultBranch` answers it with a thirteen-line advice block - "Using
+  # 'master' as the name for the initial branch... this default branch name will
+  # change" - at the top of every job log. 19 checkouts in the runs issue #121
+  # lists printed 247 lines of it, in jobs where nothing was wrong. No step can
+  # fix it, because it is printed before the first step of ours runs; git reads
+  # configuration from the environment too, and the environment is there from
+  # the start. Ported from the js template, which carries the same three lines
+  # with the same reasoning.
+  GIT_CONFIG_COUNT: '1'
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+
 jobs:
   codeql:
     name: security / CodeQL (${{ matrix.language }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # Measured maximum 1.3 minutes over the last 300 runs (issue #121,
+    # docs/CI-TIMEOUT-BUDGETS.md). There is no build step here - every analysed
+    # language is interpreted - so 15 is already an order of magnitude of slack.
+    timeout-minutes: 15
     concurrency:
       group: check-${{ github.workflow }}-${{ github.ref }}-codeql-${{ matrix.language }}
       cancel-in-progress: true
@@ -68,12 +85,18 @@ jobs:
       # No build step: every analysed language here is interpreted. Autobuild
       # would be a no-op that can still fail on a repository whose root is a
       # Dockerfile.
+      # A `uses:` step takes the budget GitHub applies to a whole step, since
+      # it cannot be routed through scripts/ci/run-with-budget-warning.sh. The
+      # slowest `Analyze` of the last 200 runs took 59 seconds.
       - name: Analyze
+        timeout-minutes: 10
         uses: github/codeql-action/analyze@v4
 
   secretlint:
     name: security / secretlint
     runs-on: ubuntu-24.04
+    # Measured maximum well under a minute; the two steps below carry 5 minutes
+    # of budget between them.
     timeout-minutes: 10
     concurrency:
       group: check-${{ github.workflow }}-${{ github.ref }}-secretlint
@@ -101,7 +124,56 @@ jobs:
       # code. Reproduce locally with the identical command:
       #   bash scripts/ci/run-secretlint.sh
       - name: secretlint, canary first
-        run: bash scripts/ci/run-secretlint.sh
+        run: |
+          bash scripts/ci/run-with-budget-warning.sh 180 "secretlint" \
+            bash scripts/ci/run-secretlint.sh
 
       - name: The gate's own fixtures still hold
-        run: bash experiments/test-issue115-secretlint-gate.sh
+        run: |
+          bash scripts/ci/run-with-budget-warning.sh 120 "secretlint gate fixtures" \
+            bash experiments/test-issue115-secretlint-gate.sh
+
+  # === TERMINAL STATUS GATE ===
+  #
+  # The job that makes every other job's result reach the run's conclusion
+  # (issue #121, reference-template best practice "every workflow gets a
+  # terminal status gate").
+  #
+  # GitHub derives a run's conclusion from its jobs, and one cancellation
+  # outranks any number of failures - so a run holding a failed job can still
+  # come out grey, and everything that reads the run rather than each job (the
+  # badge, `gh run list`, the run list quoted in issue #121 itself) reads that
+  # as "no verdict" rather than "something broke". A gate's own conclusion is a
+  # job conclusion, so when it errors the run is red no matter what else was
+  # cancelled. The rationale, the measured run and the supersede-versus-overrun
+  # rule are in scripts/ci/check-pipeline-status.sh.
+  #
+  # `!cancelled()`, not `always()`: cancelling a whole run is somebody's
+  # decision and repainting it red would be a false positive, so this job is
+  # skipped there. `cancelled()` is run-level, so a job cancelled on its own -
+  # an overrun, or a per-job concurrency group firing - still reaches the gate.
+  #
+  # `needs` must name every other job in this file, or a job's result cannot
+  # reach here at all. That is not left to review:
+  # scripts/ci/check-status-gate-covers-all-jobs.mjs derives the list from this
+  # workflow and fails when the two disagree.
+  pipeline-status:
+    name: pipeline-status
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [codeql, secretlint]
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # Anonymous `git ls-remote` is enough to resolve the branch head, which is
+      # how the script tells a superseded run from an overrun; no token is
+      # persisted for it.
+      - name: Check pipeline status
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          RUN_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: bash scripts/ci/check-pipeline-status.sh

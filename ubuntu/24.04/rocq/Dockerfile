@@ -10,7 +10,7 @@ USER root
 COPY ubuntu/24.04/common.sh /tmp/common.sh
 RUN . /tmp/common.sh && \
     apt_update_with_retry && \
-    apt-get install -y bubblewrap && \
+    apt-get install -y --no-install-recommends bubblewrap && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 USER box
