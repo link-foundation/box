@@ -66,6 +66,55 @@ jobs:
       - name: Checker fixtures and the run 33972074753 reproduction
         run: bash experiments/test-issue115-heredoc-unbound-vars.sh
 
+  # Issue #121. `awk` on a GitHub ubuntu-24.04 runner is gawk; `awk` on Debian
+  # and Ubuntu generally - including the containers the rest of these jobs shell
+  # into - is mawk. A regex escape gawk implements and mawk does not (`\s`, `\w`,
+  # `\<`) is not a syntax error under mawk: the pattern simply never matches, and
+  # nothing is printed. A check written that way passes everywhere it is silent.
+  #
+  # That is not hypothetical here. The suite asserting that no composite action
+  # interpolates a `${{ }}` expansion into a `run:` block extracted the block
+  # with `awk '/^\s+run: \|/,0'`, passed locally on mawk while reading nothing,
+  # and failed in CI on gawk - where `,0` then ran the range to end of file and
+  # reported `with:` mappings that were correct. Both halves are reproduced in
+  # experiments/reproduce-issue121-awk-run-block-range.sh.
+  #
+  # Reproduce a finding locally:
+  #   bash scripts/ci/check-awk-portability.sh --verbose
+  awk-portability:
+    name: scripts / awk portability
+    runs-on: ubuntu-24.04
+    # Typical run: under a second over ~40 files. The limit is a backstop.
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-awk-portability
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      # Fails the job on any GNU-only regex escape inside an awk program, with a
+      # file/line annotation.
+      - name: No awk program depends on a GNU-only regex escape
+        run: bash scripts/ci/check-awk-portability.sh
+
+      # The checker is only worth trusting if its own false-positive and
+      # false-negative fixtures still hold - and this one exists because a check
+      # that could not fail went unnoticed.
+      - name: Checker fixtures and the mawk/gawk reproduction
+        run: bash experiments/test-issue121-awk-portability.sh
+
   # Issue #115. actionlint runs shellcheck over the `run:` blocks inside
   # .github/workflows/**, and nothing ran it over the 75 tracked *.sh files that
   # actually build the boxes — the largest body of shell in the repository was
@@ -234,7 +283,7 @@ jobs:
     name: pipeline-status
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    needs: [heredoc-vars, shellcheck, shfmt, experiments]
+    needs: [heredoc-vars, awk-portability, shellcheck, shfmt, experiments]
     if: ${{ !cancelled() }}
     steps:
       - uses: actions/checkout@v6

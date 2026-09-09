@@ -154,11 +154,100 @@ fi
 # An expansion inside `run:` is substituted before bash parses the line, so a
 # value carrying a quote or `$(...)` becomes code. Reading it from the
 # environment makes it data whatever it holds.
-if ! awk '/^\s+run: \|/,0' "$LOGIN_ACTION" | grep -q '\${{'; then
-  pass "no run: block in $LOGIN_ACTION interpolates a template expansion"
+#
+# Extracting the block is the whole difficulty, and the first spelling of this
+# check got it wrong in both directions at once - see
+# experiments/reproduce-issue121-awk-run-block-range.sh. It used
+# `awk '/^\s+run: \|/,0'`, and:
+#
+#   * `\s` is a GNU extension. Under mawk - the default awk on Debian and
+#     Ubuntu, and what runs in this repository's own containers - it matches
+#     nothing, the range never opens, and the negated grep passes on a file
+#     full of injections. One more check that could not fail, inside the branch
+#     that exists to remove them.
+#   * Under gawk, which is what GitHub's ubuntu-24.04 image ships, `\s` works
+#     and `,0` never closes, because no record is ever numbered 0. The "run
+#     block" is then the rest of the file, so every later step's `with:` and
+#     `env:` mapping is reported - and passing an input to an action through
+#     `with:` is not an injection. It failed CI on lines that were correct.
+#
+# A block scalar ends where the indentation returns to the key's level, so that
+# is what bounds it here. A single-line `run:` is not a block scalar but carries
+# the same exposure, so it is examined too. No GNU regex extensions.
+run_block_lines() {
+  awk '
+    {
+      if (in_block) {
+        if ($0 ~ /^[ \t]*$/) { next }
+        indent = match($0, /[^ \t]/) - 1
+        if (indent > key_indent) { print FILENAME ":" FNR ": " $0; next }
+        in_block = 0
+      }
+      if ($0 ~ /^[ \t]*run:[ \t]*[|>]/) {
+        key_indent = match($0, /[^ \t]/) - 1
+        in_block = 1
+        next
+      }
+      if ($0 ~ /^[ \t]*run:[ \t]*[^ \t|>]/) { print FILENAME ":" FNR ": " $0 }
+    }
+  ' "$@"
+}
+
+# Scoped to the composite actions, not to dockerhub-login alone: a composite
+# action runs inside the calling job holding the calling job's credentials, and
+# all four of them are clean, so this is an invariant the repository can keep.
+# The workflows are a different question - they carry 220 expansions inside
+# `run:` blocks, matrix values and this repository's own step outputs, which is
+# what the zizmor pass above judges at medium/medium and what §6 of the case
+# study explains. Widening this assertion to them would be a rewrite, not a
+# check.
+INJECTED="$(run_block_lines .github/actions/*/action.yml | grep '\${{' || true)"
+if [ -z "$INJECTED" ]; then
+  pass "no run: block in any composite action interpolates a template expansion"
 else
-  fail "no run: block in $LOGIN_ACTION interpolates a template expansion"
-  awk '/^\s+run: \|/,0' "$LOGIN_ACTION" | grep -n '\${{' | sed 's/^/    /'
+  fail "no run: block in any composite action interpolates a template expansion"
+  echo "$INJECTED" | sed 's/^/    /'
+fi
+
+# The extractor itself must be able to report, or the assertion above is worth
+# nothing - which is precisely how the first spelling passed. Feed it a fixture
+# that does interpolate, and one that does not.
+FIXTURE_DIR="$(mktemp -d)"
+trap 'rm -rf "$FIXTURE_DIR"' EXIT
+cat >"$FIXTURE_DIR/injected.yml" <<'FIXTURE'
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      run: |
+        echo "logging in to ${{ inputs.registry }}"
+    - uses: docker/login-action@v3
+      with:
+        registry: ${{ inputs.registry }}
+FIXTURE
+sed 's/{{ inputs.registry }}/{REGISTRY}/' "$FIXTURE_DIR/injected.yml" >"$FIXTURE_DIR/clean.yml"
+
+if [ "$(run_block_lines "$FIXTURE_DIR/injected.yml" | grep -c '\${{')" = "1" ]; then
+  pass "the extractor reports an expansion inside a run: block, and only that one"
+else
+  fail "the extractor reports an expansion inside a run: block, and only that one"
+  run_block_lines "$FIXTURE_DIR/injected.yml" | sed 's/^/    /'
+fi
+
+if [ "$(run_block_lines "$FIXTURE_DIR/clean.yml" | grep -c '\${{')" = "0" ]; then
+  pass "the extractor reports nothing when the value is read from the environment"
+else
+  fail "the extractor reports nothing when the value is read from the environment"
+  run_block_lines "$FIXTURE_DIR/clean.yml" | sed 's/^/    /'
+fi
+
+# The `with:` mapping of the fixture holds an expansion the extractor must not
+# reach; without this the two assertions above would also pass on an extractor
+# that simply printed nothing.
+if grep -q 'registry: \${{ inputs.registry }}' "$FIXTURE_DIR/injected.yml"; then
+  pass "the fixture carries a with: expansion outside any run: block"
+else
+  fail "the fixture carries a with: expansion outside any run: block"
 fi
 
 if grep -q 'REGISTRY: \${{ inputs.registry }}' "$LOGIN_ACTION"; then

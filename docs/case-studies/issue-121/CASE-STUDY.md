@@ -36,6 +36,7 @@ way to go red.
 | l | Three jobs wrote to `main` with a bare `git push origin main` | `release`, `measure-disk-space` | A concurrency group orders writers; it does not rebase them. And a ruleset rejection and a race print the same word — classify a rule as a race and the job rebases, pushes, is declined identically, and blames a race that never happened. | `git-push-failure-classifier.sh` tests for a rule **before** a race; `git-push-with-retry.sh` answers a rule with a pull request. |
 | m | A suite asserting "exactly 3 suites are skipped" | `scripts` | A hard-coded count fails when a justified exclusion is added, and passes when an entry silently stops matching. | It compares the runner's declared exclusions against the ones that actually apply. |
 | n | A CI policy check that failed on the comment explaining it | `scripts` | Invariant 4 of `test-issue115-ci-policy.sh` grepped raw workflow text for `always()`. | It reads evaluated expressions, not prose. |
+| o | The assertion written for finding **g** could not fail on the machine that ran it | `scripts` | It extracted a `run:` block with `awk '/^\s+run: \|/,0'`. `\s` is a GNU extension: under mawk (Debian's and Ubuntu's default `awk`) it matches nothing, the range never opens, and the negated grep passes. Under gawk — what GitHub's runner ships — `,0` never closes, so the "block" is the rest of the file and correct `with:` mappings are reported. | The block is bounded by indentation; `scripts/ci/check-awk-portability.sh` fails CI on any GNU-only escape in an awk program, over every tracked file. |
 
 One sentence covers the whole table: **an annotation is a claim about the run,
 and every mechanism here was making claims it had not checked** — in both
@@ -343,9 +344,63 @@ stylistic findings; measured, it reports nothing once the image is pinned by
 digest (`sha256:887a259a…`, resolved from v1.7.7 and verified against the
 registry with `docker buildx imagetools inspect`).
 
-**Tests.** `experiments/test-issue121-workflow-audit-scope.sh` — 17 offline
+**The assertion that could not fail either.** The suite written to hold the
+first of those two fixes in place — "no `run:` block in a composite action
+interpolates a `${{ }}` expansion" — extracted the block like this:
+
+```bash
+awk '/^\s+run: \|/,0' "$ACTION" | grep -q '\${{'
+```
+
+That one line is wrong twice, in opposite directions.
+
+`\s` is a GNU extension. POSIX awk does not define it, and mawk — the default
+`awk` on Debian and Ubuntu, and therefore in every container the rest of these
+checks shell into — does not implement it. It is not a syntax error: mawk
+compiles the pattern, matches nothing, and says nothing. The range never opens,
+awk prints nothing, `grep -q` finds nothing, and the negated test passes. On the
+machine a developer runs it on, the check could not fail.
+
+GitHub's `ubuntu-24.04` image ships gawk, where `\s` works — and there the
+second defect takes over. A range `/x/,0` never closes, because no record is
+ever numbered 0, so the "run block" is everything from the first `run: |` to end
+of file: every later step's `with:` and `env:` mapping. Passing an input to an
+action through `with:` is not an injection, so the job failed, in CI only,
+naming lines that were correct.
+
+Three answers — silent, correct, wrong — from one line, decided by which awk was
+installed, and the silent one is the one on the developer's machine.
+`experiments/reproduce-issue121-awk-run-block-range.sh` demonstrates both halves
+under whichever awk is present, and runs in CI as an assertion rather than as a
+note.
+
+The extraction is bounded by indentation now, which is where a YAML block scalar
+actually ends, and it covers all four composite actions rather than the one:
+`.github/actions/*/action.yml` is clean, and mutating any of them to interpolate
+inside a `run:` block fails the suite with the file and line. The workflows are
+a separate question — they carry 220 expansions inside `run:` blocks, matrix
+values and this repository's own step outputs — which is what the medium/medium
+zizmor pass above judges; widening the assertion to them would be a rewrite, not
+a check, and the case study says so rather than quietly scoping the assertion
+down to one file again.
+
+The class is worth more than the instance, because nothing warned:
+`scripts/ci/check-awk-portability.sh` reads every awk program in every tracked
+file — quote-aware, so a `\s` in the `sed` on the far side of a pipe is not
+reported, and command substitution inside a double-quoted string is code again,
+which is precisely the shape the first version of that scanner missed — and
+fails the run on `\s \S \w \W \d \D \< \> \y`. Naming `gawk` explicitly
+is the supported way to depend on them. A `# awk-portability: ignore` line
+suppresses one finding, and suppressions are counted and printed.
+
+**Tests.** `experiments/test-issue121-workflow-audit-scope.sh` — 20 offline
 assertions, mutation-verified: unpinning the image, narrowing the scan back to
-`.github/workflows`, and reintroducing the interpolation each fail the suite.
+`.github/workflows`, and reintroducing the interpolation each fail the suite,
+and the extractor is itself exercised against a fixture that interpolates and
+one that does not. `experiments/test-issue121-awk-portability.sh` — 28
+assertions covering six escapes that must be reported, nine constructs that must
+not, the command-substitution shape the scanner originally missed, the
+suppression, and the repository sweep.
 
 ---
 
