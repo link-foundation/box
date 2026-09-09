@@ -102,15 +102,18 @@ echo "== 2. What this repository's workflows declare =="
 echo
 TOTAL=0
 DROPS=0
+KEEPS=0
 SILENT=0
 SILENT_LIST=()
 while IFS= read -r wf; do
   # Each checkout step and the `with:` block that follows it.
   while IFS= read -r line_no; do
     TOTAL=$((TOTAL + 1))
-    block="$(sed -n "${line_no},$((line_no + 8))p" "$wf")"
+    block="$(sed -n "${line_no},$((line_no + 12))p" "$wf")"
     if printf '%s\n' "$block" | grep -q 'persist-credentials:[[:space:]]*false'; then
       DROPS=$((DROPS + 1))
+    elif printf '%s\n' "$block" | grep -q 'persist-credentials:[[:space:]]*true'; then
+      KEEPS=$((KEEPS + 1))
     else
       SILENT=$((SILENT + 1))
       SILENT_LIST+=("$wf:$line_no")
@@ -118,10 +121,13 @@ while IFS= read -r wf; do
   done < <(grep -nE 'uses:[[:space:]]*actions/checkout' "$wf" | cut -d: -f1)
 done < <(git ls-files -- '.github/workflows/*.yml' '.github/actions/*/action.yml')
 
-printf '  %d checkout step(s): %d drop the credential, %d keep it by saying nothing.\n' \
-  "$TOTAL" "$DROPS" "$SILENT"
-printf '\n  The silent ones, by workflow:\n'
-printf '%s\n' "${SILENT_LIST[@]}" | cut -d: -f1 | sort | uniq -c | sed 's/^/   /'
+printf '  %d checkout step(s): %d drop the credential, %d keep it deliberately,\n' \
+  "$TOTAL" "$DROPS" "$KEEPS"
+printf '                       %d keep it by saying nothing.\n' "$SILENT"
+if [ "$SILENT" -gt 0 ]; then
+  printf '\n  The silent ones, by workflow:\n'
+  printf '%s\n' "${SILENT_LIST[@]}" | cut -d: -f1 | sort | uniq -c | sed 's/^/   /'
+fi
 
 echo
 CLAIM='Every checkout in this repository sets `persist-credentials: false`'
@@ -130,7 +136,9 @@ if grep -qF "$CLAIM" scripts/ci/simulate-fresh-merge.sh; then
   printf '    "%s"\n' "$CLAIM"
   printf '  ...which is false for %d of the %d.\n' "$SILENT" "$TOTAL"
 else
-  printf '  scripts/ci/simulate-fresh-merge.sh no longer carries the claim this measured.\n'
+  printf '  scripts/ci/simulate-fresh-merge.sh no longer carries the claim this measured;\n'
+  printf '  scripts/ci/check-checkout-credentials.mjs validates the narrower one instead:\n'
+  node scripts/ci/check-checkout-credentials.mjs 2>&1 | sed 's/^/    /'
 fi
 
 echo
@@ -203,7 +211,12 @@ echo
 GATE="$(grep -A8 'name: zizmor' .github/workflows/workflows.yml \
   | grep -oE -- '--min-(severity|confidence) [a-z]+' | paste -sd', ' -)"
 printf '  workflows.yml runs zizmor with: %s\n' "${GATE:-<not found>}"
-printf '  artipacked reports at severity Low, confidence Low, so that floor hides all %d.\n' "$SILENT"
+if [ "$SILENT" -gt 0 ]; then
+  printf '  artipacked reports at severity Low, confidence Low, so that floor hid all %d.\n' "$SILENT"
+else
+  printf '  artipacked reports at severity Low, confidence Low, so that floor would still\n'
+  printf '  hide a checkout that stopped saying; the count below is the fix, not the floor.\n'
+fi
 
 if command -v docker >/dev/null 2>&1; then
   echo

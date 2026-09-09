@@ -121,6 +121,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
           ref: main
 
       # Issue #82: free disk space on every build job's runner before pulling
@@ -255,6 +258,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          persist-credentials: false
           ref: main
 
       # Issue #82: free disk space on every build job's runner before pulling
@@ -372,6 +376,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          persist-credentials: false
           ref: main
 
       - name: Get latest version

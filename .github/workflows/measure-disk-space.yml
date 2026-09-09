@@ -168,6 +168,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          # Kept, unlike every other checkout here: this job commits the
+          # measured table back to main, so the push needs the credential
+          # checkout leaves in .git/config. Stated rather than left to the
+          # default, so the one job that needs it is the one that says so.
+          persist-credentials: true
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 

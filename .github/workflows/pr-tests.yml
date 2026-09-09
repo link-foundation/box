@@ -125,6 +125,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
 
       # A queued matrix job can start long after the run was created, by which
       # time the pull request may have moved on (issue #112 follow-up). Check
@@ -193,6 +197,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       # A queued matrix job can start long after the run was created, by which
       # time the pull request may have moved on (issue #112 follow-up). Check
@@ -266,6 +272,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       # A queued matrix job can start long after the run was created, by which
       # time the pull request may have moved on (issue #112 follow-up). Check
@@ -342,6 +350,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       # A queued matrix job can start long after the run was created, by which
       # time the pull request may have moved on (issue #112 follow-up). Check
@@ -414,6 +424,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       # A queued matrix job can start long after the run was created, by which
       # time the pull request may have moved on (issue #112 follow-up). Check
@@ -538,6 +550,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       # A queued matrix job can start long after the run was created, by which
       # time the pull request may have moved on (issue #112 follow-up). Check

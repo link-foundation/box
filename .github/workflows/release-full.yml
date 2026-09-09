@@ -145,6 +145,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
           ref: main  # Always use latest main for releases
 
       # Fix for issue #41: Free disk space to prevent "No space left on device" errors
@@ -404,6 +407,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          persist-credentials: false
           ref: main  # Always use latest main for releases
 
       # Fix for issue #41: Free disk space to prevent "No space left on device" errors
@@ -616,6 +620,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          persist-credentials: false
           ref: main
 
       - name: Get latest version

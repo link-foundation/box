@@ -323,7 +323,7 @@ STUB_EOF
     chmod +x "$dir/scripts/ci/$gate.sh"
   done
   for gate in check-status-gate-covers-all-jobs check-timeout-budgets \
-    check-workflow-path-coverage; do
+    check-workflow-path-coverage check-checkout-credentials; do
     cat >"$dir/scripts/ci/$gate.mjs" <<'STUB_EOF'
 import { appendFileSync, readFileSync, existsSync } from 'node:fs';
 import { basename } from 'node:path';

@@ -288,6 +288,15 @@ if [ "${#WF_FILES[@]}" -gt 0 ] || [ "${#CI_FILES[@]}" -gt 0 ]; then
   gate path-coverage node scripts/ci/check-workflow-path-coverage.mjs
 fi
 
+# Any staged script, not only a workflow: this gate asks whether each
+# checkout's persist-credentials matches what its job does, and "what its job
+# does" is derived by following the job's run blocks into the scripts they
+# call. Adding a `git push` to scripts/release/*.sh changes the answer for a
+# job whose workflow file nobody touched.
+if [ "${#WF_FILES[@]}" -gt 0 ] || [ "${#SH_FILES[@]}" -gt 0 ] || [ "${#JS_FILES[@]}" -gt 0 ]; then
+  gate checkout-credentials node scripts/ci/check-checkout-credentials.mjs
+fi
+
 if [ "${#DOC_FILES[@]}" -gt 0 ]; then
   gate required-docs bash scripts/ci/check-required-docs.sh
 fi

@@ -12,8 +12,10 @@ on:
       - 'scripts/ci/check-status-gate-covers-all-jobs.mjs'
       - 'scripts/ci/check-timeout-budgets.mjs'
       - 'scripts/ci/check-workflow-path-coverage.mjs'
+      - 'scripts/ci/check-checkout-credentials.mjs'
       - 'experiments/test-issue121-path-coverage.sh'
       - 'experiments/test-issue121-git-init-hint.sh'
+      - 'experiments/test-issue121-checkout-credentials.sh'
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
@@ -24,8 +26,10 @@ on:
       - 'scripts/ci/check-status-gate-covers-all-jobs.mjs'
       - 'scripts/ci/check-timeout-budgets.mjs'
       - 'scripts/ci/check-workflow-path-coverage.mjs'
+      - 'scripts/ci/check-checkout-credentials.mjs'
       - 'experiments/test-issue121-path-coverage.sh'
       - 'experiments/test-issue121-git-init-hint.sh'
+      - 'experiments/test-issue121-checkout-credentials.sh'
   workflow_dispatch:
 
 # Least-privilege default; these jobs only read the checked-out tree.
@@ -126,6 +130,23 @@ jobs:
       # added without them - so this reads all of them, every time one changes.
       - name: Git advice hints
         run: bash experiments/test-issue121-git-init-hint.sh
+
+      # actions/checkout authenticates by writing the job's token into
+      # .git/config, and unless told otherwise leaves it there for every later
+      # step. Thirty of this repository's fifty-five checkouts said nothing, so
+      # thirty jobs kept it - `js / build-js-amd64` for 427 seconds while a
+      # docker build ran with the workspace as its context, against 1.1-2.1s in
+      # the jobs that had been hardened. zizmor audits this (`artipacked`) and
+      # ran on every one of them, but reports at severity Low and the job below
+      # floors at medium: filtered out thirty times (issue #121). This asks the
+      # narrower question the floor cannot - whether the setting *matches what
+      # the job does* - by following each job's run blocks into the scripts
+      # they call and looking for a push.
+      - name: Every checkout says what happens to the job token
+        run: node scripts/ci/check-checkout-credentials.mjs
+
+      - name: Checkout-credential fixtures
+        run: bash experiments/test-issue121-checkout-credentials.sh
 
   zizmor:
     name: zizmor

@@ -132,6 +132,10 @@ jobs:
       actions: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
 
       - name: Cancel runs for superseded commits of this pull request
         env:
@@ -152,6 +156,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Check for version changes in VERSION file
@@ -172,6 +177,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Check for changesets
@@ -227,6 +233,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          # Kept: scripts/release/apply-changesets.sh pushes the version bump
+          # and the changelog back to main through git-push-with-retry.sh, so
+          # this job needs the credential checkout leaves in .git/config.
+          persist-credentials: true
           fetch-depth: 0
 
       - name: Check for changesets
@@ -265,6 +275,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          # Kept: this job pushes the bumped VERSION back to main through
+          # git-push-with-retry.sh, so it needs the credential checkout
+          # leaves in .git/config.
+          persist-credentials: true
           fetch-depth: 0
 
       - name: Configure git
@@ -368,6 +382,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       # Trusted publishing leaves a short-lived credential in the Docker CLI
       # config and puts no token in the environment; preflight-credentials.sh
@@ -473,6 +489,9 @@ jobs:
           # commit's parents (HEAD^2^..HEAD^2 per-commit PR diff — issue #108).
           fetch-depth: 0
           ref: ${{ github.ref }}
+          # `git fetch origin main` below is an anonymous read of a public
+          # repository; nothing in this job writes to the remote.
+          persist-credentials: false
 
       # Re-fetch if version was bumped to get latest commit
       - name: Fetch latest changes
@@ -693,6 +712,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          persist-credentials: false
           ref: main
 
       - name: Get latest version
