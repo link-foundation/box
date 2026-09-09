@@ -47,9 +47,27 @@ fail() {
 
 # run - call the script with a pinned date and commit unless a test overrides
 # them, capture stdout in $OUT, stderr in $ERR and the exit code in $CODE.
+#
+# UNPINNED=1 asks for the script's own defaults instead. It has to be said out
+# loud, because `unset IMAGE_TAGS_DATE` cannot say it: to this helper an unset
+# variable is indistinguishable from "this test did not name a date", which is
+# the case the pin exists for. That ambiguity is the defect issue #121 found -
+# the "defaults to today" assertion below unset the variable, got the pin back,
+# and compared 20260908 against the clock. It passed on 2026-09-08 and failed
+# every day after, reporting working release tooling as broken (Scripts run
+# 34293699072). experiments/test-issue121-clock-independence.sh runs this suite
+# against a stopped clock so the next one cannot hide until the calendar turns.
+UNPINNED=0
 run() {
-  OUT="$(VERSION="${VERSION:-2.7.0}" IMAGE_TAGS_DATE="${IMAGE_TAGS_DATE:-20260908}" \
-    GITHUB_SHA="${GITHUB_SHA:-fd4742b9c8e7a6b5c4d3e2f1a0b9c8d7e6f5a4b3}" \
+  local date_pin sha_pin
+  if [ "$UNPINNED" = "1" ]; then
+    date_pin="${IMAGE_TAGS_DATE:-}"
+    sha_pin="${GITHUB_SHA:-}"
+  else
+    date_pin="${IMAGE_TAGS_DATE:-20260908}"
+    sha_pin="${GITHUB_SHA:-fd4742b9c8e7a6b5c4d3e2f1a0b9c8d7e6f5a4b3}"
+  fi
+  OUT="$(VERSION="${VERSION:-2.7.0}" IMAGE_TAGS_DATE="$date_pin" GITHUB_SHA="$sha_pin" \
     bash "$SCRIPT" "$@" 2>"$TMP/err")"
   CODE=$?
   ERR="$(cat "$TMP/err")"
@@ -135,10 +153,22 @@ else
     "first: $FIRST" "second: $OUT"
 fi
 
-if printf '%s\n' "$FIRST" | grep -qx "$(date -u +%Y%m%d)"; then
+# With no date named the script reads the clock, so this is the one assertion
+# that must not be pinned - and the one that must not assume the clock stands
+# still while it runs. The day is read on both sides of the call and either
+# answer is accepted, because a release started at 23:59:59.9 UTC gets the next
+# one and that is the script working, not failing.
+DAY_BEFORE="$(date -u +%Y%m%d)"
+UNPINNED=1
+run
+UNPINNED=0
+DAY_AFTER="$(date -u +%Y%m%d)"
+if printf '%s\n' "$OUT" | grep -qxF "$DAY_BEFORE" || printf '%s\n' "$OUT" | grep -qxF "$DAY_AFTER"; then
   pass "the date tag defaults to today in UTC"
 else
-  fail "the date tag defaults to today in UTC" "got: $(printf '%s' "$FIRST" | tr '\n' ' ')"
+  fail "the date tag defaults to today in UTC" \
+    "expected $DAY_BEFORE or $DAY_AFTER" \
+    "got: $(printf '%s' "$OUT" | tr '\n' ' ')"
 fi
 
 # How the answer travels: the amd64 job computes the list, and the arm64 build
