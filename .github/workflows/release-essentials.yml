@@ -133,7 +133,7 @@ jobs:
       # base images / running buildx so that COPY --from=*-stage and large
       # apt installs never hit "no space left on device" mid-build.
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           tool-cache: false
           android: true
@@ -275,7 +275,7 @@ jobs:
       # base images / running buildx so that COPY --from=*-stage and large
       # apt installs never hit "no space left on device" mid-build.
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           tool-cache: false
           android: true

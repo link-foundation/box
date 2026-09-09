@@ -134,7 +134,7 @@ jobs:
       # This step removes unnecessary pre-installed software from the runner to free ~30 GB
       # See: docs/case-studies/issue-41/CASE-STUDY.md
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           tool-cache: false  # Keep tool cache for setup-* action compatibility
           android: true      # Free ~14 GB
@@ -381,7 +381,7 @@ jobs:
       # ARM64 runners have more disk space (~45 GB) but we still clean up for safety
       # See: docs/case-studies/issue-41/CASE-STUDY.md
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           tool-cache: false  # Keep tool cache for setup-* action compatibility
           android: true      # Free ~14 GB

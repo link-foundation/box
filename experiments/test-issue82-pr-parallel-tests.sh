@@ -14,11 +14,16 @@
 #
 # Invariants checked here:
 #   1. Each pr-test-* job exists.
-#   2. Each pr-test-* build job has a `Free disk space` step using
-#      jlumbroso/free-disk-space, *before* its first build step. The ref is
-#      not asserted to be a branch: since issue #115 every third-party action
-#      is pinned to a full 40-character commit SHA (zizmor `unpinned-uses`),
-#      so this checks the action is present and that its pin is immutable.
+#   2. Each pr-test-* build job has a `Free disk space` step, *before* its
+#      first build step. Since issue #121 that step is the repository's own
+#      composite action, .github/actions/free-disk-space, which calls
+#      jlumbroso/free-disk-space with its `large-packages` block switched off
+#      and does that part in scripts/ci/reclaim-large-packages.sh instead - the
+#      upstream block annotates every arm64 job with a package it never had.
+#      The pin moved with the call, so it is asserted where it now lives: the
+#      wrapper must reference the action at a full 40-character commit SHA,
+#      never a branch or tag upstream can move (issue #115, zizmor
+#      `unpinned-uses`).
 #   3. The pr-test-language matrix lists all 11 languages.
 #   4. The pr-test-dind matrix lists all 14 variants (js, essentials, 11
 #      languages, full).
@@ -74,8 +79,8 @@ for job in pr-test-js pr-test-essentials pr-test-language pr-test-full pr-test-d
   check "$job job is defined" "grep -q '^  ${job}:$' '$WF'"
 done
 
-# 2. Each build job has a Free disk space step using jlumbroso/free-disk-space,
-#    pinned to a full-length commit SHA.
+# 2. Each build job has a Free disk space step, and it goes through the
+#    repository's wrapper rather than calling the upstream action directly.
 BUILD_JOBS=(
   pr-test-js
   pr-test-essentials
@@ -117,23 +122,46 @@ for job in jobs:
         print(f"FAIL: job '{job}' not found in workflow", file=sys.stderr)
         fail = 1
         continue
-    refs = re.findall(r'jlumbroso/free-disk-space@(\S+)', block)
-    if not refs:
-        print(f"FAIL: job '{job}' is missing 'jlumbroso/free-disk-space'", file=sys.stderr)
+    if not re.search(r'uses:\s*\./\.github/actions/free-disk-space', block):
+        print(f"FAIL: job '{job}' is missing its 'Free disk space' step", file=sys.stderr)
         fail = 1
         continue
-    # Issue #115: third-party actions must be pinned to an immutable commit
-    # SHA, never a branch or tag that upstream can move under us.
-    unpinned = [r for r in refs if not re.fullmatch(r'[0-9a-f]{40}', r)]
-    if unpinned:
+    # Issue #121: the upstream action's large-packages block warns on every
+    # arm64 job, so it is called through the wrapper that replaces that block.
+    # A job going straight to it would bring the annotation back.
+    if re.search(r'uses:\s*jlumbroso/free-disk-space', block):
         print(
-            f"FAIL: job '{job}' uses jlumbroso/free-disk-space@{unpinned[0]}; "
-            "expected a full 40-character commit SHA",
+            f"FAIL: job '{job}' calls jlumbroso/free-disk-space directly; "
+            "expected ./.github/actions/free-disk-space",
             file=sys.stderr,
         )
         fail = 1
     else:
-        print(f"PASS: job '{job}' has a SHA-pinned free-disk-space step")
+        print(f"PASS: job '{job}' frees disk through the repository's wrapper")
+
+# Issue #115: third-party actions must be pinned to an immutable commit SHA,
+# never a branch or tag that upstream can move under us. The wrapper is where
+# the reference now lives, so it is where the pin is checked.
+wrapper_path = '.github/actions/free-disk-space/action.yml'
+try:
+    wrapper = open(wrapper_path).read()
+except OSError as exc:
+    print(f"FAIL: cannot read {wrapper_path}: {exc}", file=sys.stderr)
+    sys.exit(1)
+refs = re.findall(r'jlumbroso/free-disk-space@(\S+)', wrapper)
+unpinned = [r for r in refs if not re.fullmatch(r'[0-9a-f]{40}', r)]
+if not refs:
+    print(f"FAIL: {wrapper_path} no longer calls jlumbroso/free-disk-space", file=sys.stderr)
+    fail = 1
+elif unpinned:
+    print(
+        f"FAIL: {wrapper_path} uses jlumbroso/free-disk-space@{unpinned[0]}; "
+        "expected a full 40-character commit SHA",
+        file=sys.stderr,
+    )
+    fail = 1
+else:
+    print("PASS: the wrapper pins jlumbroso/free-disk-space to a commit SHA")
 sys.exit(fail)
 PY
 disk_status=$?

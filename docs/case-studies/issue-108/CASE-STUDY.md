@@ -171,7 +171,7 @@ errors**. Warning-bearing lines, by category:
 
 | Source | Count | GitHub UI annotation? | Verdict |
 |---|---|---|---|
-| `jlumbroso/free-disk-space@main` — `::warning::The command [sudo apt-get remove …] failed … Proceeding...` | 28 distinct annotations | **Yes** (`::warning::`) | **Benign by design.** The action soft-fails when a package in its hardcoded list isn't installed and continues. `large-packages: true` frees ~5.3 GB that the image builds need (issue #82); disabling it to silence cosmetic noise would risk re-introducing "no space left on device" build failures. Cannot be suppressed without forking the action. |
+| `jlumbroso/free-disk-space@main` — `::warning::The command [sudo apt-get remove …] failed … Proceeding...` | 28 distinct annotations | **Yes** (`::warning::`) | **Verdict revised by [issue #121](../issue-121/CASE-STUDY.md): not benign, and fixed without forking.** The reading below — soft-fail, cosmetic, unsuppressable — was right about the mechanism and wrong about the cost. apt stops at the *first* name it cannot locate and exits without removing *any* of the batch, so on `ubuntu-24.04-arm`, where Google publishes no repository, the annotation also meant the five packages that were installed stayed installed. `.github/actions/free-disk-space` now wraps the action with `large-packages: false` and hands `scripts/ci/reclaim-large-packages.sh` the intersection of the action's own patterns with what dpkg reports installed: same reclaim, on both architectures, no annotation. |
 | `git` — `hint: Using 'master' as the name for the initial branch … to suppress this warning` | 87 | No (plain stdout) | Emitted by **`actions/checkout`**'s internal `git init`, which doesn't set `init.defaultBranch`. Upstream cosmetic; not a build defect and not box code. |
 | box `setup-buildx-resilient` — `==> WARNING: could not pre-pull ${BUILDKIT_IMAGE} … letting setup-buildx try its own boot pull` | 56 (command echoes) | No | Intentional fallback logging from the issue #100 buildx mirror resilience. The fallback path is by design. |
 | `update-alternatives: warning: skip creation of …f77.1.gz…` (gfortran man pages) | a few | No | Cosmetic, emitted by an apt package install **inside the docker build**. |
@@ -212,6 +212,13 @@ The only third-party warning source (`jlumbroso/free-disk-space`) emits its
 `Proceeding...` annotations by explicit design (`… || echo "::warning::…"`); a
 "reduce cosmetic warning noise" issue there would be a duplicate of long-standing
 upstream discussion and is not filed.
+
+> **Superseded by [issue #121](../issue-121/CASE-STUDY.md).** Calling the noise
+> cosmetic ended the investigation one step early. The annotation reports that
+> apt could not locate a package — and apt, having failed to locate one name,
+> removes none of the others in the same command, so on arm64 the warning was
+> also a silent loss of the reclaim it was warning about. It is fixed locally
+> (see the table above) and reported upstream with the reproduction.
 
 ---
 

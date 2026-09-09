@@ -58,9 +58,15 @@ jobs:
   # has 30 GB freed up front and the parallel matrix means wall-clock is bound
   # by the slowest single image, not by the depth of the chain.
   #
-  # Every build job runs `jlumbroso/free-disk-space@main` first to reclaim
-  # ~30 GB before building, fixing the "no space left on device" regression
-  # captured in run 25075335426 (see docs/case-studies/issue-82/).
+  # Every build job frees ~30 GB before building, fixing the "no space left on
+  # device" regression captured in run 25075335426 (see
+  # docs/case-studies/issue-82/). The step is `./.github/actions/free-disk-space`
+  # rather than the upstream action it wraps: upstream removes a fixed list of
+  # package names, and `google-chrome-stable` has no arm64 apt source, so on
+  # every arm64 job apt exited 100 without removing any of the batch and the
+  # action turned that into a warning - 28 of them on release run 34293699247,
+  # which was green. The wrapper asks dpkg what is installed first, so the same
+  # packages go and nothing is annotated (issue #121).
   #
   # pr-test-full and pr-test-dind's `full` variant are the two jobs that have to
   # hold the whole chain - JS, essentials, 11 language images and the full box -
@@ -192,7 +198,7 @@ jobs:
         uses: ./.github/actions/simulate-fresh-merge
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           tool-cache: false
           android: true
@@ -255,7 +261,7 @@ jobs:
         uses: ./.github/actions/simulate-fresh-merge
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           tool-cache: false
           android: true
@@ -333,7 +339,7 @@ jobs:
         uses: ./.github/actions/simulate-fresh-merge
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           tool-cache: false
           android: true
@@ -409,7 +415,7 @@ jobs:
         uses: ./.github/actions/simulate-fresh-merge
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           # The two full-chain jobs are the only ones that hold every language
           # image and the full box on one VM at the same time, so they reclaim
@@ -558,7 +564,7 @@ jobs:
         uses: ./.github/actions/simulate-fresh-merge
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+        uses: ./.github/actions/free-disk-space
         with:
           # Same reclaim as pr-test-full, and for the same reason: the
           # `full` variant of this matrix builds the identical chain - JS,
