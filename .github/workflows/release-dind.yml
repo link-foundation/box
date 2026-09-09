@@ -37,6 +37,16 @@ on:
         required: false
         type: string
         default: ''
+    outputs:
+      amd64-result:
+        description: 'Rollup result of the build-dind-amd64 matrix'
+        value: ${{ jobs.status.outputs.amd64-result }}
+      arm64-result:
+        description: 'Rollup result of the build-dind-arm64 matrix'
+        value: ${{ jobs.status.outputs.arm64-result }}
+      manifest-result:
+        description: 'Rollup result of the dind-manifest matrix'
+        value: ${{ jobs.status.outputs.manifest-result }}
     secrets:
       # Optional on purpose: Docker Hub is a mirror of GHCR, and every job that
       # uses these tolerates a failed login (issue #82). A fork or a repository
@@ -471,3 +481,40 @@ jobs:
         if: steps.dockerhub-login.outcome != 'success'
         run: |
           echo "::warning title=Docker Hub manifest skipped::Skipping the Docker Hub mirror of the ${{ matrix.variant }} dind multi-arch manifests because Docker Hub login outcome was ${{ steps.dockerhub-login.outcome }}. GHCR manifests were still published."
+
+  # === STATUS ===
+  #
+  # The fifth release family had no status job and declared no `workflow_call`
+  # outputs, while the other four exported theirs from `jobs.status.outputs.*`
+  # (issue #121). Two spellings of one step is the shape of defect that produced
+  # issue #119: the convention nobody wrote down is the one a later job picks
+  # wrong. The run summary now carries a dind table like every other family, and
+  # the results are readable by the caller.
+  #
+  # This job summarises; it does not gate. The gate is `pipeline-status` in
+  # release.yml, which needs `dind` along with every other job there. Keeping
+  # the two apart is deliberate: a reusable workflow's declared outputs come
+  # from a job that has to be allowed to complete, so the job that reports the
+  # results must not be the job that fails on them.
+  status:
+    name: dind / status
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [build-dind-amd64, build-dind-arm64, dind-manifest]
+    if: ${{ !cancelled() }}
+    outputs:
+      amd64-result: ${{ needs.build-dind-amd64.result }}
+      arm64-result: ${{ needs.build-dind-arm64.result }}
+      manifest-result: ${{ needs.dind-manifest.result }}
+    steps:
+      - name: Summarise
+        run: |
+          {
+            echo "### dind / status"
+            echo ""
+            echo "| job | result |"
+            echo "| --- | --- |"
+            echo "| build-dind-amd64 | ${{ needs.build-dind-amd64.result }} |"
+            echo "| build-dind-arm64 | ${{ needs.build-dind-arm64.result }} |"
+            echo "| dind-manifest | ${{ needs.dind-manifest.result }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
