@@ -31,7 +31,7 @@ COPY ubuntu/24.04/common.sh /tmp/common.sh
 # Install ACL support for shared group permissions on /home/box
 RUN . /tmp/common.sh && \
     apt_update_with_retry && \
-    apt-get install -y acl && \
+    apt-get install -y --no-install-recommends acl && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     rm -f /tmp/common.sh && \
     setfacl -R -m g:box:rwx /home/box && \

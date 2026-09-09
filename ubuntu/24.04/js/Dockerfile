@@ -14,6 +14,14 @@ WORKDIR /home/box
 COPY ubuntu/24.04/common.sh /tmp/common.sh
 
 # Install minimal system prerequisites
+#
+# Recommends are kept here: measured, --no-install-recommends turns these 53
+# packages into 32, and among the 21 it drops are openssh-client (git over
+# ssh://, which is how a box clones a private repository), less (git's default
+# pager), patch and netbase. Those are the tools a developer expects `git` to
+# come with, not incidental weight.
+# Measured by experiments/measure-issue121-apt-recommends.sh (issue #121).
+# hadolint ignore=DL3015
 RUN . /tmp/common.sh && \
     apt_update_with_retry && \
     apt-get install -y curl git sudo ca-certificates unzip && \
@@ -24,9 +32,21 @@ RUN . /tmp/common.sh && \
 # Source: https://playwright.dev/docs/browsers#install-system-dependencies
 #         https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/registry/nativeDeps.ts
 #         https://pptr.dev/troubleshooting
+#
+# The list is exactly Playwright's ubuntu24.04 set (tools + chromium + firefox +
+# webkit, 79 packages, deduplicated) plus the three Puppeteer-only additions
+# libxss1, libxtst6 and xdg-utils. experiments/test-issue121-playwright-deps.sh
+# holds it against a recorded copy of that set, because until issue #121 the
+# Dockerfile was seven packages short and Playwright said so on every JS build
+# ("Host validation warning: missing libraries") without failing anything.
+#
+# --no-install-recommends is what Playwright's own installer passes
+# (packages/playwright-core/src/server/registry/dependencies.ts), so the list is
+# complete without recommends by construction; measured, it drops 65 packages
+# from this step, systemd and dbus-user-session among them.
 RUN . /tmp/common.sh && \
     apt_update_with_retry && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
       libasound2t64 \
       libatk-bridge2.0-0t64 \
       libatk1.0-0t64 \
@@ -78,6 +98,9 @@ RUN . /tmp/common.sh && \
       libharfbuzz-icu0 \
       libharfbuzz0b \
       libhyphen0 \
+      libavif16 \
+      libicu74 \
+      libx264-164 \
       libjpeg-turbo8 \
       liblcms2-2 \
       libmanette-0.2-0 \
@@ -102,6 +125,10 @@ RUN . /tmp/common.sh && \
       fonts-ipafont-gothic \
       fonts-wqy-zenhei \
       fonts-freefont-ttf \
+      fonts-tlwg-loma-otf \
+      fonts-unifont \
+      xfonts-cyrillic \
+      xfonts-scalable \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Create box group and user with /home/box as home directory

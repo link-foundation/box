@@ -64,6 +64,7 @@ declare -A SKIP_SUITES=(
   ['rust-refresh-layer-test.sh']="needs docker: builds layers to measure image size"
   ['verify-full-box-tooling.sh']="needs docker and a pulled full-box image (tens of GB); manual probe behind scripts/ci/test-box.sh"
   ['test-issue121-provenance-metadata-leak.sh']="needs docker: drives a real buildx build to reproduce the metadata provenance leak (its offline twin, test-issue121-log-injection.sh, runs here)"
+  ['measure-issue121-apt-recommends.sh']="needs docker and a network: resolves apt dependency plans in ubuntu:24.04 to measure what --no-install-recommends drops; a measurement, not an assertion (its recorded output is in dev/log/issues/121/pulls/122/apt-recommends/)"
 )
 
 # Where the skip names come from, which is the repository's suite directory

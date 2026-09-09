@@ -170,15 +170,39 @@ log_step "Downloading Playwright browser binaries"
 # the install abort with "gpg: no valid OpenPGP data found" / "Failed to install
 # msedge". Retry the whole step; Playwright skips already-installed browsers, so a
 # retry only re-attempts the one that blipped.
+#
+# The output is captured as well as printed, because the one thing that can go
+# wrong here does not change the exit status: when a browser's shared libraries
+# are missing, `playwright install` prints
+#
+#   Playwright Host validation warning:
+#   ...   sudo apt-get install libavif16
+#
+# and exits 0. The layer is committed and the box ships browsers that cannot
+# start. That is exactly how ubuntu/24.04/js/Dockerfile stayed seven packages
+# short of Playwright's own ubuntu24.04 dependency list while both JS build jobs
+# printed that warning on every single run, unread (issue #121). A warning
+# nothing acts on is not a check, so this one becomes the build failure it is.
+#
+# assert_no_playwright_host_warning in ../common.sh is what reads the capture.
+PLAYWRIGHT_LOG="$(mktemp)"
 ARCH=$(uname -m)
 if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; then
   log_info "x86_64 detected: installing all browsers (chromium, firefox, webkit, msedge, chromium-headless-shell, chrome)"
-  run_with_retry playwright install chromium firefox webkit msedge chromium-headless-shell chrome
+  run_with_retry playwright install chromium firefox webkit msedge chromium-headless-shell chrome 2>&1 | tee "$PLAYWRIGHT_LOG"
 else
   log_info "$ARCH detected: installing compatible browsers (chromium, firefox, webkit, chromium-headless-shell)"
-  run_with_retry playwright install chromium firefox webkit chromium-headless-shell
+  run_with_retry playwright install chromium firefox webkit chromium-headless-shell 2>&1 | tee "$PLAYWRIGHT_LOG"
 fi
 log_success "Playwright browser binaries downloaded"
+
+if command -v assert_no_playwright_host_warning >/dev/null 2>&1; then
+  assert_no_playwright_host_warning "$PLAYWRIGHT_LOG" || {
+    rm -f "$PLAYWRIGHT_LOG"
+    exit 1
+  }
+fi
+rm -f "$PLAYWRIGHT_LOG"
 
 # Verify at least chromium is available
 if [ -d "$HOME/.cache/ms-playwright" ]; then

@@ -43,6 +43,37 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 cd "$REPO_ROOT"
 
+# The annotation level is derived from the threshold, not hardcoded beside it.
+# Before issue #121 this script mapped error/warning to ::error and everything
+# else to ::notice, while .hadolint.yaml failed at `warning` - so the two agreed
+# only by coincidence, and lowering the threshold would have produced a run that
+# fails while every annotation on it says "notice". Read the threshold once and
+# let it decide both.
+THRESHOLD="$(sed -n 's/^failure-threshold:[[:space:]]*\([a-z]*\).*/\1/p' .hadolint.yaml | head -n1)"
+THRESHOLD="${THRESHOLD:-info}"
+
+# hadolint's severities, most severe first. A finding at or above the threshold
+# is what hadolint exits non-zero on, so it is annotated as an error; anything
+# below it is genuinely advisory.
+SEVERITIES=(error warning info style)
+
+severity_rank() {
+  local want="$1" i
+  for i in "${!SEVERITIES[@]}"; do
+    if [ "${SEVERITIES[$i]}" = "$want" ]; then
+      echo "$i"
+      return 0
+    fi
+  done
+  echo 99
+}
+
+THRESHOLD_RANK="$(severity_rank "$THRESHOLD")"
+if [ "$THRESHOLD_RANK" = "99" ]; then
+  echo "::error title=hadolint::.hadolint.yaml sets failure-threshold: $THRESHOLD, which is not one of ${SEVERITIES[*]}."
+  exit 1
+fi
+
 # collect_files — every tracked or newly added Dockerfile outside the vendored
 # evidence tree. The glob covers `Dockerfile`, `Dockerfile.stage` and
 # `*.Dockerfile`, which are all three shapes present here.
@@ -95,7 +126,7 @@ else
   echo "==> hadolint not on PATH; using $IMAGE"
 fi
 
-echo "==> Checking ${#FILES[@]} Dockerfile(s)"
+echo "==> Checking ${#FILES[@]} Dockerfile(s) (failing at severity '$THRESHOLD' and above)"
 
 FINDINGS=0
 FAILURES=0
@@ -118,10 +149,11 @@ for file in "${FILES[@]}"; do
     level="${level%%:*}"
     # Only what hadolint itself would fail on becomes an error annotation; the
     # rest is advisory, so a style suggestion cannot be mistaken for a defect.
-    case "$level" in
-      error | warning) gh_level="error" ;;
-      *) gh_level="notice" ;;
-    esac
+    if [ "$(severity_rank "$level")" -le "$THRESHOLD_RANK" ]; then
+      gh_level="error"
+    else
+      gh_level="notice"
+    fi
     echo "::${gh_level} file=${file},line=${lineno}::${code} ${level}: ${rest}"
     FINDINGS=$((FINDINGS + 1))
   done <<<"$out"

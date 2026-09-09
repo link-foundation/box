@@ -124,10 +124,31 @@ else
   fail "advisory findings are reported at error level"
 fi
 
-if grep -q '^failure-threshold: warning' "$CONFIG"; then
-  pass "the threshold is 'warning', matching the shellcheck gate's bar"
+# Issue #121 lowered this from `warning` to `info`, hadolint's own default,
+# after resolving the ten DL3015/DL3059 findings that `warning` could only ever
+# print as notices. A threshold below what the repository actually satisfies is
+# a check that cannot fail.
+CONFIGURED_THRESHOLD="$(sed -n 's/^failure-threshold:[[:space:]]*\([a-z]*\).*/\1/p' "$CONFIG" | head -n1)"
+if [ "$CONFIGURED_THRESHOLD" = "info" ]; then
+  pass "the threshold is 'info', hadolint's default"
 else
-  fail "$CONFIG does not set failure-threshold: warning"
+  fail "$CONFIG sets failure-threshold: ${CONFIGURED_THRESHOLD:-<unset>}, expected info"
+fi
+
+# The runner used to hardcode `error|warning) gh_level="error"` next to a
+# threshold it never read, so a lowered threshold would have produced a red run
+# whose every annotation said "notice". It derives the level from the threshold
+# now, and these two assertions are what keeps them from drifting apart again.
+if [[ "$RUNNER_SRC" == *'severity_rank "$level"'* ]] && [[ "$RUNNER_SRC" == *'THRESHOLD_RANK'* ]]; then
+  pass "the annotation level is derived from the configured threshold"
+else
+  fail "the runner hardcodes which severities become error annotations"
+fi
+
+if [[ "$RUNNER_SRC" == *'sed -n '\''s/^failure-threshold:'* ]]; then
+  pass "the runner reads the threshold out of $CONFIG"
+else
+  fail "the runner does not read the threshold from $CONFIG"
 fi
 
 # Every suppressed rule must carry its reason in the file, so a future reader
