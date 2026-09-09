@@ -38,6 +38,7 @@ way to go red.
 | n | A CI policy check that failed on the comment explaining it | `scripts` | Invariant 4 of `test-issue115-ci-policy.sh` grepped raw workflow text for `always()`. | It reads evaluated expressions, not prose. |
 | o | The assertion written for finding **g** could not fail on the machine that ran it | `scripts` | It extracted a `run:` block with `awk '/^\s+run: \|/,0'`. `\s` is a GNU extension: under mawk (Debian's and Ubuntu's default `awk`) it matches nothing, the range never opens, and the negated grep passes. Under gawk — what GitHub's runner ships — `,0` never closes, so the "block" is the rest of the file and correct `with:` mappings are reported. | The block is bounded by indentation; `scripts/ci/check-awk-portability.sh` fails CI on any GNU-only escape in an awk program, over every tracked file. |
 | p | Ten of this repository's fourteen JavaScript modules were parsed by nothing | structural | shellcheck, shfmt and `check-heredoc-vars.sh` discover `*.sh`; `run-experiments.sh` discovers `experiments/*.sh`; `check-file-line-limits.sh` reads `*.mjs` but only counts lines. Two of the four modules CI does execute run **only** on the recovery path, after the links check has already failed. | `scripts/ci/check-mjs-syntax.sh` parses every tracked module and resolves every relative import, ported from the js template's gate of the same name. |
+| q | The job that commits the README could commit another run's numbers | `measure-disk-space` | `update-readme-sizes.sh` rendered its table to `/tmp/markdown_table_content.txt` — one fixed path, shared by every invocation on the machine — and the branch that runs when the README has lost its markers read that file three lines *before* writing it. With no leftover it died with a Python traceback naming a path in `/tmp`; with a leftover it wrote **that** run's table into this README and exited 0. `--readme-file` and `--json-file` were parsed into shell variables the Python child process never saw, so the script announced one file and rewrote another. | One render into a `mktemp` file of the run's own, one write path for both branches, and both paths exported. `experiments/test-issue121-readme-updater.sh` holds 25 assertions, 10 of which fail against the previous script; the transcripts are in `dev/log/issues/121/pulls/122/readme-updater/`. |
 
 One sentence covers the whole table: **an annotation is a claim about the run,
 and every mechanism here was making claims it had not checked** — in both
@@ -59,7 +60,7 @@ it:
 | `templates/` | the two reference templates' full file trees and the hive-mind best-practices document, as they stood when compared |
 | `probes/provenance-injection/` | four `docker buildx build` runs and their metadata files, which is what turned finding (a) from a theory into a chain |
 | `upstream/` | the bodies of the reports filed on other projects, kept verbatim so this stays readable if one is edited or closed |
-| `push-rejection/`, `apt-recommends/`, `playwright-deps/`, `cancelled-survey/` | the transcripts behind findings (l), (e), (f) and (i) |
+| `push-rejection/`, `apt-recommends/`, `playwright-deps/`, `cancelled-survey/`, `readme-updater/` | the transcripts behind findings (l), (e), (f), (i) and (q) |
 
 The survey in `run-conclusions/README.md` is worth stating on its own, because
 it bounds the problem:

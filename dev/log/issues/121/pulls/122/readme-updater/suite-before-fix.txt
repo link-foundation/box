@@ -1,0 +1,50 @@
+# Recorded 2026-09-09 against scripts/update-readme-sizes.sh at b8ef077 (before the fix).
+# Command: bash experiments/test-issue121-readme-updater.sh
+
+=== Part 1: the refresh path, which is the one CI takes ===
+PASS: a README with markers is updated and exits 0
+PASS: the table carries the JSON's total, not the stale one
+PASS: the stale table is gone
+PASS: exactly one pair of markers is left behind
+PASS: a second run with the same JSON changes nothing
+
+=== Part 2: a README that has lost its markers ===
+FAIL: expected exit 0, got 1:     Reading measurements from: /tmp/tmp.8uMJ7xbSFy/insert/data/disk-space-measurements.json
+    Updating README at: /tmp/tmp.8uMJ7xbSFy/insert/README.md
+    Adding component sizes section...
+    Traceback (most recent call last):
+      File "<stdin>", line 7, in <module>
+    FileNotFoundError: [Errno 2] No such file or directory: '/tmp/markdown_table_content.txt'
+FAIL: the markers were not restored
+FAIL: the inserted table is not this run's
+experiments/test-issue121-readme-updater.sh: line 154: [: : integer expression expected
+FAIL: the section is not placed before '## License'
+PASS: the run after an insert changes nothing
+
+=== Part 3: no other run's numbers can reach this README ===
+PASS: a leftover in /tmp does not stop the run
+FAIL: another run's table was written into this README
+FAIL: this run's table is missing
+FAIL: the updater still names a fixed path in /tmp, which every run shares
+
+=== Part 4: the flags write where they say they write ===
+PASS: --readme-file exits 0
+FAIL: --readme-file did not update the file it names
+FAIL: --readme-file rewrote README.md instead of the file it names
+FAIL: --json-file was ignored
+PASS: README_FILE and JSON_FILE from the environment still work
+
+=== Part 5: misuse is refused, not guessed at ===
+PASS: a missing JSON file is an error
+PASS: and the message names the file it looked for
+PASS: a missing README is an error
+PASS: an unknown option is refused
+
+=== Part 6: the workflow that runs it ===
+PASS: measure-disk-space.yml runs the updater
+PASS: and passes both paths in the environment, as Part 4 assumes
+
+passed: 15
+failed: 10
+
+suite exit: 1

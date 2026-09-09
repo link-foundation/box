@@ -1,0 +1,30 @@
+# Hand probes recorded 2026-09-09 against scripts/update-readme-sizes.sh at b8ef077 (before the fix).
+
+## Probe 1: a README without the markers, and no leftover in /tmp
+Reading measurements from: /tmp/rp1/data/disk-space-measurements.json
+Updating README at: /tmp/rp1/README.md
+Adding component sizes section...
+Traceback (most recent call last):
+  File "<stdin>", line 7, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/markdown_table_content.txt'
+exit=1
+markers in README after the run: 0
+
+## Probe 2: the same README, with an earlier run's table still in /tmp
+exit=0
+<!-- COMPONENT_SIZES_START -->
+## Component Sizes
+
+STALE TABLE FROM ANOTHER RUN
+
+<!-- COMPONENT_SIZES_END -->
+
+## Probe 3: --readme-file names one file, the script rewrites another
+Reading measurements from: /tmp/rp2/data/disk-space-measurements.json
+Updating README at: /tmp/rp2/other.md
+Updating existing component sizes section...
+Updated README.md
+README update complete!
+exit=0
+other.md (the file named on the command line): **Total installation size: 1.0 MB**
+README.md (the file actually written):        **Total installation size: 4830.0 MB**
