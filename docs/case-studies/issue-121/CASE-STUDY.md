@@ -976,7 +976,28 @@ job, built from the same `imagetools create` call, with **no verification step
 at all**. Two sibling templates disagreeing about whether to check a publish is
 better evidence of an oversight than any argument about it, and the fix is
 already written in one of them. It is issue #119's finding pointed at somebody
-else's repository: *"it resolves" is not "it was published"*.
+else's repository: *"it resolves" is not "it was published"*. Filed as
+[js#185](https://github.com/link-foundation/js-ai-driven-development-pipeline-template/issues/185),
+with the reachability path stated and the honest note that I did not observe it
+firing there — `tests/docker-publish.test.js` asserts the matrix *declares* two
+platforms, which is a test of the workflow file and passes in every run where
+the published index has one.
+
+**A second candidate that did not survive being checked.** The obvious next
+report was the `paths:`-coverage class, generalising
+[js#159](https://github.com/link-foundation/js-ai-driven-development-pipeline-template/issues/159)
+— `.lycheeignore` missing from a filter, so adding an ignore entry did not
+re-run the check it governs. Sweeping both templates for the same shape found
+what looked like nine instances: no workflow's `paths:` filter names
+`scripts/check-pipeline-status.sh`, which every one of them runs, and
+`workflows.yml` names neither script it executes. Then the safety net turned up:
+`release.yml` and `security.yml` have **no `paths:` filter at all**, so every
+pull request runs them, and `release.yml` runs `npm test` over a suite that
+covers those scripts. The change is exercised; what is missed is only its
+re-evaluation in each workflow's own context. That is a much smaller thing than
+the sweep implied, and not worth somebody else's triage time. Recording a
+hypothesis that failed is cheaper than testing it twice — the same disposal
+`run-with-budget-warning.sh`'s liveness got in §13.3.
 
 **The invariants: `timeout-minutes`, `permissions`, `concurrency`.** A first
 sweep over all 67 jobs here against the templates' 34 and 26 reported six jobs
