@@ -1,0 +1,29 @@
+---
+bump: minor
+---
+
+Make every CI annotation mean what it says, and give every check a way to fail (issue #121). The eight runs the issue lists carried **98 annotations** — 58 `failure`, 29 `warning`, 11 `notice` — and seven of those eight runs were green. Two of the 98 were the run that was actually red, and they were reporting a test assertion that could only pass on 2026-09-08.
+
+### The 56 failures a commit message printed
+
+Release run 34293699247 finished with every build job green and 56 `failure` annotations carrying the body of commit `a2e6420`, which quotes `##[error]` while explaining a fix. `docker/setup-buildx-action` creates a `docker-container` builder, and since buildx v0.30.0 that driver bakes the whole `GITHUB_EVENT_PATH` payload into the builder at **create** time; `provenance: false` drops the image attestation but not the metadata file, whose default `min` mode keeps `invocation.environment.github_event_payload`; `docker/build-push-action` prints that file with `core.info(JSON.stringify(...))`, so a whole commit message arrives as one physical line; and the runner's `ActionCommand.TryParse` accepts `##[` **anywhere** in a line, unlike `TryParseV2`. So any commit message quoting `##[error]` annotates the next release, and `stop-commands` is in the same registered set. `BUILDX_METADATA_PROVENANCE: disabled` at workflow scope in all six building workflows removes the payload rather than the printing. Filed as docker/buildx#4066, docker/build-push-action#1612 and actions/runner#4692, each with the reproduction, a workaround and a fix in diff form.
+
+### The 28 warnings that were also a false negative
+
+`jlumbroso/free-disk-space` removes a fixed list of package names. Google publishes no arm64 apt repository, so on `ubuntu-24.04-arm` apt stops at `E: Unable to locate package google-chrome-stable`, exits 100 — and removes **none** of the other five in the same command. The annotation reported the absence of a package that architecture never had, and was simultaneously the only notice that every arm64 job was keeping the packages the reclaim existed to take. `scripts/ci/reclaim-large-packages.sh` hands apt the intersection of the action's own patterns with what `dpkg-query` reports installed, so a failure now means something installed could not be removed.
+
+### The checks that could not fail
+
+`.hadolint.yaml` failed at `warning` while all ten findings in the repository are `info`, and the runner mapped annotation levels beside a threshold it never read. All ten are resolved — DL3015 per site, measured by resolving each apt plan twice in `ubuntu:24.04`, so `--no-install-recommends` is added where it is a no-op and refused where the recommends are the product — and the threshold is hadolint's default now. `zizmor` scanned `.github/workflows` and nothing else, so the four composite actions had never been read by any linter; widening it surfaced a High-confidence `template-injection` in `dockerhub-login`. The `'*': hash-pin` policy could not apply to images at all, because those audits are Pedantic-only: a second high/high pass restores it, and `docker://rhysd/actionlint` is pinned by digest. `playwright install` printed a host-validation warning on both JS build jobs and exited 0, shipping browsers linked against libraries the image lacks — seven packages short of Playwright's own list; all seven are installed and the warning is a build failure now.
+
+### Grey is not red, and a backstop is not a deadline
+
+GitHub ranks a cancellation above a failure when it folds job conclusions into a run conclusion, so run 34259552358 concluded grey while `pr-test / dind-full` inside it had concluded `failure` 26 minutes earlier. `scripts/ci/check-pipeline-status.sh` is now a terminal gate in every entry-point workflow — a failure is always an error, a cancellation is an error only when the run is still the head of its branch — and `check-status-gate-covers-all-jobs.mjs` fails CI when a job is added outside a gate. One level down, a job killed by `timeout-minutes` names neither the step nor the number: 22 long steps are wrapped in `run-with-budget-warning.sh`, every cap is sized from `measure-job-durations.sh` (the release builds carried 120 minutes against a measured maximum of 35.6; `measure-disk-space` carried 180 against 23.3), and `check-timeout-budgets.mjs` keeps each budget under 70% of its cap, per matrix leg.
+
+### The false positives that had no cheap fix
+
+lychee answers `false` for the connect phase, so `--max-retries` never applies to a connection reset and the links gate fails on a healthy host; the cheap fix, an `.lycheeignore` entry, converts that into a permanent false negative. `scripts/ci/recheck-broken-links.mjs` re-asks only the URLs no host answered. Three jobs wrote to `main` with a bare `git push origin main`, and a ruleset rejection prints the same word as a race — classify the rule as a race and the job rebases, is declined identically, and blames a race that never happened. `git-push-failure-classifier.sh` tests for a rule first, and `git-push-with-retry.sh` answers a rule with a pull request.
+
+### Evidence and tests
+
+Every number above comes out of `dev/log/issues/121/pulls/122/`: all 98 annotations, the 200-run conclusion survey, the job logs, the provenance probes, and the bodies of the six upstream reports as filed. `docs/case-studies/issue-121/CASE-STUDY.md` has the full analysis; `docs/CI-TIMEOUT-BUDGETS.md` the measured caps. 387 new offline assertions across eleven suites — `pipeline-status-gate` (67), `playwright-deps` (89), `reclaim-large-packages` (47), `links-recheck` (39), `timeout-budgets` (39), `git-push-recovery` (33), `log-injection` (23), `workflow-audit-scope` (17), `clock-independence` (12), `provenance-metadata-leak` (11), `buildx-cleanup` (10) — each checker exercised in both a passing and a failing form.
