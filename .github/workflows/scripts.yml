@@ -115,6 +115,52 @@ jobs:
       - name: Checker fixtures and the mawk/gawk reproduction
         run: bash experiments/test-issue121-awk-portability.sh
 
+  # Issue #121. This repository is Dockerfiles and shell, so its JavaScript is
+  # easy to forget: ten of the fourteen tracked modules outside dev/log/ were
+  # named by no workflow and no suite, and nothing parsed them. Two of the four
+  # that are named only *execute* on the recovery path - links.yml runs
+  # recheck-broken-links.mjs after lychee has already failed - so a syntax error
+  # there would surface on the one run that needed it and on no run before.
+  # `node --check` is milliseconds a file; the js template gates on it, and
+  # experiments/reproduce-issue121-mjs-syntax-gap.sh measures the gap it closes.
+  mjs-syntax:
+    name: scripts / JavaScript syntax
+    runs-on: ubuntu-24.04
+    # Typical run: under two seconds over 16 modules. The limit is a backstop.
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-mjs-syntax
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Nothing here pushes; leaving the token in .git/config would only
+          # widen what a compromised step could reach.
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      # No setup-node step: this uses the Node the runner image ships, the same
+      # as the `workflows` job's two .mjs checkers. A newer parser accepts more
+      # syntax, not less, so the drift a pinned version would prevent can only
+      # make this gate more permissive - never a false positive.
+      #
+      # Fails the job on a module that does not parse, or a relative import
+      # that resolves to nothing, with a file/line annotation.
+      - name: Every JavaScript module parses
+        run: bash scripts/ci/check-mjs-syntax.sh
+
+      # The checker is only worth trusting if its own false-positive and
+      # false-negative fixtures still hold.
+      - name: Checker fixtures and the coverage-gap reproduction
+        run: bash experiments/test-issue121-mjs-syntax.sh
+
   # Issue #115. actionlint runs shellcheck over the `run:` blocks inside
   # .github/workflows/**, and nothing ran it over the 75 tracked *.sh files that
   # actually build the boxes — the largest body of shell in the repository was
@@ -283,7 +329,7 @@ jobs:
     name: pipeline-status
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    needs: [heredoc-vars, awk-portability, shellcheck, shfmt, experiments]
+    needs: [heredoc-vars, awk-portability, mjs-syntax, shellcheck, shfmt, experiments]
     if: ${{ !cancelled() }}
     steps:
       - uses: actions/checkout@v6

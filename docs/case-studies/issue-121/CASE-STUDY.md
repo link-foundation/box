@@ -37,6 +37,7 @@ way to go red.
 | m | A suite asserting "exactly 3 suites are skipped" | `scripts` | A hard-coded count fails when a justified exclusion is added, and passes when an entry silently stops matching. | It compares the runner's declared exclusions against the ones that actually apply. |
 | n | A CI policy check that failed on the comment explaining it | `scripts` | Invariant 4 of `test-issue115-ci-policy.sh` grepped raw workflow text for `always()`. | It reads evaluated expressions, not prose. |
 | o | The assertion written for finding **g** could not fail on the machine that ran it | `scripts` | It extracted a `run:` block with `awk '/^\s+run: \|/,0'`. `\s` is a GNU extension: under mawk (Debian's and Ubuntu's default `awk`) it matches nothing, the range never opens, and the negated grep passes. Under gawk — what GitHub's runner ships — `,0` never closes, so the "block" is the rest of the file and correct `with:` mappings are reported. | The block is bounded by indentation; `scripts/ci/check-awk-portability.sh` fails CI on any GNU-only escape in an awk program, over every tracked file. |
+| p | Ten of this repository's fourteen JavaScript modules were parsed by nothing | structural | shellcheck, shfmt and `check-heredoc-vars.sh` discover `*.sh`; `run-experiments.sh` discovers `experiments/*.sh`; `check-file-line-limits.sh` reads `*.mjs` but only counts lines. Two of the four modules CI does execute run **only** on the recovery path, after the links check has already failed. | `scripts/ci/check-mjs-syntax.sh` parses every tracked module and resolves every relative import, ported from the js template's gate of the same name. |
 
 One sentence covers the whole table: **an annotation is a claim about the run,
 and every mechanism here was making claims it had not checked** — in both
@@ -727,7 +728,38 @@ Read from `templates/hive-mind-CI-CD-BEST-PRACTICES.md` as it stood on
 
 Adopted in this pull request, ported rather than copied:
 `check-pipeline-status.sh` (§7), `check-status-gate-covers-all-jobs.mjs` (§7),
-`recheck-broken-links.mjs` (§9), `run-with-budget-warning.sh` (§8).
+`recheck-broken-links.mjs` (§9), `run-with-budget-warning.sh` (§8),
+`check-mjs-syntax.sh`.
+
+The last one is finding **p**, and it is worth stating why a repository of
+Dockerfiles and shell needs a JavaScript gate at all. `git ls-files '*.mjs'`
+outside `dev/log/` and `docs/` returns fourteen files. Ten of them are named by
+no workflow and no suite: the seven ranking fetchers under
+`scripts/language-tops/` and the three `.mjs` probes in `experiments/`. Nothing
+read them, because every shell gate here discovers `*.sh` and
+`run-experiments.sh` discovers `experiments/*.sh`. Of the four that CI does
+execute, two — `recheck-broken-links.mjs` and `check-web-archive.mjs` — run only
+when `links` has already failed, so a syntax error in them would surface on the
+one run that needed them and on no run before: a recovery path that is only
+exercised in the emergency it exists for.
+
+The port keeps `node --check` and changes two things. Discovery is
+`git ls-files`, not the template's three hard-coded directory names, so a module
+added anywhere is covered by the fact of being tracked. And a missing `node` is
+exit 2, not a skip — the template's version would report success on a runner
+without an interpreter, which is finding **h**'s shape.
+
+One rule was added rather than ported: every *relative* import specifier must
+resolve to a file that exists. `import { x } from './helpers.mjs'` after
+helpers.mjs is renamed parses perfectly and throws `ERR_MODULE_NOT_FOUND` on
+first load — the same dormant-until-needed failure one level up from syntax.
+Bare specifiers are left alone: there is no `node_modules` here to resolve them
+against, and resolving them against the runner's would make the gate report on
+the machine instead of the tree. No module in this repository imports a relative
+path today, so the rule is proved by fixtures rather than by the sweep —
+`experiments/test-issue121-mjs-syntax.sh`, 31 assertions, of which three feed it
+a specifier that resolves to nothing and four feed it specifiers it must leave
+alone.
 
 Deliberately diverged, with the divergence filed upstream: the template's
 `all_recovered` (§9, [js#184](https://github.com/link-foundation/js-ai-driven-development-pipeline-template/issues/184)
@@ -761,6 +793,7 @@ survey, and the reason each answer went the way it did:
 | Free disk on a runner | `jlumbroso/free-disk-space` | Kept, with `large-packages: false` — the action is right about *what* to remove and wrong about *how* on arm64 (§2) |
 | Retry a rejected push | The template's `push-failure-classifier.mjs` | Same idea, re-derived in shell against a live `git` (§10), because the strings are the contract and they are a git version's to change |
 | Re-ask an unanswered URL | The template's `recheck-broken-links.mjs` | Ported, with one condition added (§9) |
+| Parse the repository's JavaScript | The js template's `check-mjs-syntax.sh` | **Ported**, with `git ls-files` discovery instead of three hard-coded directories, a missing `node` as exit 2 rather than a skip, and relative-import resolution added (§12.3) |
 | Suppress a false link failure | `.lycheeignore` | **Rejected** — it converts a false positive into a permanent false negative |
 | Stop a log injection | `provenance: false` | **Insufficient**, and the difference matters: it governs the attestation, not the metadata file (§1) |
 | Measure job durations | `gh run list` / the jobs API | Wrapped as `measure-job-durations.sh`, using `gh --jq` so no `jq` binary is required on a runner |
@@ -770,10 +803,11 @@ survey, and the reason each answer went the way it did:
 ## 14. Still outstanding
 
 - **The remaining template comparison.** `check-required-docs.sh`,
-  `check-mjs-syntax.sh`, `lint-changed-lines.mjs` and `install-git-hooks.mjs`
-  have counterparts in the js template and none here. Each has to be judged
-  against a repository whose sources are Dockerfiles and shell rather than a
-  package, which is why they are named here rather than adopted by reflex.
+  `lint-changed-lines.mjs` and `install-git-hooks.mjs` have counterparts in the
+  js template and none here. Each has to be judged against a repository whose
+  sources are Dockerfiles and shell rather than a package, which is why they are
+  named here rather than adopted by reflex. `check-mjs-syntax.sh` was judged the
+  same way and adopted; see §12.3.
 - **`security.yml` and `release.yml` against both templates**, file by file, at
   the same level of detail as §12.2.
 - Nothing in this pull request rewrites an annotation that is already published.
