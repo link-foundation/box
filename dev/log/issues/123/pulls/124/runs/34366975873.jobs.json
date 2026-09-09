@@ -1,0 +1,294 @@
+[
+  {
+    "id": 102518097368,
+    "run_id": 34366975873,
+    "workflow_name": "Workflows",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34366975873",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX3o4F2A",
+    "head_sha": "1d9fb3e13b58747b6f374a988d2ada33c791f1a6",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102518097368",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34366975873/job/102518097368",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-09T14:56:51Z",
+    "started_at": "2026-09-09T14:56:54Z",
+    "completed_at": "2026-09-09T14:57:18Z",
+    "name": "actionlint",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-09T14:56:55Z",
+        "completed_at": "2026-09-09T14:56:55Z"
+      },
+      {
+        "name": "Pull rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-09T14:56:55Z",
+        "completed_at": "2026-09-09T14:57:01Z"
+      },
+      {
+        "name": "Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-09T14:57:01Z",
+        "completed_at": "2026-09-09T14:57:04Z"
+      },
+      {
+        "name": "Simulate a fresh merge with the base branch",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-09-09T14:57:04Z",
+        "completed_at": "2026-09-09T14:57:04Z"
+      },
+      {
+        "name": "Run rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-09-09T14:57:04Z",
+        "completed_at": "2026-09-09T14:57:06Z"
+      },
+      {
+        "name": "Every workflow's status gate covers every job in it",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-09-09T14:57:06Z",
+        "completed_at": "2026-09-09T14:57:07Z"
+      },
+      {
+        "name": "Every execution budget fits inside its job's timeout",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-09-09T14:57:07Z",
+        "completed_at": "2026-09-09T14:57:07Z"
+      },
+      {
+        "name": "Every gate can be started by the files it reads",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-09-09T14:57:07Z",
+        "completed_at": "2026-09-09T14:57:07Z"
+      },
+      {
+        "name": "Path-coverage fixtures",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-09-09T14:57:07Z",
+        "completed_at": "2026-09-09T14:57:09Z"
+      },
+      {
+        "name": "Git advice hints",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-09-09T14:57:09Z",
+        "completed_at": "2026-09-09T14:57:09Z"
+      },
+      {
+        "name": "Every checkout says what happens to the job token",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-09-09T14:57:09Z",
+        "completed_at": "2026-09-09T14:57:09Z"
+      },
+      {
+        "name": "Checkout-credential fixtures",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12,
+        "started_at": "2026-09-09T14:57:09Z",
+        "completed_at": "2026-09-09T14:57:15Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 24,
+        "started_at": "2026-09-09T14:57:15Z",
+        "completed_at": "2026-09-09T14:57:16Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 25,
+        "started_at": "2026-09-09T14:57:16Z",
+        "completed_at": "2026-09-09T14:57:16Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102518097368",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000055993,
+    "runner_name": "GitHub Actions 1000055993",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 102518097754,
+    "run_id": 34366975873,
+    "workflow_name": "Workflows",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34366975873",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX3o4HWg",
+    "head_sha": "1d9fb3e13b58747b6f374a988d2ada33c791f1a6",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102518097754",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34366975873/job/102518097754",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-09T14:56:52Z",
+    "started_at": "2026-09-09T14:56:54Z",
+    "completed_at": "2026-09-09T14:57:05Z",
+    "name": "zizmor",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-09T14:56:55Z",
+        "completed_at": "2026-09-09T14:56:55Z"
+      },
+      {
+        "name": "Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-09T14:56:55Z",
+        "completed_at": "2026-09-09T14:56:58Z"
+      },
+      {
+        "name": "Simulate a fresh merge with the base branch",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-09T14:56:58Z",
+        "completed_at": "2026-09-09T14:56:58Z"
+      },
+      {
+        "name": "zizmor",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-09-09T14:56:58Z",
+        "completed_at": "2026-09-09T14:57:01Z"
+      },
+      {
+        "name": "Audit for pedantic-only high-severity findings",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-09-09T14:57:01Z",
+        "completed_at": "2026-09-09T14:57:02Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-09-09T14:57:02Z",
+        "completed_at": "2026-09-09T14:57:02Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-09-09T14:57:02Z",
+        "completed_at": "2026-09-09T14:57:02Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102518097754",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000055999,
+    "runner_name": "GitHub Actions 1000055999",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 102518267606,
+    "run_id": 34366975873,
+    "workflow_name": "Workflows",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34366975873",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX3pCe1g",
+    "head_sha": "1d9fb3e13b58747b6f374a988d2ada33c791f1a6",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102518267606",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34366975873/job/102518267606",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-09T14:57:19Z",
+    "started_at": "2026-09-09T14:57:22Z",
+    "completed_at": "2026-09-09T14:57:29Z",
+    "name": "pipeline-status",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-09T14:57:22Z",
+        "completed_at": "2026-09-09T14:57:24Z"
+      },
+      {
+        "name": "Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-09T14:57:24Z",
+        "completed_at": "2026-09-09T14:57:27Z"
+      },
+      {
+        "name": "Check pipeline status",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-09T14:57:27Z",
+        "completed_at": "2026-09-09T14:57:27Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-09-09T14:57:27Z",
+        "completed_at": "2026-09-09T14:57:27Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-09-09T14:57:27Z",
+        "completed_at": "2026-09-09T14:57:27Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102518267606",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056018,
+    "runner_name": "GitHub Actions 1000056018",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  }
+]

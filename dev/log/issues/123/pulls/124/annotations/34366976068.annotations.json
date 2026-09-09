@@ -1,0 +1,17 @@
+[
+  {
+    "run_id": 34366976068,
+    "job_id": 102518098621,
+    "job_name": "links / lychee",
+    "path": ".github",
+    "blob_href": "https://github.com/link-foundation/box/blob/1d9fb3e13b58747b6f374a988d2ada33c791f1a6/.github",
+    "start_line": 150,
+    "start_column": null,
+    "end_line": 150,
+    "end_column": null,
+    "annotation_level": "notice",
+    "title": "",
+    "message": "Summary report available at: https://github.com/link-foundation/box/actions/runs/34366976068#summary-102518098621",
+    "raw_details": ""
+  }
+]
