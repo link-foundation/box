@@ -200,9 +200,11 @@ collect() { # collect <variable> <glob> ...
 # directory. run-shellcheck.sh and run-shfmt.sh were extended to look there.
 collect SH_FILES '*.sh' '*.bash' '.githooks/*'
 collect JS_FILES '*.mjs' '*.js' '*.cjs'
+collect PY_FILES '*.py'
 collect WF_FILES '.github/workflows/*.yml' '.github/workflows/*.yaml'
 collect TEXT_FILES '*.sh' '*.bash' '*.mjs' '*.js' '*.py' '*.yml' '*.yaml'
 collect DOC_FILES '*.md' '*.sh' '.github/*'
+collect CI_FILES 'scripts/ci/*'
 collect SIZED_FILES '*.sh' '*.md' '*.yml' '*.yaml' '*.mjs' '*.js' '*.cjs' '*.py' '*.rb'
 
 # --- running gates ------------------------------------------------------------
@@ -258,6 +260,10 @@ if [ "${#JS_FILES[@]}" -gt 0 ]; then
   gate mjs-syntax bash scripts/ci/check-mjs-syntax.sh "${JS_FILES[@]}"
 fi
 
+if [ "${#PY_FILES[@]}" -gt 0 ]; then
+  gate py-syntax bash scripts/ci/check-py-syntax.sh "${PY_FILES[@]}"
+fi
+
 if [ "${#WF_FILES[@]}" -gt 0 ]; then
   # Every workflow, not only the staged ones: both checkers derive their
   # requirement from the file they are reading, and CI runs them over the whole
@@ -271,6 +277,15 @@ if [ "${#WF_FILES[@]}" -gt 0 ]; then
     gate status-gate node scripts/ci/check-status-gate-covers-all-jobs.mjs "${ALL_WORKFLOWS[@]}"
     gate timeout-budgets node scripts/ci/check-timeout-budgets.mjs "${ALL_WORKFLOWS[@]}"
   fi
+fi
+
+# Staged workflows or staged checkers, because the two halves of this gate live
+# on opposite sides: a `paths:` filter is edited in .github/workflows, and the
+# set of files a gate reads is edited in scripts/ci. Either one alone can make
+# a check unreachable. It takes no arguments - like the two above, it derives
+# its requirement from the whole directory, and CI runs it the same way.
+if [ "${#WF_FILES[@]}" -gt 0 ] || [ "${#CI_FILES[@]}" -gt 0 ]; then
+  gate path-coverage node scripts/ci/check-workflow-path-coverage.mjs
 fi
 
 if [ "${#DOC_FILES[@]}" -gt 0 ]; then

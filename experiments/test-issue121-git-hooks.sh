@@ -304,7 +304,8 @@ stubbed_repo() { # stubbed_repo <name>
   mkdir -p "$dir/scripts/ci" "$dir/exits"
   local gate
   for gate in run-shfmt run-shellcheck check-heredoc-vars check-awk-portability \
-    check-mjs-syntax check-required-docs check-file-line-limits run-secretlint; do
+    check-mjs-syntax check-py-syntax check-required-docs check-file-line-limits \
+    run-secretlint; do
     cat >"$dir/scripts/ci/$gate.sh" <<'STUB_EOF'
 #!/usr/bin/env bash
 name="$(basename "$0" .sh)"
@@ -321,7 +322,8 @@ exit 0
 STUB_EOF
     chmod +x "$dir/scripts/ci/$gate.sh"
   done
-  for gate in check-status-gate-covers-all-jobs check-timeout-budgets; do
+  for gate in check-status-gate-covers-all-jobs check-timeout-budgets \
+    check-workflow-path-coverage; do
     cat >"$dir/scripts/ci/$gate.mjs" <<'STUB_EOF'
 import { appendFileSync, readFileSync, existsSync } from 'node:fs';
 import { basename } from 'node:path';
@@ -449,11 +451,22 @@ ran "$REPO" run-shellcheck \
 ran "$REPO" check-required-docs \
   && pass "but it does run check-required-docs" \
   || fail "check-required-docs did not run for a markdown commit" "$(record_of "$REPO")"
+ran "$REPO" check-workflow-path-coverage \
+  && fail "path coverage ran for a commit touching neither workflows nor checkers" \
+  || pass "and not path coverage, which reads neither side of a markdown change"
 
 REPO="$(scoped_run scope-mjs tool.mjs)"
 ran "$REPO" check-mjs-syntax \
   && pass "a staged .mjs runs check-mjs-syntax" \
   || fail "check-mjs-syntax did not run" "$(record_of "$REPO")"
+
+REPO="$(scoped_run scope-py tool.py)"
+ran "$REPO" check-py-syntax \
+  && pass "a staged .py runs check-py-syntax" \
+  || fail "check-py-syntax did not run" "$(record_of "$REPO")"
+ran "$REPO" check-mjs-syntax \
+  && fail "check-mjs-syntax ran for a Python-only commit" \
+  || pass "and not the JavaScript parser, which would have nothing to say"
 
 REPO="$(scoped_run scope-workflow .github/workflows/ci.yml)"
 for gate in check-status-gate-covers-all-jobs check-timeout-budgets; do
@@ -464,6 +477,17 @@ done
 grep -q '^ARGS .*\.github/workflows/ci\.yml' "$REPO/record" \
   && pass "and both are handed the workflow files themselves" \
   || fail "the workflow checkers got no workflow list" "$(record_of "$REPO")"
+ran "$REPO" check-workflow-path-coverage \
+  && pass "and a staged workflow runs check-workflow-path-coverage" \
+  || fail "path coverage did not run for a workflow" "$(record_of "$REPO")"
+
+# The other half of that gate: it compares what a workflow's filter matches
+# against what the checkers it runs read, so editing either side can open the
+# gap. A commit touching only scripts/ci has to run it too.
+REPO="$(scoped_run scope-ci-script scripts/ci/some-new-gate.sh)"
+ran "$REPO" check-workflow-path-coverage \
+  && pass "and so does a staged scripts/ci checker, the filter's other half" \
+  || fail "path coverage did not run for a staged checker" "$(record_of "$REPO")"
 
 REPO="$(scoped_run scope-secrets anything.txt)"
 ran "$REPO" run-secretlint \
@@ -549,7 +573,7 @@ while IFS= read -r script; do
     fail "$script runs in the hook but in no workflow"
   fi
 done <<<"$GATES"
-[ "$GATE_COUNT" -ge 10 ] \
+[ "$GATE_COUNT" -ge 12 ] \
   && pass "and the hook runs $GATE_COUNT distinct gates" \
   || fail "only found $GATE_COUNT gates in $CHECKS; the grep above has drifted"
 

@@ -26,6 +26,13 @@ on:
       - 'ubuntu/24.04/common.sh'
       - 'data/disk-space-measurements.json'
       - '.github/workflows/measure-disk-space.yml'
+      # The preflight and validation jobs, which are what a pull request can
+      # run here, are the only place these three are executed at all. They are
+      # deliberately absent from the push filter above: editing a validator
+      # should re-run the validation, not spend three hours measuring disk.
+      - 'scripts/ci/extract-quoted-heredoc.sh'
+      - 'scripts/ci/validate-measurements.py'
+      - 'scripts/ci/summarize-measurements.py'
   # Allow manual trigger
   workflow_dispatch:
     inputs:
@@ -244,14 +251,34 @@ jobs:
       # "valid". A measurement reporting 5 MB with a plausible component count
       # would have been committed as good. The checks live in a script now, so
       # they are testable and shared with the pull request gate (issue #115).
+      #
+      # `if ... then valid=true else valid=false` was wrong in the same way the
+      # `[ -lt ]` test was, one level up: the validator documents 0 = valid,
+      # 1 = invalid, 2 = usage error, and argparse exits 2 as well - so a
+      # SyntaxError, a renamed flag or a missing file all read as "these
+      # measurements are invalid" and quietly threw away three hours of work
+      # with the job green (issue #121). Only 1 means invalid. Anything else
+      # means the question was not answered, which is an error, not a verdict.
       - name: Validate measurements
         id: validate
         run: |
-          if python3 scripts/ci/validate-measurements.py data/disk-space-measurements.json; then
-            echo "valid=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "valid=false" >> "$GITHUB_OUTPUT"
-          fi
+          set +e
+          python3 scripts/ci/validate-measurements.py data/disk-space-measurements.json
+          rc=$?
+          set -e
+          case "$rc" in
+            0)
+              echo "valid=true" >> "$GITHUB_OUTPUT"
+              ;;
+            1)
+              echo "valid=false" >> "$GITHUB_OUTPUT"
+              echo "::warning::The measurements are invalid; nothing will be committed."
+              ;;
+            *)
+              echo "::error title=Measurement validation could not run::validate-measurements.py exited $rc, which is neither valid (0) nor invalid (1). The measurement is not being discarded on the strength of an answer nobody got."
+              exit 1
+              ;;
+          esac
 
       - name: Commit and push changes
         if: steps.changes.outputs.has_changes == 'true' && steps.validate.outputs.valid == 'true'

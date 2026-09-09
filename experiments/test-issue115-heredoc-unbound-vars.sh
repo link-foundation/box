@@ -506,6 +506,83 @@ else
   bad "measure-disk-space.yml does not expose BOX_VERBOSE"
 fi
 
+# ---------------------------------------------------------------------------
+echo
+echo "== The --list-inputs contract =="
+#
+# The discovered set, one repository-relative path per line, nothing else, exit
+# 0. scripts/ci/check-workflow-path-coverage.mjs reads it to decide whether a
+# workflow's `paths:` filter can be matched by the files this gate reads. A
+# gate that answers this wrongly makes that check wrong in whichever direction
+# the error points: paths the filter cannot match are reported as unreachable
+# when they are fine, or - worse - the real inputs are never compared at all
+# and a job that can never start goes on looking like a clean tree (issue #121).
+
+CONTRACT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CONTRACT_GATE="scripts/ci/check-heredoc-vars.sh"
+CONTRACT_RC=0
+CONTRACT_OUT="$(cd "$CONTRACT_ROOT" && bash "$CONTRACT_ROOT/$CONTRACT_GATE" --list-inputs 2>&1)" || CONTRACT_RC=$?
+
+[ "$CONTRACT_RC" -eq 0 ] \
+  && ok "--list-inputs exits 0" \
+  || bad "--list-inputs exited $CONTRACT_RC"
+
+CONTRACT_COUNT="$(printf '%s\n' "$CONTRACT_OUT" | grep -c .)"
+[ "$CONTRACT_COUNT" -gt 0 ] \
+  && ok "--list-inputs names $CONTRACT_COUNT input(s)" \
+  || bad "--list-inputs named nothing, so the coverage check compares an empty set"
+
+# Paths only: no banner, no count, no option echo, no blank line. Anything else
+# here is read by the coverage gate as a file name and matched against `paths:`
+# patterns, where it can only ever be a finding about a file that is not there.
+CONTRACT_STRAY=""
+while IFS= read -r contract_line; do
+  if [ -z "$contract_line" ]; then
+    CONTRACT_STRAY="(a blank line)"
+    break
+  fi
+  case "$contract_line" in
+    -*)
+      CONTRACT_STRAY="$contract_line"
+      break
+      ;;
+  esac
+  if [ ! -f "$CONTRACT_ROOT/$contract_line" ]; then
+    CONTRACT_STRAY="$contract_line"
+    break
+  fi
+done <<<"$CONTRACT_OUT"
+[ -z "$CONTRACT_STRAY" ] \
+  && ok "every line is a repository-relative path that exists" \
+  || bad "--list-inputs printed something that is not a tracked path" "$CONTRACT_STRAY"
+
+CONTRACT_DUPES="$(printf '%s\n' "$CONTRACT_OUT" | sort | uniq -d)"
+[ -z "$CONTRACT_DUPES" ] \
+  && ok "and names each of them once" \
+  || bad "--list-inputs repeats a path" "$CONTRACT_DUPES"
+
+printf '%s\n' "$CONTRACT_OUT" | grep -qx -- 'scripts/ci/check-heredoc-vars.sh' \
+  && ok "and names scripts/ci/check-heredoc-vars.sh, which this gate demonstrably reads" \
+  || bad "--list-inputs omits scripts/ci/check-heredoc-vars.sh"
+
+# dev/log holds downloaded evidence and verbatim copies of other projects'
+# files. They are not ours to fix, and every gate here excludes them.
+printf '%s\n' "$CONTRACT_OUT" | grep -q '^dev/log/' \
+  && bad "--list-inputs includes the vendored evidence tree" \
+  || ok "and excludes dev/log, as the sweep itself does"
+
+# `git ls-files` answers about the current directory. Run from a subdirectory
+# it lists that subtree alone, with paths relative to it - so a gate that does
+# not anchor at the top level first sweeps a fraction of the tree, exits 0 over
+# it, and answers this contract with paths that no repository-root pattern can
+# match. experiments/reproduce-issue121-subdirectory-discovery.sh measures it
+# for every gate at once; this is the assertion for this one.
+CONTRACT_SUB="$(cd "$CONTRACT_ROOT/scripts" && bash "$CONTRACT_ROOT/$CONTRACT_GATE" --list-inputs 2>&1)" || true
+[ "$CONTRACT_SUB" = "$CONTRACT_OUT" ] \
+  && ok "and gives the same answer from a subdirectory, being about the repository" \
+  || bad "--list-inputs reports on whichever directory it is started from" \
+    "$(printf '%s\n' "$CONTRACT_SUB" | head -3)"
+
 echo ""
 echo "=== $pass passed, $fail failed ==="
 [ "$fail" -eq 0 ]

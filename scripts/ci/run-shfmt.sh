@@ -40,6 +40,7 @@
 #   bash scripts/ci/run-shfmt.sh            # check; non-zero if anything differs
 #   bash scripts/ci/run-shfmt.sh --fix      # rewrite the files in place
 #   bash scripts/ci/run-shfmt.sh --list     # print the file set, format nothing
+#   bash scripts/ci/run-shfmt.sh --list-inputs  # the same set, paths only
 #   bash scripts/ci/run-shfmt.sh path/to.sh # only these files
 #
 # Environment:
@@ -86,6 +87,15 @@ while [ "$#" -gt 0 ]; do
     --list)
       MODE=list
       shift
+      ;;
+    # See --list, but with a contract a machine reads: the discovered set and
+    # nothing else, one repository-relative path per line, exit 0.
+    # scripts/ci/check-workflow-path-coverage.mjs uses it to check that the
+    # workflow running this gate can be started by the files the gate reads
+    # (issue #121).
+    --list-inputs)
+      collect_files
+      exit 0
       ;;
     -h | --help)
       sed -n '2,43p' "$0" | sed 's/^# \?//'

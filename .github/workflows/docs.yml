@@ -23,6 +23,11 @@ name: Docs
 # would then run lychee against every external host on a one-line change to a
 # script, and scripts.yml would run shellcheck, shfmt and the experiment suites
 # on a typo in a case study.
+#
+# `scripts/**` and `.github/**` are in the filter because check-required-docs.sh
+# reads both trees whole, looking for documentation paths named in code: a
+# reference added in a .mjs or a workflow is exactly the kind that goes stale,
+# and `**.sh` alone could not start this workflow for it (issue #121).
 
 on:
   push:
@@ -31,15 +36,15 @@ on:
     paths:
       - '**.md'
       - '**.sh'
-      - '.github/workflows/**'
-      - '.github/actions/**'
+      - 'scripts/**'
+      - '.github/**'
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
       - '**.md'
       - '**.sh'
-      - '.github/workflows/**'
-      - '.github/actions/**'
+      - 'scripts/**'
+      - '.github/**'
   workflow_dispatch:
 
 # Least-privilege default; this job only reads the checked-out tree.

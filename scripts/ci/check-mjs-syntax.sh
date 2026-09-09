@@ -46,7 +46,7 @@
 #   one that appears inside a string literal that happens to spell an import.
 #
 # USAGE
-#   scripts/ci/check-mjs-syntax.sh [--verbose] [file ...]
+#   scripts/ci/check-mjs-syntax.sh [--verbose] [--list-inputs] [file ...]
 #
 #   With no files, checks every tracked *.mjs and *.js outside dev/log/, which
 #   holds verbatim copies of other projects' sources collected as issue
@@ -62,12 +62,41 @@
 set -euo pipefail
 
 VERBOSE=0
+LIST_INPUTS=0
 FILES=()
+
+collect_files() {
+  git ls-files -- '*.mjs' '*.js' | grep -v '^dev/log/' || true
+}
+
+# `git ls-files` answers about the current directory, not about the repository:
+# run from a subdirectory it lists that subtree alone, and lists it with paths
+# relative to that subdirectory. A gate that discovers its own inputs without
+# anchoring first therefore sweeps a fraction of the tree and exits 0 over it,
+# which reads exactly like a clean repository — and answers --list-inputs with
+# paths no repository-root `paths:` pattern can match, so the coverage gate
+# above it sees either everything or nothing as a finding (issue #121).
+#
+# The anchor is the top of whichever repository the caller is standing in, not
+# this script's own location: the fixtures drive it inside throwaway
+# repositories, and it has to report on the one it was pointed at.
+anchor_at_repository_root() {
+  local root
+  if ! root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    echo "check-mjs-syntax.sh: not inside a git repository and no files given" >&2
+    exit 2
+  fi
+  cd "$root" || exit 2
+}
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --verbose)
       VERBOSE=1
+      shift
+      ;;
+    --list-inputs)
+      LIST_INPUTS=1
       shift
       ;;
     -h | --help)
@@ -90,6 +119,21 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+# The discovered set, one repository-relative path per line, nothing else,
+# exit 0. scripts/ci/check-workflow-path-coverage.mjs reads it to check that a
+# change to any of these files can start the workflow that runs this gate — a
+# `paths:` filter matching none of them makes the job unreachable, which looks
+# exactly like a clean tree (issue #121). It answers without node, because the
+# question is which files exist, not whether they parse.
+if [ "$LIST_INPUTS" -eq 1 ]; then
+  if [ "${#FILES[@]}" -eq 0 ]; then
+    anchor_at_repository_root
+    mapfile -t FILES < <(collect_files)
+  fi
+  [ "${#FILES[@]}" -gt 0 ] && printf '%s\n' "${FILES[@]}"
+  exit 0
+fi
+
 if ! command -v node >/dev/null 2>&1; then
   # Not a skip. A gate that reports success because its interpreter is missing
   # is the false negative this whole issue is about.
@@ -98,11 +142,8 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 if [ "${#FILES[@]}" -eq 0 ]; then
-  if ! git rev-parse --show-toplevel >/dev/null 2>&1; then
-    echo "check-mjs-syntax.sh: not inside a git repository and no files given" >&2
-    exit 2
-  fi
-  mapfile -t FILES < <(git ls-files -- '*.mjs' '*.js' | grep -v '^dev/log/' || true)
+  anchor_at_repository_root
+  mapfile -t FILES < <(collect_files)
 fi
 
 if [ "${#FILES[@]}" -eq 0 ]; then

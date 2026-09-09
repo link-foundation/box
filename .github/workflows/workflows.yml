@@ -8,12 +8,22 @@ on:
       - '.github/workflows/**'
       - '.github/actions/**'
       - '.github/zizmor.yml'
+      # The gates below read the workflows, so editing one has to re-run it.
+      - 'scripts/ci/check-status-gate-covers-all-jobs.mjs'
+      - 'scripts/ci/check-timeout-budgets.mjs'
+      - 'scripts/ci/check-workflow-path-coverage.mjs'
+      - 'experiments/test-issue121-path-coverage.sh'
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
       - '.github/workflows/**'
       - '.github/actions/**'
       - '.github/zizmor.yml'
+      # The gates below read the workflows, so editing one has to re-run it.
+      - 'scripts/ci/check-status-gate-covers-all-jobs.mjs'
+      - 'scripts/ci/check-timeout-budgets.mjs'
+      - 'scripts/ci/check-workflow-path-coverage.mjs'
+      - 'experiments/test-issue121-path-coverage.sh'
   workflow_dispatch:
 
 # Least-privilege default; these jobs only read the checked-out tree.
@@ -74,6 +84,24 @@ jobs:
       # per matrix leg, because this repository sizes caps and budgets per leg.
       - name: Every execution budget fits inside its job's timeout
         run: node scripts/ci/check-timeout-budgets.mjs .github/workflows/*.yml
+
+      # And one level up again (issue #121). A `paths:` filter is the cheapest
+      # way to build a check that cannot fail: the job exists, the gate works,
+      # its fixtures pass, and because the filter matches none of the files the
+      # gate reads, the pull request that breaks exactly what it was written for
+      # never starts it - nothing red, nothing skipped, just absent from the
+      # list. scripts.yml ran the JavaScript syntax gate under a filter of
+      # '**.sh', 'ubuntu/**' and 'tests/**' for a day. This asks, of every
+      # script a workflow runs, whether every file it reads can start a run.
+      - name: Every gate can be started by the files it reads
+        run: node scripts/ci/check-workflow-path-coverage.mjs
+
+      # The gate's own fixtures: throwaway repositories whose filters are known
+      # to cover or to miss, so a change to the pattern translation - GitHub's
+      # `*` stops at a slash and `**` does not - fails here rather than by
+      # quietly passing a repository it should have reported.
+      - name: Path-coverage fixtures
+        run: bash experiments/test-issue121-path-coverage.sh
 
   zizmor:
     name: zizmor

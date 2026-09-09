@@ -55,7 +55,7 @@
 #   counted and printed, so they cannot pile up unnoticed.
 #
 # USAGE
-#   scripts/ci/check-heredoc-vars.sh [--verbose] [file ...]
+#   scripts/ci/check-heredoc-vars.sh [--verbose] [--list-inputs] [file ...]
 #
 #   With no files, checks every tracked *.sh in the repository.
 #   --verbose (default off) prints every heredoc found and every expansion
@@ -67,12 +67,17 @@
 set -euo pipefail
 
 VERBOSE=0
+LIST_INPUTS=0
 FILES=()
 
 while [ $# -gt 0 ]; do
   case "$1" in
     -v | --verbose)
       VERBOSE=1
+      shift
+      ;;
+    --list-inputs)
+      LIST_INPUTS=1
       shift
       ;;
     -h | --help)
@@ -98,7 +103,23 @@ FILES+=("$@")
 if [ "${#FILES[@]}" -eq 0 ]; then
   ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
   cd "$ROOT"
-  while IFS= read -r f; do FILES+=("$f"); done < <(git ls-files '*.sh')
+  # dev/log/ holds evidence: downloaded logs and verbatim copies of other
+  # projects' scripts, kept so a claim in a case study can be re-checked. They
+  # are not this repository's code, and reporting our heredoc rule against a
+  # template we did not write is a false positive by construction — which is
+  # why shellcheck, shfmt, the awk scan and the JavaScript parse all exclude
+  # the same directory (issue #121).
+  while IFS= read -r f; do FILES+=("$f"); done < <(git ls-files '*.sh' | grep -v '^dev/log/')
+fi
+
+# The discovered set, one repository-relative path per line, nothing else,
+# exit 0. scripts/ci/check-workflow-path-coverage.mjs reads it to check that a
+# change to any of these files can start the workflow that runs this gate — a
+# `paths:` filter matching none of them makes the job unreachable, which looks
+# exactly like a clean tree (issue #121).
+if [ "$LIST_INPUTS" -eq 1 ]; then
+  [ "${#FILES[@]}" -gt 0 ] && printf '%s\n' "${FILES[@]}"
+  exit 0
 fi
 
 # Standard environment and shell variables. A generated script may rely on these

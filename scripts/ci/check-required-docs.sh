@@ -56,7 +56,7 @@
 #   a link is not resolved against this tree; links.yml checks those.
 #
 # USAGE
-#   scripts/ci/check-required-docs.sh [--list] [--verbose]
+#   scripts/ci/check-required-docs.sh [--list] [--list-inputs] [--verbose]
 #
 #   --list    print the table as `path<TAB>section` lines and exit; the fixtures
 #             build their trees from this rather than from a second copy of it.
@@ -109,11 +109,16 @@ MARKER_END="<!-- COMPONENT_SIZES_END -->"
 
 VERBOSE=0
 LIST=0
+LIST_INPUTS=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --list)
       LIST=1
+      shift
+      ;;
+    --list-inputs)
+      LIST_INPUTS=1
       shift
       ;;
     --verbose)
@@ -131,6 +136,40 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+# `git ls-files` answers about the current directory, not about the repository:
+# run from a subdirectory it lists that subtree alone, and lists it with paths
+# relative to that subdirectory. A gate that discovers its own inputs without
+# anchoring first therefore sweeps a fraction of the tree and exits 0 over it,
+# which reads exactly like a clean repository — and answers --list-inputs with
+# paths no repository-root `paths:` pattern can match (issue #121). Anchor at
+# the top of whichever repository the caller is standing in, not at this
+# script's own location, so the fixtures can still drive it inside a throwaway
+# repository.
+if ! REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+  echo "check-required-docs.sh: not inside a git repository" >&2
+  exit 2
+fi
+cd "$REPO_ROOT" || exit 2
+
+# --list-inputs answers a different question from --list: not "what does this
+# check require" but "which files does it read", one repository-relative path
+# per line and nothing else. scripts/ci/check-workflow-path-coverage.mjs uses
+# it to check that a change to any of them can start the workflow that runs
+# this gate (issue #121). The mention scan walks scripts/ and .github/, so a
+# script that names a document is an input as much as the document is: a .mjs
+# file pointing at a document that is not there is exactly what rule 4 catches,
+# and it can only catch it if editing that .mjs starts this workflow.
+if [ "$LIST_INPUTS" -eq 1 ]; then
+  {
+    for entry in "${REQUIREMENTS[@]}"; do
+      printf '%s\n' "${entry%%|*}"
+    done
+    printf '%s\n' "$MARKER_FILE"
+    git ls-files -- scripts .github
+  } | sort -u
+  exit 0
+fi
+
 if [ "$LIST" -eq 1 ]; then
   for entry in "${REQUIREMENTS[@]}"; do
     path="${entry%%|*}"
@@ -145,11 +184,6 @@ if [ "$LIST" -eq 1 ]; then
     done
   done
   exit 0
-fi
-
-if ! git rev-parse --show-toplevel >/dev/null 2>&1; then
-  echo "check-required-docs.sh: not inside a git repository" >&2
-  exit 2
 fi
 
 findings=0

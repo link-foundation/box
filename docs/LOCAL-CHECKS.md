@@ -36,14 +36,21 @@ direction.
 
 Gates are scoped by what is staged:
 
-| Staged                       | Gates                                                     |
-| ---------------------------- | --------------------------------------------------------- |
-| `*.sh`, `.githooks/*`        | shfmt, shellcheck, heredoc-vars                            |
-| `*.sh *.yml *.mjs *.js *.py` | awk-portability                                            |
-| `*.mjs`, `*.js`, `*.cjs`     | mjs-syntax                                                 |
-| `.github/workflows/*.yml`    | status-gate coverage, timeout budgets                      |
-| `*.md`, `*.sh`, `.github/**` | required-docs                                              |
-| anything                     | file-line-limits, secretlint (on the staged paths)         |
+| Staged                              | Gates                                              |
+| ----------------------------------- | -------------------------------------------------- |
+| `*.sh`, `.githooks/*`               | shfmt, shellcheck, heredoc-vars                     |
+| `*.sh *.yml *.mjs *.js *.py`        | awk-portability                                     |
+| `*.mjs`, `*.js`, `*.cjs`            | mjs-syntax                                          |
+| `*.py`                              | py-syntax                                           |
+| `.github/workflows/*.yml`           | status-gate coverage, timeout budgets               |
+| `.github/workflows/*.yml`, `scripts/ci/*` | path coverage                                 |
+| `*.md`, `*.sh`, `.github/**`        | required-docs                                       |
+| anything                            | file-line-limits, secretlint (on the staged paths)  |
+
+Path coverage is scoped to both a workflow directory and a checker directory
+because its two halves are edited in different places: a `paths:` filter lives
+in `.github/workflows`, and the set of files a gate reads lives in
+`scripts/ci`. Either one alone can make a check unreachable.
 
 A full commit of this repository's shell takes about 14 seconds; a
 markdown-only commit takes about 5. The slow gates — actionlint, zizmor,
@@ -76,15 +83,28 @@ bash scripts/ci/run-shfmt.sh --fix
 bash scripts/ci/check-heredoc-vars.sh
 bash scripts/ci/check-awk-portability.sh
 bash scripts/ci/check-mjs-syntax.sh
+bash scripts/ci/check-py-syntax.sh
 bash scripts/ci/check-required-docs.sh
 bash scripts/ci/check-file-line-limits.sh
 bash scripts/ci/run-secretlint.sh
 bash scripts/ci/run-hadolint.sh
 node scripts/ci/check-status-gate-covers-all-jobs.mjs .github/workflows/*.yml
 node scripts/ci/check-timeout-budgets.mjs .github/workflows/*.yml
+node scripts/ci/check-workflow-path-coverage.mjs
 bash scripts/ci/run-experiments.sh                   # every fixtures suite
 ```
 
 Every one of these accepts `--verbose` or `BOX_VERBOSE=1`, which is off by
 default, and most accept explicit file arguments so a single file can be
 checked in isolation.
+
+Every gate that finds its own work also answers `--list-inputs`: the files it
+would check, one repository-relative path per line and nothing else. That is
+not a convenience — `check-workflow-path-coverage.mjs` reads it to decide
+whether a change to any of those files can start the workflow that runs the
+gate, and it fails when a `scripts/ci` script discovers files with
+`git ls-files` and cannot answer.
+
+```bash
+bash scripts/ci/run-shellcheck.sh --list-inputs | wc -l
+```
