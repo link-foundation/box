@@ -10,6 +10,13 @@
 #   - GITHUB_BASE_REF: Base branch name (defaults to 'main')
 #   - GITHUB_HEAD_REF: Head branch name
 
+# The paths below come from the pull request under test, and a file may be
+# named `##[error]anything.md`. The runner reads that from the middle of a line
+# (issue #123), so the paths are printed with command processing stopped; this
+# script's own `::error::`/`::warning::` annotations stay outside the guard.
+# shellcheck source=scripts/ci/run-with-commands-stopped.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../ci/run-with-commands-stopped.sh"
+
 CHANGESET_DIR=".changeset"
 BASE_REF="${GITHUB_BASE_REF:-main}"
 HEAD_REF="${GITHUB_HEAD_REF:-}"
@@ -50,12 +57,12 @@ if [ -z "$ADDED_CHANGESETS" ]; then
 fi
 
 echo "Found added changeset(s):"
-echo "$ADDED_CHANGESETS"
+run_with_commands_stopped echo "$ADDED_CHANGESETS"
 
 # Validate each changeset format
 for CHANGESET in $ADDED_CHANGESETS; do
   echo ""
-  echo "Validating: $CHANGESET"
+  run_with_commands_stopped echo "Validating: $CHANGESET"
 
   if [ ! -f "$CHANGESET" ]; then
     echo "::warning::Changeset file not found: $CHANGESET"

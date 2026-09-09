@@ -26,6 +26,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/release/docker-push-failure-classifier.sh
 source "$SCRIPT_DIR/docker-push-failure-classifier.sh"
+# shellcheck source=scripts/ci/capture-and-stream.sh
+source "$SCRIPT_DIR/../ci/capture-and-stream.sh"
 
 MAX_RETRIES="${MAX_RETRIES:-3}"
 INITIAL_DELAY="${INITIAL_DELAY:-10}"
@@ -45,15 +47,16 @@ while [ "$attempt" -le "$MAX_RETRIES" ]; do
   echo "==> Retry attempt $attempt/$MAX_RETRIES..."
 
   # Capture while streaming: the output must be inspectable to be classified,
-  # but a silent multi-minute build is not debuggable.
-  if output="$(docker buildx build "$@" 2>&1 | tee /dev/stderr)"; then
+  # but a silent multi-minute build is not debuggable. `tee /dev/stderr` also
+  # truncated the caller's log whenever fd 2 was a file (issue #123).
+  if capture_and_stream docker buildx build "$@"; then
     echo "==> Push succeeded on retry attempt $attempt"
     exit 0
   fi
 
   # A rebuild cannot rotate an expired credential. Stop now with a message
   # that names the actual problem.
-  if is_non_retryable_push_failure "$output"; then
+  if is_non_retryable_push_failure "$CAPTURED_OUTPUT"; then
     echo "==> ERROR: permanent authentication error; not retrying"
     echo "::error title=Registry authentication failed::The buildx push failed with a permanent authentication error. See the job log for how to rotate the credential."
     docker_push_failure_guidance "$(printf '%s\n' "$@" | grep -m1 -A1 -- '--tag' | tail -n1 || echo 'the image')"

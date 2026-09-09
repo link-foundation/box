@@ -329,10 +329,14 @@ jobs:
 
           # Commit and push
           git add VERSION
+          # The dispatch input reaches the log through the subject git echoes,
+          # where the runner reads `##[error]` from the middle of a line. Env
+          # scoping keeps it out of the shell; this keeps it out of the
+          # runner's command parser (issue #123).
           if [ -n "${DESCRIPTION:-}" ]; then
-            git commit -m "$NEW_VERSION: $DESCRIPTION"
+            bash scripts/ci/run-with-commands-stopped.sh git commit -m "$NEW_VERSION: $DESCRIPTION"
           else
-            git commit -m "$NEW_VERSION"
+            bash scripts/ci/run-with-commands-stopped.sh git commit -m "$NEW_VERSION"
           fi
           # Not a bare `git push`: see scripts/release/git-push-with-retry.sh
           # (issue #121).

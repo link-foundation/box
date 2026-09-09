@@ -314,7 +314,11 @@ jobs:
           # Create commit message with summary
           TOTAL_SIZE=$(python3 -c "import json; print(json.load(open('data/disk-space-measurements.json'))['total_size_mb'])" 2>/dev/null || echo "unknown")
 
-          git commit -m "chore: update component disk space measurements (${TOTAL_SIZE}MB total)"
+          # Guarded like every other commit in this repository: the subject is
+          # generated here, but the diffstat and file list git prints with it
+          # are not, and one exception is how the invariant stops holding
+          # (issue #123).
+          bash scripts/ci/run-with-commands-stopped.sh git commit -m "chore: update component disk space measurements (${TOTAL_SIZE}MB total)"
 
           # This job runs for about 18 minutes before it pushes, which is a wide
           # window for the release workflow to land a version bump. A single

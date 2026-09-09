@@ -34,6 +34,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/release/git-push-failure-classifier.sh
 source "$SCRIPT_DIR/git-push-failure-classifier.sh"
+# shellcheck source=scripts/ci/run-with-commands-stopped.sh
+source "$SCRIPT_DIR/../ci/run-with-commands-stopped.sh"
+# shellcheck source=scripts/ci/capture-and-stream.sh
+source "$SCRIPT_DIR/../ci/capture-and-stream.sh"
 
 REMOTE="${1:-origin}"
 BRANCH="${2:-main}"
@@ -112,13 +116,16 @@ while :; do
   trace "git push $REMOTE HEAD:$BRANCH"
   # Capture while still streaming: the output has to be inspectable to be
   # classified, but a silent push is not debuggable (same reasoning as
-  # docker-push-with-retry.sh).
-  if output="$(git push "$REMOTE" "HEAD:$BRANCH" 2>&1 | tee /dev/stderr)"; then
+  # docker-push-with-retry.sh). Not `tee /dev/stderr`: that reopens the file
+  # behind fd 2 and truncates it, so a caller whose stderr is a file - the
+  # budget wrapper, a local run redirected to a log - loses everything written
+  # before the push (issue #123, scripts/ci/capture-and-stream.sh).
+  if capture_and_stream git push "$REMOTE" "HEAD:$BRANCH"; then
     log "Push succeeded"
     exit 0
   fi
 
-  if is_repository_rule_rejection "$output"; then
+  if is_repository_rule_rejection "$CAPTURED_OUTPUT"; then
     echo "::notice title=Direct push declined by a repository rule::Landing the commit on ${BRANCH} through a pull request instead."
     land_via_pull_request
     exit $?
@@ -126,7 +133,7 @@ while :; do
 
   # Auth, network, a missing remote: rebasing would hide the real error and
   # report a race that never happened.
-  if ! is_non_fast_forward_rejection "$output"; then
+  if ! is_non_fast_forward_rejection "$CAPTURED_OUTPUT"; then
     echo "::error title=Push to ${BRANCH} failed::The rejection is neither a lost race nor a repository rule, so no retry can fix it. See the output above." >&2
     exit 1
   fi
@@ -141,6 +148,9 @@ while :; do
   # Rebase, never force: the point is for the later commit to end up on top of
   # the earlier one. --force-with-lease would delete whatever the writer ahead
   # of us landed.
-  git pull --rebase "$REMOTE" "$BRANCH"
+  # A rebase that stops prints `could not apply <sha>... <subject>`, and the
+  # subject is the release description this commit was built from, so the same
+  # containment applies here as at the `git commit` that wrote it (issue #123).
+  run_with_commands_stopped git pull --rebase "$REMOTE" "$BRANCH"
   attempt=$((attempt + 1))
 done
