@@ -31,6 +31,7 @@ on:
       - '.lycheeignore'
       - '.github/workflows/links.yml'
       - 'scripts/ci/check-web-archive.mjs'
+      - 'scripts/ci/recheck-broken-links.mjs'
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
@@ -38,6 +39,7 @@ on:
       - '.lycheeignore'
       - '.github/workflows/links.yml'
       - 'scripts/ci/check-web-archive.mjs'
+      - 'scripts/ci/recheck-broken-links.mjs'
   # Weekly: a link rots without anyone touching this repository. The three dead
   # upstream URLs this port found had all been correct when they were written.
   schedule:
@@ -98,14 +100,37 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Look for Web Archive replacements
+      # lychee classifies an error by the phase it happened in, and a failure
+      # during connect is never retried - `--max-retries` does not apply to it
+      # (lycheeverse/lychee#2297). So a healthy host that answers one TCP reset,
+      # which a CI address range collects from rate-limiting and load-shedding
+      # hosts, is reported broken without a single retry and fails this gate:
+      # a false positive (issue #121). Ask those URLs again, outside lychee. A
+      # failure carrying a status code is a host's answer and stays final, so a
+      # 404 is never re-asked and cannot be recovered here.
+      - name: Re-check the links no host ever answered
         if: steps.lychee.outputs.exit_code != 0
+        id: recheck
+        run: node scripts/ci/recheck-broken-links.mjs
+        env:
+          LYCHEE_OUTPUT: lychee/out.md
+          RECOVERED_OUTPUT: lychee/recovered.txt
+
+      # `!= 'true'`, never `== 'false'`: a skipped or crashed re-check leaves
+      # the output empty, and only the `!=` form reads that as "still failing".
+      - name: Look for Web Archive replacements
+        if: >-
+          steps.lychee.outputs.exit_code != 0 &&
+          steps.recheck.outputs.all_recovered != 'true'
         run: node scripts/ci/check-web-archive.mjs
         env:
           LYCHEE_OUTPUT: lychee/out.md
+          RECOVERED_URLS: lychee/recovered.txt
 
       - name: Fail if broken links were found
-        if: ${{ !cancelled() && steps.lychee.outputs.exit_code != 0 }}
+        if: >-
+          ${{ !cancelled() && steps.lychee.outputs.exit_code != 0 &&
+          steps.recheck.outputs.all_recovered != 'true' }}
         run: |
           echo "::error title=links::lychee found broken links."
           echo
