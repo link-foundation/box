@@ -362,6 +362,22 @@ if ! id "box" &>/dev/null; then
   useradd -m -d /home/box -s /bin/bash box 2>/dev/null || adduser --disabled-password --gecos "" --home /home/box box
   passwd -d box 2>/dev/null || true
   usermod -aG sudo box 2>/dev/null || true
+  # `useradd -m` copies /etc/skel only when it creates the home directory
+  # itself. Over a directory that already exists it prints
+  #   useradd: warning: the home directory /home/box already exists.
+  #   useradd: Not copying any file from skel directory into it.
+  # and leaves the user without ~/.profile, which is the file that sources
+  # ~/.bashrc for an interactive *login* shell - so `su - box` and every ssh
+  # session would miss the PATH lines the install scripts append to ~/.bashrc.
+  # skel's .bashrc is deliberately not among the files copied back;
+  # ubuntu/24.04/js/Dockerfile explains why. Never overwrites, so a re-run is a
+  # no-op. (issue #123)
+  for skel_file in .profile .bash_logout; do
+    if [ -f "/etc/skel/$skel_file" ] && [ ! -e "/home/box/$skel_file" ]; then
+      cp -a "/etc/skel/$skel_file" "/home/box/$skel_file"
+      chown box:box "/home/box/$skel_file"
+    fi
+  done
 fi
 
 # --- Prepare APT ---

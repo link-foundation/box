@@ -1,0 +1,110 @@
+Output of `bash experiments/issue-123/repro-workdir-skips-skel.sh` on 2026-09-10.
+Four ubuntu:24.04 images differing only in how the box user's home is populated,
+each asked whether a shell sees `BOX_MARKER`, which the probe appends to
+~/.bashrc exactly the way the install scripts append their PATH lines.
+
+                    non-int login   int non-login   int login   non-int source
+                    (su - box -c)   (bash -i)       (bash -li)  (. ~/.bashrc)
+  early-workdir     UNSET           from-bashrc     UNSET       from-bashrc
+  late-workdir      UNSET           from-bashrc     from-bashrc UNSET
+  shipped           from-bashrc     from-bashrc     from-bashrc from-bashrc
+  shipped+bashrc    UNSET           from-bashrc     from-bashrc UNSET
+
+`early-workdir` is what main ships: `WORKDIR /home/box` then `useradd -m`, so
+useradd warns and copies no /etc/skel, and an interactive login shell - ssh,
+`su - box`, `docker run -it box bash -l` - never reaches ~/.bashrc.
+
+`late-workdir` is the obvious fix, moving the WORKDIR below the useradd. It
+fixes the login shell and breaks something else: skel's .bashrc comes with the
+rest of skel, its first statement is `case $- in *i*) ;; *) return;; esac`, and
+scripts/entrypoint.sh:7 sources ~/.bashrc from a *non-interactive* shell. That
+column goes from from-bashrc to UNSET - every box container's entrypoint would
+have lost the environment. `shipped+bashrc` is the same trade made the other
+way round and shows the same two UNSETs, so the cause is the file and not the
+WORKDIR.
+
+`shipped` is this branch: the WORKDIR stays, `useradd -M` stops useradd being
+asked to populate a directory it did not create, and .profile and .bash_logout
+are copied back explicitly while .bashrc is not. It is the only variant with no
+UNSET in any column - it also fixes the non-interactive login shell, which
+`late-workdir` does not, because ~/.profile is read by every login shell
+whether or not it is interactive.
+
+----------------------------------------------------------------------
+
+### early-workdir
+  useradd: warning: the home directory /home/box already exists.
+  useradd: Not copying any file from skel directory into it.
+  passwd: password changed.
+  --- ls -a /home/box ---
+  .
+  ..
+  .bashrc
+  --- non-interactive login shell (su - box, how the Dockerfile runs install.sh) ---
+  BOX_MARKER=UNSET
+  --- interactive non-login shell (docker run -it box bash) ---
+  BOX_MARKER=from-bashrc
+  --- interactive login shell (docker run -it box bash -l, ssh, su - box) ---
+  BOX_MARKER=UNSET
+  --- non-interactive source, the way scripts/entrypoint.sh loads it ---
+  BOX_MARKER=from-bashrc
+  --- is Ubuntu's own .bashrc still there? ---
+  skel .bashrc: ABSENT - the file holds only what the install scripts appended
+
+### late-workdir
+  passwd: password changed.
+  --- ls -a /home/box ---
+  .
+  ..
+  .bash_logout
+  .bashrc
+  .profile
+  --- non-interactive login shell (su - box, how the Dockerfile runs install.sh) ---
+  BOX_MARKER=UNSET
+  --- interactive non-login shell (docker run -it box bash) ---
+  BOX_MARKER=from-bashrc
+  --- interactive login shell (docker run -it box bash -l, ssh, su - box) ---
+  BOX_MARKER=from-bashrc
+  --- non-interactive source, the way scripts/entrypoint.sh loads it ---
+  BOX_MARKER=UNSET
+  --- is Ubuntu's own .bashrc still there? ---
+  skel .bashrc: present (interactive guard found)
+
+### shipped
+  passwd: password changed.
+  --- ls -a /home/box ---
+  .
+  ..
+  .bash_logout
+  .bashrc
+  .profile
+  --- non-interactive login shell (su - box, how the Dockerfile runs install.sh) ---
+  BOX_MARKER=from-bashrc
+  --- interactive non-login shell (docker run -it box bash) ---
+  BOX_MARKER=from-bashrc
+  --- interactive login shell (docker run -it box bash -l, ssh, su - box) ---
+  BOX_MARKER=from-bashrc
+  --- non-interactive source, the way scripts/entrypoint.sh loads it ---
+  BOX_MARKER=from-bashrc
+  --- is Ubuntu's own .bashrc still there? ---
+  skel .bashrc: ABSENT - the file holds only what the install scripts appended
+
+### shipped-plus-bashrc
+  passwd: password changed.
+  --- ls -a /home/box ---
+  .
+  ..
+  .bash_logout
+  .bashrc
+  .profile
+  --- non-interactive login shell (su - box, how the Dockerfile runs install.sh) ---
+  BOX_MARKER=UNSET
+  --- interactive non-login shell (docker run -it box bash) ---
+  BOX_MARKER=from-bashrc
+  --- interactive login shell (docker run -it box bash -l, ssh, su - box) ---
+  BOX_MARKER=from-bashrc
+  --- non-interactive source, the way scripts/entrypoint.sh loads it ---
+  BOX_MARKER=UNSET
+  --- is Ubuntu's own .bashrc still there? ---
+  skel .bashrc: present (interactive guard found)
+
