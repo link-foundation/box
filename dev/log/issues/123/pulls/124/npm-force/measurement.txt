@@ -1,0 +1,160 @@
+### node:22-bookworm :: fresh :: npm install -g playwright @playwright/test @puppeteer/browsers --no-fund
+  npm 10.9.8, node v22.23.2
+  added 20 packages in 12s
+  npm notice
+  npm notice New major version of npm available! 10.9.8 -> 12.0.2
+  npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2
+  npm notice To update run: npm install -g npm@12.0.2
+  npm notice
+  exit=0
+  force-warning: absent
+  lrwxrwxrwx 1 root root 55 Sep 10 01:40 /usr/local/bin/browsers -> ../lib/node_modules/@puppeteer/browsers/lib/main-cli.js
+  lrwxrwxrwx 1 root root 43 Sep 10 01:40 /usr/local/bin/playwright -> ../lib/node_modules/@playwright/test/cli.js
+  Version 1.63.0
+  @puppeteer/browsers resolves
+
+### node:22-bookworm :: reinstall :: npm install -g playwright @playwright/test @puppeteer/browsers --no-fund
+  prelude: first install exit=0
+  npm 10.9.8, node v22.23.2
+  
+  changed 20 packages in 7s
+  exit=0
+  force-warning: absent
+  lrwxrwxrwx 1 root root 55 Sep 10 01:40 /usr/local/bin/browsers -> ../lib/node_modules/@puppeteer/browsers/lib/main-cli.js
+  lrwxrwxrwx 1 root root 43 Sep 10 01:40 /usr/local/bin/playwright -> ../lib/node_modules/@playwright/test/cli.js
+  Version 1.63.0
+  @puppeteer/browsers resolves
+
+### node:22-bookworm :: shipped :: npm install -g playwright @playwright/test @puppeteer/browsers --no-fund
+  prelude: npm@latest exit=0
+  npm 12.0.2, node v22.23.2
+  
+  added 20 packages in 13s
+  exit=0
+  force-warning: absent
+  lrwxrwxrwx 1 root root 55 Sep 10 01:42 /usr/local/bin/browsers -> ../lib/node_modules/@puppeteer/browsers/lib/main-cli.js
+  lrwxrwxrwx 1 root root 43 Sep 10 01:42 /usr/local/bin/playwright -> ../lib/node_modules/@playwright/test/cli.js
+  Version 1.63.0
+  @puppeteer/browsers resolves
+
+### node:22-bookworm :: fresh :: npm install -g playwright @playwright/test @puppeteer/browsers --no-fund --force
+  npm 10.9.8, node v22.23.2
+  added 20 packages in 14s
+  npm notice
+  npm notice New major version of npm available! 10.9.8 -> 12.0.2
+  npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2
+  npm notice To update run: npm install -g npm@12.0.2
+  npm notice
+  exit=0
+  force-warning: present -- npm warn using --force Recommended protections disabled.
+  lrwxrwxrwx 1 root root 55 Sep 10 01:42 /usr/local/bin/browsers -> ../lib/node_modules/@puppeteer/browsers/lib/main-cli.js
+  lrwxrwxrwx 1 root root 43 Sep 10 01:42 /usr/local/bin/playwright -> ../lib/node_modules/@playwright/test/cli.js
+  Version 1.63.0
+  @puppeteer/browsers resolves
+
+### node:22-bookworm :: reinstall :: npm install -g playwright @playwright/test @puppeteer/browsers --no-fund --force
+  prelude: first install exit=0
+  npm 10.9.8, node v22.23.2
+  npm warn using --force Recommended protections disabled.
+  
+  changed 20 packages in 6s
+  exit=0
+  force-warning: present -- npm warn using --force Recommended protections disabled.
+  lrwxrwxrwx 1 root root 55 Sep 10 01:43 /usr/local/bin/browsers -> ../lib/node_modules/@puppeteer/browsers/lib/main-cli.js
+  lrwxrwxrwx 1 root root 43 Sep 10 01:43 /usr/local/bin/playwright -> ../lib/node_modules/@playwright/test/cli.js
+  Version 1.63.0
+  @puppeteer/browsers resolves
+
+### node:22-bookworm :: shipped :: npm install -g playwright @playwright/test @puppeteer/browsers --no-fund --force
+  prelude: npm@latest exit=0
+  npm 12.0.2, node v22.23.2
+  npm warn using --force Recommended protections disabled.
+  
+  added 20 packages in 10s
+  exit=0
+  force-warning: present -- npm warn using --force Recommended protections disabled.
+  lrwxrwxrwx 1 root root 55 Sep 10 01:43 /usr/local/bin/browsers -> ../lib/node_modules/@puppeteer/browsers/lib/main-cli.js
+  lrwxrwxrwx 1 root root 43 Sep 10 01:43 /usr/local/bin/playwright -> ../lib/node_modules/@playwright/test/cli.js
+  Version 1.63.0
+  @puppeteer/browsers resolves
+
+### node:24-bookworm :: fresh :: npm install -g playwright @playwright/test @puppeteer/browsers --no-fund
+  npm 11.19.0, node v24.21.0
+  added 20 packages in 11s
+  npm notice
+  npm notice New major version of npm available! 11.19.0 -> 12.0.2
+  npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2
+  npm notice To update run: npm install -g npm@12.0.2
+  npm notice
+  exit=0
+  force-warning: absent
+  lrwxrwxrwx 1 root root 55 Sep 10 01:44 /usr/local/bin/browsers -> ../lib/node_modules/@puppeteer/browsers/lib/main-cli.js
+  lrwxrwxrwx 1 root root 43 Sep 10 01:44 /usr/local/bin/playwright -> ../lib/node_modules/@playwright/test/cli.js
+  Version 1.63.0
+  @puppeteer/browsers resolves
+
+### node:24-bookworm :: reinstall :: npm install -g playwright @playwright/test @puppeteer/browsers --no-fund
+  prelude: first install exit=0
+  npm 11.19.0, node v24.21.0
+  
+  changed 20 packages in 6s
+  exit=0
+  force-warning: absent
+  lrwxrwxrwx 1 root root 55 Sep 10 01:44 /usr/local/bin/browsers -> ../lib/node_modules/@puppeteer/browsers/lib/main-cli.js
+  lrwxrwxrwx 1 root root 43 Sep 10 01:44 /usr/local/bin/playwright -> ../lib/node_modules/@playwright/test/cli.js
+  Version 1.63.0
+  @puppeteer/browsers resolves
+
+### node:24-bookworm :: shipped :: npm install -g playwright @playwright/test @puppeteer/browsers --no-fund
+  prelude: npm@latest exit=0
+  npm 12.0.2, node v24.21.0
+  
+  added 20 packages in 10s
+  exit=0
+  force-warning: absent
+  lrwxrwxrwx 1 root root 55 Sep 10 01:45 /usr/local/bin/browsers -> ../lib/node_modules/@puppeteer/browsers/lib/main-cli.js
+  lrwxrwxrwx 1 root root 43 Sep 10 01:45 /usr/local/bin/playwright -> ../lib/node_modules/@playwright/test/cli.js
+  Version 1.63.0
+  @puppeteer/browsers resolves
+
+### node:24-bookworm :: fresh :: npm install -g playwright @playwright/test @puppeteer/browsers --no-fund --force
+  npm 11.19.0, node v24.21.0
+  added 20 packages in 12s
+  npm notice
+  npm notice New major version of npm available! 11.19.0 -> 12.0.2
+  npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2
+  npm notice To update run: npm install -g npm@12.0.2
+  npm notice
+  exit=0
+  force-warning: present -- npm warn using --force Recommended protections disabled.
+  lrwxrwxrwx 1 root root 55 Sep 10 01:46 /usr/local/bin/browsers -> ../lib/node_modules/@puppeteer/browsers/lib/main-cli.js
+  lrwxrwxrwx 1 root root 43 Sep 10 01:46 /usr/local/bin/playwright -> ../lib/node_modules/@playwright/test/cli.js
+  Version 1.63.0
+  @puppeteer/browsers resolves
+
+### node:24-bookworm :: reinstall :: npm install -g playwright @playwright/test @puppeteer/browsers --no-fund --force
+  prelude: first install exit=0
+  npm 11.19.0, node v24.21.0
+  npm warn using --force Recommended protections disabled.
+  
+  changed 20 packages in 8s
+  exit=0
+  force-warning: present -- npm warn using --force Recommended protections disabled.
+  lrwxrwxrwx 1 root root 55 Sep 10 01:46 /usr/local/bin/browsers -> ../lib/node_modules/@puppeteer/browsers/lib/main-cli.js
+  lrwxrwxrwx 1 root root 43 Sep 10 01:46 /usr/local/bin/playwright -> ../lib/node_modules/@playwright/test/cli.js
+  Version 1.63.0
+  @puppeteer/browsers resolves
+
+### node:24-bookworm :: shipped :: npm install -g playwright @playwright/test @puppeteer/browsers --no-fund --force
+  prelude: npm@latest exit=0
+  npm 12.0.2, node v24.21.0
+  npm warn using --force Recommended protections disabled.
+  
+  added 20 packages in 13s
+  exit=0
+  force-warning: present -- npm warn using --force Recommended protections disabled.
+  lrwxrwxrwx 1 root root 55 Sep 10 01:47 /usr/local/bin/browsers -> ../lib/node_modules/@puppeteer/browsers/lib/main-cli.js
+  lrwxrwxrwx 1 root root 43 Sep 10 01:47 /usr/local/bin/playwright -> ../lib/node_modules/@playwright/test/cli.js
+  Version 1.63.0
+  @puppeteer/browsers resolves
+
