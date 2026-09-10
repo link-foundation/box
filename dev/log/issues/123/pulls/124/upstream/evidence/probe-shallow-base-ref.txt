@@ -1,0 +1,80 @@
+### Probe: what it takes for `git diff origin/<base>...HEAD` to work in the
+### shallow, single-branch checkout that actions/checkout produces for any
+### fetch-depth other than 0.
+###
+### bash experiments/issue-123/probe-shallow-base-ref.sh
+### git version 2.43.0
+###
+### Written because the obvious repair for report F -- "fetch the base branch
+### first" -- is wrong in three different ways, and one of those wrong forms is
+### already shipped: rust check-version-modification.rs:102 calls
+###   exec_ignore_error("git", &["fetch", "origin", &base_ref, "--depth=1"])
+### which is case A below, and it discards the outcome.
+###
+### case A: git fetch origin main --depth=1, the fetch the scripts already do
+  remote.origin.fetch = +refs/heads/feature:refs/remotes/origin/feature
+  shallow? yes
+  fetch: From file:///tmp/tmp.NnyXcHof2d/remote
+  fetch:  * branch            main       -> FETCH_HEAD
+  origin/main present? no
+  git diff --name-only origin/main...HEAD -> exit=128
+    fatal: ambiguous argument 'origin/main...HEAD': unknown revision or path not in the working tree.
+  the single-branch refspec means no remote-tracking ref was created
+
+### case B: an explicit refspec, still --depth=1
+  fetch: From file:///tmp/tmp.NnyXcHof2d/remote
+  fetch:  * [new branch]      main       -> origin/main
+  origin/main present? yes
+  git diff --name-only origin/main...HEAD -> exit=128
+    fatal: origin/main...HEAD: no merge base
+  the ref exists and the histories still share no commit
+
+### case C: an explicit refspec with no depth limit on the fetch
+  fetch: From file:///tmp/tmp.NnyXcHof2d/remote
+  fetch:  * [new branch]      main       -> origin/main
+  origin/main present? yes
+  git diff --name-only origin/main...HEAD -> exit=128
+    fatal: origin/main...HEAD: no merge base
+  still no merge base: the *local* branch is what is shallow, and fetching the base in full does not deepen it
+
+### case D: --unshallow, which deepens the local history too
+  fetch: From file:///tmp/tmp.NnyXcHof2d/remote
+  fetch:  * [new branch]      main       -> origin/main
+  origin/main present? yes
+  git diff --name-only origin/main...HEAD -> exit=0
+    other.txt
+  this is the one that answers the question
+
+### case E: fetch-depth: 0, i.e. a complete clone
+  origin/main present? yes
+  git diff --name-only origin/main...HEAD -> exit=0
+    other.txt
+  the shipped workflows' configuration, which is why all this is latent
+
+### reading
+###
+###   A  `git fetch origin main --depth=1` in a single-branch clone writes
+###      FETCH_HEAD and nothing else: `remote.origin.fetch` is
+###      `+refs/heads/feature:refs/remotes/origin/feature`, so there is no
+###      refspec that would create refs/remotes/origin/main, and no
+###      opportunistic update happens. exit 128, "unknown revision".
+###   B  With an explicit refspec the ref appears, but a depth-1 fetch of the
+###      base into a depth-1 checkout of the head gives the two histories no
+###      commit in common. exit 128, "no merge base" -- a *different* message
+###      with the same status.
+###   C  Removing the depth limit from that fetch is still not enough, which is
+###      the part that is easy to get wrong: what is shallow is the *local*
+###      branch, and fetching the base branch in full does not deepen HEAD.
+###   D  `--unshallow` deepens the local history, and the diff answers.
+###   E  `fetch-depth: 0` is the same thing done at checkout time, and it is what
+###      every affected job in the java and rust templates already uses -- which
+###      is exactly why the swallowed failures in report F are latent rather than
+###      live.
+###
+### Two consequences for the fixes proposed in report F:
+###   - a suggested `git fetch --no-tags --depth=1 origin "$GITHUB_BASE_REF"`
+###     would be case A or case B and would not work. The workaround has to be
+###     `--unshallow` or `fetch-depth: 0`.
+###   - all four failing forms exit 128, so no amount of fetching removes the
+###     need for the caller to distinguish "git could not answer" from "nothing
+###     changed". That distinction is the actual fix.

@@ -4,6 +4,7 @@
 // full log archive. Written for issue #123; re-runnable and idempotent.
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
+import { gzipSync } from 'node:zlib'
 import { join } from 'node:path'
 
 const REPO = process.env.REPO ?? 'link-foundation/box'
@@ -71,18 +72,25 @@ for (const id of runIds) {
   }
   save(`annotations/${id}.annotations.json`, annotations)
 
-  const logPath = join(OUT, 'logs', `${id}.log`)
-  mkdirSync(join(OUT, 'logs'), { recursive: true })
-  if (!existsSync(logPath)) {
+  // `ci-logs`, not `logs`, and gzipped, because .gitignore excludes both a
+  // directory named `logs` (line 2) and `*.log` (line 3) -- either one would drop
+  // the whole set silently. A release run's log is also ~800 kB of docker build
+  // output that compresses about 9:1. Read one with `zcat`; both names are
+  // checked so an already-collected run is never refetched.
+  const logDir = join(OUT, 'ci-logs')
+  const logPath = join(logDir, `${id}.log.gz`)
+  mkdirSync(logDir, { recursive: true })
+  if (!existsSync(logPath) && !existsSync(join(logDir, `${id}.log`))) {
+    let text
     try {
-      const text = execFileSync('gh', ['run', 'view', id, '--repo', REPO, '--log'], {
+      text = execFileSync('gh', ['run', 'view', id, '--repo', REPO, '--log'], {
         encoding: 'utf8', maxBuffer: 1024 * 1024 * 1024,
       })
-      writeFileSync(logPath, text)
     } catch (e) {
       // A cancelled/expired run may have no log archive.
-      writeFileSync(logPath, `LOG UNAVAILABLE: ${e.message}\n${e.stdout ?? ''}`)
+      text = `LOG UNAVAILABLE: ${e.message}\n${e.stdout ?? ''}`
     }
+    writeFileSync(logPath, gzipSync(text, { level: 9 }))
   }
 
   index.push({

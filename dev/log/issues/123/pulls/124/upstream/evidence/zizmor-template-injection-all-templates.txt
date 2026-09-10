@@ -1,0 +1,152 @@
+zizmor 1.30.0 --persona regular --min-confidence medium --min-severity medium (no repo config, offline)
+template-injection finding locations, per template:
+
+  js @ c3a6d23b
+      (none)
+
+  python @ 470e1760
+      (none)
+
+  rust @ f63a061f
+      (none)
+
+  php @ 15c327be
+      (none)
+
+  csharp @ 83efb9e4
+      .github/workflows/release.yml:616:30
+      .github/workflows/release.yml:617:32
+      .github/workflows/release.yml:767:28
+      .github/workflows/release.yml:770:15
+
+  go @ 548a7968
+      .github/workflows/release.yml:281:132
+      .github/workflows/release.yml:281:80
+
+  java @ 450a10ec
+      .github/workflows/release.yml:430:28
+
+Input declarations for the flagged values:
+  --- csharp release.yml workflow_dispatch inputs ---
+      /tmp/templates/csharp/.github/workflows/release.yml 9:   workflow_dispatch:
+      /tmp/templates/csharp/.github/workflows/release.yml 10:     inputs:
+      /tmp/templates/csharp/.github/workflows/release.yml 11:       release_mode:
+      /tmp/templates/csharp/.github/workflows/release.yml 12:         description: 'Release mode'
+      /tmp/templates/csharp/.github/workflows/release.yml 13:         required: true
+      /tmp/templates/csharp/.github/workflows/release.yml 14:         type: choice
+      /tmp/templates/csharp/.github/workflows/release.yml 15:         default: 'instant'
+      /tmp/templates/csharp/.github/workflows/release.yml 16:         options:
+      /tmp/templates/csharp/.github/workflows/release.yml 17:           - instant
+      /tmp/templates/csharp/.github/workflows/release.yml 18:           - changeset-pr
+      /tmp/templates/csharp/.github/workflows/release.yml 19:       bump_type:
+      /tmp/templates/csharp/.github/workflows/release.yml 20:         description: 'Version bump type'
+      /tmp/templates/csharp/.github/workflows/release.yml 21:         required: true
+      /tmp/templates/csharp/.github/workflows/release.yml 22:         type: choice
+      /tmp/templates/csharp/.github/workflows/release.yml 23:         options:
+      /tmp/templates/csharp/.github/workflows/release.yml 24:           - patch
+      /tmp/templates/csharp/.github/workflows/release.yml 25:           - minor
+      /tmp/templates/csharp/.github/workflows/release.yml 26:           - major
+      /tmp/templates/csharp/.github/workflows/release.yml 27:       description:
+      /tmp/templates/csharp/.github/workflows/release.yml 28:         description: 'Release description (optional)'
+      /tmp/templates/csharp/.github/workflows/release.yml 29:         required: false
+      /tmp/templates/csharp/.github/workflows/release.yml 30:         type: string
+      /tmp/templates/csharp/.github/workflows/release.yml 31: 
+      /tmp/templates/csharp/.github/workflows/release.yml 32: concurrency:
+      /tmp/templates/csharp/.github/workflows/release.yml 33:   group: ${{ github.workflow }}-${{ github.ref }}
+      /tmp/templates/csharp/.github/workflows/release.yml 34:   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+      /tmp/templates/csharp/.github/workflows/release.yml 35: 
+      /tmp/templates/csharp/.github/workflows/release.yml 36: env:
+      /tmp/templates/csharp/.github/workflows/release.yml 37:   GIT_CONFIG_COUNT: '1'
+      /tmp/templates/csharp/.github/workflows/release.yml 38:   GIT_CONFIG_KEY_0: init.defaultBranch
+      /tmp/templates/csharp/.github/workflows/release.yml 39:   GIT_CONFIG_VALUE_0: main
+      /tmp/templates/csharp/.github/workflows/release.yml 40:   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+      /tmp/templates/csharp/.github/workflows/release.yml 41:   DOTNET_CLI_TELEMETRY_OPTOUT: true
+      /tmp/templates/csharp/.github/workflows/release.yml 42:   DOTNET_NOLOGO: true
+      /tmp/templates/csharp/.github/workflows/release.yml 43: 
+      /tmp/templates/csharp/.github/workflows/release.yml 44: jobs:
+      /tmp/templates/csharp/.github/workflows/release.yml 45:   # === DETECT CHANGES - determines which jobs should run ===
+      /tmp/templates/csharp/.github/workflows/release.yml 46:   detect-changes:
+      /tmp/templates/csharp/.github/workflows/release.yml 47:     name: Detect Changes
+      /tmp/templates/csharp/.github/workflows/release.yml 48:     runs-on: ubuntu-latest
+  --- go release.yml workflow_dispatch inputs ---
+      /tmp/templates/go/.github/workflows/release.yml 8:   workflow_dispatch:
+      /tmp/templates/go/.github/workflows/release.yml 9:     inputs:
+      /tmp/templates/go/.github/workflows/release.yml 10:       release_mode:
+      /tmp/templates/go/.github/workflows/release.yml 11:         description: 'Release mode'
+      /tmp/templates/go/.github/workflows/release.yml 12:         required: true
+      /tmp/templates/go/.github/workflows/release.yml 13:         type: choice
+      /tmp/templates/go/.github/workflows/release.yml 14:         default: 'instant'
+      /tmp/templates/go/.github/workflows/release.yml 15:         options:
+      /tmp/templates/go/.github/workflows/release.yml 16:           - instant
+      /tmp/templates/go/.github/workflows/release.yml 17:           - changeset
+      /tmp/templates/go/.github/workflows/release.yml 18:       bump_type:
+      /tmp/templates/go/.github/workflows/release.yml 19:         description: 'Version bump type (for instant mode)'
+      /tmp/templates/go/.github/workflows/release.yml 20:         required: true
+      /tmp/templates/go/.github/workflows/release.yml 21:         type: choice
+      /tmp/templates/go/.github/workflows/release.yml 22:         options:
+      /tmp/templates/go/.github/workflows/release.yml 23:           - patch
+      /tmp/templates/go/.github/workflows/release.yml 24:           - minor
+      /tmp/templates/go/.github/workflows/release.yml 25:           - major
+      /tmp/templates/go/.github/workflows/release.yml 26:       description:
+      /tmp/templates/go/.github/workflows/release.yml 27:         description: 'Release description (optional)'
+      /tmp/templates/go/.github/workflows/release.yml 28:         required: false
+      /tmp/templates/go/.github/workflows/release.yml 29:         type: string
+      /tmp/templates/go/.github/workflows/release.yml 30: 
+      /tmp/templates/go/.github/workflows/release.yml 31: concurrency:
+      /tmp/templates/go/.github/workflows/release.yml 32:   group: ${{ github.workflow }}-${{ github.ref }}
+      /tmp/templates/go/.github/workflows/release.yml 33:   cancel-in-progress: true
+      /tmp/templates/go/.github/workflows/release.yml 34: 
+      /tmp/templates/go/.github/workflows/release.yml 35: permissions:
+      /tmp/templates/go/.github/workflows/release.yml 36:   contents: write
+      /tmp/templates/go/.github/workflows/release.yml 37:   pull-requests: write
+      /tmp/templates/go/.github/workflows/release.yml 38: 
+      /tmp/templates/go/.github/workflows/release.yml 39: jobs:
+      /tmp/templates/go/.github/workflows/release.yml 40:   # === DETECT CHANGES - determines which jobs should run ===
+      /tmp/templates/go/.github/workflows/release.yml 41:   detect-changes:
+      /tmp/templates/go/.github/workflows/release.yml 42:     name: Detect Changes
+      /tmp/templates/go/.github/workflows/release.yml 43:     runs-on: ubuntu-latest
+      /tmp/templates/go/.github/workflows/release.yml 44:     if: github.event_name != 'workflow_dispatch'
+      /tmp/templates/go/.github/workflows/release.yml 45:     outputs:
+      /tmp/templates/go/.github/workflows/release.yml 46:       go-changed: ${{ steps.changes.outputs.go-changed }}
+      /tmp/templates/go/.github/workflows/release.yml 47:       mod-changed: ${{ steps.changes.outputs.mod-changed }}
+  --- java release.yml workflow_dispatch inputs ---
+      /tmp/templates/java/.github/workflows/release.yml 8:   workflow_dispatch:
+      /tmp/templates/java/.github/workflows/release.yml 9:     inputs:
+      /tmp/templates/java/.github/workflows/release.yml 10:       release_mode:
+      /tmp/templates/java/.github/workflows/release.yml 11:         description: 'Release mode'
+      /tmp/templates/java/.github/workflows/release.yml 12:         required: true
+      /tmp/templates/java/.github/workflows/release.yml 13:         default: 'changeset'
+      /tmp/templates/java/.github/workflows/release.yml 14:         type: choice
+      /tmp/templates/java/.github/workflows/release.yml 15:         options:
+      /tmp/templates/java/.github/workflows/release.yml 16:           - changeset
+      /tmp/templates/java/.github/workflows/release.yml 17:           - instant
+      /tmp/templates/java/.github/workflows/release.yml 18:           - changeset-pr
+      /tmp/templates/java/.github/workflows/release.yml 19:       bump_type:
+      /tmp/templates/java/.github/workflows/release.yml 20:         description: 'Version bump type (for instant mode or changeset-pr)'
+      /tmp/templates/java/.github/workflows/release.yml 21:         required: false
+      /tmp/templates/java/.github/workflows/release.yml 22:         default: 'patch'
+      /tmp/templates/java/.github/workflows/release.yml 23:         type: choice
+      /tmp/templates/java/.github/workflows/release.yml 24:         options:
+      /tmp/templates/java/.github/workflows/release.yml 25:           - patch
+      /tmp/templates/java/.github/workflows/release.yml 26:           - minor
+      /tmp/templates/java/.github/workflows/release.yml 27:           - major
+      /tmp/templates/java/.github/workflows/release.yml 28:       description:
+      /tmp/templates/java/.github/workflows/release.yml 29:         description: 'Change description (for changeset-pr mode)'
+      /tmp/templates/java/.github/workflows/release.yml 30:         required: false
+      /tmp/templates/java/.github/workflows/release.yml 31:         type: string
+      /tmp/templates/java/.github/workflows/release.yml 32: 
+      /tmp/templates/java/.github/workflows/release.yml 33: concurrency:
+      /tmp/templates/java/.github/workflows/release.yml 34:   group: ${{ github.workflow }}-${{ github.ref }}
+      /tmp/templates/java/.github/workflows/release.yml 35:   cancel-in-progress: true
+      /tmp/templates/java/.github/workflows/release.yml 36: 
+      /tmp/templates/java/.github/workflows/release.yml 37: env:
+      /tmp/templates/java/.github/workflows/release.yml 38:   JAVA_VERSION: '21'
+      /tmp/templates/java/.github/workflows/release.yml 39:   JAVA_DISTRIBUTION: 'temurin'
+      /tmp/templates/java/.github/workflows/release.yml 40: 
+      /tmp/templates/java/.github/workflows/release.yml 41: jobs:
+      /tmp/templates/java/.github/workflows/release.yml 42:   # =============================================================================
+      /tmp/templates/java/.github/workflows/release.yml 43:   # Detect Changes - determines which jobs should run
+      /tmp/templates/java/.github/workflows/release.yml 44:   # =============================================================================
+      /tmp/templates/java/.github/workflows/release.yml 45:   detect-changes:
+      /tmp/templates/java/.github/workflows/release.yml 46:     name: Detect Changes
+      /tmp/templates/java/.github/workflows/release.yml 47:     runs-on: ubuntu-latest

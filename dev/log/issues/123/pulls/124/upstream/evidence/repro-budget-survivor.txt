@@ -1,0 +1,45 @@
+=== js: c3a6d23b693972a70097430f01e69fcee5a51ad2 ===
+### /tmp/templates/js/scripts/run-with-budget-warning.sh, budget 5s
+wrapper exit=0 after 1s
+    Running worker probe with a 5s budget (warning at 3s).
+    root of the command is exiting while its worker keeps running
+    worker probe finished in 1s of its 5s budget (exit 0).
+surviving worker pids: 165273 
+### the same command in a pipeline, which is how a CI step is written
+pipeline exit=124 after 20s (124 = the step never ended)
+
+=== python: 470e17605fc37b33fd7ea4e8aa8d16eaab1d9253 ===
+### /tmp/templates/python/scripts/run-with-budget-warning.sh, budget 5s
+wrapper exit=0 after 1s
+    root of the command is exiting while its worker keeps running
+    worker probe took 1s of its 5s execution budget.
+surviving worker pids: 165305 
+### the same command in a pipeline, which is how a CI step is written
+pipeline exit=124 after 20s (124 = the step never ended)
+
+=== rust: f63a061fb3e23e647de0455886528a121b997678 ===
+### /tmp/templates/rust/scripts/run-with-budget-warning.sh, budget 5s
+wrapper exit=0 after 1s
+    root of the command is exiting while its worker keeps running
+surviving worker pids: 165331 
+### the same command in a pipeline, which is how a CI step is written
+pipeline exit=124 after 20s (124 = the step never ended)
+
+=== php: 15c327be682deab6b65c69d48ef43e069d60bd01 ===
+### /tmp/templates/php/scripts/run-with-budget-warning.sh, budget 5s
+wrapper exit=0 after 1s
+    root of the command is exiting while its worker keeps running
+    worker probe took 1s of its 5s execution budget.
+surviving worker pids: 165355 
+### the same command in a pipeline, which is how a CI step is written
+pipeline exit=124 after 20s (124 = the step never ended)
+
+=== box (this branch, fixed) ===
+### scripts/ci/run-with-budget-warning.sh, budget 5s
+wrapper exit=0 after 0s
+    Running worker probe with a 5s budget (warning at 3s).
+    root of the command is exiting while its worker keeps running
+    worker probe finished in 0s of its 5s budget (exit 0).
+surviving worker pids: 165381 
+### the same command in a pipeline, which is how a CI step is written
+pipeline exit=0 after 0s (124 = the step never ended)

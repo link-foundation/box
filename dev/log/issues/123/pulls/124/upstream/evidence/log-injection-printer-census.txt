@@ -1,0 +1,50 @@
+Printers that emit pull-request-authored text to the CI log, per template, with
+the release.yml line that runs them and whether the print was *measured* to
+happen (experiments/issue-123/repro-log-injection-changeset.sh, transcript in
+repro-log-injection-changeset.txt).
+
+Reachability matters as much as the grep: two of the sites recorded in the first
+pass of this census turned out to be inside `if (dryRun)` branches that the
+shipped workflow never takes, and the strongest site in three templates was not
+the failure-path file dump but the *success* path's `Description:` line, which
+prints on every valid changeset on every pull request.
+
+js @ c3a6d23b
+  MEASURED  scripts/validate-changeset.mjs:269  console.log(`   Description: ${validation.description}`)   <- release.yml:206 (every PR)
+  MEASURED  scripts/merge-changesets.mjs:276    console.log(`\nMerged changeset content:\n${mergedContent}`) <- release.yml:573
+            scripts/validate-changeset.mjs:260  console.error(readFileSync(changesetFile, 'utf-8'))         <- release.yml:206 (failure path only)
+python @ 470e1760
+  MEASURED  scripts/create_github_release.py:176  print(f"\nRelease notes:\n{release_notes}\n")             <- release.yml:684, 824
+csharp @ 83efb9e4
+  MEASURED  scripts/validate-changeset.mjs:270  console.log(`   Description: ${validation.description}`)   <- release.yml:145 (every PR)
+  MEASURED  scripts/merge-changesets.mjs:261    console.log(`\nMerged changeset content:\n${mergedContent}`) <- release.yml:412
+            scripts/validate-changeset.mjs:261  console.error(readFileSync(changesetFile, 'utf-8'))         <- release.yml:145 (failure path only)
+go @ 548a7968
+  MEASURED  scripts/validate-changeset.mjs:263  console.log(`   Description: ${validation.description}`)   <- release.yml:94 (every PR)
+  MEASURED  scripts/merge-changesets.mjs:260    console.log(`\nMerged changeset content:\n${mergedContent}`) <- release.yml:235, 322
+            scripts/validate-changeset.mjs:254  console.error(readFileSync(changesetFile, "utf-8"))         <- release.yml:94 (failure path only)
+java @ 450a10ec
+  MEASURED  scripts/validate-changeset.mjs:166  console.log(`  OK: ${result.type} - ${result.description.slice(0, 50)}...`) <- release.yml:214 (every PR)
+  NOT REACHABLE  scripts/merge-changesets.mjs:221  console.log(mergedContent)     -- inside `if (dryRun)`; release.yml:262/:322 pass no --dry-run
+  NOT REACHABLE  scripts/collect-changelog.mjs:200 console.log(combinedContent)   -- same, inside `if (dryRun)`
+rust @ f63a061f
+            scripts/create-changelog-fragment.rs:118  println!("{}", fragment_content)                      <- release.yml:1167
+            (weaker variant only: the body is the workflow_dispatch --description an operator typed,
+             not a file a pull request wrote. scripts/collect-changelog.rs prints no fragment bodies.)
+php @ 15c327be
+            (none found: validate-changeset.php:42 and create-github-release.php:48/59 print fixed strings.)
+
+Corrections to the first pass of this census, both found by measurement:
+  - java's two `console.log(mergedContent)` / `console.log(combinedContent)` sites are dry-run-only,
+    so java is exposed through validate-changeset.mjs:166 and nothing else.
+  - the `Description:` success-path printers (js:269, csharp:270, go:263, java:166) were missing.
+    They are the important ones: they run on every pull request, not only on a malformed changeset.
+
+Templates that mention stop-commands anywhere in the tree (excluding .git):
+  js: 0 file(s)
+  python: 0 file(s)
+  rust: 0 file(s)
+  php: 0 file(s)
+  csharp: 0 file(s)
+  go: 0 file(s)
+  java: 0 file(s)

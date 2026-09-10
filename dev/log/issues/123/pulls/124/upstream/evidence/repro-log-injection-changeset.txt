@@ -1,0 +1,68 @@
+### js template: scripts/merge-changesets.mjs (release.yml runs it before the version bump)
+  package name in the front matter: @link-foundation/example-package-name
+  exit=0
+  REPRODUCED: js merge-changesets.mjs printed the payload verbatim
+  unguarded: js merge-changesets.mjs emitted no stop-commands token, so the payload is a live log command
+    38:Fix the CI gate. Quoting `##[error]Injected by a changeset body` in a changeset used to annotate the run.
+    40:Fix the CI gate. Quoting `##[error]Injected by a changeset body` in a changeset used to annotate the run.
+
+### js template: scripts/validate-changeset.mjs (release.yml runs it on every pull request)
+  exit=0
+  REPRODUCED: js validate-changeset.mjs printed the payload verbatim
+  unguarded: js validate-changeset.mjs emitted no stop-commands token, so the payload is a live log command
+    16:   Description: ##[error]Injected by a changeset body injected through the changeset description a pull request wrote.
+
+### python template: scripts/create_github_release.py (release.yml runs it in both release jobs)
+  exit=0
+  REPRODUCED: python create_github_release.py printed the payload verbatim
+  unguarded: python create_github_release.py emitted no stop-commands token, so the payload is a live log command
+    11:- Fix the CI gate. Quoting `##[error]Injected by a changeset body` in a changelog fragment used to annotate the run.
+    15:Running: gh release create v9.9.9 --repo owner/repo --title my-package 9.9.9 --notes - Fix the CI gate. Quoting `##[error]Injected by a changeset body` in a changelog fragment used to annotate the run.
+
+### rust template: scripts/create-changelog-fragment.rs (release.yml:1167 runs it in the manual-release job)
+  exit=0
+  REPRODUCED: rust create-changelog-fragment.rs printed the payload verbatim
+  unguarded: rust create-changelog-fragment.rs emitted no stop-commands token, so the payload is a live log command
+    10:- ##[error]Injected by a changeset body
+
+### csharp template: scripts/merge-changesets.mjs (release.yml runs it before the version bump)
+  package name in the front matter: MyPackage
+  exit=0
+  REPRODUCED: csharp merge-changesets.mjs printed the payload verbatim
+  unguarded: csharp merge-changesets.mjs emitted no stop-commands token, so the payload is a live log command
+    25:Fix the CI gate. Quoting `##[error]Injected by a changeset body` in a changeset used to annotate the run.
+    27:Fix the CI gate. Quoting `##[error]Injected by a changeset body` in a changeset used to annotate the run.
+
+### csharp template: scripts/validate-changeset.mjs (release.yml runs it on every pull request)
+  exit=0
+  REPRODUCED: csharp validate-changeset.mjs printed the payload verbatim
+  unguarded: csharp validate-changeset.mjs emitted no stop-commands token, so the payload is a live log command
+    14:   Description: ##[error]Injected by a changeset body injected through the changeset description a pull request wrote.
+
+### go template: scripts/merge-changesets.mjs (release.yml runs it before the version bump)
+  package name in the front matter: go-ai-driven-development-pipeline-template
+  exit=0
+  REPRODUCED: go merge-changesets.mjs printed the payload verbatim
+  unguarded: go merge-changesets.mjs emitted no stop-commands token, so the payload is a live log command
+    41:Fix the CI gate. Quoting `##[error]Injected by a changeset body` in a changeset used to annotate the run.
+    43:Fix the CI gate. Quoting `##[error]Injected by a changeset body` in a changeset used to annotate the run.
+
+### go template: scripts/validate-changeset.mjs (release.yml runs it on every pull request)
+  exit=0
+  REPRODUCED: go validate-changeset.mjs printed the payload verbatim
+  unguarded: go validate-changeset.mjs emitted no stop-commands token, so the payload is a live log command
+    14:   Description: ##[error]Injected by a changeset body injected through the changeset description a pull request wrote.
+
+### java template: scripts/merge-changesets.mjs (release.yml runs it before the version bump)
+  package name in the front matter: my-package
+  exit=0
+  NOT REACHABLE: java merge-changesets.mjs did not print the payload -- the print is inside the --dry-run branch, and release.yml:262/:322 run the script without --dry-run
+  unguarded: java merge-changesets.mjs emitted no stop-commands token, so the payload is a live log command
+
+### java template: scripts/validate-changeset.mjs (release.yml runs it on every pull request)
+  exit=0
+  REPRODUCED: java validate-changeset.mjs printed the payload verbatim
+  unguarded: java validate-changeset.mjs emitted no stop-commands token, so the payload is a live log command
+    7:  OK: patch - ##[error]Injected by a changeset body injected thr...
+
+10 printer(s) checked, 0 did not reproduce.

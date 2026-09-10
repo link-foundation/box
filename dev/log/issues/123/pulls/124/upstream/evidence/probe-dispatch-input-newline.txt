@@ -1,0 +1,44 @@
+### Does the workflow_dispatch API accept a newline inside a `type: string` input?
+
+Probed against link-foundation/box's own release.yml, whose `release_mode` is a
+required `choice`. An invalid choice is rejected server-side and creates no run,
+so the probe can carry any `description` without starting a release.
+
+--- 1. invalid choice, description containing a newline, an `EOF` line and $( )
+    {"message":"Provided value 'definitely-not-an-option' for input 'release_mode' not in the list of allowed values","documentation_url":"https://docs.github.com/rest/actions/workflows#create-a-workflow-dispatch-event","status":"422"}gh: Provided value 'definitely-not-an-option' for input 'release_mode' not in the list of allowed values (HTTP 422)
+
+--- 2. the same request with a single-line description, as a control
+    {"message":"Provided value 'definitely-not-an-option' for input 'release_mode' not in the list of allowed values","documentation_url":"https://docs.github.com/rest/actions/workflows#create-a-workflow-dispatch-event","status":"422"}gh: Provided value 'definitely-not-an-option' for input 'release_mode' not in the list of allowed values (HTTP 422)
+
+--- 3. runs created by either probe (expected: none)
+    [{"conclusion":"success","createdAt":"2026-02-26T20:05:35Z","databaseId":22459099802,"headBranch":"main"},{"conclusion":"success","createdAt":"2026-01-22T16:38:27Z","databaseId":21256601666,"headBranch":"main"},{"conclusion":"success","createdAt":"2026-01-22T01:32:07Z","databaseId":21232569144,"headBranch":"main"}]
+
+--- 4. what the documentation says
+
+https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+
+    "The maximum number of top-level properties for `inputs` is 25."
+    "The maximum payload for `inputs` is 65,535 characters."
+
+The limit is stated in characters, not in lines, and the page states no
+restriction on newlines or on the content of an input value.
+
+--- reading
+
+Established by the probe: GitHub validates a `choice` input against its
+`options` list server-side, rejects a value outside it with 422, and creates no
+run. So a `bump_type: choice` site cannot be reached with arbitrary text through
+the API, and `type: string` inputs -- `description` -- carry no such check.
+
+NOT established by the probe: that a newline inside `description` is delivered
+to the runner. Both requests were rejected on the choice, which is validated
+first, so the API never got as far as an opinion about the description. What is
+measured (see repro-dispatch-description-injection.txt) is the second half: IF a
+newline reaches the expansion, csharp's quoted heredoc at release.yml:759 is
+escaped and the payload executes. The UI renders a `type: string` input as a
+single-line field, which is a UI constraint rather than a validation; the API
+takes the value as a JSON string.
+
+Even with no newline at all, that site is still a defect: the value lands
+verbatim in the changeset file the release then commits and prints, which is the
+log-command injection reported separately as report C.

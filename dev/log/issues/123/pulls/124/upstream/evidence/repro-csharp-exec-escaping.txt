@@ -1,0 +1,99 @@
+### Reproduction: the C# template's version-and-commit.mjs executes its --description
+###
+### bash experiments/issue-123/repro-csharp-exec-escaping.sh \
+###   /tmp/templates/{csharp,go,java,js,python,rust,php}
+###
+### scripts/version-and-commit.mjs:69-74 defines
+###   function exec(command, silent = false) { return execSync(command, {...}) }
+### execSync given a string runs it through /bin/sh -c. The two release sites
+### build that string by concatenation:
+###   :412  exec(`git commit -m "${commitMsg.replace(/"/g, '\"')}"`)
+###   :419  exec(`git tag -a ${releaseTag} -m "${tagMsg.replace(/"/g, '\"')}"`)
+### and commitMsg/tagMsg embed `description`, which is --description (:46).
+### Escaping the double quote leaves `$( )` and backticks untouched, and inside
+### double quotes both still expand.
+###
+### The stub `git` on PATH makes the payload the only thing that can write the
+### proof file, and records the argv git was handed.
+###
+### csharp @ 83efb9e4 -- the shipped script, with a stub git
+### scripts/version-and-commit.mjs --mode instant --bump-type patch --description '$(printf INJECTED >> proof)'
+  script exit=0
+  what the script printed:
+    Updated csproj to version 0.3.17
+    Updated CHANGELOG.md with version 0.3.17
+    Committed version 0.3.17
+    Created tag v0.3.17
+    Pushed changes and tags
+    Output: version_committed=true
+    Output: new_version=0.3.17
+    Output: release_tag=v0.3.17
+  what the stub git was asked to run:
+    git config user.name github-actions[bot]
+    git config user.email github-actions[bot]@users.noreply.github.com
+    git add src/MyPackage/MyPackage.csproj CHANGELOG.md .changeset/
+    git commit -m chore: release v0.3.17
+    
+    
+    git tag -a v0.3.17 -m Release v0.3.17
+    
+    
+    git push
+    git push --tags
+  REPRODUCED  the description executed: proof file holds 2 INJECTED marker(s)
+              (:412 builds the commit message, :419 the tag message -- one execution each)
+
+### the same construction in every template
+  csharp: command STRING, and the message carries --description -- INJECTABLE
+      412:  exec(`git commit -m "${commitMsg.replace(/"/g, '\\"')}"`);
+      419:  exec(`git tag -a ${releaseTag} -m "${tagMsg.replace(/"/g, '\\"')}"`);
+  go: command string, but the message is built from the version -- no untrusted text
+      315:      run(`git commit -m "chore: release v${newVersion}"`);
+      321:    run(`git tag -a "${tag}" -m "Release ${tag}"`);
+  java: command string with NO escaping at all, but the message is built from the version -- no untrusted text
+      326:  exec(`git commit -m "${commitMessage}" || echo "Nothing to commit"`);
+      329:  exec(`git tag -a ${tag} -m "Release ${newVersion}"`);
+  js: command string via zx/command-stream, but the message is the version -- no untrusted text
+      293:      await $`git commit -m "${escapedMessage}"`;
+  python: argv list, no shell -- safe whatever it contains
+      347:            run_command(["git", "commit", "-m", new_version])
+  rust: argv, message passed as one element -- safe whatever it contains
+      1256:    if let Err(e) = exec("git", &["commit", "-m", &commit_msg]) {
+      1316:    if let Err(e) = exec("git", &["tag", "-a", &tag_name, "-m", &tag_msg]) {
+  php: argv array, each element escapeshellarg'd -- safe whatever it contains
+      39:        Process::mustRun(['git', 'commit', '-m', $message], $this->cwd);
+      44:        Process::mustRun(['git', 'tag', '-a', $tag, '-m', $message], $this->cwd);
+
+reproduced 1 script-level injection(s)
+
+### reading
+###
+### The payload ran twice -- once while building the commit message and once
+### while building the tag message -- and the stub git shows
+###   git commit -m chore: release v0.3.17
+### with the description already consumed by the shell before git saw it, which
+### is also why the release commit silently loses the description an operator
+### typed.
+###
+### This is NOT closed by the workflow-level fix in report D. Reading the input
+### through `env:` stops the *runner* from pasting it into the step's script; the
+### value still arrives on the script's argv and is still concatenated into a
+### command string here. Both fixes are needed, and this one is the cheaper of
+### the two: execFileSync('git', ['commit', '-m', commitMsg]) passes the message
+### as one argument and needs no escaping at all.
+###
+### Reachability: --description is supplied by the operator dispatching
+### release.yml (release.yml:617). In changeset mode the descriptions parsed out
+### of changeset files do not reach commitMsg -- version-and-commit.mjs:336-358
+### writes them to CHANGELOG.md and builds the commit message from the version
+### alone -- so a pull request author cannot reach this site. That makes it an
+### operator-reachable defect rather than a contributor-reachable one, the same
+### standing as report D.
+###
+### Across the other six templates the same construction is either fed no
+### untrusted text (js, go, java -- their message is derived from the version) or
+### uses an argv form that cannot be injected at all (rust, python, php). Only
+### csharp combines a command string with operator-supplied text, so this report
+### goes to csharp alone. java is worth a footnote: its commit line has no
+### escaping whatsoever, so it is one edit -- a message that carries text -- away
+### from the same defect.
