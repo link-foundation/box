@@ -796,7 +796,20 @@ install_php() {
     export HOMEBREW_NO_ANALYTICS=1
     export HOMEBREW_NO_AUTO_UPDATE=1
     brew install php || true
-    brew link --overwrite --force php 2>&1 | grep -v "Warning" || true
+    # `brew link` prints its "Warning:" lines on a *successful* link, so the
+    # output was filtered - but `| grep -v "Warning" || true` made grep's status
+    # the pipeline's and then discarded it, so a link that failed was
+    # indistinguishable from one that worked. The filter belongs on the output;
+    # the status belongs to brew. Anchoring the pattern also stops a line that
+    # merely mentions a warning from being deleted with them. (issue #123)
+    local brew_link_out="" brew_link_status=0
+    brew_link_out="$(brew link --overwrite --force php 2>&1)" || brew_link_status=$?
+    if [ "$brew_link_status" -eq 0 ]; then
+      printf '%s\n' "$brew_link_out" | grep -v '^Warning' || true
+    else
+      printf '%s\n' "$brew_link_out"
+      log_warning "brew link --overwrite --force php failed (exit $brew_link_status)"
+    fi
   fi
 }
 measure_install "PHP (via Homebrew)" "Runtime" install_php

@@ -860,7 +860,21 @@ if command -v brew &>/dev/null; then
       brew install php || true
 
       if brew list --formula 2>/dev/null | grep -E "^php(@[0-9.]+)?$" >/dev/null; then
-        brew link --overwrite --force php 2>&1 | grep -v "Warning" || true
+        # `brew link` prints its "Warning:" lines on a *successful* link, so the
+        # output was filtered - but `| grep -v "Warning" || true` made grep's status
+        # the pipeline's and then discarded it, so a link that failed was
+        # indistinguishable from one that worked. The filter belongs on the output;
+        # the status belongs to brew. Anchoring the pattern also stops a line that
+        # merely mentions a warning from being deleted with them. (issue #123)
+        brew_link_out=""
+        brew_link_status=0
+        brew_link_out="$(brew link --overwrite --force php 2>&1)" || brew_link_status=$?
+        if [ "$brew_link_status" -eq 0 ]; then
+          printf '%s\n' "$brew_link_out" | grep -v '^Warning' || true
+        else
+          printf '%s\n' "$brew_link_out"
+          log_warning "brew link --overwrite --force php failed (exit $brew_link_status)"
+        fi
 
         BREW_PREFIX=$(brew --prefix 2>/dev/null || echo "")
         if [[ -n "$BREW_PREFIX" && -d "$BREW_PREFIX/opt/php" ]]; then
