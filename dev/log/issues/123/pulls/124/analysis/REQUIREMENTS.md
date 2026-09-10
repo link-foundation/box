@@ -37,7 +37,7 @@ and a count is the wrong instrument:
 
 | # | Requirement | Held by |
 | --- | --- | --- |
-| B1 | "Download all logs and collect data … into `./dev/log/issues/123/pulls/124`" | 7.3 MB: `ci-logs/` (113 files), `templates/` (269), `upstream/` (58), `runs/` (22), `annotations/` (10), `zizmor/` (7), `apt/` (2), `useradd/` (2), `npm-force/` (1), `analysis/` (this directory) — see `README.md` |
+| B1 | "Download all logs and collect data … into `./dev/log/issues/123/pulls/124`" | 7.4 MB: `ci-logs/` (113 files), `templates/` (269), `upstream/` (58), `runs/` (22), `annotations/` (10), `zizmor/` (7), `apt/` (2), `useradd/` (2), `npm-force/` (1), `analysis/` (this directory) — see `README.md` |
 | B2 | "deep analysis (search online for additional facts and data)" | `PRIOR-ART.md` §1–§4: the runner's `ActionCommand` source, GitHub's own docs for `steps.<id>.outcome` and `if-no-files-found`, zizmor's offline-mode change, useradd's skel rule, apt 2.8.3's compiled-in defaults |
 | B3 | "reconstruct the timeline/sequence of events" | `TIMELINE.md` — second-resolution, from the run records and the job logs |
 | B4 | "list each and every requirement from the issue" | this document |
