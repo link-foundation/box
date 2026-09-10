@@ -76,8 +76,12 @@ done
 # base-branch range by hand is a place the helper's failure handling does not
 # reach; the helper itself and the evidence under experiments/issue-123/ and
 # dev/log/ are the exceptions, because that is where the defect is recorded.
+# `*.md` is excluded for the same reason and not as a convenience: prose that
+# quotes the defective line - this branch's changeset, the case study - describes
+# it rather than runs it, and a sweep for code that runs must not be satisfiable
+# by rewording a sentence.
 RAW_SITES="$(cd "$REPO_ROOT" && git grep -nE 'git (diff|log|rev-list)[^|]*origin/\$\{?[A-Za-z_]*BASE[A-Za-z_]*\}?\.\.\.?HEAD' -- \
-  ':!scripts/release/pr-diff-range.sh' ':!experiments/*' ':!dev/log/*' ':!docs/*' 2>/dev/null \
+  ':!scripts/release/pr-diff-range.sh' ':!experiments/*' ':!dev/log/*' ':!docs/*' ':!*.md' 2>/dev/null \
   | awk -F: '$3 !~ /^[[:space:]]*#/' || true)"
 check "no tracked file builds the origin/BASE...HEAD range by hand" \
   "$([ -z "$RAW_SITES" ] && echo true || echo false)" "found: $RAW_SITES"
@@ -285,7 +289,64 @@ check "  without complaining that it could not compare" \
   "$([ "$(contains "$OUT" 'Cannot compare')" = false ] && echo true || echo false)"
 
 echo
-echo "== Part 5: the assertions above fail when the fix is removed =="
+echo "== Part 5: the trace says what the answer was computed from, and only on request =="
+
+# Issue #123 cost a re-run to diagnose because a passing gate said nothing about
+# which base ref it read or how many files came back: a right answer and a wrong
+# one printed the same line. PR_DIFF_RANGE_VERBOSE=1 (or BOX_VERBOSE=1) makes the
+# successful path name its own range. Default off, because a passing check should
+# stay quiet, and on stderr, because every caller reads stdout through a command
+# substitution.
+W="$(branch_from "$ROOT" trace)"
+echo "9.9.9" >"$W/VERSION"
+commit_all "$W"
+
+trace_run() {
+  TRACE_OUT="$(cd "$W" && GITHUB_BASE_REF=main GITHUB_HEAD_REF=feature "$@" \
+    bash "$SCRIPTS_ROOT/release/check-version.sh" 2>&1 >/dev/null)"
+  TRACE_STDOUT="$(cd "$W" && GITHUB_BASE_REF=main GITHUB_HEAD_REF=feature "$@" \
+    bash "$SCRIPTS_ROOT/release/check-version.sh" 2>/dev/null)"
+}
+
+trace_run env PR_DIFF_RANGE_VERBOSE=0
+check "with the switch off the gate emits no trace" \
+  "$([ "$(contains "$TRACE_OUT" '[pr-diff-range]')" = false ] && echo true || echo false)" \
+  "$TRACE_OUT"
+
+trace_run env PR_DIFF_RANGE_VERBOSE=1
+check "with the switch on the trace names the range" \
+  "$(contains "$TRACE_OUT" 'range origin/main...HEAD')"
+check "  and how many paths came back" "$(contains "$TRACE_OUT" 'path(s) changed')"
+check "  and reports the base ref it found" "$(contains "$TRACE_OUT" 'origin/main already present')"
+check "  on stderr, never on stdout" \
+  "$([ "$(contains "$TRACE_STDOUT" '[pr-diff-range]')" = false ] && echo true || echo false)" \
+  "$TRACE_STDOUT"
+
+# The repository-wide switch reaches this helper too, so one variable turns on
+# tracing for a whole job rather than one script at a time.
+trace_run env BOX_VERBOSE=1
+check "BOX_VERBOSE=1 is the same switch" "$(contains "$TRACE_OUT" 'range origin/main...HEAD')"
+
+# The script-specific name wins, so a job running with BOX_VERBOSE=1 can still
+# silence this one helper.
+trace_run env BOX_VERBOSE=1 PR_DIFF_RANGE_VERBOSE=0
+check "  and PR_DIFF_RANGE_VERBOSE=0 overrides it" \
+  "$([ "$(contains "$TRACE_OUT" '[pr-diff-range]')" = false ] && echo true || echo false)" \
+  "$TRACE_OUT"
+
+# A trace prints a branch name, and a branch name is text this repository does
+# not write: `##[` anywhere in a physical line is a command to the runner. The
+# name below never resolves, so this exercises the failure trace as well.
+HOSTILE_BASE='main##[error]::set-output name=x::y'
+TRACE_OUT="$(cd "$W" && GITHUB_BASE_REF="$HOSTILE_BASE" GITHUB_HEAD_REF=feature \
+  PR_DIFF_RANGE_VERBOSE=1 bash "$SCRIPTS_ROOT/release/check-version.sh" 2>&1 >/dev/null)"
+check "a hostile base branch name is printed with commands stopped" \
+  "$(contains "$TRACE_OUT" '::stop-commands::')"
+check "  and the gate refuses to answer for it" \
+  "$(contains "$TRACE_OUT" 'Cannot compare')"
+
+echo
+echo "== Part 6: the assertions above fail when the fix is removed =="
 
 # A suite that passes against the fixture rather than against the fix is worth
 # nothing, and this defect class is exactly the one that produces such a suite:

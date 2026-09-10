@@ -41,13 +41,38 @@
 # `pr_changed_files` prints the changed paths on stdout, one per line, and
 # returns 0. On failure it prints an ::error:: annotation naming the cause and
 # returns 1, so `if ! files=...` is the only correct way to call it.
+#
+# Environment:
+#   PR_DIFF_RANGE_VERBOSE=1   trace the range this helper resolved  (default: off)
+#   BOX_VERBOSE=1             the same switch, repository-wide      (default: off)
+#
+# The failure path already says everything it can. The trace is about the path
+# that *succeeds*: issue #123's three gates were silent about which base ref they
+# read, whether the ref had to be fetched, and how many files came back, so a
+# wrong answer looked exactly like a right one in the log and finding out cost a
+# re-run. With the switch on, every answer carries the range it was computed
+# from. Off by default, because it belongs on stderr of a passing check only when
+# someone is asking.
 
 # shellcheck source=scripts/ci/run-with-commands-stopped.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../ci/run-with-commands-stopped.sh"
 
+PR_DIFF_RANGE_VERBOSE="${PR_DIFF_RANGE_VERBOSE:-${BOX_VERBOSE:-0}}"
+
+# Traces go to stderr, for the same reason the error annotation does: every
+# caller reads this file's stdout through a command substitution, so a trace on
+# stdout would be captured as part of the answer - a file list with a diagnostic
+# line in it, which is a worse failure than the one this helper exists to fix.
+pr_trace() {
+  [ "$PR_DIFF_RANGE_VERBOSE" = "1" ] || return 0
+  # Branch names and git's output are not text this repository writes, and `##[`
+  # anywhere in a physical line is a command to the runner.
+  run_with_commands_stopped printf '[pr-diff-range] %s\n' "$*" >&2
+}
+
 # The base branch of the pull request. `main` is the historical default of both
-# callers and is kept, but see pr_require_pull_request below: a gate that
-# silently assumes a base branch is the same defect one level up.
+# callers and is kept: every caller runs only on `pull_request`, where the runner
+# always sets GITHUB_BASE_REF, so the fallback is reached only outside CI.
 pr_base_ref() {
   printf '%s' "${GITHUB_BASE_REF:-main}"
 }
@@ -62,11 +87,14 @@ pr_ensure_base_ref() {
   PR_DIFF_RANGE_DIAGNOSTIC=''
 
   if git rev-parse --verify -q "refs/remotes/origin/${base}^{commit}" >/dev/null 2>&1; then
+    pr_trace "origin/${base} already present at $(git rev-parse --short "refs/remotes/origin/${base}" 2>/dev/null)"
     return 0
   fi
 
+  pr_trace "origin/${base} is not in this checkout; fetching just that branch"
   if out="$(git fetch --no-tags origin "+refs/heads/${base}:refs/remotes/origin/${base}" 2>&1)"; then
     if git rev-parse --verify -q "refs/remotes/origin/${base}^{commit}" >/dev/null 2>&1; then
+      pr_trace "fetched origin/${base} at $(git rev-parse --short "refs/remotes/origin/${base}" 2>/dev/null)"
       return 0
     fi
     out="git fetch reported success but refs/remotes/origin/${base} still does not resolve"
@@ -124,6 +152,8 @@ pr_changed_files() {
   # if this pull request had made them; three-dot is the diff against the merge
   # base, which is what every caller means. It is also the form that fails when
   # no merge base exists, which is a state a gate must not treat as "clean".
+  pr_trace "range origin/${base}...HEAD merge-base $(git merge-base "origin/${base}" HEAD 2>/dev/null) pathspec ${*:-<all>}"
+
   out="$(git diff --name-only "origin/${base}...HEAD" "$@" 2>&1)"
   status=$?
 
@@ -133,7 +163,12 @@ pr_changed_files() {
     return 1
   fi
 
-  [ -n "$out" ] && printf '%s\n' "$out"
+  if [ -n "$out" ]; then
+    pr_trace "$(printf '%s\n' "$out" | wc -l) path(s) changed"
+    printf '%s\n' "$out"
+  else
+    pr_trace "0 path(s) changed - and git said so, which is the whole point"
+  fi
   return 0
 }
 
@@ -147,6 +182,8 @@ pr_changed_files_with_status() {
     pr_range_error "$base" >&2
     return 1
   fi
+
+  pr_trace "range origin/${base}...HEAD merge-base $(git merge-base "origin/${base}" HEAD 2>/dev/null) pathspec ${*:-<all>}"
 
   out="$(git diff --name-status "origin/${base}...HEAD" "$@" 2>&1)"
   status=$?
