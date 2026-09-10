@@ -1,4 +1,4 @@
-# Case Study: Issue #123 — Eight green runs, and thirteen checks that did not know what they were reporting
+# Case Study: Issue #123 — Eight green runs, and nineteen checks that did not know what they were reporting
 
 ## Executive Summary
 
@@ -10,10 +10,13 @@ asks for "all false positives, false negatives, warnings and errors" in them.
 The scope was measured before it was worked: `census-warnings-errors.sh`
 classifies all **804** lines in those nine runs that contain `warn` or `error`,
 and the API reports exactly **7** annotations across all nine. Three of the seven
-were false. Thirteen root causes came out of the census and out of sweeping for
-the siblings of each one; **six of the thirteen were found in the eight green
-runs** (RC-3, RC-5, RC-6, RC-7, RC-8, RC-10). A red run tells you where to look.
-A green run does not, which is why this issue is a census and not a gate.
+were false. Nineteen root causes came out of the census, out of sweeping for
+the siblings of each one, out of the first CI run of the finished branch — which
+found the same defect in the tests written to measure the others — and out of
+asking the census question of the branch's own gates and release path;
+**six of the nineteen were found in the eight green runs** (RC-3, RC-5,
+RC-6, RC-7, RC-8, RC-10). A red run tells you where to look. A green run does
+not, which is why this issue is a census and not a gate.
 
 One sentence covers every row below: **each of these is a check that reported a
 verdict about data it never obtained.**
@@ -33,11 +36,22 @@ verdict about data it never obtained.**
 | RC-11 | Three release gates read a failed `git diff` as "nothing changed" | found by taking upstream report **F** to our own tree | `git diff --name-only "origin/$BASE...HEAD"` exits **128 and prints nothing** when the range does not resolve — no `fetch-depth: 0`, a renamed base, a failed fetch, no merge base — and all three discarded the status. Two `gh` reads conflated "empty" with "failed". Reproduced: two of the three gates report the passing verdict. | `scripts/release/pr-diff-range.sh` — one place that asks what a pull request changed, three-dot, restores a base ref missing only locally, otherwise names the cause on **stderr** and returns 1. `45abc52` |
 | RC-12 | The changeset gate demanded a changeset for the wrong set of paths | surfaced by extracting RC-11's inline step | `VERSION`, `.github/actions/` and `.githooks/` were absent from the regex, and the step echoed pull-request-controlled paths with command processing live — RC-3 inside our own workflow, two files from a script already doing it correctly. | `check-changeset-required.sh`, with the widened path set and the printer bracketed. `45abc52` |
 | RC-13 | This branch's own template comparison came out with its summary lines in it, as roles | found by reading the matrix it produced | `compare-template-roles.sh` wrote `/tmp/roles-<name>.txt` and read them back with `cat /tmp/roles-*.txt`, which also matched `/tmp/roles-all.txt` from the same run. | A private `mktemp -d` with a trap, and a comment at the site. `320491d` |
+| RC-14 | A suite asserted apt's default retry count **equals** 3, and failed the branch on a runner where it is 1 | this branch's own `scripts / regression suites` job | `test-issue123-apt-retry-defaults.sh` pinned the spelling of an environment's constant. apt 2.8.3 defaults to 3 retries here and in `ubuntu:24.04` and to **1** on `ubuntu-24.04`, on the same Ubuntu 24.04.4; nothing in this repository depends on the number. | The invariant is a direction, not an equality: `-o Acquire::Retries=3` must never be a *downgrade*. The suite derives the default from its own connection count, prints `apt-config dump`, the apt.conf files naming the key, `APT_CONFIG` and whether `apt-get` is a wrapper, and sweeps all 135 tracked sources for a refresh that passes no retry option. |
+| RC-15 | A suite's "SIGPIPE at its default" leg was whatever the machine was doing, and on a runner that is *ignored* | this branch's own `scripts / regression suites` job | `test-issue123-sigpipe-writers.sh` established one leg with `trap '' PIPE` and left the other to inherit. A step's shell starts with SIGPIPE `SIG_IGN` (actions/runner#2684 — the suite's own subject), an ignored disposition survives `exec`, and bash cannot reset one. Both legs were the same leg. | The default leg enters through `perl -e '$SIG{PIPE} = "DEFAULT"; exec …'` (`python3` where perl is absent), and a new part reads each leg's `SigIgn` mask out of `/proc/self/status` and asserts bit 13 — so the premise fails loudly instead of the conclusion failing mysteriously. |
+| RC-16 | A fake `ps` fabricated an unkillable survivor that died with the process group it was standing in for | this branch's own `scripts / regression suites` job | `test-issue123-budget-enforcement.sh` faked a survivor for every process group **currently in the table**, so the lie was conditional on the truth: once SIGTERM took the real group, `group_members` returned empty and the wrapper correctly reported no survivors. Three assertions blamed the shipped wrapper for a race in the fixture. | The fake records every group id it has ever seen in a per-leg state file and re-reports all of them: an unkillable process is one that does not go away, and a stand-in for it must not either. |
+| RC-17 | A linter reported a clean tree over 201 shell scripts it never opened | one red assertion in a full run of this branch's own experiment suites | `collect_files()` ended in `\| sort -u \|\| true`, so **any** failure of `git ls-files` — a busy index, an unreadable object, no `git` — became an empty list, and the gate read that as a fact about the repository. Measured against the shipped script with a `git` exiting 128: `==> No shell scripts to check`, status 0. Five of the eight gates that discover their own inputs ended their listing in that `|| true`, and the other three built theirs inside a process substitution, where a failure is equally invisible. Five of the eight already refused an *empty* set — which answers the second failure mode and says nothing about the first. | Every discovering gate separates "git could not answer" from "git answered, and there is nothing", and errors on each by name. `test-issue123-discovery-fail-closed.sh` drives all eight through both failures, and the hook driver that runs them, 94 assertions. |
+| RC-18 | Eighteen release steps each re-derived the version being published, by reading a file | asking the census question of the release path instead of a linter | `VERSION=$(tr -d '[:space:]' < VERSION)`, three times in each of the six release workflows, sixteen of them behind `git pull origin main \|\| true`. An empty file is caught by nothing: `[] status=0`. In a build job it becomes the tag `…box-js:-amd64`; in the two bump jobs it becomes `$((MAJOR + 1))` over an empty string, which publishes **1.0.0** — below every version this repository has released. | One reader. `detect-changes` already published `version` and every call site already passed `changes:`, so `fromJSON(inputs.changes)['version']` was there all along; `scripts/release/release-version.sh` prefers it, cross-checks the file, refuses an empty or malformed value from either, and warns when the two disagree. |
+| RC-19 | An unparseable workflow passed all four gates whose entire input is workflow files, each printing a confident verdict about it | a break this branch itself committed, caught by four experiment suites and by none of the eleven gates the hook runs | Three replaced steps left an orphan `echo` stranded, and `release-full.yml` stopped being YAML (`Psych::SyntaxError … line 175 column 33`). The four gates read workflows line by line **on purpose** — they ask about ordering and indentation a parsed tree discards — and a line-oriented reader cannot tell a file it disagrees with from a file no parser accepts. actionlint does catch it, and is pinned as `docker://`, which a pre-commit hook cannot run. | `check-workflow-yaml.sh` parses every tracked workflow and composite action with ruby's `psych` — the only offline parser present here — first in the hook and first in `workflows.yml`. The floor, not the ceiling: an orphan line with no colon is a legal plain-scalar continuation, and that limit is stated at the site and asserted in the suite. |
 
-Two of the thirteen are the shape inverted rather than repeated: RC-3 is text
+Two of the nineteen are the shape inverted rather than repeated: RC-3 is text
 that was **not** a verdict being read as one, and RC-4 is a record that existed
-and was then erased. The other eleven are all the same defect — a verdict about
-data the checker never had.
+and was then erased. The other seventeen are all the same defect — a verdict
+about data the checker never had. Four of those seventeen — RC-13 through RC-16
+— are in code this branch wrote to measure the others, which is §7. The last
+three arrived later still, from three directions: one red assertion in a full
+experiment run (RC-17), the census question asked of the release path rather
+than of a linter (RC-18), and a break this branch itself committed, which four
+workflow-reading gates each passed while describing it (RC-19).
 
 ---
 
@@ -64,7 +78,7 @@ Two properties of the collection matter more than its size:
   of the nine run-level logs carry real content; the ninth is that recorded
   refusal, because `gh run view --log` declines a 99-job run — which is why the
   99 job logs were collected individually. A collector that silently wrote an
-  empty file would have been the fourteenth root cause.
+  empty file would have been one more root cause of exactly this shape.
 * **Every sweep is mutation-tested.** A sweep that finds nothing is worth nothing
   until a planted offender makes it fail. Each suite plants one.
 
@@ -108,9 +122,12 @@ the same minute reported `Fetched 9435 kB in 1s (8809 kB/s)`.
 RC-1's overrun invites an obvious "add retries and timeouts to apt". It was
 measured instead of shipped (`dev/log/issues/123/pulls/124/apt/`):
 
-* `Acquire::Retries` is already set — apt 2.8.3's default is **3**, confirmed by
-  counting connections to a local fixture mirror at 0, 1, 2, 3 and 5 retries
-  (2, 4, 6, 8, 12 connections for 2 index items).
+* `Acquire::Retries` is already at least as high as the pin. Counting
+  connections to a local fixture mirror at 0, 1, 2, 3 and 5 retries gives 2, 4,
+  6, 8 and 12 for 2 index items, everywhere it has been run; apt's *default*
+  gives 8 here and inside `ubuntu:24.04` (3 retries) and 4 on the `ubuntu-24.04`
+  runner (1 retry). The pin is therefore a no-op in the images and a
+  strengthening on the runner, never a downgrade.
 * `Acquire::http::Timeout` bounds an **idle** connection. The mirror in question
   was delivering, slowly. Measured: `Timeout=5` gives up after 10 s of silence,
   `Timeout=30` after 60 s — and never fires against a slow producer.
@@ -119,6 +136,23 @@ So no value of either option would have helped, and shipping them would have
 been a change that looks like a fix and prevents nothing. That is the entry
 this case study is proudest of: the issue is about checks that claim more than
 they measured, and the same standard has to apply to the fixes.
+
+It is also the entry that caught this branch committing the defect it was
+written to remove. The suite behind that bullet asserted apt's default *equals*
+3 retries, and the assertion went red on the runner — where the same apt 2.8.3
+on the same Ubuntu 24.04.4 defaults to 1. Nothing in this repository depends on
+that number being 3; what it depends on is `-o Acquire::Retries=3` not being a
+*downgrade*. The suite had pinned the spelling of an environment's constant and
+reported the verdict as a fact about the repository, which is precisely the
+shape of RC-2, RC-5 and RC-12. It now derives the default from the measurement,
+prints `apt-config dump`, the apt.conf files naming the key, `APT_CONFIG` and
+whether `apt-get` is a wrapper script (the runner images replace it with one),
+and fails only on a default *above* what the refresh sites pin. A second half
+was added at the same time: a sweep of all 135 tracked shell, workflow and
+Dockerfile sources for an `apt-get update` that inherits the environment's
+default instead of passing its own — over logical lines, because every real
+refresh site spells the option on a `\`-continuation and a per-line grep would
+report all three as offenders.
 
 Seven more census lines were dispositioned the same way and left alone — the
 Homebrew and pyenv PATH warnings (both answered three lines later in the same
@@ -162,11 +196,14 @@ the strict direction, and the production query is itself an assertion.
 ## 4. The verbose mode, default off
 
 The task asks for debug output "if there is not enough data to find the actual
-root cause… keep the default state switched off". Twelve of the thirteen root
-causes were found in the evidence as collected. The thirteenth question — *what
-did this pull request change, and how did the answer get computed?* — is the one
-where a future failure would leave nothing behind, because the failing path
-already explained itself and the **succeeding** path did not.
+root cause… keep the default state switched off". Seventeen of the nineteen
+root causes were found in the evidence as collected. Two questions were not
+answerable from what the logs held, and each got output rather than a guess.
+
+The first — *what did this pull request change, and how did the answer get
+computed?* — is the one where a future failure would leave nothing behind,
+because the failing path already explained itself and the **succeeding** path
+did not.
 
 `PR_DIFF_RANGE_VERBOSE=1`, or `BOX_VERBOSE=1` repository-wide, makes every answer
 carry the base ref it resolved, whether that ref had to be fetched, the range and
@@ -174,6 +211,22 @@ merge base it diffed, and how many paths came back. Default off, on **stderr**
 (every caller reads the helper through a command substitution), and printed
 through `run_with_commands_stopped`, because a branch name is not text this
 repository writes. Nine assertions cover it.
+
+The second is RC-14: *why is apt's default retry count 1 on `ubuntu-24.04` and 3
+on every other Ubuntu 24.04.4 with the same apt 2.8.3?* Nothing in the evidence
+answers it. `actions/runner-images` writes `/etc/apt/apt.conf.d/80-retries`, but
+the key in it is `APT::Acquire::Retries`, which apt does not read; its
+`90assumeyes`, `99-phased-updates` and `99bad_proxy` files touch nothing related;
+and `configure-apt-mock.sh` wraps `apt-get` in an *outer* 30-attempt loop, which
+would raise the count, not lower it. So rather than assert a guess, the suite
+prints what it would take to close the question on the next run — the measured
+default, `apt-config dump Acquire::Retries`, every apt.conf file naming the key,
+`APT_CONFIG`, and whether the `apt-get` on `PATH` is a wrapper script — and
+`experiments/issue-123/measure-apt-retry-timing.sh` prints the arrival time of
+every connection of a leg, so a retry can be distinguished from a redirect
+rather than inferred from a total. This one is printed unconditionally: it is
+five lines inside a suite whose whole output is measurements, and the failure it
+explains happens on a machine nobody can attach to.
 
 ---
 
@@ -222,26 +275,32 @@ tree`) is n/a with the measurement attached.
 
 ---
 
-## 7. The suites, and the two that failed on themselves
+## 7. The suites, and the five times they failed on themselves
 
-Twelve offline suites, **327 assertions, 0 failures**, each checker exercised in
-a passing *and* a failing form:
+Fifteen offline suites, **550 assertions, 0 failures**, each checker exercised
+in a passing *and* a failing form:
 
 | suite | assertions | | suite | assertions |
 | --- | ---: | --- | --- | ---: |
-| `pr-diff-range` | 62 | | `home-skel` | 23 |
-| `zizmor-token` | 36 | | `log-capture-truncation` | 23 |
-| `overrun-not-supersede` | 35 | | `budget-enforcement` | 20 |
-| `sigpipe-writers` | 30 | | `brew-link-status` | 16 |
+| `discovery-fail-closed` | 94 | | `workflow-yaml` | 28 |
+| `release-version` | 86 | | `home-skel` | 23 |
+| `pr-diff-range` | 70 | | `log-capture-truncation` | 23 |
+| `zizmor-token` | 36 | | `budget-enforcement` | 20 |
+| `overrun-not-supersede` | 35 | | `brew-link-status` | 16 |
+| `sigpipe-writers` | 33 | | `apt-retry-defaults` | 14 |
 | `artifact-upload-fail-closed` | 29 | | `npm-force` | 14 |
-| `log-command-injection` | 29 | | `apt-retry-defaults` | 10 |
+| `log-command-injection` | 29 | | | |
 
-(`apt-retry-defaults` reports 10 by default; three further legs measuring idle
+(`apt-retry-defaults` reports 14 by default; three further legs measuring idle
 timeouts cost ~130 s and sit behind `APT_MEASURE_TIMEOUTS=1`, with their recorded
 output in `apt/`.)
 
-Two of these suites failed on their first full run **for exactly the defect this
-issue is about**, and both failures are worth more than the fixes:
+These suites failed on themselves **for exactly the defect this issue is
+about** five times, and the failures are worth more than the fixes. Two of the five were
+found by running them; three were found by the runner, which is the more
+uncomfortable half of the finding — each of those three passed on every machine
+this branch was written on and reported a verdict about `ubuntu-24.04` that it
+had no basis for:
 
 * **`brew-link-status` matched its own text.** The sweep for `brew link … | grep`
   found a hit — in the suite's own `RETIRED=` fixture string. A sweep that can
@@ -259,9 +318,50 @@ issue is about**, and both failures are worth more than the fixes:
   then resets, one thread per connection. Verified by running the suite six times
   under four busy loops: `Passed: 10  Failed: 0` on all six.
 
-RC-13 belongs to the same group: a measurement of this branch's own, contaminated
-by a glob. Three defects of the issue's own class, in the instruments built to
-measure it.
+* **`apt-retry-defaults` pinned the spelling of an environment's constant.** It
+  asserted apt's default *equals* 3 retries. It does here and in `ubuntu:24.04`;
+  on the runner it is 1, with the same apt 2.8.3 on the same Ubuntu 24.04.4. The
+  property this repository actually depends on is that `-o Acquire::Retries=3`
+  is never a *downgrade*, and that is a direction, not an equality. §2 has the
+  rest, including the debug output the suite now prints so the runner's 1 arrives
+  explained rather than merely detected.
+* **`sigpipe-writers` assumed the ambient signal disposition.** Its two legs are
+  "SIGPIPE ignored" and "SIGPIPE at its default"; the first was established with
+  a `trap`, the second was left to the machine. On a runner the machine's answer
+  is *ignored* — that is the entire subject of the suite (actions/runner#2684) —
+  so the two legs were one leg, and the suite reported "the retired shape already
+  complains with default SIGPIPE": a true statement about its own fixture and no
+  statement at all about the code under test. bash cannot undo an inherited
+  `SIG_IGN`, so the default leg now enters through `perl` (or `python3`), which
+  calls `signal(2)` before exec, and a new part reads each leg's `SigIgn` mask
+  out of `/proc` so the premise fails loudly instead of the conclusion failing
+  mysteriously.
+* **`budget-enforcement` built a survivor that could not survive.** To test that
+  an unkillable process is *reported* rather than called terminated, it faked
+  `ps`. The fake listed the process groups currently in the table and fabricated
+  a root-owned member for each — so the moment SIGTERM took the real group, the
+  fabricated survivor went with it. Locally the group lingered past the grace
+  period often enough to pass; on the runner it did not, and three assertions
+  blamed the shipped wrapper for a race in the fixture. The fake now remembers
+  every group it has ever seen and keeps reporting it: an unkillable process is
+  one that does not go away, and a stand-in for it must not either.
+
+The last three are RC-14, RC-15 and RC-16 in the root-cause list, and RC-13
+belongs to the same group: a measurement of this branch's own, contaminated by a
+glob. Six defects of the issue's own class, in the instruments built to measure
+it — and the three that only the runner could find are the argument for why the
+census had to be read line by line rather than trusted as green.
+
+RC-17 came out of the same instruments and points the other way. A single
+assertion in `test-issue121-git-hooks.sh` went red — `run-shellcheck.sh does not
+see the hook` — and the trigger for that one red run was never reproduced. What
+the investigation found instead was in the shipped gate: asked what it does when
+discovery comes back short, `collect_files()` answered "the tree is clean" over
+201 files it had not opened. The suite could not say more than it did, because
+it called the gate with `2>/dev/null` and threw away the only diagnostic there
+was; a flake that cannot be reproduced is still worth following, because the
+question it forces — *what would this check say if it could not read anything?*
+— has an answer whether or not the flake ever recurs.
 
 ---
 
@@ -272,7 +372,7 @@ The full table, with the falsifiable check for each row, is
 
 | Requirement | Where it landed |
 |---|---|
-| "check for all false positives, false negatives, warnings and errors… and fix them all" | all 804 `warn`/`error` lines classified (`analysis/warnings-errors.census.md`), every distinct one dispositioned — thirteen fixed, eight left alone with the measurement attached (§2) |
+| "check for all false positives, false negatives, warnings and errors… and fix them all" | all 804 `warn`/`error` lines classified (`analysis/warnings-errors.census.md`), every distinct one dispositioned — thirteen root causes fixed, eight lines left alone with the measurement attached (§2); three more of the same class came out of this branch's own tests on the runner (§7) |
 | the nine runs, including the cancelled one | `ci-logs/` (nine run logs + all 99 jobs of the release run), `runs/`, `annotations/` |
 | "use all the best practices from CI/CD templates (check full file tree)" | the role matrix over seven templates, 91 gaps dispositioned individually (§6) |
 | "if the same issue is found in template, report issue also in templates" | 19 issues + 1 comment, six classes, each with a fixture (§5) |
@@ -291,14 +391,14 @@ a count and a count is the wrong instrument. **Seven annotations, not "all
 warnings":** the annotation API sees only what a tool emitted as a `##[…]`
 command or what the runner itself failed, so the requirement is discharged
 against the logs, not the endpoint. **And a green run is the interesting case:**
-eight of nine were green, and six of the thirteen root causes are in them.
+eight of nine were green, and six of the nineteen root causes are in them.
 
 ---
 
 ## 9. Existing components, and what was written instead
 
 Nothing here was written before looking for something that already did it.
-**Three of the thirteen fixes are an existing component**; the rest are not, and
+**Three of the nineteen fixes are an existing component**; the rest are not, and
 `analysis/PRIOR-ART.md` says why for each.
 
 | Need | Existing component | Verdict |
@@ -311,6 +411,9 @@ Nothing here was written before looking for something that already did it.
 | Capture while streaming | `moreutils`, process substitution | Nothing to adopt; a footgun to stop using |
 | "What did this pull request change?" | `dorny/paths-filter`, `tj-actions/changed-files` | **Declined with reasons**: three of the four callers are shell scripts that also run locally and in the pre-commit hook, where no action can run; and `changed-files`' own compromise ([CVE-2025-30066](https://nvd.nist.gov/vuln/detail/CVE-2025-30066)) is the fixture RC-5's measurement uses. The repository's `detect-changes.sh` had already answered this correctly — the fix is making the other three files agree with the one that was right |
 | Fail a run that carries warning annotations | searched; **nothing exists** | Warnings do not affect a job's conclusion, and the [feature request](https://github.com/orgs/community/discussions/156778) is open. That absence is why this issue is a census rather than a gate |
+| Parse a workflow before four gates read it line by line | [actionlint](https://github.com/rhysd/actionlint) | **Already adopted, and still could not have prevented it**: the pin is `docker://rhysd/actionlint`, and a pre-commit hook cannot run docker. The floor is ruby's `psych` — measured as the only offline YAML parser present in both the image and the runner (`python3 -c 'import yaml'`, `node -e "require('yaml')"`, `yq` and `actionlint` are all absent locally), so the whole parse is one `ruby -ryaml` line rather than a dependency |
+| "Which version is this release publishing?" | `actions/github-script` + a repository variable; `changeset status --output` | **Both declined**: a repository variable moves the single source of truth out of the tree, so a release could not be reproduced from a checkout, and adds a write scope to jobs that need none; and this repository does not run changesets as a package — `apply-changesets.sh` is its own implementation, and `VERSION` is the artefact it *writes*, so reading it back with the real tool would be a second source, which is the defect. The answer already existed: `detect-changes` computes it once and every call site is already handed it |
+| A rule for what a check does when it cannot read its input | nothing to install | The "fail closed" rule was already applied in five of this repository's eight discovering gates; the work was finding the three that had been missed, and separating the two failure modes — "git could not answer" and "git answered, and there is nothing" — that were both being rendered as the same silence, then as success |
 
 The one upstream report that decides the most is
 [actions/runner#2684](https://github.com/actions/runner/issues/2684) — "Action

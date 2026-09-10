@@ -151,7 +151,7 @@ the release are unaffected. Left as is.
 **`.githooks/pre-commit:26`** — `ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0`.
 Deliberate: a hook that cannot find the repository must not block a commit, and
 the same file states the rule for the neighbouring case ("Missing means 'nothing
-to run here', not 'refuse the commit'"). CI runs the identical thirteen gates, so
+to run here', not 'refuse the commit'"). CI runs the identical fourteen gates, so
 the tolerance is not a hole — an assertion in `test-issue121-git-hooks.sh`
 requires every gate the hook runs to also be run by a workflow. Left as is.
 
@@ -190,9 +190,108 @@ outcome — and the difference is only which outcome is permissive.
 `experiments/issue-123/probe-shallow-base-ref.sh`) print `?` or `no` for a git
 that cannot answer, which is what they exist to show. Left as is.
 
+## The sweep that could not have found RC-17, and the one that can
+
+RC-17 — five gates turning a `git ls-files` failure into an empty list, then
+reporting the empty list as a clean tree — is exactly the shape this document
+sweeps for, and this document's own query could not see a single one of them.
+That is worth recording in more detail than the fix, because a query that
+returns a plausible number of hits reads like a completed sweep.
+
+The query at the top of this page is
+
+```console
+$ git grep -nE '\$\((git |gh )[^)]*(2>/dev/null|\|\| *(true|echo))' \
+    -- ':!dev/log/*' ':!docs/*' | grep -v '^\S*: *#'
+```
+
+Run against `origin/main` at `1d9fb3e` it returns **24** hits, of which **2**
+mention `ls-files` — and both of those are in an experiment fixture
+(`reproduce-issue121-mjs-syntax-gap.sh`), not in a gate. None of RC-17's five
+defective gates appear. Two structural reasons, neither of them a tuning
+problem:
+
+* **`$(` is required.** The pattern demands a command substitution, and none of
+  the five had one. The discovery was a bare pipeline in a function body:
+
+  ```bash
+  collect_files() {
+    git ls-files -- '*.py' | grep -v '^dev/log/' || true
+  }
+  ```
+
+  `check-mjs-syntax.sh` was identical with a different glob.
+
+* **`[^)]*` is a single physical line.** `run-shellcheck.sh`, `run-shfmt.sh` and
+  `run-hadolint.sh` wrapped their globs across backslash continuations, so
+  `git ls-files` and `|| true` were never on the same line at all — the same
+  blind spot that the fix's own sweep hit and now joins continuations to avoid.
+
+The corrected query does both: it joins backslash continuations, keeps the line
+the statement *starts* on, drops full-line comments, and looks for a `git` or
+`gh` invocation anywhere in a statement whose failure is discarded, inside a
+command substitution or not.
+
+```console
+$ git ls-files -- ':!dev/log/*' ':!docs/*' | while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    awk -v F="$f" '
+      { line = $0 }
+      buf == "" { start = NR }
+      { sub(/\\$/, "", line) }
+      /\\$/ { buf = buf line " "; next }
+      { stmt = buf line; buf = ""
+        if (stmt ~ /^[[:space:]]*#/) next
+        if (stmt ~ /(^|[^A-Za-z_.-])(git|gh)[[:space:]]/ &&
+            stmt ~ /(2>\/dev\/null|\|\|[[:space:]]*(true|echo))/)
+          printf "%s:%d:%s\n", F, start, stmt
+      }' "$f"
+  done
+```
+
+On `origin/main` it returns **66** hits and every one of RC-17's five gates is
+among them — `check-mjs-syntax.sh`, `check-py-syntax.sh`, `run-hadolint.sh`,
+`run-shellcheck.sh`, `run-shfmt.sh`. On this branch it returns **61**, of which
+**27** are in `scripts/`, `.github/` or `.githooks/`; the five gate sites are
+gone, and every remaining one divides as follows. The counts are per *statement*
+after continuations are joined, so a single site spanning three physical lines
+is one hit.
+
+| Hits | Where | Disposition |
+| --- | --- | --- |
+| 6 | `scripts/install-git-hooks.sh` | reading `core.hooksPath`, where empty genuinely is the answer — `git config --get` exits 1 when the key is unset. Already listed above. |
+| 5 | `scripts/release/pr-diff-range.sh` | the helper written by this branch to *be* the tested read. Four (:90, :97, :155, :186) are `pr_trace` lines — the verbose mode, off by default, printing a short SHA or a merge base into a diagnostic sentence, where `unknown` is the honest thing to show. The fifth is the `git diff` at :208, and its status is the function's return value: the caller sees 128, which is the entire point of the helper. Part 2 of `test-issue123-pr-diff-range.sh` drives it. |
+| 4 | `scripts/ci/simulate-fresh-merge.sh` | the conflict list at :139 and the `git merge --abort` cleanup at :140, both reached only after `git merge` has already failed and the script has already decided to exit 1; the shallowness probe at :68, where a git that cannot answer is treated as "not shallow" and the deepen below it is skipped — the next `git fetch` then fails loudly rather than silently passing; and the unshallow/deepen chain at :70, which ends in a `::warning`. |
+| 2 | `.github/workflows/measure-disk-space.yml` | the verdict at :258 (`if git diff --quiet … 2>/dev/null`) and the display line at :264 (`git diff --stat … \|\| true`) inside the branch that has already decided there are changes. A git that fails with 128 at :258 is not equal to 0, so it falls to the `else` and the repository is classified `has_changes=true`; the commit step then fails loudly. Permissive here would have been `true` on the `if`, and the code takes the other one. |
+| 6 | `check-awk-portability.sh`, `check-file-line-limits.sh`, `check-mjs-syntax.sh`, `check-py-syntax.sh`, `check-required-docs.sh`, `check-workflow-yaml.sh` | one each: `if ! root="$(git rev-parse --show-toplevel 2>/dev/null)"; then`. The status is tested, which is the fix. Already listed above. |
+| 1 | `scripts/ci/check-pipeline-status.sh:105` | `git ls-remote`, where empty already produces the strict verdict and says which way it decided. Already listed above. |
+| 1 | `scripts/ci/detect-changes.sh:113` | the site this fix is argued from, and correct before this branch touched it. Already listed above. |
+| 1 | `scripts/release/image-tags.sh:98` | an absent SHA drops one of four tags and says so. Already listed above. |
+| 1 | `.githooks/pre-commit:26` | `git rev-parse --show-toplevel` \|\| exit 0 — deliberate, and the same file states the rule. Already listed above. |
+| 34 | `experiments/`, `ubuntu/*/install.sh` | experiment fixtures and probes that print `?` or `no` for a git that cannot answer, which is what they exist to demonstrate; and five lines in the image install scripts, where the verdict is `command_exists` and the git call only supplies a version string for the summary, or is a `pull --ff-only` on an existing checkout whose failure is already a `log_warning`. |
+
+`scripts/ci/run-precommit-checks.sh` was the 28th shipped hit until this
+session. It read the index through `< <(git diff --cached … 2>/dev/null)`, so a
+git that could not read the index arrived as an empty array and the hook driver
+printed `==> Nothing staged; no checks to run` and exited 0 — RC-17 exactly, in
+the script that runs the eight gates RC-17 was found in. It fails closed now
+(exit 2, "could not run", which the hook deliberately does not block on), the
+`2>/dev/null` is gone so git's own reason is printed, and part 7 of
+`test-issue123-discovery-fail-closed.sh` drives both of its listings through
+failure, an empty index through success, and a mutation restoring the old form.
+It is the reason that suite's exemption list no longer carries it.
+
+The lesson is the one this issue keeps producing in a different costume: the
+sweep is a check like any other, and a check that reports on data it never
+obtained is a false negative whether it is a linter or a `git grep`. The
+difference is that a linter has a suite. This query now does too —
+`test-issue123-discovery-fail-closed.sh` Part 5 sweeps for the shape returning,
+joins continuations before matching, and pins with a planted multi-line offender
+that it can still see one.
+
 ## What keeps it fixed
 
-`experiments/test-issue123-pr-diff-range.sh` — 62 offline assertions, no docker
+`experiments/test-issue123-pr-diff-range.sh` — 70 offline assertions, no docker
 and no network, auto-discovered by `scripts/ci/run-experiments.sh` because of its
 `test-issue123-*.sh` name. Parts 1–4 exercise each gate with the range resolving,
 with it broken, and with the base ref merely missing locally. Part 5 mutates the

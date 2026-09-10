@@ -9,11 +9,13 @@ on:
       - '.github/actions/**'
       - '.github/zizmor.yml'
       # The gates below read the workflows, so editing one has to re-run it.
+      - 'scripts/ci/check-workflow-yaml.sh'
       - 'scripts/ci/check-status-gate-covers-all-jobs.mjs'
       - 'scripts/ci/check-timeout-budgets.mjs'
       - 'scripts/ci/check-workflow-path-coverage.mjs'
       - 'scripts/ci/check-checkout-credentials.mjs'
       - 'scripts/ci/run-zizmor.sh'
+      - 'experiments/test-issue123-workflow-yaml.sh'
       - 'experiments/test-issue121-path-coverage.sh'
       - 'experiments/test-issue121-git-init-hint.sh'
       - 'experiments/test-issue121-checkout-credentials.sh'
@@ -24,11 +26,13 @@ on:
       - '.github/actions/**'
       - '.github/zizmor.yml'
       # The gates below read the workflows, so editing one has to re-run it.
+      - 'scripts/ci/check-workflow-yaml.sh'
       - 'scripts/ci/check-status-gate-covers-all-jobs.mjs'
       - 'scripts/ci/check-timeout-budgets.mjs'
       - 'scripts/ci/check-workflow-path-coverage.mjs'
       - 'scripts/ci/check-checkout-credentials.mjs'
       - 'scripts/ci/run-zizmor.sh'
+      - 'experiments/test-issue123-workflow-yaml.sh'
       - 'experiments/test-issue121-path-coverage.sh'
       - 'experiments/test-issue121-git-init-hint.sh'
       - 'experiments/test-issue121-checkout-credentials.sh'
@@ -106,6 +110,19 @@ jobs:
       - uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 # v1.7.12
         with:
           args: -color
+
+      # actionlint is the only thing above that reads these files as YAML, and it
+      # needs docker - so the pre-commit hook cannot run it, and an unparseable
+      # workflow was committable (issue #123). The three gates below read
+      # workflows line by line, which is right for the questions they ask and
+      # means none of them can tell a file they disagree with from a file no
+      # parser accepts: release-full.yml was not YAML and all three passed it.
+      # This establishes that floor offline, in milliseconds, for both.
+      - name: Every workflow and composite action parses as YAML
+        run: bash scripts/ci/check-workflow-yaml.sh
+
+      - name: The YAML gate's own fixtures still hold
+        run: bash experiments/test-issue123-workflow-yaml.sh
 
       # actionlint validates a workflow's syntax; it cannot know that a job was
       # left out of the terminal gate's `needs` and so cannot turn the run red

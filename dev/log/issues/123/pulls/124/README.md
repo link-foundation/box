@@ -18,10 +18,10 @@ jobs.
 | `templates/` | 269 | 2.3M | pinned checkouts of the seven `*-ai-driven-development-pipeline-template` repositories plus box's own file tree, `COMPARISON.md` (160 script roles × 17 workflow roles, 91 gaps dispositioned), `SNAPSHOT.txt` (the seven SHAs), and the hive-mind best-practices file at the commit it was read at |
 | `upstream/` | 58 | 764K | the six defect classes reported to other projects: bodies, rendered form, reproduction evidence, and `filed/index.tsv` mapping each to its URL |
 | `runs/` | 22 | 792K | `gh api` records — `<run-id>.run.json` and `<run-id>.jobs.json` for all nine |
-| `analysis/` | 9 | 340K | the written analysis; see `analysis/README.md` |
+| `analysis/` | 9 | 384K | the written analysis; see `analysis/README.md` |
 | `annotations/` | 10 | 52K | the annotation payload of each run, and `README.md` — the seven annotations, with the verdict on each |
 | `zizmor/` | 7 | 36K | the offline-vs-online audit comparison behind RC-5 |
-| `apt/` | 2 | 12K | the full retry measurement, including the idle-timeout legs the suite keeps off by default |
+| `apt/` | 2 | 20K | the full retry measurement, including the idle-timeout legs the suite keeps off by default |
 | `useradd/` | 2 | 16K | the `/etc/skel` reproduction behind RC-10 |
 | `npm-force/` | 1 | 12K | the twelve-run `npm --force` measurement behind RC-8 |
 
@@ -51,5 +51,5 @@ placeholder is legible as one, and `ci-logs/README.md` says so in the table.
 
 1. `analysis/REQUIREMENTS.md` — every requirement, and the artefact answering it.
 2. `analysis/TIMELINE.md` — what actually happened at `1d9fb3e`, to the second.
-3. `analysis/ROOT-CAUSES.md` — the thirteen mechanisms and the fix each got.
+3. `analysis/ROOT-CAUSES.md` — the nineteen mechanisms and the fix each got.
 4. `annotations/README.md` — the seven annotations; three said something untrue.

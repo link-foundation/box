@@ -15,8 +15,8 @@
 # install site, or to drop them into /etc/apt/apt.conf.d so every apt process
 # inherits them.
 #
-# Measured, both of those change nothing: on Ubuntu 24.04 with apt 2.8.3 all
-# three options are already apt's own defaults.
+# Measured, on Ubuntu 24.04 with apt 2.8.3 all three options are already apt's
+# own defaults - *in the environments the images are built in*:
 #
 #   Retries, counted as TCP connections apt opens to a server that accepts and
 #   immediately resets (the transient failure Acquire::Retries covers):
@@ -36,17 +36,40 @@
 #     Acquire::http::Timeout=30    60s
 #     apt default                  60s   <- identical to an explicit 30
 #
-# So the install sites are not weaker than the refresh site. What
-# apt_update_with_retry adds over plain apt is its *outer* loop - up to 5
+# The explicit legs are a property of apt and hold everywhere this has been
+# run. The last line of the retries table is not: it is a property of the
+# machine. The same fixture measures 8 here and inside `ubuntu:24.04` - the
+# image every Dockerfile in this repository builds from - and **4** on the
+# ubuntu-24.04 GitHub runner, on the same apt 2.8.3, with every explicit leg
+# exact to the connection. So the runner's apt defaults to one retry and the
+# image's to three.
+#
+# This suite used to assert the 8. That is the defect issue #123 is about,
+# committed by one of its own tests: an assertion that pins the spelling of a
+# constant it happens to have observed, and then reports a verdict about this
+# repository ("the install sites now need the flag") on the strength of a number
+# that says nothing about this repository. What is asserted now is the property
+# that can hurt - apt_update_with_retry *passes* `-o Acquire::Retries=3`, so a
+# lower default makes the refresh stronger and only a higher one makes the
+# option a downgrade - and the measured default is derived, reported, and
+# printed beside the config that produced it.
+#
+# So in the image the install sites are not weaker than the refresh site, and on
+# the runner the refresh site is the stronger of the two - never the reverse,
+# which is the only ordering that would make the install sites need the flags.
+#
+# What apt_update_with_retry adds over plain apt is its *outer* loop - up to 5
 # attempts with exponential backoff, clearing /var/lib/apt/lists between them -
 # which apt's internal retries do not do, and which is what the mirror-sync
 # mismatch it documents (apt exit 100) actually needs. The invariant worth
 # holding, then, is not "every install repeats the flags" but "every install is
 # preceded by that outer loop", which part 3 checks per Dockerfile RUN block.
 #
-# This suite is written so that it fails if a future apt changes those
-# defaults: then, and only then, the flags stop being a no-op and the install
-# sites do need them.
+# This suite fails if a future apt - or a future runner image - raises the
+# default above what this repository pins, because that is when the pin starts
+# taking patience away rather than adding it. Part 4 holds the other half: no
+# refresh here may inherit a default at all, since the default is a machine's
+# property and not a script's.
 #
 # Usage: bash experiments/test-issue123-apt-retry-defaults.sh
 #
@@ -87,6 +110,7 @@ if ! command -v apt-get >/dev/null 2>&1 || ! command -v python3 >/dev/null 2>&1;
 fi
 
 APT_VERSION="$(apt-get --version 2>/dev/null | head -1)"
+APT_GET_PATH="$(command -v apt-get)"
 echo "Measuring: $APT_VERSION on $(sed -n 's/^PRETTY_NAME="\(.*\)"$/\1/p' /etc/os-release 2>/dev/null || echo 'unknown OS')"
 
 # A server that accepts a connection and resets it. This is the shape of
@@ -224,10 +248,61 @@ done
 apt_update_against_fixture
 DEFAULT_CONNECTIONS="$(connections_since_last_read)"
 
-if [ "$DEFAULT_CONNECTIONS" = "${OBSERVED[3]}" ]; then
-  pass "apt's default retry count is 3: the default opens $DEFAULT_CONNECTIONS connections, the same as an explicit Acquire::Retries=3"
+# The default is the one leg whose value is environmental, and this suite used
+# to hard-code it. apt reads /etc/apt/apt.conf and /etc/apt/apt.conf.d during
+# `pkgInitConfig`, *before* it parses -o, so the Dir::Etc::* overrides above
+# cannot un-read them: whatever those files say about Acquire::Retries is in
+# force for this leg and for no other, because every other leg overrides it on
+# the command line. Printed with the number so the two are read together.
+apt_retries_environment_report() {
+  local dumped files
+  dumped="$(apt-config dump Acquire::Retries 2>/dev/null | head -1)"
+  files="$(grep -rlsE '^[[:space:]]*(APT::)?Acquire::Retries' /etc/apt/apt.conf /etc/apt/apt.conf.d 2>/dev/null | tr '\n' ' ')"
+  echo "  apt-config dump: ${dumped:-Acquire::Retries is unset, so apt used its compiled-in default}"
+  echo "  apt.conf files naming Acquire::Retries: ${files:-none}"
+  echo "  APT_CONFIG=${APT_CONFIG:-unset}"
+  if [ -n "$APT_GET_PATH" ] && [ "$(head -c2 "$APT_GET_PATH" 2>/dev/null)" = '#!' ]; then
+    echo "  $APT_GET_PATH is a script, not apt's own binary: this environment wraps apt-get"
+    echo "  (the GitHub runner images do - runner-images images/ubuntu/scripts/build/configure-apt-mock.sh),"
+    echo "  so a disagreement between the dump above and the measurement is the wrapper's doing."
+  fi
+}
+
+# 2 index items x (retries + 1) attempts, so the count answers the question
+# directly: d = n/2 - 1. Deriving it is what makes this a measurement rather
+# than a comparison against a number somebody typed.
+DEFAULT_RETRIES=-1
+if [ "$DEFAULT_CONNECTIONS" -ge 2 ] && [ $((DEFAULT_CONNECTIONS % 2)) -eq 0 ]; then
+  DEFAULT_RETRIES=$((DEFAULT_CONNECTIONS / 2 - 1))
+fi
+
+if [ "$DEFAULT_RETRIES" -ge 0 ]; then
+  pass "apt's default retry count here is $DEFAULT_RETRIES: the default leg opened $DEFAULT_CONNECTIONS connections, i.e. 2 index items x $((DEFAULT_RETRIES + 1)) attempts"
 else
-  fail "apt's default opened $DEFAULT_CONNECTIONS connections and an explicit Acquire::Retries=3 opened ${OBSERVED[3]}: the default is no longer 3, so -o Acquire::Retries=3 has stopped being a no-op and the install sites in this repository now need it ($APT_VERSION)"
+  fail "the default leg opened $DEFAULT_CONNECTIONS connections, which is not 2 items x a whole number of attempts: this fixture is not measuring retries, so nothing derived from it means anything"
+fi
+
+apt_retries_environment_report
+
+# The verdict, stated as the thing that can actually hurt.
+#
+# It used to be stated as equality - "the default is 3, so -o Acquire::Retries=3
+# is a no-op" - and that failed the Scripts run of 2026-09-10 on a runner whose
+# default is 1, while every explicit leg was exact to the connection. The
+# equality was never the property worth holding: apt_update_with_retry *passes*
+# the option, so a default below 3 makes the refresh stronger than a bare
+# apt-get, which is the direction this repository wants. Only a default above 3
+# turns the option into a downgrade, and that is what fails here. Pinning the
+# spelling of an environment's constant instead of the property is this issue's
+# own defect class, committed by one of its own tests.
+if [ "$DEFAULT_RETRIES" -le 3 ]; then
+  if [ "$DEFAULT_RETRIES" -eq 3 ]; then
+    pass "  and -o Acquire::Retries=3 is a no-op here: the default already opens $DEFAULT_CONNECTIONS connections, the same as the explicit leg's ${OBSERVED[3]}"
+  else
+    pass "  and -o Acquire::Retries=3 is a strengthening here, not a downgrade: the default opened $DEFAULT_CONNECTIONS connections against the explicit 3's ${OBSERVED[3]}"
+  fi
+else
+  fail "apt's default here is $DEFAULT_RETRIES retries and apt_update_with_retry pins 3: the option has become a downgrade, so every refresh site is now less patient than a bare apt-get would be ($APT_VERSION)"
 fi
 
 if [ "$DEFAULT_CONNECTIONS" != "${OBSERVED[0]}" ]; then
@@ -307,10 +382,20 @@ PY
     fail "Acquire::http::Timeout=5 took ${SMALL}s and =30 took ${EXPLICIT}s, and 2 items x 30s is 60s: the option is not doing what this measurement assumes"
   fi
 
-  if [ "$DEFAULT_TIMEOUT" -ge $((EXPLICIT - 5)) ] && [ "$DEFAULT_TIMEOUT" -le $((EXPLICIT + 5)) ]; then
-    pass "apt's default idle timeout is 30s: the default gave up after ${DEFAULT_TIMEOUT}s against ${EXPLICIT}s for an explicit 30"
+  # Same shape as the retry verdict above, and for the same reason: the number
+  # apt compiles in is not a property of this repository, so what is asserted is
+  # the direction that can hurt. apt_update_with_retry pins 30, so a default
+  # *below* 30 means the option lengthens apt's patience with a slow mirror,
+  # and a default above it means the option shortens it - and shortening is
+  # what would make a refresh give up where a bare apt-get would have waited.
+  if [ "$DEFAULT_TIMEOUT" -le $((EXPLICIT + 5)) ]; then
+    if [ "$DEFAULT_TIMEOUT" -ge $((EXPLICIT - 5)) ]; then
+      pass "-o Acquire::http::Timeout=30 is a no-op here: the default gave up after ${DEFAULT_TIMEOUT}s against ${EXPLICIT}s for an explicit 30"
+    else
+      pass "-o Acquire::http::Timeout=30 is a lengthening here, not a shortening: the default gave up after ${DEFAULT_TIMEOUT}s, the explicit 30 after ${EXPLICIT}s"
+    fi
   else
-    fail "apt's default gave up after ${DEFAULT_TIMEOUT}s and an explicit 30 after ${EXPLICIT}s: the default is no longer 30, so -o Acquire::http::Timeout=30 has stopped being a no-op"
+    fail "apt's default waits ${DEFAULT_TIMEOUT}s on an idle connection and apt_update_with_retry pins 30 (${EXPLICIT}s measured): the option has become a shortening, so every refresh site now gives up on a slow mirror sooner than a bare apt-get would"
   fi
 
   exec 6>&-
@@ -387,6 +472,92 @@ if [ "$(printf '%s\n' "$BAD" | grep -c ':2$')" = "0" ]; then
   pass "the compliant RUN in the same fixture is not reported"
 else
   fail "the fixture's compliant RUN (line 2) was reported, so the check flags correct blocks"
+fi
+
+# ---------------------------------------------------------------------------
+# Part 4: no refresh in this repository may rely on apt's default retry count
+# ---------------------------------------------------------------------------
+#
+# Part 1 measures the default rather than asserting it, because the default is
+# not one number. It is 3 on this workstation and inside ubuntu:24.04 - the
+# image every Dockerfile here builds from - and 1 on the ubuntu-24.04 GitHub
+# runner, on the same apt 2.8.3, measured by this same fixture (the recorded
+# runs are in dev/log/issues/123/pulls/124/apt/). The runner is where
+# scripts/measure-disk-space.sh runs, so both environments are ones this
+# repository actually uses.
+#
+# That is the finding this part turns into a guard: "apt already retries three
+# times" is a property of a machine, not of a script, so every refresh this
+# repository performs has to say the number out loud rather than inherit it.
+# The three real refresh sites already do; this keeps a fourth from appearing
+# without one.
+#
+# Checked over logical lines, not physical ones: all three sites spell the
+# option on a continuation line, so a per-line grep would report every one of
+# them as an offender.
+apt_updates_without_explicit_retries() {
+  awk '
+    # A file that ends mid-continuation must not leak its tail into the next
+    # one: FILENAME changes, FNR restarts, and a carried buffer would report a
+    # line number that belongs to a different file.
+    FNR == 1 { buffer = "" }
+    {
+      if (buffer == "") { start = FNR }
+      current = $0
+      continued = (current ~ /\\[[:space:]]*$/)
+      if (continued) { sub(/\\[[:space:]]*$/, "", current) }
+      buffer = (buffer == "" ? current : buffer " " current)
+      if (continued) { next }
+      logical = buffer
+      buffer = ""
+      sub(/^[[:space:]]*/, "", logical)
+      if (logical ~ /^#/) { next }
+      if (logical ~ /apt-get[[:space:]]+update/ && logical !~ /Acquire::Retries=/) {
+        printf "%s:%d\n", FILENAME, start
+      }
+    }
+  ' "$@"
+}
+
+# experiments/ is excluded by name and for a stated reason: this suite's own
+# fixture runs `apt-get update` with no retry option on purpose - measuring the
+# default is what it is for - so including it would make the check demand the
+# opposite of the measurement.
+mapfile -t APT_SOURCES < <(git ls-files -- '*.sh' '*.yml' '*.yaml' 'Dockerfile' '*/Dockerfile' \
+  | grep -v '^dev/log/' | grep -v '^experiments/' | sort)
+
+if [ "${#APT_SOURCES[@]}" -eq 0 ]; then
+  fail "found no tracked shell, workflow or Dockerfile sources, so part 4 asserted nothing"
+else
+  RELYING="$(apt_updates_without_explicit_retries "${APT_SOURCES[@]}")"
+  if [ -z "$RELYING" ]; then
+    pass "every apt-get update in the ${#APT_SOURCES[@]} tracked sources outside experiments/ passes Acquire::Retries explicitly, so none of them inherits an environment's default"
+  else
+    fail "these apt-get update calls take whatever retry count the machine happens to default to (1 on a GitHub runner, 3 in ubuntu:24.04):"$'\n'"$RELYING"
+  fi
+fi
+
+# The mutation control, for the same reason part 3 has one.
+cat >"$TMP/relies.sh" <<'FIXTURE'
+#!/bin/bash
+# apt-get update in a comment is not a call
+maybe_sudo apt-get update -y \
+  -o Acquire::Retries=3 \
+  -o Acquire::http::Timeout=30
+apt-get update -y
+FIXTURE
+
+RELIES="$(apt_updates_without_explicit_retries "$TMP/relies.sh")"
+if [ "$(printf '%s\n' "$RELIES" | grep -c ':6$')" = "1" ]; then
+  pass "the mutation control is reported: the fixture's bare apt-get update (line 6) is named"
+else
+  fail "the fixture's bare apt-get update was not reported (got: ${RELIES:-nothing}), so part 4's silence over the repository proves nothing"
+fi
+
+if [ "$(printf '%s\n' "$RELIES" | grep -cE ':(2|3)$')" = "0" ]; then
+  pass "  and neither the commented mention nor the three-line call above it is reported"
+else
+  fail "the fixture's comment or its compliant continuation-line call was reported (got: $RELIES), so the check cannot read the repository's own spelling"
 fi
 
 echo

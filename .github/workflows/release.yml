@@ -275,8 +275,11 @@ jobs:
           # direct push and the bump has to arrive as a pull request.
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Read current version
-          CURRENT_VERSION=$(tr -d '[:space:]' < VERSION)
+          # Read current version. Through the shared reader (issue #123): an
+          # empty VERSION file used to leave CURRENT_VERSION empty, and the
+          # arithmetic below turns "" into 1.0.0 - a released version lower than
+          # every version this repository has published, pushed to main.
+          CURRENT_VERSION="$(bash scripts/release/release-version.sh --no-output)" || exit 1
           echo "Current version: $CURRENT_VERSION"
 
           # Parse version components
@@ -482,12 +485,13 @@ jobs:
           git checkout main
           git pull origin main
 
+      # This is where the version of a release is decided; every other job is
+      # handed this output rather than reading VERSION again (issue #123). An
+      # empty or unparsable VERSION file stops the release here instead of
+      # becoming an empty image tag six jobs later.
       - name: Get version from VERSION file
         id: version
-        run: |
-          VERSION=$(tr -d '[:space:]' < VERSION)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Detected version: $VERSION"
+        run: bash scripts/release/release-version.sh
 
       # Single source of truth for change detection (issue #108).
       #
@@ -696,13 +700,16 @@ jobs:
           persist-credentials: false
           ref: main
 
+      # The release notes and the git tag name the same version the six build
+      # workflows tagged their images with, because all seven are handed the one
+      # detect-changes computed (issue #123). The `git pull origin main || true`
+      # that used to open this step could only pull in a commit pushed *after*
+      # this release started - see scripts/release/release-version.sh.
       - name: Get latest version
         id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(tr -d '[:space:]' < VERSION)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Creating release for version: $VERSION"
+        env:
+          PIPELINE_VERSION: ${{ needs.detect-changes.outputs.version }}
+        run: bash scripts/release/release-version.sh
 
       # There is deliberately no `docker login` in this job (issue #117).
       #

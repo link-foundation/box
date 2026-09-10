@@ -2,7 +2,7 @@
 
 The task asks to "check online for known existing components/libraries that
 solve a similar problem or can help". This is that check, per root cause, with
-the source that settles it. **Three of the thirteen fixes are an existing
+the source that settles it. **Four of the nineteen fixes are an existing
 component; the rest are not, and each row says why.**
 
 Where a claim is about a tool's documented behaviour, the citation is the
@@ -170,7 +170,102 @@ Repository-specific. RC-12 is a path regex and a printer; RC-13 is `mktemp -d`
 instead of a `/tmp/*` glob — the standard advice, applied to a script this branch
 wrote.
 
-## The general question behind all thirteen
+### RC-14, RC-15, RC-16
+
+Test code of this branch's own, so there is nothing to adopt — but two of the
+three fixes are somebody else's answer rather than an invention. RC-15's is the
+long-standing one for "bash cannot restore a signal ignored on entry": reset the
+disposition in a program that can call `signal(2)` before `exec`, which is what
+`perl -e '$SIG{PIPE} = "DEFAULT"; exec …'` does; `python3`'s
+`signal.signal(SIGPIPE, SIG_DFL)` is the same answer in the language Python's own
+documentation recommends it in, and is the fallback. Reading the disposition back
+out of `/proc/<pid>/status`'s `SigIgn` mask is the only portable-on-Linux way to
+*check* it, and is what the new premise assertions do. RC-14's is the ordinary
+rule that a test may assert an invariant it depends on and not a constant of the
+machine it runs on. RC-16's fake `ps` has no prior art worth citing: it is a
+fixture, and the lesson is that a stand-in for a process that outlives a signal
+must itself outlive the thing it stands in for.
+
+### RC-17
+
+Nothing to adopt, and one thing to name. The fix is the "fail closed" rule — a
+check that cannot obtain its input must not report on it — which this repository
+had already applied in five of its eight discovering gates; the work was finding
+the three that had been missed and the two failure modes nobody had asked about.
+The bash mechanics are the standard ones and are cited at each site: command
+substitution strips NUL bytes (so `tr` runs inside it), `PIPESTATUS[0]` recovers
+a specific stage's status where `pipefail` would over-promote, and `grep`'s exit
+1 means "selected nothing" rather than "failed" — the distinction
+[POSIX states for grep](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/grep.html)
+and the reason a blanket `|| true` was reached for in the first place.
+
+The one thing worth naming is where the rule stops being mechanical. The ninth
+site found — `run-precommit-checks.sh`, the hook driver — needs the opposite
+answer to half the question: an empty listing is legitimate there, because a
+commit really can stage nothing, while a *failed* listing must still refuse. No
+library encodes that, because the two are the same value; only the exit status
+tells them apart, and the whole class exists because that status is easy to
+throw away.
+
+### RC-18
+
+Nothing to install, and the component was already here. The question — "which
+version is this release publishing?" — is the one `scripts/release/image-tags.sh`
+already answers for tags (issue #119b: *one job computes this list and hands it
+to the others*), and the pipeline was already computing the version once in
+`detect-changes` and already handing it to every called workflow inside
+`changes`. The fix is to use the answer that existed, not to add a mechanism.
+
+Two candidates were looked at and declined:
+
+* **`actions/github-script` + a repository variable** — moves the single source
+  of truth out of the tree, so a release could no longer be reproduced from a
+  checkout, and adds a write scope to jobs that currently need none.
+* **A changesets-native version resolver** (`changeset status --output`) — this
+  repository does not run changesets as a package; `apply-changesets.sh` is its
+  own implementation over `.changeset/*.md`, and `VERSION` is the artefact it
+  writes. Adding the real tool to read a version it did not write would be a
+  second source, which is the defect.
+
+The one library-shaped decision is what counts as a version:
+`MAJOR.MINOR.PATCH` and nothing else, deliberately narrower than
+[semver](https://semver.org/). The two bump callers do `IFS='.' read -r MAJOR
+MINOR PATCH` then `$((PATCH + 1))`, and a pre-release suffix makes `PATCH` the
+string `0-rc` — an arithmetic error, not a version. Accepting a shape the
+consumers cannot use would move the failure further from its cause.
+
+### RC-19
+
+The existing component is [actionlint](https://github.com/rhysd/actionlint), it
+is already adopted, it already catches this, and it still could not have
+prevented it: the pin is `docker://rhysd/actionlint`, docker is not available to
+a pre-commit hook, and the broken file was therefore committable. The gap is not
+"no tool exists" but "the tool cannot run at the point where the mistake is
+made".
+
+So the search was for an **offline** YAML parser available on both the runner
+and the development image. Measured, in the image this branch is written in:
+`python3 -c 'import yaml'` → `No module named 'yaml'`;
+`node -e "require('yaml')"` → `Cannot find module 'yaml'`; `yq` → not found;
+`actionlint` → not found. Ruby's
+[psych](https://docs.ruby-lang.org/en/master/Psych.html) is in the standard
+library (5.2.2 here), ruby is present in both places, and it costs
+milliseconds — so the whole parse is
+`ruby -ryaml -e 'YAML.load_file(ARGV[0])' "$file"` behind a shell gate, rather
+than a dependency.
+
+Two alternatives declined:
+
+* **Install a YAML library in the hook's environment.** A gate that has to
+  install something is a gate that will not run on somebody's machine, and the
+  hook's rule is that a gate which cannot run does not block. That would have
+  reproduced the original silence with extra steps.
+* **Have the four line-oriented gates parse instead.** They read line by line on
+  purpose — they ask about ordering and indentation that a parsed tree discards.
+  Rewriting them against a tree would lose the questions they exist to ask, and
+  four parsers is three more than the floor needs.
+
+## The general question behind all nineteen
 
 *Is there something that fails a run when it carries warning annotations?*
 Searched, and no: warnings do not affect a job's conclusion, the
@@ -181,31 +276,45 @@ gate on code-scanning alerts rather than on annotations.
 
 That absence is the reason this issue is a *census* rather than a gate. There is
 no component to install that would have caught these; there is a body of 804
-lines that had to be read. What can be automated afterwards has been: twelve
-offline suites, **327 assertions, 0 failures**, each checker exercised in a
+lines that had to be read. What can be automated afterwards has been: fifteen
+offline suites, **550 assertions, 0 failures**, each checker exercised in a
 passing *and* a failing form, and every sweep pinned to a site count so a new
 occurrence cannot appear unnoticed (`REQUIREMENTS.md` §B10). Measured by running
-all twelve on this branch:
+all fifteen on this branch:
 
 | suite | assertions |
 | --- | ---: |
-| `test-issue123-pr-diff-range.sh` | 62 |
+| `test-issue123-discovery-fail-closed.sh` | 94 |
+| `test-issue123-release-version.sh` | 86 |
+| `test-issue123-pr-diff-range.sh` | 70 |
 | `test-issue123-zizmor-token.sh` | 36 |
 | `test-issue123-overrun-not-supersede.sh` | 35 |
-| `test-issue123-sigpipe-writers.sh` | 30 |
+| `test-issue123-sigpipe-writers.sh` | 33 |
 | `test-issue123-artifact-upload-fail-closed.sh` | 29 |
 | `test-issue123-log-command-injection.sh` | 29 |
+| `test-issue123-workflow-yaml.sh` | 28 |
 | `test-issue123-home-skel.sh` | 23 |
 | `test-issue123-log-capture-truncation.sh` | 23 |
 | `test-issue123-budget-enforcement.sh` | 20 |
 | `test-issue123-brew-link-status.sh` | 16 |
+| `test-issue123-apt-retry-defaults.sh` | 14 |
 | `test-issue123-npm-force.sh` | 14 |
-| `test-issue123-apt-retry-defaults.sh` | 10 |
-| **total** | **327** |
+| **total** | **550** |
 
-`apt-retry-defaults` reports 10 with its default settings; the two idle-timeout
+`apt-retry-defaults` reports 14 with its default settings; the three idle-timeout
 legs it can also run cost ~130 s and are behind `APT_MEASURE_TIMEOUTS=1`, with
 their recorded output stored in `../apt/`.
+
+Three of the fifteen grew assertions after the runner disagreed with them, and
+the three are the same defect the issue is about, committed by tests written for
+it: `apt-retry-defaults` had pinned the spelling of an environment-dependent
+constant (apt's default retry count is 3 in `ubuntu:24.04` and 1 on the
+`ubuntu-24.04` runner), `sigpipe-writers` had let the machine supply the
+disposition its "default SIGPIPE" leg was supposed to establish, and
+`budget-enforcement` had faked a survivor that stopped existing the moment the
+real process group did. Each now asserts its own premise before it asserts
+anything about this repository; §7 of the case study
+(`docs/case-studies/issue-123/CASE-STUDY.md`) has the detail.
 
 ## Sources
 

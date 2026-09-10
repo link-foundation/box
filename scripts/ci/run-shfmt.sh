@@ -70,9 +70,42 @@ cd "$REPO_ROOT"
 # formatted and linted by nothing at all until this glob was added (issue
 # #121). Every file in that directory is a shell script for the same reason -
 # git only runs executables it finds by hook name.
+#
+# The `|| true` this function used to end with is gone (issue #123, RC-17).
+# `git ls-files … || true` turns a git that could not read the index into an
+# empty list, and an empty list is indistinguishable from a repository with no
+# shell scripts in it: the gate printed "No shell scripts to format", exited 0,
+# and 201 unread files were reported clean. The canary below already refuses to
+# let shfmt's silence pass for a verdict; discovery needed the same refusal.
 collect_files() {
-  git ls-files -z --cached --others --exclude-standard --deduplicate '*.sh' '.githooks/*' \
-    | tr '\0' '\n' | grep -v '^dev/log/' | sort -u || true
+  local listing
+  # `exit "${PIPESTATUS[0]}"` rather than pipefail: `tr` must convert the NULs
+  # before bash captures the output, because command substitution silently
+  # drops NUL bytes - and grep's exit 1 ("selected nothing") is a legitimately
+  # empty tree, not an error, while anything above 1 is.
+  listing="$(
+    git ls-files -z --cached --others --exclude-standard --deduplicate '*.sh' '.githooks/*' \
+      | tr '\0' '\n'
+    exit "${PIPESTATUS[0]}"
+  )" || return 1
+  printf '%s\n' "$listing" | { grep -v '^dev/log/' || [ "$?" = 1 ]; } | sort -u
+}
+
+# discover_or_exit - collect_files with its two empty answers told apart, and
+# neither of them reported as a clean run. Called unsubshelled it ends the
+# script; called inside `$(...)` the status propagates, which is why the caller
+# below pairs it with `|| exit $?`.
+discover_or_exit() {
+  local listing
+  if ! listing="$(collect_files)"; then
+    echo "::error title=shfmt::could not list this repository's shell scripts - git ls-files failed and printed the reason above. Nothing was formatted or checked; this is not a clean run." >&2
+    exit 2
+  fi
+  if [ -z "$listing" ]; then
+    echo "::error title=shfmt::discovery matched no shell script at all. Either the globs ('*.sh', '.githooks/*') are wrong or this is not the repository they were written for; a gate that read nothing must not report a clean tree." >&2
+    exit 2
+  fi
+  printf '%s\n' "$listing"
 }
 
 MODE=check
@@ -94,7 +127,7 @@ while [ "$#" -gt 0 ]; do
     # workflow running this gate can be started by the files the gate reads
     # (issue #121).
     --list-inputs)
-      collect_files
+      discover_or_exit
       exit 0
       ;;
     -h | --help)
@@ -113,14 +146,19 @@ while [ "$#" -gt 0 ]; do
 done
 
 if [ "${#FILES[@]}" -eq 0 ]; then
+  # Command substitution, not `< <(...)`: a process substitution runs
+  # discover_or_exit in a subshell, where its `exit 2` ends the subshell and
+  # leaves this script running over an empty array - the very outcome the
+  # function exists to prevent.
+  LISTING="$(discover_or_exit)" || exit $?
   while IFS= read -r f; do
     [ -n "$f" ] && FILES+=("$f")
-  done < <(collect_files)
+  done <<<"$LISTING"
 fi
 
 if [ "${#FILES[@]}" -eq 0 ]; then
-  echo "==> No shell scripts to format"
-  exit 0
+  echo "::error title=shfmt::no shell scripts to format. Nothing was checked, so this is an error and not a clean run." >&2
+  exit 2
 fi
 
 if [ "$MODE" = "list" ]; then

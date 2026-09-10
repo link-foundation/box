@@ -20,19 +20,24 @@ set -e
 # shellcheck source=scripts/ci/run-with-commands-stopped.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../ci/run-with-commands-stopped.sh"
 
+# read_version_file: the same reader every release job uses, so this script and
+# the jobs that consume what it writes cannot disagree about what a version is.
+# shellcheck source=scripts/release/release-version.sh
+source "$(dirname "${BASH_SOURCE[0]}")/release-version.sh"
+
 CHANGESET_DIR=".changeset"
 VERSION_FILE="VERSION"
 DRY_RUN="${DRY_RUN:-false}"
 
 echo "Applying changesets to VERSION file..."
 
-# Get current version
-if [ ! -f "$VERSION_FILE" ]; then
-  echo "::error::VERSION file not found"
+# Get current version. Not `cat | tr` (issue #123): that reports an empty
+# VERSION file as an empty version, and the arithmetic below turns an empty
+# version into 1.0.0 - lower than every version this repository has published,
+# and this script is the one that pushes the result to main.
+if ! CURRENT_VERSION="$(read_version_file "$VERSION_FILE")"; then
   exit 1
 fi
-
-CURRENT_VERSION=$(cat "$VERSION_FILE" | tr -d '[:space:]')
 echo "Current version: $CURRENT_VERSION"
 
 # Parse version components

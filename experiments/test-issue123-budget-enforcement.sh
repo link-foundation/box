@@ -94,13 +94,33 @@ echo "=== Part 1: liveness is asked of the process table, not of kill(2) ==="
 # fails with EPERM, exactly as it did on the root `apt-get` in the measured
 # run, so the old liveness check would call the command finished. `stat` is a
 # column the wrapper reads, and `Ss` is not a zombie.
+#
+# The wrapper resolves the process group id of its command - the pid of the
+# subshell it backgrounds - and that pid must not be guessed, so the fake
+# reports its line for every group instead: the same lie, told about all of
+# them.
+#
+# It has to keep telling it after the group is gone, which is the whole point
+# and is what the first version got wrong. That version listed the groups
+# *currently* in the process table, so its fabricated survivor vanished at the
+# moment the real group did - the fake modelled a survivor only for as long as
+# there was something real to survive. Locally the group lingered past the
+# grace period often enough for the three assertions to pass; on the
+# ubuntu-24.04 runner it did not, and the Scripts run of 2026-09-10 reported
+# "a survivor that outlives SIGTERM is escalated to SIGKILL" as a failure of
+# the wrapper when it was a race in the fixture. So every group the fake has
+# ever seen is remembered in FAKE_PS_STATE and re-reported for the rest of the
+# run: an unkillable process is one that does not go away, and a stand-in for
+# it must not either.
 mkdir -p "$TMP/bin"
 cat >"$TMP/bin/ps" <<'FAKEPS'
 #!/usr/bin/env bash
 # Real output first, so everything the wrapper genuinely started is still seen.
 /usr/bin/ps "$@"
-if [ -n "${FAKE_PS_GROUP:-}" ]; then
-  echo "${FAKE_PS_GROUP} 1 Ss root /sbin/init fake-survivor"
+if [ -n "${FAKE_PS_GROUP:-}" ] && [ -n "${FAKE_PS_STATE:-}" ]; then
+  /usr/bin/ps -eo pgid= >>"${FAKE_PS_STATE}"
+  awk '{ gsub(/[^0-9]/, ""); if ($0 != "" && !seen[$0]++) print $0 " 1 Ss root /sbin/init fake-survivor" }' \
+    "${FAKE_PS_STATE}"
 fi
 FAKEPS
 chmod +x "$TMP/bin/ps"
@@ -108,27 +128,10 @@ chmod +x "$TMP/bin/ps"
 if [ ! -x /usr/bin/ps ]; then
   fail "this suite needs /usr/bin/ps"
 else
-  # The wrapper resolves the process group id of its command; it is the pid of
-  # the subshell it backgrounds, which is one more than the wrapper's own pid
-  # in practice but must not be guessed. Instead the fake reports its line for
-  # *every* group, which makes every group look populated - the same lie, told
-  # unconditionally.
-  cat >"$TMP/bin/ps" <<'FAKEPS'
-#!/usr/bin/env bash
-/usr/bin/ps "$@"
-if [ -n "${FAKE_PS_GROUP:-}" ]; then
-  /usr/bin/ps -eo pgid=,pid= | awk -v want="${FAKE_PS_GROUP}" '
-    { if (!seen[$1]++) groups[++n] = $1 }
-    END { for (i = 1; i <= n; i++) print groups[i] " 1 Ss root /sbin/init fake-survivor" }
-  '
-fi
-FAKEPS
-  chmod +x "$TMP/bin/ps"
-
   # `true` finishes immediately, so nothing real is left in the group; only the
   # fake survivor is. The wrapper must still finish, because completion is
   # decided by the status file rather than by liveness.
-  FAKE_PS_GROUP=any PATH="$TMP/bin:$PATH" \
+  FAKE_PS_GROUP=any FAKE_PS_STATE="$TMP/seen-groups.finished" PATH="$TMP/bin:$PATH" \
     timeout 20 bash "$WRAPPER" 5 "fake survivors" true >"$TMP/fake.log" 2>&1
   status=$?
   if [ "$status" -eq 0 ]; then
@@ -140,7 +143,7 @@ FAKEPS
 
   # An overrun with a survivor the wrapper cannot signal has to be reported as
   # such, rather than reported as a termination that did not happen.
-  FAKE_PS_GROUP=any PATH="$TMP/bin:$PATH" \
+  FAKE_PS_GROUP=any FAKE_PS_STATE="$TMP/seen-groups.unkillable" PATH="$TMP/bin:$PATH" \
     timeout 30 bash "$WRAPPER" 1 "unkillable step" sleep 25 >"$TMP/unkillable.log" 2>&1
   status=$?
   if [ "$status" -eq 124 ]; then

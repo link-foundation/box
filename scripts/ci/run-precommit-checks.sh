@@ -115,22 +115,51 @@ cd "$ROOT" || exit 2
 # The very first commit of a repository has no HEAD to diff against, which is
 # not an error here: compare against the empty tree instead. The fixtures build
 # repositories from scratch and would otherwise all start with this failing.
+#
+# Both listings below check git's status (issue #123, RC-17). Read through a
+# process substitution the status is unreachable, so a `git` that could not
+# answer — a busy index, an unreadable object — arrived here as an empty array
+# and printed "Nothing staged; no checks to run" over a commit this script
+# never read. That is the same false negative the eight discovering gates
+# carried, in the runner that drives them. An empty listing is still a normal
+# answer here (a commit really can stage nothing); a *failed* listing is exit
+# 2, "could not run", which the hook deliberately does not block on and which
+# CI still checks.
+list_staged() {
+  # `exit "${PIPESTATUS[0]}"` rather than pipefail: `tr` must convert the NULs
+  # before bash captures the output, because command substitution drops NUL
+  # bytes silently.
+  git diff --cached --name-only -z --diff-filter=ACMR "$BASE_TREE" | tr '\0' '\n'
+  exit "${PIPESTATUS[0]}"
+}
+
+list_worktree() {
+  # Everything tracked or newly added, which is what the CI gates see.
+  git ls-files -z --cached --others --exclude-standard --deduplicate | tr '\0' '\n'
+  exit "${PIPESTATUS[0]}"
+}
+
 STAGED=()
 BASE_TREE=HEAD
 if ! git rev-parse --verify --quiet HEAD >/dev/null; then
   BASE_TREE="$(git hash-object -t tree /dev/null)"
 fi
-while IFS= read -r -d '' path; do
-  [ -n "$path" ] && STAGED+=("$path")
-done < <(git diff --cached --name-only -z --diff-filter=ACMR "$BASE_TREE" 2>/dev/null)
 
+LISTER=list_staged
+WHAT="the staged files"
 if [ "$SOURCE" = "worktree" ]; then
-  # Everything tracked or newly added, which is what the CI gates see.
-  STAGED=()
-  while IFS= read -r -d '' path; do
-    [ -n "$path" ] && STAGED+=("$path")
-  done < <(git ls-files -z --cached --others --exclude-standard --deduplicate)
+  LISTER=list_worktree
+  WHAT="this repository's files"
 fi
+
+if ! LISTING="$("$LISTER")"; then
+  echo "::error title=run-precommit-checks::could not list $WHAT - git failed and printed the reason above. Nothing was checked; this is not a clean commit." >&2
+  exit 2
+fi
+
+while IFS= read -r path; do
+  [ -n "$path" ] && STAGED+=("$path")
+done <<<"$LISTING"
 
 if [ "${#STAGED[@]}" -eq 0 ]; then
   echo "==> Nothing staged; no checks to run"
@@ -275,6 +304,10 @@ if [ "${#WF_FILES[@]}" -gt 0 ]; then
     [ -n "$wf" ] && ALL_WORKFLOWS+=("$wf")
   done < <(cd "$CHECK_ROOT" && git ls-files '.github/workflows/*.yml' '.github/workflows/*.yaml')
   if [ "${#ALL_WORKFLOWS[@]}" -gt 0 ]; then
+    # First, because the three gates below it read workflows line by line and
+    # cannot tell a file they disagree with from a file no parser accepts
+    # (issue #123): release-full.yml was unparseable and all three passed it.
+    gate workflow-yaml bash scripts/ci/check-workflow-yaml.sh
     gate status-gate node scripts/ci/check-status-gate-covers-all-jobs.mjs "${ALL_WORKFLOWS[@]}"
     gate timeout-budgets node scripts/ci/check-timeout-budgets.mjs "${ALL_WORKFLOWS[@]}"
   fi

@@ -29,7 +29,49 @@ the connections one `apt-get update` opens:
 | `Acquire::Retries=2` | 6 |
 | `Acquire::Retries=3` | 8 |
 | `Acquire::Retries=5` | 12 |
-| **apt default** | **8 — identical to an explicit 3** |
+| **apt default, here and in `ubuntu:24.04`** | **8 — identical to an explicit 3** |
+| **apt default, `ubuntu-24.04` GitHub runner** | **4 — one retry** |
+
+The last two rows are the finding, and they took a red run to produce. The five
+explicit rows are a property of apt: they hold on this workstation, inside
+`ubuntu:24.04` (the image every Dockerfile here builds from) and on the runner,
+exact to the connection. **The default row is a property of the machine.** The
+`scripts / regression suites` job of 2026-09-10T03:54:31Z, on `ubuntu-24.04`
+with the same apt 2.8.3 on the same Ubuntu 24.04.4, measured
+
+```
+FAIL: apt's default opened 4 connections and an explicit Acquire::Retries=3
+      opened 8: the default is no longer 3 (apt 2.8.3 (amd64))
+```
+
+— four connections, i.e. two index items attempted twice: **one** retry, not
+three.
+
+What does *not* explain it, checked in `actions/runner-images`:
+
+* `images/ubuntu/scripts/build/configure-apt.sh` writes
+  `APT::Acquire::Retries "10";` into `/etc/apt/apt.conf.d/80-retries`. That key
+  is `APT::Acquire::Retries`; apt reads `Acquire::Retries`. It is inert, and
+  inert in the *raising* direction anyway.
+* the same script's `90assumeyes`, `99-phased-updates` and `99bad_proxy`
+  (`Acquire::http::Pipeline-Depth 0`, `No-Cache true`, `BrokenProxy true`) touch
+  neither retries nor timeouts.
+* `configure-apt-mock.sh` replaces `apt`, `apt-get` and `apt-key` with wrapper
+  scripts carrying an *external* retry loop (30 attempts, 5s apart). That is a
+  loop around apt, not a setting inside it, and it would multiply attempts
+  rather than divide them.
+
+So the cause is unidentified, which is why the suite now *reports* rather than
+guesses: it prints `apt-config dump Acquire::Retries`, the apt.conf files that
+name the key, `APT_CONFIG`, and whether `apt-get` on `PATH` is a script rather
+than apt's own binary. The next runner failure — if there is one — arrives with
+its own explanation attached.
+
+The measurement is also the reason `experiments/issue-123/measure-apt-retry-timing.sh`
+exists: it timestamps every connection, so a leg's retries can be seen spread
+over apt's backoff (`Acquire::Retries::Delay`) rather than inferred from a
+total. On this workstation the default leg's eight connections arrive at
+1.2s, 3.2s, 3.2s, 7.2s, 7.2s — the 1-2-4 backoff of three retries.
 
 ## Idle-connection timeout
 
@@ -44,9 +86,14 @@ the two index items is attempted once:
 
 ## Conclusion
 
-The install sites are not weaker than the refresh site; there is nothing for
-them to inherit that they do not already have, so the hardening item is retired
-rather than implemented. What `apt_update_with_retry` adds over plain apt is its
+The install sites are not weaker than the refresh site, in either environment,
+so the hardening item is retired rather than implemented. In the images the
+default equals what the refresh site pins, so restating the options at an
+install site would change nothing; on the runner the refresh site is the
+*stronger* of the two, because it passes an option the environment's default is
+below. The ordering that would make the install sites need the options is the
+reverse one — a default **above** 3 — and that is now the condition the suite
+fails on, rather than any inequality at all. What `apt_update_with_retry` adds over plain apt is its
 *outer* loop — up to 5 attempts, exponential backoff, `/var/lib/apt/lists`
 cleared between them — because apt's internal retries re-fetch over the same
 broken mirror state, and a mirror mid-sync (apt exit 100) is what that loop
@@ -61,12 +108,25 @@ the `measure-disk-space` job would not have been ended by any of them.
 ## Files
 
 - `apt-retry-defaults-full.txt` — `APT_MEASURE_TIMEOUTS=1 bash
-  experiments/test-issue123-apt-retry-defaults.sh`, 13 assertions, all passing
-  (10 of them run by default; the three timeout legs need the flag).
+  experiments/test-issue123-apt-retry-defaults.sh`, all assertions passing
+  (the three timeout legs need the flag; the rest run by default).
   The suite runs the retry legs (~10s) in `run-experiments.sh` and keeps the
-  timeout legs (~130s) behind `APT_MEASURE_TIMEOUTS=1`; it fails if a future apt
-  changes either default, which is exactly when the flags would stop being
-  no-ops and the install sites would need them.
+  timeout legs (~130s) behind `APT_MEASURE_TIMEOUTS=1`. It fails if a future apt
+  — or a future runner image — raises either default *above* what this
+  repository pins, which is exactly when the options would stop being no-ops in
+  the safe direction and the install sites would need them.
+- `retry-timing.txt` — `bash experiments/issue-123/measure-apt-retry-timing.sh`,
+  the per-connection arrival times behind the backoff described above.
+
+The suite's own history is worth recording, because it committed the defect the
+issue is about. It used to assert that apt's default *equals* 3 retries, and
+that assertion is what went red on the runner: a statement about the machine,
+dressed as a statement about this repository, failing a release for a property
+no line of shipped code depends on. Equality was never what mattered. What
+matters is that `-o Acquire::Retries=3` is not a *downgrade* — that a refresh
+here is at least as patient as a bare `apt-get update` would have been — and
+that is the invariant the suite holds now, in both directions and with the
+measured number printed either way.
 
 The first version of the timeout legs was itself a check that could not fail —
 the fixture server took the suite's own stdin, read EOF, exited, and every

@@ -1,4 +1,4 @@
-# The thirteen root causes, and the fix each one got
+# The nineteen root causes, and the fix each one got
 
 Issue #123 asks for "all false positives, false negatives, warnings and errors"
 in the nine CI/CD runs on `main` at `1d9fb3e`, and the task asks for "the root
@@ -8,7 +8,14 @@ The scope it is answered against is measured, not assumed:
 `warnings-errors.census.md` classifies all **804** lines in those nine runs that
 contain `warn` or `error`, and `annotations/README.md` holds all **7**
 annotations the API reports. Everything below is either one of those lines or a
-defect of the same class found while looking for its siblings.
+defect of the same class found while looking for its siblings — or, for RC-14
+through RC-16, a defect of the same class that the GitHub runner found in the
+tests this branch wrote to measure the others, and for RC-17, one that this
+branch's own experiment run found in the gate that reads the most files in the
+repository. RC-18 and RC-19 come from the last two sweeps: the first from asking
+the release workflows the one question this issue asks of everything — "where
+did you get that number?" — and the second from a break this branch itself
+introduced and every one of its own gates passed.
 
 ## The shape they share
 
@@ -25,14 +32,27 @@ obtained.
   budget wrapper reports a termination it did not perform (RC-1).
 * the status gate excuses a cancellation as a supersede in a job a supersede
   cannot reach (RC-2).
+* `git ls-files … || true` turns a git that could not read the index into an
+  empty list, and the linter reports the empty list as a clean tree (RC-17).
+* `VERSION=$(tr -d '[:space:]' < VERSION)` succeeds over an empty file, and the
+  bump arithmetic turns the empty string into `1.0.0` — a release named after a
+  file nothing read (RC-18).
+* four gates each read the same unparseable workflow line by line and each
+  printed a verdict about it, because none of them could tell a file it
+  disagrees with from a file no parser accepts (RC-19).
 
 The two that are not that shape are the two that are the opposite — text that
 was *not* a verdict being read as one (RC-3, the log injection) and a log that
 was written and then destroyed (RC-4).
 
-**Eight of the nine runs were green.** Six of the thirteen root causes — RC-3,
+**Eight of the nine runs were green.** Six of the nineteen root causes — RC-3,
 RC-5, RC-6, RC-7, RC-8, RC-10 — were found in those eight. That is the point of
-the issue: a red run tells you where to look, and a green run does not.
+the issue: a red run tells you where to look, and a green run does not. RC-14,
+RC-15 and RC-16 make the same point from the other side: they were found by a
+run that went red, in tests that had been green on every machine here. RC-17 is
+the third side of it: one experiment run out of many went red, once, and the
+assertion that failed had thrown away the reason — the defect it was pointing at
+had been in the two largest gates in this repository since they were written.
 
 ## The list
 
@@ -51,6 +71,12 @@ the issue: a red run tells you where to look, and a green run does not.
 | RC-11 | three release gates discarded `git diff`'s exit status, and two `gh` reads conflated "empty" with "failed" | found by taking upstream report F to our own tree | `45abc52` |
 | RC-12 | the changeset gate's path set omitted `VERSION`, `.github/actions/` and `.githooks/`, and echoed pull-request-controlled paths with command processing live | surfaced by extracting RC-11's inline step | `45abc52` |
 | RC-13 | this branch's own comparison script read `/tmp/roles-*.txt`, a glob that matched its other output | found by reading the matrix it produced | `320491d` |
+| RC-14 | a suite asserted that apt's default retry count **equals** 3 — a property of the machine, reported as a property of this repository | this branch's `scripts / regression suites`, 2026-09-10T03:54:31Z | this commit |
+| RC-15 | a suite's "SIGPIPE at its default" leg inherited the disposition instead of establishing it, so on a runner both its legs were the same leg | this branch's `scripts / regression suites`, 2026-09-10T03:53Z | this commit |
+| RC-16 | a fake `ps` fabricated an unkillable survivor only for process groups that still existed, so the survivor died with the group it was standing in for | this branch's `scripts / regression suites`, 2026-09-10T03:53Z | this commit |
+| RC-17 | eight gates decided what to read with `git ls-files`, and five of them turned a git that could not answer into an empty list — reported as a clean tree over 201 unread files | one red assertion in this branch's own experiment run | this commit |
+| RC-18 | eighteen release steps each re-derived the version being published by reading a file, and an empty file publishes `1.0.0` — below every version this repository has released | asking the release workflows where their number comes from | this commit |
+| RC-19 | an unparseable workflow passed all four gates that read workflows, each printing a confident verdict about a file no parser accepts | a break this branch introduced, caught by an experiment and by none of the gates | this commit |
 
 ---
 
@@ -654,6 +680,460 @@ does not reintroduce it.
 
 ---
 
+## RC-14, RC-15, RC-16 — the three the runner found in this branch's own tests
+
+These three arrived after the rest were written, from the first `scripts /
+regression suites` job that ran the finished branch. All three are suites
+*written for this issue* committing this issue's defect, and all three passed on
+every machine the branch was developed on. That is the part worth keeping: the
+census in this directory was compiled by reading logs line by line rather than
+by trusting a green conclusion, and these are three defects that only that
+method — or, as it happened, a red run — could find.
+
+### RC-14 — an environment's constant, pinned as if it were the repository's
+
+**Mechanism.** `experiments/test-issue123-apt-retry-defaults.sh` measures how
+many connections `apt-get update` opens against a fixture mirror that resets
+every connection, which yields apt's retry count exactly. It then asserted that
+the *default* leg opens 8 connections — 3 retries — because that is what apt
+2.8.3 does here and inside `ubuntu:24.04`. On `ubuntu-24.04` the same apt 2.8.3
+on the same Ubuntu 24.04.4 opens 4: **1** retry. The suite failed the branch
+with `the default is no longer 3, so -o Acquire::Retries=3 has stopped being a
+no-op` — a true sentence about the runner and a false one about this repository,
+where nothing depends on the number being 3.
+
+**Root cause.** The assertion held the wrong invariant. `apt_update_with_retry`
+*passes* `-o Acquire::Retries=3`, so a lower environmental default makes the
+refresh stronger, not weaker; only a default **above** 3 turns the option into a
+downgrade. Equality was never the property worth holding, and pinning the
+spelling of an environment's constant is precisely the shape of RC-2 and RC-5.
+
+**Why the runner's default is 1 is still unknown**, and `../apt/README.md`
+records what was ruled out in `actions/runner-images` (the `80-retries` file
+writes `APT::Acquire::Retries`, a key apt does not read; the apt-mock wrappers
+add an *outer* loop). So the fix is a measurement plus a diagnostic rather than
+a guess: the suite derives the default from its own connection count, prints
+`apt-config dump Acquire::Retries`, the apt.conf files naming the key,
+`APT_CONFIG`, and whether `apt-get` on `PATH` is a wrapper script, and fails only
+on a default above what the refresh sites pin. Verified in both directions with
+`APT_CONFIG` fixtures: a default of 1 passes as "a strengthening", a default of 5
+fails as "has become a downgrade".
+
+**Sweep (B10).** The finding has a repository-wide half. If a refresh site can be
+weaker than a bare `apt-get update` on some machine, then every refresh site must
+pass the option rather than inherit a default. Part 4 of the suite sweeps all 135
+tracked `*.sh`, `*.yml`, `*.yaml` and `Dockerfile` sources for an `apt-get update`
+with no `Acquire::Retries=`, over **logical** lines — all three real refresh sites
+spell the option on a `\`-continuation, and a per-line grep would report every one
+of them as an offender. `experiments/` is excluded by name, because this suite's
+own fixture runs `apt-get update` with no retry option on purpose. A planted
+offender must make the sweep fail, and does.
+
+### RC-15 — a fixture that inherited the premise it was supposed to establish
+
+**Mechanism.** `experiments/test-issue123-sigpipe-writers.sh` compares two signal
+dispositions: SIGPIPE ignored ("runner") and SIGPIPE at its default. The first was
+established with `trap '' PIPE`. The second was a bare `bash -c` — i.e. whatever
+the machine happened to be doing. A GitHub Actions step's shell is started with
+SIGPIPE already `SIG_IGN` (actions/runner#2684 — the very fact the suite exists to
+describe), an ignored disposition survives `exec`, and bash cannot undo one: a
+signal ignored on entry to a non-interactive shell can be neither trapped nor
+reset, so `trap - PIPE` is accepted and does nothing. On the runner the two legs
+were therefore one leg, and the suite reported
+`fixture: the retired shape already complains with default SIGPIPE`.
+
+**Root cause.** Same shape as RC-14: a property of the environment, assumed
+rather than measured, underneath a verdict about the code. The default leg now
+enters through `perl -e '$SIG{PIPE} = "DEFAULT"; exec ...'` (`python3` where perl
+is absent; perl-base is Essential in Debian and Ubuntu and present on every
+runner image), and a new Part 0 reads each leg's `SigIgn` mask out of
+`/proc/self/status` and asserts the bit for signal 13 — set for the runner leg,
+clear for the default leg. The premise now fails loudly instead of the conclusion
+failing mysteriously. Verified by running the suite under an ambient `trap ''
+PIPE`, which is what the runner does: 33 passed, 0 failed; with the resetter
+removed, exactly the runner's two failures come back.
+
+### RC-16 — a stand-in for an unkillable process that was not unkillable
+
+**Mechanism.** `experiments/test-issue123-budget-enforcement.sh` proves that
+`run-with-budget-warning.sh` *reports* a process it could not kill rather than
+calling it terminated (RC-1). It cannot leave a real unkillable process behind,
+so it fakes `ps`: real output first, then one fabricated root-owned member of the
+command's process group. The group id must not be guessed, so the fake listed the
+groups **currently in the process table** and fabricated a member for each. That
+makes the lie conditional on the truth: once `signal_command TERM` took the real
+subshell, the command's group left the table and the fabricated survivor left with
+it, `group_members` returned empty, and the wrapper correctly concluded there were
+no survivors. Three assertions then failed — `ignored SIGTERM`,
+`::error title=unkillable step left processes running::` and `fake-survivor` —
+blaming the shipped wrapper for a race in the fixture. Locally the group lingered
+past the grace period often enough to pass.
+
+**Root cause.** The fixture modelled "a process that survives" as "a process that
+exists while something else exists". The fake now records every group id it has
+ever seen in a per-leg state file and re-reports all of them on every call, so the
+survivor outlives the group it stands in for — which is what unkillable means.
+The mutation control (the same overrun with no fake) must still report no
+survivors, and does; and stubbing `report_survivors` to a no-op still produces
+exactly the two intended failures.
+
+---
+
+## RC-17 — a linter that read nothing, and called the tree clean
+
+**How it surfaced.** A full `scripts/ci/run-experiments.sh` on this branch came
+back 88 passed / 1 failed where every previous run had been 89 / 0. The single
+failure was in `test-issue121-git-hooks.sh`:
+
+```
+FAIL: run-shellcheck.sh does not see the hook; nothing lints it
+PASS: run-shfmt.sh discovers .githooks/pre-commit
+```
+
+Those two lines run the identical discovery two statements apart, against the
+same tree, and the second one passed. So the file set had not changed — the
+*answer* had. The assertion could not say more, because it called the gate as
+`bash …/run-shellcheck.sh --list 2>/dev/null` and discarded the only diagnostic
+there was. Running the suite alone gave 91 / 0; 200 concurrent `git add -A`
+against 60 `--list` probes reproduced nothing, and neither did 150 probes run
+against a full `run-precommit-checks.sh`. The trigger is still unproven.
+
+**What is not unproven** is what the gate does when discovery comes back short,
+and that turned out to be worth more than the trigger:
+
+```bash
+collect_files() {
+  git ls-files -z --cached --others --exclude-standard --deduplicate '*.sh' '.githooks/*' \
+    | tr '\0' '\n' | grep -v '^dev/log/' | sort -u || true
+}
+```
+
+The trailing `|| true` converts *any* failure of `git ls-files` — a busy index,
+an unreadable object, a `git` that is not there — into an empty list, and every
+caller then read that empty list as a fact about the repository rather than as a
+failure to ask it. Measured against the shipped script with a `git` that exits
+128 on `ls-files`:
+
+```
+==> No shell scripts to check
+$ echo $?
+0
+```
+
+201 tracked shell scripts, none of them opened, and a gate that says the tree is
+clean. This is the sentence at the top of this document with nothing changed:
+*a check reporting a verdict about data it never obtained*. Whether the flake
+was this or something else, this is a false negative that needs no flake at all
+— a `git` failure on the runner would have produced a green `lint` job.
+
+**Root cause.** Not the `|| true` by itself: the gates had no way to distinguish
+the two empty answers. "git could not tell me" and "git told me, and there is
+nothing" are different facts with different fixes — one is an infrastructure
+failure, the other is a wrong glob — and both were being rendered as the same
+silence, then as success. The repository already knew this: `check-py-syntax.sh`,
+`check-mjs-syntax.sh`, `check-awk-portability.sh`, `run-hadolint.sh` and
+`check-file-line-limits.sh` all refuse an empty input set in so many words, and
+`run-shfmt.sh` even feeds shfmt a deliberately misformatted canary so its silence
+cannot pass for a verdict. The guard existed; it was simply not in every gate
+that needed it.
+
+**The fix, and the sweep behind it.** Every gate under `scripts/ci/` that
+discovers its own inputs with `git ls-files` now separates the two answers and
+reports each as an error, naming which one happened:
+
+```bash
+collect_files() {
+  local listing
+  listing="$(
+    git ls-files -z --cached --others --exclude-standard --deduplicate '*.sh' '.githooks/*' \
+      | tr '\0' '\n'
+    exit "${PIPESTATUS[0]}"
+  )" || return 1
+  printf '%s\n' "$listing" | { grep -v '^dev/log/' || [ "$?" = 1 ]; } | sort -u
+}
+```
+
+Three details are load-bearing, and each was measured rather than assumed:
+command substitution silently drops NUL bytes, so `tr` has to run *inside* the
+substitution; `exit "${PIPESTATUS[0]}"` recovers git's status without `pipefail`,
+which would also promote `grep`'s exit 1; and `grep`'s exit 1 means "selected
+nothing", which is a legitimately empty tree, so it is absorbed while anything
+above 1 is not. `discover_or_exit` then ends the script with exit 2 and an
+`::error` that says which of the two happened, and every caller pairs it with
+`$( ) || exit $?` — never `< <(...)`, because a process substitution's `exit`
+ends only the subshell and would leave the caller carrying on with an empty list.
+
+**The sweep found more than the three gates it started with.** Written as a
+requirement of this issue — a defect that exists in more than one place has to be
+fixed in all of them — `test-issue123-discovery-fail-closed.sh` drives all eight
+discovering gates through both failure modes, and produced two findings I had
+already, wrongly, cleared:
+
+* `check-py-syntax.sh` and `check-mjs-syntax.sh` did fail closed on the check
+  path, so a first pass called them safe. They reached that exit through the
+  *empty-set* branch, which prints `No files to check — the discovery glob is
+  wrong` — an operator sent to inspect a glob that was never the problem. A
+  correct verdict for a stated reason that is false is still a report about data
+  the checker never had.
+* Worse, four gates answered `--list-inputs` — the contract
+  `check-workflow-path-coverage.mjs` reads to decide whether a workflow's
+  `paths:` filter can match what a gate reads — by printing an empty list and
+  exiting **0**. A gate that cannot enumerate would have reported that it reads
+  no files, and every file it actually reads would have looked covered by any
+  filter at all. That is the same false negative one layer up, in the gate whose
+  entire job is to catch checks that never run. All four now exit 2 there, and
+  the consumer already turns a failed `--list-inputs` into its own error.
+
+* And the ninth site is the one that runs the other eight.
+  `scripts/ci/run-precommit-checks.sh` is not a gate, so the first sweep exempted
+  it in writing — "the hook driver, not a gate: it dispatches to the gates above
+  and reports what each said" — a sentence that is true about its job and says
+  nothing about how it reads git. It read the index through
+  `< <(git diff --cached --name-only -z … 2>/dev/null)`, where the status is
+  unreachable by construction, and its `--worktree` mode read
+  `git ls-files -z --cached --others` the same way. A git that could not answer
+  therefore produced an empty array and the driver printed
+  `==> Nothing staged; no checks to run` and exited 0 — over a commit it had
+  never read, having run none of the fourteen gates. Both listings are captured
+  through `$( … )` with `exit "${PIPESTATUS[0]}"` now and a failure is exit 2,
+  the "could not run" status the hook deliberately does not block on and CI
+  still checks. The distinction matters more here than in a gate: an *empty*
+  listing is a legitimate answer for this script, because a commit really can
+  stage nothing, so only the failing half is an error. It is exercised by part 7
+  of the suite — both listings failing, an empty index still passing, and a
+  mutation restoring the old form — and the exemption list is one name shorter.
+
+And the sweep's own first version committed the defect it hunts:
+`run-hadolint.sh` carried the `|| true` with its globs wrapped across
+continuation lines, so `ls-files` and `|| true` never shared a physical line and
+a line-at-a-time `grep` pronounced the tree clean. The sweep joins backslash
+continuations before matching now — the same treatment
+`test-issue123-apt-retry-defaults.sh` gives apt's sources — and a planted
+multi-line offender pins that it does.
+
+**Coverage.** Eight gates plus the hook driver fixed or confirmed, 94
+assertions. Part 1 requires
+every `scripts/ci` script that calls `git ls-files` to be either driven by this
+suite or exempt **in writing**, with the exemption checked against the tree so it
+cannot go stale; Parts 2 and 3 drive both failure modes; Part 4 restores the
+pre-fix shape in a copy of each fixed gate and requires the assertions to fail
+against it; Parts 5 and 6 sweep for the shape returning and pin the
+`--list-inputs` contract on both sides; part 7 asks the whole question of the
+hook driver. The assertion that started this keeps
+`--list`'s stderr now, so a recurrence explains itself instead of costing another
+iteration.
+
+---
+
+## RC-18 — eighteen jobs each deciding, separately, which version this is
+
+**How it surfaced.** Not from a log line. The census question this issue asks of
+every check — *where did you get the data you are reporting on?* — asked of the
+release pipeline instead of a linter. Every release job puts a version string on
+an image tag, a manifest and a release note, and each one of them worked it out
+for itself:
+
+```yaml
+- name: Get latest version
+  id: version
+  run: |
+    git pull origin main || true
+    VERSION=$(tr -d '[:space:]' < VERSION)
+    echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+```
+
+Eighteen steps across the six release workflows, three in each file. Sixteen of
+the eighteen open with the `git pull`; the two that do not are both in
+`release.yml` — the version-bump job's own `CURRENT_VERSION` read, and the read
+in its "Fetch latest changes" step, which pulls without `|| true` first.
+
+**What the read cannot catch.** A *missing* VERSION file fails, but only by
+accident: the runner's default shell is `bash -e {0}`, the redirection has
+nothing to read, and the step dies of that. An empty or whitespace-only file is
+caught by nothing at all. Measured:
+
+```
+$ : > VERSION
+$ V=$(tr -d '[:space:]' < VERSION); echo "[$V] status=$?"
+[] status=0
+```
+
+`tr` did its job. The step writes `version=` to `$GITHUB_OUTPUT` and reports
+success. Where that empty string lands decides how bad it is: in a build job it
+becomes an image tag, `ghcr.io/link-foundation/box-js:-amd64`. In the two jobs
+that *bump* the version, it becomes arithmetic:
+
+```
+$ IFS='.' read -r MAJOR MINOR PATCH <<< ""
+$ MAJOR=$((MAJOR + 1)); echo "$MAJOR.0.0"
+1.0.0
+```
+
+So an unreadable VERSION file does not stop a release. It publishes **1.0.0** —
+a version below every version this repository has ever released, computed from a
+file nothing looked at, and pushed to `main`. That is this document's opening
+sentence with the words changed: a verdict about data never obtained.
+
+**The `git pull` is the second half of the same defect.** It is not needed and it
+is not safe. Not needed, because every one of those jobs checks out with
+`ref: main`, which `actions/checkout` resolves against the remote when the job
+starts — after `apply-changesets` has pushed the bump, since every build job
+`needs` it. Not safe, because the only thing the pull can still bring in is a
+commit somebody pushed to `main` *after* this release started: the late jobs of a
+release then build and tag a different tree from the early ones, and `|| true`
+means no log says which happened.
+
+**Root cause.** Eighteen independent answers to a question with one correct
+answer per run. The number of readers is the defect, not the shape of any one of
+them — hardening the `tr` in all eighteen places would leave eighteen jobs still
+free to disagree.
+
+**The fix.** The pipeline had already computed it once and was already handing it
+over. `release.yml`'s `detect-changes` job publishes
+`version: ${{ steps.version.outputs.version }}` as a job output, and every call
+site passes `changes: ${{ toJSON(needs.detect-changes.outputs) }}` — so
+`fromJSON(inputs.changes)['version']` has been available inside all five called
+workflows the whole time. No new plumbing; one reader:
+
+```yaml
+- name: Get latest version
+  id: version
+  env:
+    PIPELINE_VERSION: ${{ fromJSON(inputs.changes)['version'] }}
+  run: bash scripts/release/release-version.sh
+```
+
+`scripts/release/release-version.sh` prefers the pipeline's answer, cross-checks
+it against the VERSION file in this job's checkout, refuses an empty or
+malformed value from either with an `::error` naming what each source said, and
+— when both are usable and they *disagree* — publishes the pipeline's and emits
+a `::warning` saying `main` moved after the release started. That disagreement
+was previously invisible by construction; it is now the only place it is
+visible. This is the same shape as issue #119b's `image-tags.sh`: one job
+computes the answer, and every job that needs it is handed the same one.
+
+`version_is_sane` accepts `MAJOR.MINOR.PATCH` and nothing else — deliberately
+narrower than semver, because the two bump callers do `IFS='.' read -r MAJOR
+MINOR PATCH` then `$((PATCH + 1))`, and a pre-release suffix makes `PATCH` the
+string `0-rc`, which is an arithmetic error rather than a version. Accepting a
+shape the consumers cannot use would move the failure further from its cause.
+
+**Coverage.** `experiments/test-issue123-release-version.sh`, 86 assertions.
+It reproduces the pre-fix step byte for byte from `git show HEAD:` and requires
+it to publish the empty version; drives every failure mode of the helper; checks
+each of the five call sites for the `changes:` map *at that call site* rather
+than counting five of them anywhere in the file; sweeps for both the hand-rolled
+read and the `git pull origin main || true` returning, with comment lines
+excluded in both directions so the fix's own explanation of the line it removed
+cannot satisfy a sweep for the line; and mutates the shipped helper twice —
+loosening the version pattern alone does *not* reopen the hole (the emptiness
+guard still refuses), while removing that guard does, which is the assertion
+proving the suite can see the defect at all.
+
+One of those assertions exists for a failure that surfaces a long way from its
+cause. `check-checkout-credentials.mjs` classifies a job by following every
+`scripts/...` string in that job's closure, transitively, and calls the job a
+writer to the remote if anything it reaches pushes. The helper's error message
+originally named `scripts/release/apply-changesets.sh` **by path** — in prose it
+only ever *prints* — and `apply-changesets.sh` calls `git-push-with-retry.sh`.
+Measured, with the path restored:
+
+```
+$ node scripts/ci/check-checkout-credentials.mjs   # EXIT=1
+17 ::error … writes to the remote, but this checkout drops the job token
+```
+
+17 errors in 17 distinct jobs — the ten build jobs, the five manifest jobs,
+`detect-changes` and `create-release` — every one of them told to set
+`persist-credentials: true` for a push none of them makes. Fixed at the source
+by naming the script without its path, which reads identically to an operator:
+taking the checker's advice instead would have left the job token in seventeen
+non-writing jobs, quieting the gate by making the repository less safe. An
+assertion pins that the helper spells no `scripts/` path outside a comment, and
+that the checker is still green with it.
+
+---
+
+## RC-19 — a file no parser accepts, and four gates with opinions about it
+
+**How it surfaced.** In this branch's own edit, three commits after RC-18 was
+written. Three of the eighteen replaced steps had a fourth line in their `run: |`
+block that the other fifteen did not, and the replacement left it stranded:
+
+```yaml
+run: bash scripts/release/release-version.sh
+  echo "Building version: $VERSION"
+```
+
+`release-full.yml` was not YAML any more. `Psych::SyntaxError … line 175 column
+33`. It was found by four experiment suites going red, and by **none** of the
+eleven gates the pre-commit hook runs — including the four whose entire input is
+workflow files. Each of those four was handed the broken file, and each exited 0
+while printing a verdict about it:
+
+```
+check-status-gate-covers-all-jobs.mjs  EXIT=0  status covers all 3 other job(s).
+check-timeout-budgets.mjs              EXIT=0  Every budget in 1 workflow(s) fits inside its job cap
+check-workflow-path-coverage.mjs       EXIT=0  6 script(s) across 1 workflow(s); every file … can start a run
+check-checkout-credentials.mjs         EXIT=0  3 checkout step(s) across 1 file(s); each one states …
+```
+
+(Measured with an explicit file argument, the way the hook invokes them. An
+earlier reading of this — that two of the four exited 2 — was wrong: those exit
+2s were usage errors from calling the gates with no arguments at all.)
+
+**Root cause.** Not a bug in any of the four. All four read workflows line by
+line *on purpose*: they ask questions about ordering and indentation that a
+parsed tree throws away. A line-oriented reader cannot tell a file it disagrees
+with from a file no parser accepts — so each of them assumes a guarantee that
+nothing in the repository established. The missing piece is a floor, not a fix
+to any of the four.
+
+actionlint does catch it, and runs in CI — but it needs docker, so the
+pre-commit hook cannot run it, and the broken file was committable and was
+committed locally eleven green gates deep.
+
+**The fix.** `scripts/ci/check-workflow-yaml.sh`: every tracked workflow and
+composite action parses, checked with ruby's `psych` — the only offline YAML
+parser available here (python `yaml`, node `yaml`, `yq` and actionlint are all
+absent), present in the standard library on the runners and in the development
+image, and costing milliseconds. It runs **first** in `run-precommit-checks.sh`,
+before the three gates that read workflows line by line, and in `workflows.yml`
+before the status-gate step. It discovers with `git ls-files` after anchoring at
+`git rev-parse --show-toplevel` (issue #121) and fails closed when that listing
+fails (RC-17, above), so it is driven by
+`test-issue123-discovery-fail-closed.sh`'s fixtures rather than exempted with
+the other workflow readers.
+
+**What it does not catch, recorded next to it rather than implied.** An orphan
+line with no colon in it is a legal plain-scalar continuation:
+
+```yaml
+run: bash scripts/release/release-version.sh
+  echo hello
+```
+
+parses, as the string `bash scripts/release/release-version.sh echo hello`. YAML
+validity is the floor, not the ceiling; actionlint's schema is what reads the
+parsed tree. The three orphans that shipped here all contained `version: `,
+which is why this floor was enough to find them.
+
+**Coverage.** `experiments/test-issue123-workflow-yaml.sh`, 28 assertions, in
+five parts: the break that actually shipped (file, line, reason, `::` defanging,
+summary); the same broken file put back through the two gates that passed it, so
+the reason this gate exists is a measurement in the suite and not a claim in a
+comment; the stated limits, including that the header still says "the floor, not
+the ceiling"; both could-not-run paths (an unreadable file, and an empty
+repository, which must say "this check verified nothing"); and the wiring — the
+hook, the workflow step, the `paths:` filter, and `--list-inputs` agreeing with
+`git ls-files`.
+
+The sweep that followed mattered more than the one file: all fifteen replacement
+sites were re-read against `git show HEAD:`, exactly three carried an orphan, and
+all six release workflows were re-parsed afterwards.
+
+---
+
 ## Considered and declined — census lines that are not defects
 
 Every one of these is a `warn`/`error` line in the nine runs. Each was measured,
@@ -673,7 +1153,10 @@ worth anything with the measurement attached.
 
 **apt hardening, declined with a measurement.** RC-1's 60-minute overrun invited
 an obvious "add retries and timeouts to apt". `../apt/README.md` measures apt's
-own defaults on the full box: `Acquire::Retries` is already set, and
+own defaults on the full box: `Acquire::Retries` is already at least as high as
+the value `apt_update_with_retry` pins (3 retries here and in `ubuntu:24.04`, 1
+on the `ubuntu-24.04` runner — so the pin is a no-op in the images and a
+strengthening on the runner, never a downgrade), and
 `Acquire::http::Timeout` bounds an **idle** connection — the mirror in question
 was delivering at 20 kB/s, never idle, so no value of that option would have
 helped. Shipping it would have been a change that looks like a fix and prevents

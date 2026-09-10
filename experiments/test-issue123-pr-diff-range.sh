@@ -217,6 +217,71 @@ gate "$W" check-changeset-required.sh
 check "an unparseable bump type is rejected" "$([ "$STATUS" = 1 ] && echo true || echo false)" "exit=$STATUS"
 check "  by the format check, not the presence check" "$(contains "$OUT" 'Invalid changeset format')"
 
+# A changeset is the repository's own `.changeset/*.md` and nothing else. This
+# pull request commits pinned copies of seven template repositories as evidence,
+# six of which carry a `.changeset/` of their own written in the changesets
+# format rather than this repository's `bump:` format - and the gate matched
+# `.changeset/` anywhere in the path, so the release run failed on
+# dev/log/issues/123/pulls/124/templates/go/.changeset/add-changeset-workflow.md.
+# The assertion is written against a nested directory in general, not against
+# dev/log/, because the anchor is what makes it right.
+W="$(branch_from "$ROOT" foreign-changeset)"
+mkdir -p "$W/dev/log/evidence/other-project/.changeset"
+printf -- "---\n'other-project': minor\n---\n\nSomeone else's changeset.\n" \
+  >"$W/dev/log/evidence/other-project/.changeset/their-change.md"
+commit_all "$W"
+gate "$W" validate-changeset.sh
+check "a nested .changeset/ belonging to another project is not this gate's subject" \
+  "$([ "$STATUS" = 1 ] && echo true || echo false)" "exit=$STATUS"
+check "  it is reported as no changeset, not as an invalid one" \
+  "$([ "$(contains "$OUT" 'Invalid changeset format')" = false ] && echo true || echo false)" "$OUT"
+check "  and the gate never names the foreign file" \
+  "$([ "$(contains "$OUT" 'their-change.md')" = false ] && echo true || echo false)"
+
+# The same pull request, with the repository's own changeset added too: the
+# foreign file must not make the real one fail either.
+W="$(branch_from "$ROOT" foreign-plus-own)"
+mkdir -p "$W/dev/log/evidence/other-project/.changeset"
+printf -- "---\n'other-project': minor\n---\n\nSomeone else's changeset.\n" \
+  >"$W/dev/log/evidence/other-project/.changeset/their-change.md"
+printf -- '---\nbump: patch\n---\n\nA change.\n' >"$W/.changeset/fix.md"
+echo "change" >>"$W/scripts/build.sh"
+commit_all "$W"
+gate "$W" check-changeset-required.sh
+check "a foreign changeset beside a valid own one does not fail the release" \
+  "$([ "$STATUS" = 0 ] && echo true || echo false)" "exit=$STATUS $OUT"
+
+# A `.changeset/` subdirectory of the repository's own is not applied either:
+# apply-changesets.sh reads it with `find -maxdepth 1`, so a file this gate
+# validated below that depth would be a format nothing depends on.
+W="$(branch_from "$ROOT" nested-own-changeset)"
+mkdir -p "$W/.changeset/archive"
+printf -- '---\nbump: enormous\n---\n\nArchived.\n' >"$W/.changeset/archive/old.md"
+printf -- '---\nbump: patch\n---\n\nA change.\n' >"$W/.changeset/fix.md"
+echo "change" >>"$W/scripts/build.sh"
+commit_all "$W"
+gate "$W" check-changeset-required.sh
+check "a file below .changeset/ is not validated, because it is not applied" \
+  "$([ "$STATUS" = 0 ] && echo true || echo false)" "exit=$STATUS $OUT"
+
+# The gate agrees with the consumer about README.md, and about depth, in both
+# directions: what apply-changesets.sh applies is exactly what this validates.
+CONSUMER_GLOB="$(grep -c "maxdepth 1" "$REPO_ROOT/scripts/release/apply-changesets.sh")"
+check "apply-changesets.sh still reads only the top level" \
+  "$([ "$CONSUMER_GLOB" -ge 1 ] && echo true || echo false)" "matches=$CONSUMER_GLOB"
+check "validate-changeset.sh anchors its path pattern at the repository root" \
+  "$(contains "$(cat "$REPO_ROOT/scripts/release/validate-changeset.sh")" 'CHANGESET_PATH_REGEX="^')"
+
+# A path with a space in it survives the status/path split. `git diff
+# --name-status` is tab-separated; `awk '{print $2}'` was not.
+W="$(branch_from "$ROOT" spaced-changeset)"
+printf -- '---\nbump: enormous\n---\n\nA change.\n' >"$W/.changeset/a fix.md"
+echo "change" >>"$W/scripts/build.sh"
+commit_all "$W"
+gate "$W" check-changeset-required.sh
+check "a changeset path containing a space is still read whole" \
+  "$(contains "$OUT" 'Invalid changeset format')" "exit=$STATUS $OUT"
+
 # A path out of the pull request, printed by this gate, may be a workflow
 # command: `[` is legal in a filename and `##[` anywhere in a physical line is
 # read by the runner.

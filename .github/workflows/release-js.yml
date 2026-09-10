@@ -140,12 +140,14 @@ jobs:
           docker-images: true
           swap-storage: true
 
+      # One release, one version (issue #123): the pipeline computed it once in
+      # release.yml's detect-changes job and handed it over inside `changes`.
+      # See scripts/release/release-version.sh for what this replaced and why.
       - name: Get latest version
         id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(tr -d '[:space:]' < VERSION)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        env:
+          PIPELINE_VERSION: ${{ fromJSON(inputs.changes)['version'] }}
+        run: bash scripts/release/release-version.sh
 
       - name: Set up Docker Buildx
         uses: ./.github/actions/setup-buildx-resilient
@@ -275,12 +277,14 @@ jobs:
           docker-images: true
           swap-storage: true
 
+      # One release, one version (issue #123): the pipeline computed it once in
+      # release.yml's detect-changes job and handed it over inside `changes`.
+      # See scripts/release/release-version.sh for what this replaced and why.
       - name: Get latest version
         id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(tr -d '[:space:]' < VERSION)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        env:
+          PIPELINE_VERSION: ${{ fromJSON(inputs.changes)['version'] }}
+        run: bash scripts/release/release-version.sh
 
       - name: Set up Docker Buildx
         uses: ./.github/actions/setup-buildx-resilient
@@ -379,12 +383,14 @@ jobs:
           persist-credentials: false
           ref: main
 
+      # One release, one version (issue #123): the pipeline computed it once in
+      # release.yml's detect-changes job and handed it over inside `changes`.
+      # See scripts/release/release-version.sh for what this replaced and why.
       - name: Get latest version
         id: version
-        run: |
-          git pull origin main || true
-          VERSION=$(tr -d '[:space:]' < VERSION)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        env:
+          PIPELINE_VERSION: ${{ fromJSON(inputs.changes)['version'] }}
+        run: bash scripts/release/release-version.sh
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4

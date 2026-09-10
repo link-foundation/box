@@ -52,8 +52,37 @@ fail() {
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-# Run a snippet with SIGPIPE ignored ("runner") or left alone ("terminal"),
-# and record stdout, stderr and status.
+# Both dispositions are *established* here, neither is inherited.
+#
+# "runner" ignores SIGPIPE, which is one `trap` away. "default" has to restore
+# the default, and that is not a no-op, because the ambient disposition is not
+# a constant: a GitHub Actions step's shell is started with SIGPIPE already set
+# to SIG_IGN - the very fact this suite exists to describe - an ignored
+# disposition survives exec, and bash cannot undo it, since a signal ignored on
+# entry to a non-interactive shell can be neither trapped nor reset (`trap -
+# PIPE` is accepted and does nothing). So the default leg is entered through a
+# program that calls signal(2) for itself before exec'ing bash.
+#
+# Until 2026-09-10 this leg was a bare `bash -c`, i.e. an assumption about the
+# machine rather than a property of the code under test. It held on every
+# developer terminal and did not hold on the runner, where the suite reported
+# "fixture: the retired shape already complains with default SIGPIPE" - a true
+# statement about the fixture and no statement at all about what it was meant
+# to be testing. That is issue #123's own defect class, in a test written for
+# issue #123. Part 0 now asserts each leg's disposition out of the kernel, so
+# the premise fails loudly instead of the conclusion failing mysteriously.
+#
+# perl is Essential in Debian and Ubuntu (perl-base) and present on every
+# GitHub runner image; python3 is the fallback for anywhere it is not.
+SIGPIPE_DEFAULT=()
+if command -v perl >/dev/null 2>&1; then
+  SIGPIPE_DEFAULT=(perl -e '$SIG{PIPE} = "DEFAULT"; exec { $ARGV[0] } @ARGV or die "exec: $!\n"' --)
+elif command -v python3 >/dev/null 2>&1; then
+  SIGPIPE_DEFAULT=(python3 -c 'import os, signal, sys
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+os.execvp(sys.argv[1], sys.argv[1:])')
+fi
+
 OUT=""
 ERR=""
 STATUS=0
@@ -63,22 +92,74 @@ run_snippet() {
     bash -c "trap '' PIPE
 $snippet" >"$WORK/out" 2>"$WORK/err"
   else
-    bash -c "$snippet" >"$WORK/out" 2>"$WORK/err"
+    "${SIGPIPE_DEFAULT[@]}" bash -c "$snippet" >"$WORK/out" 2>"$WORK/err"
   fi
   STATUS=$?
   OUT="$(cat "$WORK/out")"
   ERR="$(cat "$WORK/err")"
 }
 
+echo "=== 0. each leg's SIGPIPE disposition is asked of the kernel ==="
+
+if [ "${#SIGPIPE_DEFAULT[@]}" -gt 0 ]; then
+  pass "the default leg restores SIGPIPE through ${SIGPIPE_DEFAULT[0]}, rather than assuming the ambient one"
+else
+  fail "neither perl nor python3 is available, so the default leg cannot restore SIGPIPE" \
+    "every 'default' assertion below is about this machine's ambient disposition instead"
+fi
+
+# SigIgn in /proc/<pid>/status is the ignored-signal mask of the process that
+# reads it - here, of a command started by the snippet's shell, which is what
+# the shapes under test actually are. SIGPIPE is signal 13, so the bit is
+# 1 << 12 = 0x1000.
+SIGPIPE_PROBE='sed -n "s/^SigIgn:[[:space:]]*//p" /proc/self/status'
+
+sigpipe_ignored_in() {
+  local mask="$1"
+  case "$mask" in
+    *[!0-9A-Fa-f]* | "") return 2 ;;
+  esac
+  [ "$((0x$mask & 0x1000))" -ne 0 ]
+}
+
+run_snippet default "$SIGPIPE_PROBE"
+DEFAULT_MASK="$OUT"
+run_snippet runner "$SIGPIPE_PROBE"
+RUNNER_MASK="$OUT"
+
+sigpipe_ignored_in "$RUNNER_MASK"
+RUNNER_MASK_STATUS=$?
+
+if [ "$RUNNER_MASK_STATUS" -eq 2 ]; then
+  echo "NOTE: /proc/self/status carries no readable SigIgn here, so the two"
+  echo "      disposition assertions are skipped; every other assertion below"
+  echo "      still holds. (read: '$RUNNER_MASK')"
+else
+  if [ "$RUNNER_MASK_STATUS" -eq 0 ]; then
+    pass "the runner leg really does ignore SIGPIPE (SigIgn $RUNNER_MASK)"
+  else
+    fail "the runner leg does not ignore SIGPIPE (SigIgn $RUNNER_MASK)" \
+      "nothing below reproduces the runner, so its verdicts mean nothing"
+  fi
+  if sigpipe_ignored_in "$DEFAULT_MASK"; then
+    fail "the default leg still has SIGPIPE ignored (SigIgn $DEFAULT_MASK)" \
+      "this is the 2026-09-10 runner failure: the two legs are the same leg"
+  else
+    pass "the default leg really does have SIGPIPE at its default (SigIgn $DEFAULT_MASK)"
+  fi
+fi
+
+echo
+
 echo "=== 1. the disposition, not the code, is what differs ==="
 
 RETIRED_RANDOM='set -euo pipefail
 LC_ALL=C tr -dc "A-Za-z0-9" </dev/urandom | head -c 16'
 
-run_snippet terminal "$RETIRED_RANDOM"
+run_snippet default "$RETIRED_RANDOM"
 [ -z "$ERR" ] \
-  && pass "the retired '</dev/urandom | head' shape is silent on a terminal" \
-  || fail "fixture: the retired shape already complains with default SIGPIPE" "$ERR"
+  && pass "the retired '</dev/urandom | head' shape is silent with SIGPIPE at its default" \
+  || fail "fixture: the retired shape already complains with SIGPIPE at its default" "$ERR"
 
 run_snippet runner "$RETIRED_RANDOM"
 case "$ERR" in
@@ -92,9 +173,9 @@ esac
 RETIRED_ASSIGNMENT='set -euo pipefail
 x=$(LC_ALL=C tr -dc "A-Za-z0-9" </dev/urandom | head -c 16)
 printf %s "$x"'
-run_snippet terminal "$RETIRED_ASSIGNMENT"
+run_snippet default "$RETIRED_ASSIGNMENT"
 [ "$STATUS" -ne 0 ] \
-  && pass "as a bare assignment the retired shape aborts even on a terminal (exit $STATUS)" \
+  && pass "as a bare assignment the retired shape aborts even with SIGPIPE at its default (exit $STATUS)" \
   || fail "fixture: the retired assignment shape exited 0"
 run_snippet runner "$RETIRED_ASSIGNMENT"
 [ "$STATUS" -ne 0 ] \
@@ -109,7 +190,7 @@ GENERATOR="$(sed -n '/^rand_alnum()/,/^}$/p' "$ROOT/scripts/ci/run-secretlint.sh
   && pass "rand_alnum() is where this suite expects it" \
   || fail "rand_alnum() was not found in scripts/ci/run-secretlint.sh"
 
-for disposition in terminal runner; do
+for disposition in default runner; do
   run_snippet "$disposition" "set -euo pipefail
 $GENERATOR
 canary=\$(rand_alnum 40)
@@ -180,7 +261,7 @@ $env_prefix
 printf %s \"\$(resolve_node_lts_major)\""
 }
 
-for disposition in terminal runner; do
+for disposition in default runner; do
   resolve_with_feed "$disposition" "$FEED"
   [ "$OUT" = "24" ] \
     && pass "resolve_node_lts_major answers 24 over the fixture feed ($disposition)" \
