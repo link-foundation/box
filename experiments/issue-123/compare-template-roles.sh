@@ -27,6 +27,15 @@ MODE="${1:-scripts}"
 
 NAMES=(box js python rust php csharp go java)
 
+# A private directory, not /tmp directly: the first draft wrote /tmp/roles-<name>.txt
+# and then read them back with `cat /tmp/roles-*.txt`, which also matched
+# /tmp/roles-all.txt from the same run and anything else a previous run or another
+# process had left under that glob - the workflow matrix came out with the script
+# matrix's summary lines in it as roles. Measuring one thing with a glob that can
+# match another is the same defect this issue is about.
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+
 # Normalise one path to a role, or print nothing when the path is not one.
 role_of() {
   local path="$1" base
@@ -69,10 +78,10 @@ roles_for() {
 }
 
 for name in "${NAMES[@]}"; do
-  roles_for "$name" >"/tmp/roles-${name}.txt"
+  roles_for "$name" >"$WORK/roles-${name}.txt"
 done
 
-cat /tmp/roles-*.txt | sort -u >/tmp/roles-all.txt
+cat "$WORK"/roles-*.txt | sort -u >"$WORK/all.txt"
 
 printf 'role'
 for name in "${NAMES[@]}"; do printf '\t%s' "$name"; done
@@ -81,12 +90,12 @@ printf '\n'
 while IFS= read -r role; do
   printf '%s' "$role"
   for name in "${NAMES[@]}"; do
-    if grep -qxF "$role" "/tmp/roles-${name}.txt"; then printf '\tx'; else printf '\t.'; fi
+    if grep -qxF "$role" "$WORK/roles-${name}.txt"; then printf '\tx'; else printf '\t.'; fi
   done
   printf '\n'
-done </tmp/roles-all.txt
+done <"$WORK/all.txt"
 
-printf '\n# %s role(s) total\n' "$(wc -l </tmp/roles-all.txt)"
+printf '\n# %s role(s) total\n' "$(wc -l <"$WORK/all.txt")"
 for name in "${NAMES[@]}"; do
-  printf '# %-7s %3s role(s)\n' "$name" "$(wc -l <"/tmp/roles-${name}.txt")"
+  printf '# %-7s %3s role(s)\n' "$name" "$(wc -l <"$WORK/roles-${name}.txt")"
 done
