@@ -61,7 +61,8 @@ the `measure-disk-space` job would not have been ended by any of them.
 ## Files
 
 - `apt-retry-defaults-full.txt` — `APT_MEASURE_TIMEOUTS=1 bash
-  experiments/test-issue123-apt-retry-defaults.sh`, 13 assertions, all passing.
+  experiments/test-issue123-apt-retry-defaults.sh`, 13 assertions, all passing
+  (10 of them run by default; the three timeout legs need the flag).
   The suite runs the retry legs (~10s) in `run-experiments.sh` and keeps the
   timeout legs (~130s) behind `APT_MEASURE_TIMEOUTS=1`; it fails if a future apt
   changes either default, which is exactly when the flags would stop being
@@ -73,3 +74,29 @@ connection was then *refused*, so apt gave up in 0s and `0 < 1` satisfied both
 assertions. The server is held open by a fifo now and each assertion carries an
 absolute floor (`Timeout=5` must spend at least 8s), so a fixture that stops
 ignoring apt fails the suite instead of passing it.
+
+The *retry* legs had the second half of the same problem, and it took a machine
+under load to show it: `Acquire::Retries=5` intermittently counted 11
+connections where 12 was the arithmetic. Two defects, both in the measurement
+rather than in apt:
+
+- **The count was read before the data was in.** A fixed `sleep 0.5` after apt
+  exits is a guess about scheduling, not a wait. It is a quiescence loop now —
+  poll until the connection total stops moving for five consecutive polls, up to
+  200 — so the measurement ends when the fixture is finished rather than when a
+  timer says it probably is.
+- **The fixture failed apt in more than one way.** The server reset each
+  connection the moment it was accepted, which races apt's own write: sometimes
+  apt saw the reset before sending its request and classified the failure
+  differently, and made fewer attempts. Under four busy loops the same leg
+  reported 12, 8 and 4 connections on three consecutive runs. The server now
+  reads the request first and only then resets, one thread per connection, so
+  every attempt fails at the same point and the count is a property of apt's
+  retry policy rather than of the scheduler.
+
+Verified by running the suite six times with four CPU busy loops competing for
+the machine: `Passed: 10  Failed: 0` on all six.
+
+Both are the issue's own defect class turned on the instrument — a verdict
+reported about data that had not arrived — which is why they were fixed at the
+root rather than by widening the expected range.

@@ -165,16 +165,61 @@ echo "=== 4. no tracked script has the retired shape ==="
 
 # `brew link` whose status is thrown away by a trailing filter. Written as two
 # conditions so it catches the `timeout ... brew link` site too.
+BREW_RETIRED_SHAPE='brew link[^|]*\|[^|]*grep'
+
+# Files that hold the retired shape on purpose, each with the reason. This suite
+# is one of them: section 1 drives the retired shape as a fixture and the header
+# quotes it, so a sweep that reads its own fixture as a finding would be the same
+# false positive this issue is about - a check reporting on text rather than on
+# the thing the text describes. An entry that names nothing is an exemption that
+# silently stopped applying, so every path is required to exist.
+declare -A BREW_FIXTURES=(
+  ['experiments/test-issue123-brew-link-status.sh']="this suite: section 1 runs the retired shape as a fixture"
+)
+for fixture in "${!BREW_FIXTURES[@]}"; do
+  [ -f "$ROOT/$fixture" ] \
+    && pass "exemption names a real file: $fixture" \
+    || fail "exemption names '$fixture', which does not exist; it stopped applying"
+done
+
 offenders=""
 while read -r f; do
   [ -f "$ROOT/$f" ] || continue
-  hits="$(command grep -nE 'brew link[^|]*\|[^|]*grep' "$ROOT/$f" 2>/dev/null)"
+  [ -n "${BREW_FIXTURES[$f]:-}" ] && continue
+  hits="$(command grep -nE "$BREW_RETIRED_SHAPE" "$ROOT/$f" 2>/dev/null)"
   [ -n "$hits" ] && offenders="$offenders$f: $hits"$'\n'
 done < <(git -C "$ROOT" ls-files -- ubuntu scripts .github experiments)
 
 [ -z "$offenders" ] \
-  && pass "no tracked script pipes brew link into a filter" \
+  && pass "no tracked script outside the fixtures pipes brew link into a filter" \
   || fail "a brew link still ends in a filter" "$offenders"
+
+# And the sweep can still find one, so its silence means something. Both retired
+# shapes: the plain pipeline and the `timeout` one.
+cat >"$WORK/planted-brew.sh" <<'PLANT'
+#!/usr/bin/env bash
+brew link --overwrite --force php 2>&1 | grep -v "Warning" || true
+timeout 600 brew link --overwrite --force php 2>&1 | grep -v "Warning" || true
+PLANT
+planted="$(command grep -cE "$BREW_RETIRED_SHAPE" "$WORK/planted-brew.sh")"
+[ "$planted" -eq 2 ] \
+  && pass "the sweep finds both planted offenders, the timeout one included" \
+  || fail "the sweep found $planted offenders in the planted fixture, expected 2"
+
+# And it leaves the shipped shape alone, so the exemption above is the only
+# reason this suite is skipped - not a pattern that matches nothing.
+cat >"$WORK/planted-shipped.sh" <<'PLANT'
+#!/usr/bin/env bash
+set +e
+link_output="$(brew link --overwrite --force php 2>&1)"
+brew_link_status=$?
+set -e
+printf '%s\n' "$link_output" | grep -v '^Warning:'
+PLANT
+kept="$(command grep -cE "$BREW_RETIRED_SHAPE" "$WORK/planted-shipped.sh" || true)"
+[ "$kept" -eq 0 ] \
+  && pass "and the sweep does not flag the shipped shape" \
+  || fail "the sweep flagged the shipped shape $kept time(s)"
 
 # Four sites had it; all four must now capture the status.
 sites=0

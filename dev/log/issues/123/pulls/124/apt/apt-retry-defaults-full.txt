@@ -6,10 +6,10 @@ PASS: Acquire::Retries=3 opens 8 connections (2 index items x 4 attempts)
 PASS: Acquire::Retries=5 opens 12 connections (2 index items x 6 attempts)
 PASS: apt's default retry count is 3: the default opens 8 connections, the same as an explicit Acquire::Retries=3
 PASS: the measurement can tell retries apart: 0 retries opened 2 connections against the default's 8
-  Timeout=5: 11s   Timeout=30: 60s   apt default: 61s
-PASS: the idle fixture is ignoring apt rather than refusing it: Timeout=5 spent 11s (2 items x 5s) before giving up
-PASS: Acquire::http::Timeout is honoured: 5s gave up after 11s, 30s after 60s (2 items x 30s)
-PASS: apt's default idle timeout is 30s: the default gave up after 61s against 60s for an explicit 30
+  Timeout=5: 10s   Timeout=30: 60s   apt default: 60s
+PASS: the idle fixture is ignoring apt rather than refusing it: Timeout=5 spent 10s (2 items x 5s) before giving up
+PASS: Acquire::http::Timeout is honoured: 5s gave up after 10s, 30s after 60s (2 items x 30s)
+PASS: apt's default idle timeout is 30s: the default gave up after 60s against 60s for an explicit 30
 PASS: every apt-get install in all 21 tracked Dockerfiles sits in a RUN that refreshes through apt_update_with_retry
 PASS: the mutation control is reported: the fixture's second RUN (line 5) installs after a bare apt-get update and is named
 PASS: the compliant RUN in the same fixture is not reported

@@ -192,7 +192,7 @@ that cannot answer, which is what they exist to show. Left as is.
 
 ## What keeps it fixed
 
-`experiments/test-issue123-pr-diff-range.sh` — 53 offline assertions, no docker
+`experiments/test-issue123-pr-diff-range.sh` — 62 offline assertions, no docker
 and no network, auto-discovered by `scripts/ci/run-experiments.sh` because of its
 `test-issue123-*.sh` name. Parts 1–4 exercise each gate with the range resolving,
 with it broken, and with the base ref merely missing locally. Part 5 mutates the

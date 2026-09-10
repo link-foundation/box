@@ -107,16 +107,43 @@ srv.listen(64)
 print(srv.getsockname()[1], flush=True)
 
 
-def serve():
+def handle(conn):
     global count
-    while True:
-        conn, _ = srv.accept()
-        with lock:
-            count += 1
-        # SO_LINGER with a zero timeout makes close() send RST rather than FIN,
-        # so apt sees a reset connection instead of a clean end of stream.
+    with lock:
+        count += 1
+    # Read the request before resetting. The first draft reset the connection
+    # the moment it was accepted, which raced apt's own write: depending on
+    # scheduling apt saw the reset either while awaiting the response (a
+    # transient failure, retried) or while still sending the request (which it
+    # need not classify the same way). Under CPU contention that race decided
+    # the measurement - the same leg reported 12, 8 and 4 connections on three
+    # consecutive runs with four busy loops on the CPU. Reading the request
+    # first makes every attempt fail at the same point for the same reason,
+    # which is what a measurement of retry *counts* needs.
+    conn.settimeout(5)
+    try:
+        while True:
+            chunk = conn.recv(4096)
+            if not chunk or chunk.endswith(b"\r\n\r\n") or b"\r\n\r\n" in chunk:
+                break
+    except OSError:
+        pass
+    # SO_LINGER with a zero timeout makes close() send RST rather than FIN,
+    # so apt sees a reset connection instead of a clean end of stream.
+    try:
         conn.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
         conn.close()
+    except OSError:
+        pass
+
+
+def serve():
+    while True:
+        conn, _ = srv.accept()
+        # One thread per connection: reading the request means a connection can
+        # now take time, and the accept loop must not be the thing that
+        # serialises apt's attempts.
+        threading.Thread(target=handle, args=(conn,), daemon=True).start()
 
 
 threading.Thread(target=serve, daemon=True).start()
@@ -152,16 +179,32 @@ apt_update_against_fixture() {
     -o Dir::Cache="$TMP/cache" \
     -o Debug::NoLocking=1 \
     "$@" >/dev/null 2>&1
-  # apt's methods exit after the parent does; without a settle the last
-  # connection can land after the count is read.
-  sleep 0.5
 }
 
+# apt's fetch methods are separate processes and outlive the apt-get that
+# started them, so the last connection of a leg can be accepted after apt-get
+# has already exited. The first draft allowed for that with `sleep 0.5` - a
+# guess, and one that was wrong under load: in a run of the whole experiments
+# directory this suite reported 11 connections for Acquire::Retries=5 where 12
+# had been opened, and passed on three quiet runs afterwards. A measurement that
+# reports a number before the data is in is the defect this issue is about, so
+# this waits for quiescence instead of guessing: keep asking the server until it
+# has had nothing new to report for QUIET_POLLS consecutive polls, and sum what
+# arrives. The counter resets on every read, so an accumulated total is exact
+# whether the stragglers land in the first poll or the last.
+QUIET_POLLS=5 # 0.5s of silence, the old settle expressed as a floor not a cap
+MAX_POLLS=200 # 20s, after which something is wrong with the fixture itself
 connections_since_last_read() {
-  local answer
-  echo x >&4
-  read -r answer <&3
-  printf '%s' "$answer"
+  local answer total=0 quiet=0 polls=0
+  while [ "$quiet" -lt "$QUIET_POLLS" ] && [ "$polls" -lt "$MAX_POLLS" ]; do
+    echo x >&4
+    read -r answer <&3
+    total=$((total + answer))
+    if [ "$answer" -eq 0 ]; then quiet=$((quiet + 1)); else quiet=0; fi
+    polls=$((polls + 1))
+    sleep 0.1
+  done
+  printf '%s' "$total"
 }
 
 connections_since_last_read >/dev/null # drain anything from startup
