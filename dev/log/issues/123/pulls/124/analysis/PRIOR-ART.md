@@ -298,7 +298,7 @@ gate on code-scanning alerts rather than on annotations.
 That absence is the reason this issue is a *census* rather than a gate. There is
 no component to install that would have caught these; there is a body of 804
 lines that had to be read. What can be automated afterwards has been: fifteen
-offline suites, **550 assertions, 0 failures**, each checker exercised in a
+offline suites, **551 assertions, 0 failures**, each checker exercised in a
 passing *and* a failing form, and every sweep pinned to a site count so a new
 occurrence cannot appear unnoticed (`REQUIREMENTS.md` §B10). Measured by running
 all fifteen on this branch:
@@ -318,11 +318,11 @@ all fifteen on this branch:
 | `test-issue123-log-capture-truncation.sh` | 23 |
 | `test-issue123-budget-enforcement.sh` | 20 |
 | `test-issue123-brew-link-status.sh` | 16 |
-| `test-issue123-apt-retry-defaults.sh` | 14 |
+| `test-issue123-apt-retry-defaults.sh` | 15 |
 | `test-issue123-npm-force.sh` | 14 |
-| **total** | **550** |
+| **total** | **551** |
 
-`apt-retry-defaults` reports 14 with its default settings; the three idle-timeout
+`apt-retry-defaults` reports 15 with its default settings; the three idle-timeout
 legs it can also run cost ~130 s and are behind `APT_MEASURE_TIMEOUTS=1`, with
 their recorded output stored in `../apt/`.
 

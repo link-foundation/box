@@ -718,15 +718,27 @@ records what was ruled out in `actions/runner-images` (the `80-retries` file
 writes `APT::Acquire::Retries`, a key apt does not read; the apt-mock wrappers
 add an *outer* loop). So the fix is a measurement plus a diagnostic rather than
 a guess: the suite derives the default from its own connection count, prints
-`apt-config dump Acquire::Retries`, the apt.conf files naming the key,
-`APT_CONFIG`, and whether `apt-get` on `PATH` is a wrapper script, and fails only
-on a default above what the refresh sites pin. Verified in both directions with
-`APT_CONFIG` fixtures: a default of 1 passes as "a strengthening", a default of 5
-fails as "has become a downgrade".
+`apt-config dump Acquire::Retries`, then — because a *name* is not a *value* —
+every dumped key whose name matches `retries` (so the runner's inert
+`APT::Acquire::Retries` is seen for what it is: `repro-apt-retries-key.sh` shows
+it dumping nothing under the key apt reads), every apt.conf line mentioning
+retries with its file and contents, the `apt.conf.d` listing, and `APT_CONFIG`'s
+contents. The first version of this diagnostic printed only the file *names*
+matching the word, and so blamed `80-retries` — a file invisible to the key it
+appears to set — for a 1 it cannot produce; printing values is what closes that
+gap. A new assertion makes the report a check: `apt-config dump` and the
+measurement are two readers of one setting, so if the dump reports a number and
+the measured default disagrees, the suite **fails**, because that is the
+signature of a wrapper deciding retries outside apt (which is what the runner
+images install). The directional verdict fails only on a default above what the
+refresh sites pin. Verified in both directions with `APT_CONFIG` fixtures: a
+default of 1 passes as "a strengthening", a default of 5 fails as "has become a
+downgrade"; and an `apt-config` shim reporting a value the measurement
+contradicts fails the new cross-check.
 
 **Sweep (B10).** The finding has a repository-wide half. If a refresh site can be
 weaker than a bare `apt-get update` on some machine, then every refresh site must
-pass the option rather than inherit a default. Part 4 of the suite sweeps all 135
+pass the option rather than inherit a default. Part 4 of the suite sweeps all 137
 tracked `*.sh`, `*.yml`, `*.yaml` and `Dockerfile` sources for an `apt-get update`
 with no `Acquire::Retries=`, over **logical** lines — all three real refresh sites
 spell the option on a `\`-continuation, and a per-line grep would report every one

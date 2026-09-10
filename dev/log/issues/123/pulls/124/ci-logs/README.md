@@ -74,3 +74,24 @@ behind "a mirror that stopped delivering" (`../apt/README.md`). `102540700828` i
 the status gate excusing that cancellation as a supersede. The `Apply Changesets`
 log is a second copy of the file in `release-34366976358/`, kept under the name
 the annotation analysis refers to.
+
+## `pr-runs/` — the branch's own runs that turned four root causes red
+
+Four of the twenty root causes were not visible in the nine runs above: they
+were latent until a suite this branch wrote ran on the `ubuntu-24.04` runner, or
+until this branch's own release path ran over its own committed evidence. These
+are those runs, one job each, `gh run view --job <id> --log`, gzipped.
+
+| File | Run | Commit | Job | Conclusion | What it is |
+| --- | --- | --- | --- | --- | --- |
+| `34434788500-scripts-regression_78db753b_failure.log.gz` | 34434788500 | `78db753b` | scripts / regression suites | **failure** | RC-14/15/16: the runner measures apt's default at 1 retry (4 connections), a SIGKILL survivor unescalated, and both SIGPIPE legs ignored — none reproducible on any machine here |
+| `34434789000-check-changesets_78db753b_failure.log.gz` | 34434789000 | `78db753b` | Check for Changesets | **failure** | RC-20, first sighting: `Invalid changeset format` on `templates/go/.changeset/add-changeset-workflow.md`, a changeset belonging to another repository |
+| `34435214054-check-changesets_1a756e6_failure.log.gz` | 34435214054 | `1a756e6` | Check for Changesets | **failure** | RC-20, the run quoted in `../analysis/ROOT-CAUSES.md` §RC-20 |
+| `34448597859-scripts-regression_2ba6591_success.log.gz` | 34448597859 | `2ba6591` | scripts / regression suites | **success** | the same suites green after the fixes: `passed: 92, failed: 0`, and the apt suite now *reports* the runner's 1 rather than asserting 3 |
+
+The last row is the end-to-end control: remove the RC-14/15/16 fixes and exactly
+the first row's failures return, and the RC-20 fix turns the changeset gate green
+on the run at `2ba6591` (`Check for Changesets` no longer reads another project's
+file). These live outside `release-34366976358/` because they are not the release
+run the issue lists; they are the evidence that "fix it everywhere" reached the
+code this branch itself added.

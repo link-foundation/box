@@ -143,3 +143,27 @@ written, differing only in that stripping.
 Templates were read at pinned HEADs, quoted in each report: js `c3a6d23b`,
 python `470e1760`, rust `f63a061f`, php `15c327be`, csharp `83efb9e4`, go
 `548a7968`, java `450a10ec`.
+
+## Drafted, not filed: `G-runner-images-inert-retries-key.md`
+
+One more report is written but **not posted**, and the distinction is
+deliberate. `G` is addressed to a *third-party* repository —
+[actions/runner-images](https://github.com/actions/runner-images) — not a
+`link-foundation` template, so filing it is an outward-facing action on a repo
+this project does not own. It reports a certain, separable bug: the runner
+images' `configure-apt.sh` writes `APT::Acquire::Retries "10"` to
+`/etc/apt/apt.conf.d/80-retries`, and apt reads `Acquire::Retries`, not the
+`APT::`-prefixed name, so the file is inert (proven offline by
+`experiments/issue-123/repro-apt-retries-key.sh`, transcript in
+`evidence/repro-apt-retries-key.txt`).
+
+It is held back for two reasons. First, it is outward-facing on a repository we
+do not own, so it waits on a human decision rather than being posted by the
+solver. Second, the inert key is in the *raising* direction and cannot by itself
+explain the thing that motivated the investigation — the runner's measured
+default of **1** retry, not 3 — so the honest report is scoped to the inert key
+alone, and the branch's stance is to gather one more runner failure's diagnostic
+(the apt suite now prints `apt-config dump` and every retry-setting line, and
+fails if the dump and the measured default disagree) before filing anything that
+claims to explain the 1. The draft is complete and ready to post the moment
+either the human decision is made or the next run supplies the missing half.

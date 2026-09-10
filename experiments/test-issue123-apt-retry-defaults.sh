@@ -255,12 +255,45 @@ DEFAULT_CONNECTIONS="$(connections_since_last_read)"
 # force for this leg and for no other, because every other leg overrides it on
 # the command line. Printed with the number so the two are read together.
 apt_retries_environment_report() {
-  local dumped files
+  local dumped keys hits listing
   dumped="$(apt-config dump Acquire::Retries 2>/dev/null | head -1)"
-  files="$(grep -rlsE '^[[:space:]]*(APT::)?Acquire::Retries' /etc/apt/apt.conf /etc/apt/apt.conf.d 2>/dev/null | tr '\n' ' ')"
   echo "  apt-config dump: ${dumped:-Acquire::Retries is unset, so apt used its compiled-in default}"
-  echo "  apt.conf files naming Acquire::Retries: ${files:-none}"
+
+  # Every key whose *name* contains "Retries", not only the one apt reads.
+  # Those are routinely different things, and the difference is the whole
+  # reason this block exists: runner-images' configure-apt.sh writes
+  # `APT::Acquire::Retries "10";` to /etc/apt/apt.conf.d/80-retries, while apt
+  # reads `Acquire::Retries`. So on a GitHub runner that file names the word
+  # without setting the value - it is inert, and it points the wrong way
+  # besides - and the first version of this report, which printed file *names*,
+  # blamed it for a measured default of 1 it cannot produce.
+  keys="$(apt-config dump 2>/dev/null | grep -i 'retries')"
+  echo "  apt-config dump, every key matching Retries:"
+  if [ -n "$keys" ]; then printf '%s\n' "$keys" | sed 's/^/    /'; else echo "    (none)"; fi
+
+  # The contents, not the names. Unanchored and case-insensitive on purpose: a
+  # value can be set in block form
+  #
+  #   Acquire { Retries "1"; };
+  #
+  # which no pattern anchored on `Acquire::Retries` can see, and a report that
+  # cannot see a setting will report the file that does not contain it.
+  echo "  apt.conf lines mentioning retries (file:line:content):"
+  hits="$(grep -rnsi 'retries' /etc/apt/apt.conf /etc/apt/apt.conf.d 2>/dev/null | head -40)"
+  if [ -n "$hits" ]; then printf '%s\n' "$hits" | sed 's/^/    /'; else echo "    (none)"; fi
+
+  # And the whole directory, because the answer may be in a file that never
+  # spells the word - an `#include`, or a key apt maps onto this one - and the
+  # next run should not have to come back for the listing.
+  echo "  /etc/apt/apt.conf.d contents:"
+  listing="$(find /etc/apt/apt.conf.d -mindepth 1 -maxdepth 1 2>/dev/null | sort)"
+  if [ -n "$listing" ]; then printf '%s\n' "$listing" | sed 's|.*/|    |'; else echo "    (empty or unreadable)"; fi
+  echo "  /etc/apt/apt.conf: $([ -f /etc/apt/apt.conf ] && echo present || echo absent)"
   echo "  APT_CONFIG=${APT_CONFIG:-unset}"
+  if [ -n "${APT_CONFIG:-}" ] && [ -f "$APT_CONFIG" ]; then
+    echo "  APT_CONFIG contents:"
+    sed 's/^/    /' "$APT_CONFIG" | head -40
+  fi
   if [ -n "$APT_GET_PATH" ] && [ "$(head -c2 "$APT_GET_PATH" 2>/dev/null)" = '#!' ]; then
     echo "  $APT_GET_PATH is a script, not apt's own binary: this environment wraps apt-get"
     echo "  (the GitHub runner images do - runner-images images/ubuntu/scripts/build/configure-apt-mock.sh),"
@@ -283,6 +316,28 @@ else
 fi
 
 apt_retries_environment_report
+
+# The report above is a check as well as a print-out. `apt-config dump` and the
+# measurement are two readers of the same setting arriving by different roads:
+# the dump is apt's own parse of /etc/apt, the measurement is what the apt-get
+# on PATH did to a server. When both speak and they agree, a file under /etc/apt
+# explains the behaviour and the lines above name it. When they disagree,
+# something sits between apt-get and the network - the runner images wrap
+# apt-get in a retrying shell loop (configure-apt-mock.sh) - and that is a
+# different diagnosis with a different fix. Distinguishing the two is precisely
+# what the earlier version of this report could not do: it printed the *names*
+# of files matching the word, and 80-retries matches the word while setting a
+# key (`APT::Acquire::Retries`) that apt does not read.
+DUMPED_RETRIES="$(apt-config dump Acquire::Retries 2>/dev/null | head -1 | sed -n 's/.*"\([0-9][0-9]*\)".*/\1/p')"
+if [ -n "$DUMPED_RETRIES" ]; then
+  if [ "$DUMPED_RETRIES" = "$DEFAULT_RETRIES" ]; then
+    pass "  and the configuration explains the measurement: the dump says $DUMPED_RETRIES and the default leg measured $DEFAULT_RETRIES, so this is set by a file under /etc/apt - printed above, contents and all"
+  else
+    fail "apt-config dump says Acquire::Retries is $DUMPED_RETRIES but the default leg measured $DEFAULT_RETRIES retries: the configuration does not explain the behaviour, so something between apt-get and the network is deciding how often to retry (apt-get on PATH is $APT_GET_PATH)"
+  fi
+else
+  pass "  and nothing apt reads sets Acquire::Retries, so the measured $DEFAULT_RETRIES is the compiled-in default of $APT_VERSION"
+fi
 
 # The verdict, stated as the thing that can actually hurt.
 #

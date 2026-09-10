@@ -62,10 +62,26 @@ What does *not* explain it, checked in `actions/runner-images`:
   rather than divide them.
 
 So the cause is unidentified, which is why the suite now *reports* rather than
-guesses: it prints `apt-config dump Acquire::Retries`, the apt.conf files that
-name the key, `APT_CONFIG`, and whether `apt-get` on `PATH` is a script rather
-than apt's own binary. The next runner failure — if there is one — arrives with
-its own explanation attached.
+guesses. The first version of that report printed the apt.conf files whose text
+*names* the key, and on the runner that is exactly `/etc/apt/apt.conf.d/80-retries`
+— the inert `APT::Acquire::Retries` file — so it named a file that cannot be the
+cause and stopped there. A name is not a value: `repro-apt-retries-key.sh`
+(in `experiments/issue-123/`, evidence in
+`../upstream/evidence/repro-apt-retries-key.txt`) shows `APT::Acquire::Retries`
+dumping *nothing* under `Acquire::Retries` while `Acquire::Retries` dumps `10`,
+so the file the first report blamed is invisible to the very key it appears to
+set. The report now prints the *values*: `apt-config dump Acquire::Retries`, then
+every dumped key matching `retries` (so an `APT::`-prefixed inert one is seen for
+what it is), then every apt.conf line mentioning retries with its file and line,
+the full `/etc/apt/apt.conf.d` listing, and the contents of `APT_CONFIG` if set.
+A new assertion closes the loop rather than leaving it to a human: the dump and
+the measurement are two readers of the same setting, so if `apt-config dump`
+reports a number and the measured default disagrees with it, the suite **fails**
+— that is the signature of something between `apt-get` and the network (the
+runner images wrap `apt-get` in a retrying shell loop, `configure-apt-mock.sh`),
+a different diagnosis with a different fix. The next runner failure — if there is
+one — arrives with the setting that produced it, not just the name of a file that
+did not.
 
 The measurement is also the reason `experiments/issue-123/measure-apt-retry-timing.sh`
 exists: it timestamps every connection, so a leg's retries can be seen spread

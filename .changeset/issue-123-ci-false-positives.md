@@ -158,11 +158,12 @@ the full role matrix of this repository's CI tree against all seven
 file, with 91 gaps dispositioned individually. Six defect classes found in that
 comparison were filed upstream as **19 issues and 1 comment** across six
 template repositories, each with a reproduction that runs offline, a workaround
-and a fix in diff form. Fifteen new offline suites, **550 assertions, 0
+and a fix in diff form. Fifteen new offline suites, **551 assertions, 0
 failures**, each checker exercised in a passing *and* a failing form and every
 sweep pinned to a site count. `PR_DIFF_RANGE_VERBOSE=1` (or `BOX_VERBOSE=1`)
 traces how a pull request's diff range was computed — default off, on stderr —
-and the apt suite prints its measured default, `apt-config dump`, the apt.conf
-files naming the key and whether `apt-get` is a wrapper, so the one question the
-evidence cannot answer today arrives explained on the next run.
+and the apt suite prints its measured default, `apt-config dump`, every apt.conf
+line setting retries with its contents and whether `apt-get` is a wrapper, and
+fails if the dumped value and the measured default disagree, so the one question
+the evidence cannot answer today arrives explained on the next run.
 `docs/case-studies/issue-123/CASE-STUDY.md` has the whole analysis.

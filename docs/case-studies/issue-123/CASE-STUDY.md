@@ -36,7 +36,7 @@ verdict about data it never obtained.**
 | RC-11 | Three release gates read a failed `git diff` as "nothing changed" | found by taking upstream report **F** to our own tree | `git diff --name-only "origin/$BASE...HEAD"` exits **128 and prints nothing** when the range does not resolve — no `fetch-depth: 0`, a renamed base, a failed fetch, no merge base — and all three discarded the status. Two `gh` reads conflated "empty" with "failed". Reproduced: two of the three gates report the passing verdict. | `scripts/release/pr-diff-range.sh` — one place that asks what a pull request changed, three-dot, restores a base ref missing only locally, otherwise names the cause on **stderr** and returns 1. `45abc52` |
 | RC-12 | The changeset gate demanded a changeset for the wrong set of paths | surfaced by extracting RC-11's inline step | `VERSION`, `.github/actions/` and `.githooks/` were absent from the regex, and the step echoed pull-request-controlled paths with command processing live — RC-3 inside our own workflow, two files from a script already doing it correctly. | `check-changeset-required.sh`, with the widened path set and the printer bracketed. `45abc52` |
 | RC-13 | This branch's own template comparison came out with its summary lines in it, as roles | found by reading the matrix it produced | `compare-template-roles.sh` wrote `/tmp/roles-<name>.txt` and read them back with `cat /tmp/roles-*.txt`, which also matched `/tmp/roles-all.txt` from the same run. | A private `mktemp -d` with a trap, and a comment at the site. `320491d` |
-| RC-14 | A suite asserted apt's default retry count **equals** 3, and failed the branch on a runner where it is 1 | this branch's own `scripts / regression suites` job | `test-issue123-apt-retry-defaults.sh` pinned the spelling of an environment's constant. apt 2.8.3 defaults to 3 retries here and in `ubuntu:24.04` and to **1** on `ubuntu-24.04`, on the same Ubuntu 24.04.4; nothing in this repository depends on the number. | The invariant is a direction, not an equality: `-o Acquire::Retries=3` must never be a *downgrade*. The suite derives the default from its own connection count, prints `apt-config dump`, the apt.conf files naming the key, `APT_CONFIG` and whether `apt-get` is a wrapper, and sweeps all 135 tracked sources for a refresh that passes no retry option. |
+| RC-14 | A suite asserted apt's default retry count **equals** 3, and failed the branch on a runner where it is 1 | this branch's own `scripts / regression suites` job | `test-issue123-apt-retry-defaults.sh` pinned the spelling of an environment's constant. apt 2.8.3 defaults to 3 retries here and in `ubuntu:24.04` and to **1** on `ubuntu-24.04`, on the same Ubuntu 24.04.4; nothing in this repository depends on the number. | The invariant is a direction, not an equality: `-o Acquire::Retries=3` must never be a *downgrade*. The suite derives the default from its own connection count, prints `apt-config dump`, the apt.conf files naming the key, `APT_CONFIG` and whether `apt-get` is a wrapper, and sweeps all 137 tracked sources for a refresh that passes no retry option. |
 | RC-15 | A suite's "SIGPIPE at its default" leg was whatever the machine was doing, and on a runner that is *ignored* | this branch's own `scripts / regression suites` job | `test-issue123-sigpipe-writers.sh` established one leg with `trap '' PIPE` and left the other to inherit. A step's shell starts with SIGPIPE `SIG_IGN` (actions/runner#2684 — the suite's own subject), an ignored disposition survives `exec`, and bash cannot reset one. Both legs were the same leg. | The default leg enters through `perl -e '$SIG{PIPE} = "DEFAULT"; exec …'` (`python3` where perl is absent), and a new part reads each leg's `SigIgn` mask out of `/proc/self/status` and asserts bit 13 — so the premise fails loudly instead of the conclusion failing mysteriously. |
 | RC-16 | A fake `ps` fabricated an unkillable survivor that died with the process group it was standing in for | this branch's own `scripts / regression suites` job | `test-issue123-budget-enforcement.sh` faked a survivor for every process group **currently in the table**, so the lie was conditional on the truth: once SIGTERM took the real group, `group_members` returned empty and the wrapper correctly reported no survivors. Three assertions blamed the shipped wrapper for a race in the fixture. | The fake records every group id it has ever seen in a per-leg state file and re-reports all of them: an unkillable process is one that does not go away, and a stand-in for it must not either. |
 | RC-17 | A linter reported a clean tree over 201 shell scripts it never opened | one red assertion in a full run of this branch's own experiment suites | `collect_files()` ended in `\| sort -u \|\| true`, so **any** failure of `git ls-files` — a busy index, an unreadable object, no `git` — became an empty list, and the gate read that as a fact about the repository. Measured against the shipped script with a `git` exiting 128: `==> No shell scripts to check`, status 0. Five of the eight gates that discover their own inputs ended their listing in that `|| true`, and the other three built theirs inside a process substitution, where a failure is equally invisible. Five of the eight already refused an *empty* set — which answers the second failure mode and says nothing about the first. | Every discovering gate separates "git could not answer" from "git answered, and there is nothing", and errors on each by name. `test-issue123-discovery-fail-closed.sh` drives all eight through both failures, and the hook driver that runs them, 94 assertions. |
@@ -151,7 +151,7 @@ shape of RC-2, RC-5 and RC-12. It now derives the default from the measurement,
 prints `apt-config dump`, the apt.conf files naming the key, `APT_CONFIG` and
 whether `apt-get` is a wrapper script (the runner images replace it with one),
 and fails only on a default *above* what the refresh sites pin. A second half
-was added at the same time: a sweep of all 135 tracked shell, workflow and
+was added at the same time: a sweep of all 137 tracked shell, workflow and
 Dockerfile sources for an `apt-get update` that inherits the environment's
 default instead of passing its own — over logical lines, because every real
 refresh site spells the option on a `\`-continuation and a per-line grep would
@@ -223,8 +223,14 @@ the key in it is `APT::Acquire::Retries`, which apt does not read; its
 and `configure-apt-mock.sh` wraps `apt-get` in an *outer* 30-attempt loop, which
 would raise the count, not lower it. So rather than assert a guess, the suite
 prints what it would take to close the question on the next run — the measured
-default, `apt-config dump Acquire::Retries`, every apt.conf file naming the key,
-`APT_CONFIG`, and whether the `apt-get` on `PATH` is a wrapper script — and
+default, `apt-config dump Acquire::Retries`, every dumped key whose *name*
+matches `retries` (the runner's `80-retries` sets `APT::Acquire::Retries`, which
+apt does not read — a name without a value, and the first version of this report
+blamed exactly that file for the 1 it cannot produce), every apt.conf line
+mentioning retries with its file and contents, the `apt.conf.d` listing, and
+`APT_CONFIG`'s contents — plus an assertion that the dumped value and the
+measured default agree, so a wrapper deciding retries outside apt fails the run
+instead of hiding behind it — and
 `experiments/issue-123/measure-apt-retry-timing.sh` prints the arrival time of
 every connection of a leg, so a retry can be distinguished from a redirect
 rather than inferred from a total. This one is printed unconditionally: it is
@@ -280,7 +286,7 @@ tree`) is n/a with the measurement attached.
 
 ## 7. The suites, and the five times they failed on themselves
 
-Fifteen offline suites, **550 assertions, 0 failures**, each checker exercised
+Fifteen offline suites, **551 assertions, 0 failures**, each checker exercised
 in a passing *and* a failing form:
 
 | suite | assertions | | suite | assertions |
@@ -290,11 +296,11 @@ in a passing *and* a failing form:
 | `pr-diff-range` | 70 | | `log-capture-truncation` | 23 |
 | `zizmor-token` | 36 | | `budget-enforcement` | 20 |
 | `overrun-not-supersede` | 35 | | `brew-link-status` | 16 |
-| `sigpipe-writers` | 33 | | `apt-retry-defaults` | 14 |
+| `sigpipe-writers` | 33 | | `apt-retry-defaults` | 15 |
 | `artifact-upload-fail-closed` | 29 | | `npm-force` | 14 |
 | `log-command-injection` | 29 | | | |
 
-(`apt-retry-defaults` reports 14 by default; three further legs measuring idle
+(`apt-retry-defaults` reports 15 by default; three further legs measuring idle
 timeouts cost ~130 s and sit behind `APT_MEASURE_TIMEOUTS=1`, with their recorded
 output in `apt/`.)
 
