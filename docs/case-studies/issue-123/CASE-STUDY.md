@@ -1,4 +1,4 @@
-# Case Study: Issue #123 — Eight green runs, and nineteen checks that did not know what they were reporting
+# Case Study: Issue #123 — Eight green runs, and twenty checks that did not know what they were reporting
 
 ## Executive Summary
 
@@ -14,7 +14,7 @@ were false. Nineteen root causes came out of the census, out of sweeping for
 the siblings of each one, out of the first CI run of the finished branch — which
 found the same defect in the tests written to measure the others — and out of
 asking the census question of the branch's own gates and release path;
-**six of the nineteen were found in the eight green runs** (RC-3, RC-5,
+**six of the twenty were found in the eight green runs** (RC-3, RC-5,
 RC-6, RC-7, RC-8, RC-10). A red run tells you where to look. A green run does
 not, which is why this issue is a census and not a gate.
 
@@ -42,8 +42,9 @@ verdict about data it never obtained.**
 | RC-17 | A linter reported a clean tree over 201 shell scripts it never opened | one red assertion in a full run of this branch's own experiment suites | `collect_files()` ended in `\| sort -u \|\| true`, so **any** failure of `git ls-files` — a busy index, an unreadable object, no `git` — became an empty list, and the gate read that as a fact about the repository. Measured against the shipped script with a `git` exiting 128: `==> No shell scripts to check`, status 0. Five of the eight gates that discover their own inputs ended their listing in that `|| true`, and the other three built theirs inside a process substitution, where a failure is equally invisible. Five of the eight already refused an *empty* set — which answers the second failure mode and says nothing about the first. | Every discovering gate separates "git could not answer" from "git answered, and there is nothing", and errors on each by name. `test-issue123-discovery-fail-closed.sh` drives all eight through both failures, and the hook driver that runs them, 94 assertions. |
 | RC-18 | Eighteen release steps each re-derived the version being published, by reading a file | asking the census question of the release path instead of a linter | `VERSION=$(tr -d '[:space:]' < VERSION)`, three times in each of the six release workflows, sixteen of them behind `git pull origin main \|\| true`. An empty file is caught by nothing: `[] status=0`. In a build job it becomes the tag `…box-js:-amd64`; in the two bump jobs it becomes `$((MAJOR + 1))` over an empty string, which publishes **1.0.0** — below every version this repository has released. | One reader. `detect-changes` already published `version` and every call site already passed `changes:`, so `fromJSON(inputs.changes)['version']` was there all along; `scripts/release/release-version.sh` prefers it, cross-checks the file, refuses an empty or malformed value from either, and warns when the two disagree. |
 | RC-19 | An unparseable workflow passed all four gates whose entire input is workflow files, each printing a confident verdict about it | a break this branch itself committed, caught by four experiment suites and by none of the eleven gates the hook runs | Three replaced steps left an orphan `echo` stranded, and `release-full.yml` stopped being YAML (`Psych::SyntaxError … line 175 column 33`). The four gates read workflows line by line **on purpose** — they ask about ordering and indentation a parsed tree discards — and a line-oriented reader cannot tell a file it disagrees with from a file no parser accepts. actionlint does catch it, and is pinned as `docker://`, which a pre-commit hook cannot run. | `check-workflow-yaml.sh` parses every tracked workflow and composite action with ruby's `psych` — the only offline parser present here — first in the hook and first in `workflows.yml`. The floor, not the ceiling: an orphan line with no colon is a legal plain-scalar continuation, and that limit is stated at the site and asserted in the suite. |
+| RC-20 | A gate failed the whole release over a changeset belonging to another repository | this branch's own release run, 34435214054 | `validate-changeset.sh` selected its subject with `grep "^A.*${CHANGESET_DIR}/.*\.md$"` — no anchor, so `.changeset/` matched at any depth — while `apply-changesets.sh` and `check-changesets.sh` both read exactly `find .changeset -maxdepth 1`. The pinned template evidence this issue asks for carries six other projects' `.changeset/` directories, written in the changesets npm format, and the gate declared one of them an `Invalid changeset format`: true about the file, false about this repository. | The pattern is anchored at the repository root at the consumer's depth, the status/path split is `awk -F'\t'`, and the loop reads lines rather than words. Anchoring is the general fix, not an exclusion of `dev/log/` — and every other discovering gate was re-measured against the same evidence tree: 1355 inputs across ten gates, 0 of them under `dev/log/`. |
 
-Two of the nineteen are the shape inverted rather than repeated: RC-3 is text
+Two of the twenty are the shape inverted rather than repeated: RC-3 is text
 that was **not** a verdict being read as one, and RC-4 is a record that existed
 and was then erased. The other seventeen are all the same defect — a verdict
 about data the checker never had. Four of those seventeen — RC-13 through RC-16
@@ -51,7 +52,9 @@ about data the checker never had. Four of those seventeen — RC-13 through RC-1
 three arrived later still, from three directions: one red assertion in a full
 experiment run (RC-17), the census question asked of the release path rather
 than of a linter (RC-18), and a break this branch itself committed, which four
-workflow-reading gates each passed while describing it (RC-19).
+workflow-reading gates each passed while describing it (RC-19). RC-20 came from
+the branch's own release run, and is the same question asked one step further
+out: not "did the check read its input?" but "was that input its subject?".
 
 ---
 
@@ -196,7 +199,7 @@ the strict direction, and the production query is itself an assertion.
 ## 4. The verbose mode, default off
 
 The task asks for debug output "if there is not enough data to find the actual
-root cause… keep the default state switched off". Seventeen of the nineteen
+root cause… keep the default state switched off". Seventeen of the twenty
 root causes were found in the evidence as collected. Two questions were not
 answerable from what the logs held, and each got output rather than a guess.
 
@@ -391,14 +394,14 @@ a count and a count is the wrong instrument. **Seven annotations, not "all
 warnings":** the annotation API sees only what a tool emitted as a `##[…]`
 command or what the runner itself failed, so the requirement is discharged
 against the logs, not the endpoint. **And a green run is the interesting case:**
-eight of nine were green, and six of the nineteen root causes are in them.
+eight of nine were green, and six of the twenty root causes are in them.
 
 ---
 
 ## 9. Existing components, and what was written instead
 
 Nothing here was written before looking for something that already did it.
-**Three of the nineteen fixes are an existing component**; the rest are not, and
+**Three of the twenty fixes are an existing component**; the rest are not, and
 `analysis/PRIOR-ART.md` says why for each.
 
 | Need | Existing component | Verdict |

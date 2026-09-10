@@ -5,7 +5,7 @@ bump: minor
 Make every CI/CD check answer from the data it actually has (issue #123). The
 nine runs on `main` at `1d9fb3e` carry **804** lines matching `warn` or `error`
 and exactly **7** annotations; three of the seven said something untrue.
-**Eight of the nine runs were green**, and six of the nineteen root causes are
+**Eight of the nine runs were green**, and six of the twenty root causes are
 in those eight. One sentence covers all of them: a check that reported a verdict
 about data it never obtained.
 
@@ -105,6 +105,18 @@ contents — each reads YAML with a regex or a `grep`, so a file that is not YAM
 at all is simply one they extract nothing from. `scripts/ci/check-workflow-yaml.sh`
 parses every workflow with a real parser before the others run.
 
+One step further out is the same question about a gate's *subject* rather than
+its input: `validate-changeset.sh` matched `.changeset/` at any depth, so this
+branch's own release run failed with `Invalid changeset format` over
+`dev/log/…/templates/go/.changeset/add-changeset-workflow.md` — a changeset
+belonging to another repository, pinned here as the evidence the issue asks for,
+written in the changesets format rather than this repository's `bump:` one. True
+about the file, false about this repository: `apply-changesets.sh` reads
+`find .changeset -maxdepth 1` and would never have applied it. The pattern is
+anchored at the root now, at the consumer's depth, and every gate that discovers
+its own inputs was re-measured against an evidence tree that holds seven other
+projects' source — 1355 inputs across ten gates, none of them under `dev/log/`.
+
 ### The shell a runner hands you is not the shell you tested in
 
 `tr: write error: Broken pipe` and `grep: write error: Broken pipe` on two
@@ -121,7 +133,7 @@ with no `~/.profile` — the file that sources `~/.bashrc` for a login shell —
 
 ### Six defects of this issue's own class, in the instruments built to measure it
 
-Three of the nineteen root causes are in code this branch wrote. A sweep matched
+Three of the twenty root causes are in code this branch wrote. A sweep matched
 its own fixture text; a measurement was read before the data was in; a
 comparison read `/tmp/roles-*.txt`, a glob that matched its own other output.
 Three more were found only by the GitHub runner, on suites green on every

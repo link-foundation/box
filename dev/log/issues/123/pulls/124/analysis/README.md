@@ -26,7 +26,7 @@ driver, whose index read had the same shape); the rest are dispositioned one by 
 
 ## What the analysis concluded, in four sentences
 
-**Eight of the nine runs were green**, and six of the nineteen root causes live
+**Eight of the nine runs were green**, and six of the twenty root causes live
 in those eight — a green run is where this class of defect hides, because
 nothing about it is red. The one cancellation was a real one-hour overrun, and
 the status gate excused it as a supersede because the displacing push came from
@@ -36,9 +36,9 @@ was not true** (`../annotations/README.md`). And no component exists to install
 that would have caught any of it — warnings do not affect a conclusion and the
 feature request is still open — so the answer is a census plus fifteen offline
 suites, **541 assertions, 0 failures**, each with a mutation control
-(`PRIOR-ART.md` §"The general question behind all nineteen").
+(`PRIOR-ART.md` §"The general question behind all twenty").
 
-## The shape all nineteen share
+## The shape all twenty share
 
 A check that reports a verdict about data it never obtained. `git diff` exiting
 128 and the status discarded; `if-no-files-found: warn`; zizmor answering "no
@@ -89,3 +89,15 @@ its contents. They read line by line on purpose, so none of them *can* ask the
 question; the floor they all assume was never established anywhere. It is now,
 by `check-workflow-yaml.sh`, and its limits are written next to it rather than
 implied.
+
+RC-20 is the last one, and it came from the branch's own release run going red:
+the changeset gate matched `.changeset/` at any depth, so it validated — and
+failed the release over — a changeset belonging to
+`go-ai-driven-development-pipeline-template`, one of the seven template
+repositories this pull request pins as evidence because the issue asks for the
+comparison. The verdict was true about the file and false about this repository:
+`apply-changesets.sh` reads `find .changeset -maxdepth 1` and would never have
+applied it. The pattern is anchored at the root now, and every other gate that
+discovers its own inputs was re-measured against the same evidence tree — 1355
+inputs across ten gates, none of them under `dev/log/` — so "only this one" is a
+measurement rather than an assumption.

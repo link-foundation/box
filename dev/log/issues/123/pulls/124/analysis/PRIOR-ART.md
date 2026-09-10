@@ -2,7 +2,7 @@
 
 The task asks to "check online for known existing components/libraries that
 solve a similar problem or can help". This is that check, per root cause, with
-the source that settles it. **Four of the nineteen fixes are an existing
+the source that settles it. **Four of the twenty fixes are an existing
 component; the rest are not, and each row says why.**
 
 Where a claim is about a tool's documented behaviour, the citation is the
@@ -265,7 +265,28 @@ Two alternatives declined:
   Rewriting them against a tree would lose the questions they exist to ask, and
   four parsers is three more than the floor needs.
 
-## The general question behind all nineteen
+### RC-20
+
+[changesets](https://github.com/changesets/changesets) is the component this
+gate is named after, and it is the reason the defect existed rather than a fix
+for it. The template repositories pinned here as evidence use real changesets,
+whose format is `'package-name': minor`; this repository uses its own `bump:`
+frontmatter and its own 40-line applier, because there is no `package.json` at
+this root for changesets to version. Adopting the real tool would not have
+helped: `changeset status` reads `.changeset/` relative to the project root and
+would equally have had nothing to say about a copy of another project's
+changeset committed under `dev/log/`.
+
+The fix is not a library but an agreement: a gate's subject is exactly what its
+consumer consumes. `apply-changesets.sh` and `check-changesets.sh` both read
+`find .changeset -maxdepth 1 -name '*.md' ! -name README.md`, so the validator's
+pattern is now that same set expressed as a regex, anchored at the repository
+root. The generalisation was worth more than the fix: every gate in `scripts/ci`
+that discovers its own inputs was re-measured against this tree, which now
+contains seven other repositories' source — 1355 inputs across ten gates, none
+under `dev/log/`.
+
+## The general question behind all twenty
 
 *Is there something that fails a run when it carries warning annotations?*
 Searched, and no: warnings do not affect a job's conclusion, the

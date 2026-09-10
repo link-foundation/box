@@ -31,7 +31,7 @@ and a count is the wrong instrument:
   no API — which is why A1 is discharged against the *logs* (804 matching lines)
   and not against the annotation endpoint.
 * **A green run is the interesting case.** Eight of the nine were green. Six of
-  the nineteen root causes on this branch were found in those eight.
+  the twenty root causes on this branch were found in those eight.
 
 ## B. From the task message
 
@@ -71,6 +71,7 @@ make it fail, or its silence means nothing.
 | `git ls-files … \|\| true` — a git that could not answer read as a clean tree | 8 discovering gates (5 fixed, 3 confirmed) + the hook driver that runs them | `test-issue123-discovery-fail-closed.sh` part 1 requires every `scripts/ci` script matching `git +ls-files` to be either driven by the suite's two failure fixtures or exempt **in writing**, with the exemption checked against the tree so it cannot go stale |
 | a release step re-deriving the version it publishes from a file | 18 reads across 6 workflows, 16 of them preceded by `git pull origin main \|\| true` | `test-issue123-release-version.sh` sweeps for both lines with comments excluded in *both* directions, and checks the `changes:` map at each of the five call sites rather than counting five of them anywhere in the file |
 | a workflow no parser accepts, passed by every gate that reads workflows | 1 file, 3 orphan lines, all 15 replacement sites re-read | `test-issue123-workflow-yaml.sh` — and the gate itself, which is the floor the other four assume; part 2 puts the same broken file back through two of them so the reason it exists is a measurement rather than a claim |
+| a gate whose input pattern had no anchor, so another project's file became its subject | 1 unanchored gate; all 10 discovering gates re-measured against the evidence tree, 1355 inputs, 0 under `dev/log/` | `test-issue123-pr-diff-range.sh` — six assertions written against a generic nested `.changeset/` rather than against `dev/log/`, because the anchor is what makes them right, plus both directions of the agreement with `apply-changesets.sh`'s `-maxdepth 1` |
 
 The remaining sites where a git or `gh` read could be mistaken for an answer are
 listed one by one, with the disposition of each, in `git-read-failure-sweep.md`.

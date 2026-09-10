@@ -45,7 +45,7 @@ All nine were created in the same second by the same push. Eight concluded
 | **34366975927** | **Measure Disk Space and Update README** | **cancelled** | 15:57:19 | **1 h 0 m 28 s** |
 | 34366976358 | Build and Release Docker Image | success | 16:42:01 | 1 h 45 m 10 s |
 
-**Eight of the nine were green, and six of the nineteen root causes are in those
+**Eight of the nine were green, and six of the twenty root causes are in those
 eight** (RC-3, RC-5, RC-6, RC-7, RC-8, RC-10). A red run tells you where to
 look. A green run does not, which is why the census
 (`warnings-errors.census.md`) reads all 804 `warn`/`error` lines in all nine
@@ -157,7 +157,7 @@ measurement in `../apt/README.md` and `ROOT-CAUSES.md` rather than shipped.
    push's own release run, every time.
 2. **RC-1's report was false for 19 minutes and nobody could see it**, because
    the run that would have shown the contradiction concluded `success`.
-3. **The green runs carry most of the defects.** Six of nineteen, found only by
+3. **The green runs carry most of the defects.** Six of twenty, found only by
    reading all 804 lines of a passing pipeline.
 4. **Two independent false verdicts stacked into a silent failure.** RC-1 said
    it had handled the overrun; RC-2 said the overrun was somebody else's push.

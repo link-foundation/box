@@ -1,4 +1,4 @@
-# The nineteen root causes, and the fix each one got
+# The twenty root causes, and the fix each one got
 
 Issue #123 asks for "all false positives, false negatives, warnings and errors"
 in the nine CI/CD runs on `main` at `1d9fb3e`, and the task asks for "the root
@@ -15,7 +15,8 @@ branch's own experiment run found in the gate that reads the most files in the
 repository. RC-18 and RC-19 come from the last two sweeps: the first from asking
 the release workflows the one question this issue asks of everything — "where
 did you get that number?" — and the second from a break this branch itself
-introduced and every one of its own gates passed.
+introduced and every one of its own gates passed. RC-20 came from the branch's
+own release run going red over a changeset belonging to another repository.
 
 ## The shape they share
 
@@ -40,12 +41,15 @@ obtained.
 * four gates each read the same unparseable workflow line by line and each
   printed a verdict about it, because none of them could tell a file it
   disagrees with from a file no parser accepts (RC-19).
+* the changeset gate matched `.changeset/` at any depth and failed the release
+  over a file written in another project's format, which the release itself
+  never reads (RC-20).
 
 The two that are not that shape are the two that are the opposite — text that
 was *not* a verdict being read as one (RC-3, the log injection) and a log that
 was written and then destroyed (RC-4).
 
-**Eight of the nine runs were green.** Six of the nineteen root causes — RC-3,
+**Eight of the nine runs were green.** Six of the twenty root causes — RC-3,
 RC-5, RC-6, RC-7, RC-8, RC-10 — were found in those eight. That is the point of
 the issue: a red run tells you where to look, and a green run does not. RC-14,
 RC-15 and RC-16 make the same point from the other side: they were found by a
@@ -71,12 +75,13 @@ had been in the two largest gates in this repository since they were written.
 | RC-11 | three release gates discarded `git diff`'s exit status, and two `gh` reads conflated "empty" with "failed" | found by taking upstream report F to our own tree | `45abc52` |
 | RC-12 | the changeset gate's path set omitted `VERSION`, `.github/actions/` and `.githooks/`, and echoed pull-request-controlled paths with command processing live | surfaced by extracting RC-11's inline step | `45abc52` |
 | RC-13 | this branch's own comparison script read `/tmp/roles-*.txt`, a glob that matched its other output | found by reading the matrix it produced | `320491d` |
-| RC-14 | a suite asserted that apt's default retry count **equals** 3 — a property of the machine, reported as a property of this repository | this branch's `scripts / regression suites`, 2026-09-10T03:54:31Z | this commit |
-| RC-15 | a suite's "SIGPIPE at its default" leg inherited the disposition instead of establishing it, so on a runner both its legs were the same leg | this branch's `scripts / regression suites`, 2026-09-10T03:53Z | this commit |
-| RC-16 | a fake `ps` fabricated an unkillable survivor only for process groups that still existed, so the survivor died with the group it was standing in for | this branch's `scripts / regression suites`, 2026-09-10T03:53Z | this commit |
-| RC-17 | eight gates decided what to read with `git ls-files`, and five of them turned a git that could not answer into an empty list — reported as a clean tree over 201 unread files | one red assertion in this branch's own experiment run | this commit |
-| RC-18 | eighteen release steps each re-derived the version being published by reading a file, and an empty file publishes `1.0.0` — below every version this repository has released | asking the release workflows where their number comes from | this commit |
-| RC-19 | an unparseable workflow passed all four gates that read workflows, each printing a confident verdict about a file no parser accepts | a break this branch introduced, caught by an experiment and by none of the gates | this commit |
+| RC-14 | a suite asserted that apt's default retry count **equals** 3 — a property of the machine, reported as a property of this repository | this branch's `scripts / regression suites`, 2026-09-10T03:54:31Z | `2ba6591` |
+| RC-15 | a suite's "SIGPIPE at its default" leg inherited the disposition instead of establishing it, so on a runner both its legs were the same leg | this branch's `scripts / regression suites`, 2026-09-10T03:53Z | `2ba6591` |
+| RC-16 | a fake `ps` fabricated an unkillable survivor only for process groups that still existed, so the survivor died with the group it was standing in for | this branch's `scripts / regression suites`, 2026-09-10T03:53Z | `2ba6591` |
+| RC-17 | eight gates decided what to read with `git ls-files`, and five of them turned a git that could not answer into an empty list — reported as a clean tree over 201 unread files | one red assertion in this branch's own experiment run | `2ba6591` |
+| RC-18 | eighteen release steps each re-derived the version being published by reading a file, and an empty file publishes `1.0.0` — below every version this repository has released | asking the release workflows where their number comes from | `2ba6591` |
+| RC-19 | an unparseable workflow passed all four gates that read workflows, each printing a confident verdict about a file no parser accepts | a break this branch introduced, caught by an experiment and by none of the gates | `2ba6591` |
+| RC-20 | the changeset gate's path pattern had no anchor, so it validated — and failed the release over — another project's changeset committed here as evidence | this branch's own release run 34435214054, job 102738738078 | `2ba6591` |
 
 ---
 
@@ -1131,6 +1136,103 @@ hook, the workflow step, the `paths:` filter, and `--list-inputs` agreeing with
 The sweep that followed mattered more than the one file: all fifteen replacement
 sites were re-read against `git show HEAD:`, exactly three carried an orphan, and
 all six release workflows were re-parsed afterwards.
+
+---
+
+## RC-20 — a gate that failed the release over another project's changeset
+
+**How it surfaced.** In this branch's own release run, on the commit before this
+one: run `34435214054`, job `102738738078` (`Check for Changesets`), 2026-09-10
+03:56:11Z, at `1a756e6`.
+
+```
+Found added changeset(s):
+.changeset/issue-123-ci-false-positives.md
+dev/log/issues/123/pulls/124/templates/go/.changeset/add-changeset-workflow.md
+dev/log/issues/123/pulls/124/templates/go/.changeset/fix-ci-workflow-dependencies.md
+dev/log/issues/123/pulls/124/templates/java/.changeset/fix-ci-workflow-dependencies.md
+dev/log/issues/123/pulls/124/templates/js/.changeset/fix-all-open-pipeline-issues.md
+
+Validating: .changeset/issue-123-ci-false-positives.md
+Valid changeset format
+Validating: dev/log/issues/123/pulls/124/templates/go/.changeset/add-changeset-workflow.md
+##[error]Invalid changeset format in dev/log/…/templates/go/.changeset/add-changeset-workflow.md
+Expected 'bump: patch|minor|major' in frontmatter
+```
+
+The whole release was red, and `pipeline-status` with it — over a file that
+belongs to `go-ai-driven-development-pipeline-template`, written in the
+changesets npm format (`'go-ai-driven-development-pipeline-template': minor`)
+rather than in this repository's `bump:` format, committed here as pinned
+evidence for the template comparison the issue asks for.
+
+**Root cause.** The verdict was *true about the file* and *false about the
+repository*: the file is not a changeset of this project, and nothing in the
+release ever reads it. `validate-changeset.sh` selected its subject with
+
+```bash
+grep "^A.*${CHANGESET_DIR}/.*\.md$" | grep -v "README.md" | awk '{print $2}'
+```
+
+which has no anchor at all — `.changeset/` matched anywhere in the path — while
+the two scripts that actually *consume* changesets, `apply-changesets.sh` and
+`check-changesets.sh`, both read exactly
+`find .changeset -maxdepth 1 -name '*.md' ! -name README.md`. A gate and its
+consumer disagreeing about their subject is the same defect this issue is about
+seen from one step further out: the gate reported a verdict about data it had no
+business obtaining. Three smaller faults rode along in the same expression —
+`${CHANGESET_DIR}` interpolated unescaped, so the `.` of `.changeset` matched any
+character; `awk '{print $2}'` split a tab-separated `--name-status` line on
+whitespace, truncating any path containing a space; and `grep -v "README.md"`
+was unanchored in both directions.
+
+**The fix.** The pattern is anchored at the repository root and the depth is the
+consumer's:
+
+```bash
+CHANGESET_PATH_REGEX="^$(printf '%s' "$CHANGESET_DIR" | sed 's/\./\\./g')/[^/]+\.md$"
+```
+
+with the status/path split done by `awk -F'\t'` and the loop reading line by
+line rather than word by word. Anchoring is the general fix, not an exclusion of
+`dev/log/`: a `.changeset/` at any depth other than the root is not what the
+release applies, whoever wrote it.
+
+**Everywhere else this question had to be asked.** The pinned template evidence
+puts 23 `.sh`, 87 `.mjs`, 15 `.py` and 34 `.yml` files belonging to seven other
+repositories inside this tree, so every gate that discovers its own inputs was
+re-measured against them rather than assumed safe:
+
+| Gate | Inputs | Under `dev/log/` |
+|---|---:|---:|
+| `check-awk-portability.sh` | 259 | 0 |
+| `check-file-line-limits.sh` | 316 | 0 |
+| `check-heredoc-vars.sh` | 205 | 0 |
+| `check-mjs-syntax.sh` | 19 | 0 |
+| `check-py-syntax.sh` | 3 | 0 |
+| `run-hadolint.sh` | 23 | 0 |
+| `run-shellcheck.sh` | 206 | 0 |
+| `run-shfmt.sh` | 206 | 0 |
+| `check-workflow-yaml.sh` | 19 | 0 |
+| `check-required-docs.sh` | 99 | 0 |
+
+Every one of them already excludes `dev/log/` explicitly or anchors its pathspec
+at the repository root, so `validate-changeset.sh` was the only unanchored
+reader — the sweep is the evidence for that, not the conclusion assumed from
+one green run. `run-secretlint.sh` deliberately *does* scan `dev/log/`, because
+downloaded CI logs are exactly where a leaked token would land. The one
+remaining unanchored match is `release.yml`'s `paths: ['.changeset/**']`
+trigger, which is a GitHub path filter anchored at the root by GitHub's own
+semantics and can only over-trigger a run, never fail one.
+
+**Coverage.** Six assertions in `experiments/test-issue123-pr-diff-range.sh`: a
+nested `.changeset/` belonging to another project is reported as *no* changeset
+rather than an invalid one, the gate never names the foreign file, a foreign
+changeset beside a valid own one does not fail the release, a file below
+`.changeset/` is not validated because it is not applied, `apply-changesets.sh`
+still reads only the top level, and the shipped pattern is still anchored. The
+assertions are written against a generic nested directory rather than against
+`dev/log/`, because the anchor is what makes them right.
 
 ---
 
