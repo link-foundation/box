@@ -57,7 +57,28 @@ cp .secretlintrc.json "$CANARY_DIR/"
 # this file would be found by the very scan it is here to validate - the first
 # version of this script failed on itself. Random also means the canary cannot
 # quietly become an allow-listed constant.
-rand_alnum() { LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$1"; }
+# Bound the *reader*, not the writer. `tr </dev/urandom | head -c N` leaves tr
+# writing into a pipe whose reader has already left, and that is an error, not
+# a silent death, wherever SIGPIPE is ignored - which a GitHub runner is: the
+# two calls below printed `tr: write error: Broken pipe` twice into run
+# 34366975942's secretlint log (issue #123). Reading a bounded block instead
+# lets tr reach EOF, which is also what scripts/release/create-changeset.sh:42
+# already does.
+#
+# It is not only log noise. Under this script's `set -o pipefail` the writer's
+# status is the pipeline's, and the old form survived only because its result
+# was an argument to printf, where a failed command substitution does not
+# propagate; as a bare `x=$(rand_alnum 16)` the same call exits 141 under the
+# default disposition and 1 under an ignored SIGPIPE, and `set -e` aborts.
+rand_alnum() {
+  local want="$1" out=''
+  while [ "${#out}" -lt "$want" ]; do
+    # About a quarter of random bytes are alphanumeric, so 8x is ample; the
+    # loop is what makes it certain rather than likely.
+    out+="$(head -c "$((want * 8))" /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9')"
+  done
+  printf '%s' "${out:0:want}"
+}
 {
   printf 'aws_access_key_id = AKIA%s\n' "$(rand_alnum 16)"
   printf 'aws_secret_access_key = %s\n' "$(rand_alnum 40)"

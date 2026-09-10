@@ -259,9 +259,27 @@ resolve_node_lts_major() {
     echo "${NODE_VERSION%%.*}"
     return 0
   fi
+  # No `head -n1` in the middle of this pipeline. The feed is 330 kB with 287
+  # matching entries, so grep flushes long before head has taken its one line
+  # and left, and every writer behind it then writes into a pipe with no
+  # reader. Under the default disposition that is SIGPIPE, which `set -o
+  # pipefail` reports as exit 141; where SIGPIPE is ignored - a GitHub runner,
+  # because the step's shell inherits SIG_IGN from the runner process - it is
+  # EPIPE, and coreutils prints it. Run 34366976358's docker-build-push log
+  # carries the pair, `grep: write error: Broken pipe` and `tr: write error:
+  # Broken pipe`, immediately before this function's own answer (issue #123).
+  # awk keeps the first match and still reads to EOF, which is the shape the
+  # resolvers below already have (they end in `sort | tail`).
   major=$(fetch_release_feed "https://nodejs.org/dist/index.json" \
-    | tr '{' '\n' | grep '"lts":"' | head -n1 \
-    | sed -n 's/.*"version":"v\([0-9][0-9]*\)\..*/\1/p') || true
+    | tr '{' '\n' \
+    | awk '/"lts":"/ && !found {
+             if (match($0, /"version":"v[0-9]+\./)) {
+               major = substr($0, RSTART, RLENGTH)
+               gsub(/[^0-9]/, "", major)
+               print major
+               found = 1
+             }
+           }') || true
   if [[ "$major" =~ ^[0-9]+$ ]]; then
     echo "$major"
   else
