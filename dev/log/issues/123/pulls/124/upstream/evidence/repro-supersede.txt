@@ -1,0 +1,51 @@
+=== js: c3a6d23b693972a70097430f01e69fcee5a51ad2 ===
+### Case A: this run is still the head of main
+Failed jobs:    <none>
+Cancelled jobs: measure
+This run tests 1111111111111111111111111111111111111111; main is at 1111111111111111111111111111111111111111.
+::error::Pipeline has cancelled jobs on main: measure. A job killed by 'timeout-minutes' is reported as cancelled, which would otherwise hide the failure.
+exit=1
+
+### Case B: a later commit landed on main while the job was timing out
+Failed jobs:    <none>
+Cancelled jobs: measure
+This run tests 1111111111111111111111111111111111111111; main is at 2222222222222222222222222222222222222222.
+::warning::Cancelled jobs: measure. This run is not the current head of its branch, or is not a push to the default branch, so the cancellation reads as a superseded run. A genuine overrun should surface as a step budget failure instead (see docs/CI-TIMEOUT-BUDGETS.md).
+All required jobs succeeded or were legitimately skipped.
+exit=0
+=== python: 470e17605fc37b33fd7ea4e8aa8d16eaab1d9253 ===
+### Case A: this run is still the head of main
+Failed jobs:    <none>
+Cancelled jobs: measure
+::error::Pipeline has cancelled jobs on main: measure. This run was still the head of main when the jobs were cancelled, so the cancellation is a real failure -- most likely a job killed by 'timeout-minutes', which GitHub reports as cancelled. Steps wrapped in scripts/run-with-budget-warning.sh report a real timeout as a failure instead, which is why long steps carry their own budget.
+exit=1
+
+### Case B: a later commit landed on main while the job was timing out
+Failed jobs:    <none>
+Cancelled jobs: measure
+::warning::Cancelled jobs: measure. This run is no longer the head of main: a newer commit superseded it, so the cancellation is expected churn.
+exit=0
+=== rust: f63a061fb3e23e647de0455886528a121b997678 ===
+### Case A: this run is still the head of main
+Failed jobs:    <none>
+Cancelled jobs: measure
+::error::Pipeline has cancelled jobs on main: measure. This run was still the head of main when the jobs were cancelled, so the cancellation is a real failure -- most likely a job killed by 'timeout-minutes', which GitHub reports as cancelled. Steps wrapped in scripts/run-with-budget-warning.sh report a real timeout as a failure instead, which is why long steps carry their own budget.
+exit=1
+
+### Case B: a later commit landed on main while the job was timing out
+Failed jobs:    <none>
+Cancelled jobs: measure
+::warning::Cancelled jobs: measure. This run is no longer the head of main: a newer commit superseded it, so the cancellation is expected churn.
+exit=0
+=== php: 15c327be682deab6b65c69d48ef43e069d60bd01 ===
+### Case A: this run is still the head of main
+Failed jobs:    <none>
+Cancelled jobs: measure
+::error::Pipeline has cancelled jobs on main: measure. This run was still the head of main when the jobs were cancelled, so the cancellation is a real failure -- most likely a job killed by 'timeout-minutes', which GitHub reports as cancelled. Steps wrapped in scripts/run-with-budget-warning.sh report a real timeout as a failure instead, which is why long steps carry their own budget.
+exit=1
+
+### Case B: a later commit landed on main while the job was timing out
+Failed jobs:    <none>
+Cancelled jobs: measure
+::warning::Cancelled jobs: measure. This run is no longer the head of main: a newer commit superseded it, so the cancellation is expected churn.
+exit=0

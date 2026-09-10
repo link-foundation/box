@@ -1,0 +1,119 @@
+### Reproduction: a workflow_dispatch input is interpolated into a `run:` script
+###
+### bash experiments/issue-123/repro-dispatch-description-injection.sh \
+###   /tmp/templates/{csharp,go,java,js,python,rust,php}
+###
+### Two payloads per interpolating block, because the context decides the answer:
+###   cmdsub   `$(...)` alone -- reaches only interpolations that sit where the
+###            shell performs expansion.
+###   heredoc  a newline, a line reading `EOF`, then `$(...)` -- what it takes to
+###            escape a *quoted* heredoc (`cat > f << 'EOF'`), inside which the
+###            shell expands nothing. See probe-dispatch-input-newline.txt for
+###            what is and is not established about delivering a newline.
+###
+### Layer 2 runs the C# template's *shipped* scripts/version-and-commit.mjs with a
+### stub `git` on PATH, rather than a re-implementation of its escaping, so the
+### transcript below is the real script's behaviour.
+###
+### Correction to the first pass: an earlier version of this harness substituted
+### the payload into single extracted lines and ran each one through `bash -c`,
+### which reported csharp release.yml:767 and :770 as REPRODUCED. Those two lines
+### live inside `cat > "$CHANGESET_FILE" << 'EOF'`; taking a line out of a quoted
+### heredoc turns it into an ordinary command line, so that was a false positive
+### of exactly the kind this audit is about. The harness now substitutes into the
+### whole `run:` block, dedented as YAML dedents it, and executes the block.
+###
+### csharp @ 83efb9e4 -- layer 1, the workflow expansion
+  REPRODUCED  csharp release.yml:613 (interpolated at 616,617) (cmdsub)
+  inert       csharp release.yml:759 (interpolated at 767,770) (cmdsub)
+  REPRODUCED  csharp release.yml:613 (interpolated at 616,617) (heredoc)
+  REPRODUCED  csharp release.yml:759 (interpolated at 767,770) (heredoc)
+
+### go @ 548a7968 -- layer 1, the workflow expansion
+  REPRODUCED  go release.yml:281 (interpolated at 281) (cmdsub)
+  REPRODUCED  go release.yml:281 (interpolated at 281) (heredoc)
+
+### java @ 450a10ec -- layer 1, the workflow expansion
+  REPRODUCED  java release.yml:382 (interpolated at 382) (cmdsub)
+  REPRODUCED  java release.yml:429 (interpolated at 430,435) (cmdsub)
+  REPRODUCED  java release.yml:382 (interpolated at 382) (heredoc)
+  REPRODUCED  java release.yml:429 (interpolated at 430,435) (heredoc)
+
+### js @ c3a6d23b -- layer 1, the workflow expansion
+  (no dispatch input interpolated into a run: script)
+
+### python @ 470e1760 -- layer 1, the workflow expansion
+  (no dispatch input interpolated into a run: script)
+
+### rust @ f63a061f -- layer 1, the workflow expansion
+  (no dispatch input interpolated into a run: script)
+
+### php @ 15c327be -- layer 1, the workflow expansion
+  (no dispatch input interpolated into a run: script)
+
+### layer 2: the C# template's own exec() escaping, driven through the real script
+  script exit=0
+  REPRODUCED  a --description of $(...) executed 16 byte(s) worth of payload
+              (twice: once for the commit message at :412, once for the tag message at :419)
+  what the stub git was asked to run:
+    git config user.name github-actions[bot]
+    git config user.email github-actions[bot]@users.noreply.github.com
+    git add src/MyPackage/MyPackage.csproj CHANGELOG.md .changeset/
+    git commit -m chore: release v0.3.17
+    
+    
+    git tag -a v0.3.17 -m Release v0.3.17
+    
+    
+    git push
+    git push --tags
+
+reproduced 10 payload(s) over 6 interpolating run: block(s); 1 block(s) resisted the cmdsub payload
+
+### reading, site by site
+###
+### Which input reaches the site matters: in all three templates `bump_type` is a
+### `choice` and GitHub validates it against `options` (422, no run -- measured in
+### probe-dispatch-input-newline.txt), while `description` is `type: string` and
+### is validated by nothing. A site that interpolates only `bump_type` is defence
+### in depth; a site that interpolates `description` is live.
+
+  csharp release.yml:613  `--bump-type "${{ ...bump_type }}" --description
+                          "${{ ...description }}"`, an inline command line. Inside
+                          double quotes `$( )` still expands, so this is LIVE
+                          through `description`.
+  csharp release.yml:759  `cat > "$CHANGESET_FILE" << 'EOF'` with both inputs in
+                          the body: the shell expands nothing there, so `$( )`
+                          alone is inert. It becomes execution only with a
+                          newline plus a line reading `EOF`. Without a newline it
+                          is still content injection into the changeset the
+                          release then commits and prints (report C).
+  go     release.yml:281  inline command line; `--bump-type` is additionally
+                          unquoted, and `--description "${{ ... }}"` makes it
+                          LIVE.
+  java   release.yml:382  inline command line, `--bump-type ${{ inputs.bump_type }}`
+                          unquoted. Only the validated `choice` reaches it, so
+                          this one is defence in depth rather than live.
+  java   release.yml:429  `DESCRIPTION="${{ inputs.description }}"` in a `run: |`
+                          block, with `--bump-type "${{ inputs.bump_type }}"`
+                          below it: LIVE through `description`.
+  js, python, php         no dispatch input reaches a `run:` script.
+  rust                    likewise: it reads both inputs through `env:` at
+                          release.yml:1163-1167 and references `"$BUMP_TYPE"` /
+                          `"$DESCRIPTION"`, which is exactly the fix the four
+                          sites above need.
+
+### layer 2, read separately
+###
+### The C# template's scripts/version-and-commit.mjs is a second, independent
+### defect at the same input: exec() at :69-74 calls execSync(command), which runs
+### the string through /bin/sh -c, and the two call sites build that string with
+### `${commitMsg.replace(/"/g, '\"')}` (:409-412) and the same shape for the tag
+### message (:419). Escaping the double quote leaves `$( )` and backticks intact,
+### so the payload ran twice in the transcript above -- 16 bytes for two eight-byte
+### markers -- and the stub git received `git commit -m chore: release v0.3.17`
+### with the description already consumed.
+###
+### This one is NOT closed by the workflow env: fix reports D suggest: the value
+### still arrives on argv and is still concatenated into a command string. It is
+### reported separately (report E) with execFileSync as the fix.

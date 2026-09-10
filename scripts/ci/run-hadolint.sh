@@ -78,10 +78,42 @@ fi
 # collect_files — every tracked or newly added Dockerfile outside the vendored
 # evidence tree. The glob covers `Dockerfile`, `Dockerfile.stage` and
 # `*.Dockerfile`, which are all three shapes present here.
+#
+# The `|| true` this function used to end with is gone (issue #123, RC-17).
+# `git ls-files … || true` turns a git that could not read the index into an
+# empty list, and an empty list here was reported as "the discovery glob is
+# wrong" on the check path and as a clean answer on the --list-inputs path.
+# git's own stderr is left alone so the reason arrives with the refusal.
 collect_files() {
-  git ls-files -z --cached --others --exclude-standard --deduplicate \
-    'Dockerfile' '*/Dockerfile' 'Dockerfile.*' '*/Dockerfile.*' '*.Dockerfile' \
-    | tr '\0' '\n' | grep -v '^dev/log/' | sort -u || true
+  local listing
+  # `exit "${PIPESTATUS[0]}"` rather than pipefail: `tr` must convert the NULs
+  # before bash captures the output, because command substitution silently
+  # drops NUL bytes - and grep's exit 1 ("selected nothing") is a legitimately
+  # empty tree, not an error, while anything above 1 is.
+  listing="$(
+    git ls-files -z --cached --others --exclude-standard --deduplicate \
+      'Dockerfile' '*/Dockerfile' 'Dockerfile.*' '*/Dockerfile.*' '*.Dockerfile' \
+      | tr '\0' '\n'
+    exit "${PIPESTATUS[0]}"
+  )" || return 1
+  printf '%s\n' "$listing" | { grep -v '^dev/log/' || [ "$?" = 1 ]; } | sort -u
+}
+
+# discover_or_exit - collect_files with its two empty answers told apart, and
+# neither of them reported as a clean run. Called unsubshelled it ends the
+# script; called inside `$(...)` the status propagates, which is why every
+# caller pairs it with `|| exit $?`.
+discover_or_exit() {
+  local listing
+  if ! listing="$(collect_files)"; then
+    echo "::error title=hadolint::could not list this repository's Dockerfiles - git ls-files failed and printed the reason above. Nothing was linted; this is not a clean run." >&2
+    exit 2
+  fi
+  if [ -z "$listing" ]; then
+    echo "::error title=hadolint::discovery matched no Dockerfile at all. Either the globs are wrong or this is not the repository they were written for; a gate that read nothing must not report a clean tree." >&2
+    exit 2
+  fi
+  printf '%s\n' "$listing"
 }
 
 # --list-inputs prints the discovered set and nothing else, one
@@ -91,7 +123,7 @@ collect_files() {
 # without it, a gate runs under a filter its own inputs never match and the
 # job silently never starts (issue #121).
 if [ "$#" -gt 0 ] && [ "$1" = "--list-inputs" ]; then
-  collect_files
+  discover_or_exit
   exit 0
 fi
 
@@ -106,9 +138,13 @@ fi
 if [ "$#" -gt 0 ]; then
   FILES=("$@")
 else
+  # `$(...)` and not `< <(...)`: discover_or_exit ends the script when it
+  # cannot answer, and a process substitution's exit would end only the
+  # subshell, leaving this one to carry on with an empty list.
+  LISTING="$(discover_or_exit)" || exit $?
   while IFS= read -r f; do
     [ -n "$f" ] && FILES+=("$f")
-  done < <(collect_files)
+  done <<<"$LISTING"
 fi
 
 if [ "${#FILES[@]}" -eq 0 ]; then

@@ -1,0 +1,26 @@
+apt: apt 2.8.3 (amd64)
+
+### Case A: the key runner-images writes
+    APT::Acquire::Retries "10";
+  apt-config dump Acquire::Retries ->
+  (empty above means apt did not read this setting: the acquire code falls
+   back to _config->FindI("Acquire::Retries", 3), apt-pkg/acquire-item.cc)
+  apt-config dump | grep -i retries ->
+    APT::Acquire::Retries "10";
+  so the key is present in apt's configuration space, under a name nothing consults.
+
+### Case B: the key apt reads
+    Acquire::Retries "10";
+  apt-config dump Acquire::Retries ->
+    Acquire::Retries "10";
+
+### Case C: what the image actually has in force
+  apt-config dump Acquire::Retries ->
+    (nothing: no file sets it here, so apt uses its compiled-in 3)
+  every key matching Retries ->
+    (none)
+  lines mentioning retries under /etc/apt ->
+    (none)
+
+On an ubuntu-24.04 GitHub runner Case C prints Acquire::Retries "1" while
+Case A shows the only file naming the word cannot be what set it.

@@ -370,17 +370,34 @@ jobs:
       # (issue #121, docs/CI-TIMEOUT-BUDGETS.md). The slowest run measured took
       # 106 seconds across all suites.
       - name: Run every experiment suite
+        id: suites
         run: |
           bash scripts/ci/run-with-budget-warning.sh 600 "every experiment suite" \
             bash scripts/ci/run-experiments.sh
 
+      # `if-no-files-found: warn` cannot fail, so the one outcome this step
+      # exists to prevent - the evidence going missing - is the outcome it
+      # reports as a warning nobody reads. It was `warn` because the step also
+      # runs when the job failed early, and then there is legitimately nothing
+      # to upload.
+      #
+      # Ask the narrower question instead: upload only when the producing step
+      # actually ran, and require files when it did. run-experiments.sh:124-125
+      # creates $LOG_DIR before the first suite and :140 writes a log per suite,
+      # so once that step has an outcome of success or failure the directory
+      # exists and is non-empty - an empty upload then means the logs were lost,
+      # which is a failure. The condition is written in the positive form
+      # because the `steps` context holds only steps that "have an `id`
+      # specified and have already run" (GitHub, "Contexts"), so a step that
+      # never started has no entry and `!= 'skipped'` would be true of that
+      # empty value (issue #123).
       - name: Upload suite logs
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && (steps.suites.outcome == 'success' || steps.suites.outcome == 'failure') }}
         uses: actions/upload-artifact@v7
         with:
           name: experiment-logs
           path: /tmp/experiment-logs/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7
 
   # === TERMINAL STATUS GATE ===

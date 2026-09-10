@@ -208,7 +208,10 @@ echo
 # zizmor on every workflow change. The finding is Low severity, and the gate
 # floors at medium, so the audit ran thirty times and was filtered out thirty
 # times: a check that cannot fail, in the shape the rest of this issue is about.
-GATE="$(grep -A8 'name: zizmor' .github/workflows/workflows.yml \
+# The floors live in scripts/ci/run-zizmor.sh since issue #123 moved both
+# passes behind it to give them a token; `--print` answers with the command the
+# job runs, so this reads the real floors rather than a copy of them.
+GATE="$(bash scripts/ci/run-zizmor.sh --print regular 2>/dev/null \
   | grep -oE -- '--min-(severity|confidence) [a-z]+' | paste -sd', ' -)"
 printf '  workflows.yml runs zizmor with: %s\n' "${GATE:-<not found>}"
 if [ "$SILENT" -gt 0 ]; then
@@ -223,7 +226,8 @@ if command -v docker >/dev/null 2>&1; then
   echo '  measured, with the gate settings and then with the severity floor lowered:'
   for floor in medium low; do
     count="$(
-      docker run --rm -v "$ROOT:/repo" -w /repo ghcr.io/zizmorcore/zizmor:1.30.0 \
+      docker run --rm -v "$ROOT:/repo" -w /repo -e GH_TOKEN \
+        ghcr.io/zizmorcore/zizmor:1.30.0 \
         --min-confidence low --min-severity "$floor" --no-progress --format plain \
         --config .github/zizmor.yml .github/workflows .github/actions 2>&1 \
         | grep -c 'help\[artipacked\]' || true

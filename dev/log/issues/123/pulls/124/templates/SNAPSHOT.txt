@@ -1,0 +1,13 @@
+# The template revisions this pull request was compared against (issue #123).
+#
+# Collected by experiments/issue-123/snapshot-templates.sh on 2026-09-10T01:36:27Z.
+# Every upstream report filed from this branch quotes the same revision.
+#
+# name  sha  committed  tracked-files  stored-files
+js  c3a6d23b693972a70097430f01e69fcee5a51ad2  2026-09-09T03:40:50+07:00  393  65
+python  470e17605fc37b33fd7ea4e8aa8d16eaab1d9253  2026-09-09T18:35:49+07:00  96  32
+rust  f63a061fb3e23e647de0455886528a121b997678  2026-09-09T14:57:42+07:00  158  45
+php  15c327be682deab6b65c69d48ef43e069d60bd01  2026-09-10T04:26:04+07:00  211  49
+csharp  83efb9e4482ffed9c9ef1c7b07ea250ac6d3b141  2026-08-28T10:52:47+00:00  60  39
+go  548a796847a96e52d7b5f41cb8a29a2e6822e637  2025-12-29T19:35:22+05:30  21  13
+java  450a10ec1f22a7c1c99e4828ad83cfde3b9a0311  2025-12-30T00:23:56+05:30  26  15

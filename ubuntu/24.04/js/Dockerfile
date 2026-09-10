@@ -133,11 +133,31 @@ RUN . /tmp/common.sh && \
 
 # Create box group and user with /home/box as home directory
 # Standard home directory location for the box user
+#
+# -M, not -m: `WORKDIR /home/box` above already created the directory, and
+# Docker creates a WORKDIR that does not exist. `useradd -m` over an existing
+# directory does not populate it - it prints
+#   useradd: warning: the home directory /home/box already exists.
+#   useradd: Not copying any file from skel directory into it.
+# which is the warning both JS build jobs printed in run 34366976358, and
+# leaves the user without ~/.profile. Ubuntu's skel .profile is what sources
+# ~/.bashrc for an interactive *login* shell, so without it `docker run -it box
+# bash -l` and `su - box` saw none of the PATH the install scripts append to
+# ~/.bashrc. Every image here descends from this one, so that was true of all
+# of them. Measured both ways in
+# experiments/issue-123/repro-workdir-skips-skel.sh (issue #123).
+#
+# The two skel files are copied explicitly instead, and skel's .bashrc is
+# deliberately not among them: it returns early in a non-interactive shell
+# (`case $- in *i*) ;; *) return;; esac`) and scripts/entrypoint.sh sources
+# ~/.bashrc non-interactively, so adopting it would silently drop everything
+# the install scripts appended below it.
 RUN groupadd box && \
-    useradd -m -g box -d /home/box -s /bin/bash box && \
+    useradd -M -g box -d /home/box -s /bin/bash box && \
+    cp -a /etc/skel/.profile /etc/skel/.bash_logout /home/box/ && \
     passwd -d box && \
     usermod -aG sudo box && \
-    chown box:box /home/box && \
+    chown -R box:box /home/box && \
     chmod 2775 /home/box
 
 # Copy and run install script

@@ -66,6 +66,27 @@ maybe_sudo() {
 
 # Retry apt metadata refreshes. Ubuntu mirrors can briefly serve mismatched
 # Release and Packages files while syncing, which exits as apt code 100.
+#
+# The three -o options below restate apt's own defaults on Ubuntu 24.04 (apt
+# 2.8.3), which is worth writing down because the asymmetry between this line
+# and the ~40 plain `apt-get install` lines in this repository reads like a
+# defect and is not one. Measured: an `apt-get update` given no options at all
+# opens 8 connections to a server that resets them - exactly what an explicit
+# Acquire::Retries=3 opens, against 2 for Retries=0 - and gives up on a
+# connection that is accepted and never answered after 30s, exactly what an
+# explicit Acquire::http::Timeout=30 does. So restating the flags at every
+# install site, or dropping them into /etc/apt/apt.conf.d, would change nothing.
+# They stay here because stating the intent locally is cheaper than inheriting
+# it.
+#
+# What is *not* an apt default is the loop around them: up to 5 attempts with
+# exponential backoff, clearing /var/lib/apt/lists between them. apt's internal
+# retries re-fetch over the same broken mirror state; clearing the lists is what
+# a mirror mid-sync needs. The invariant that matters for the install sites,
+# then, is that each one is preceded by this function in the same shell - which
+# experiments/test-issue123-apt-retry-defaults.sh checks per Dockerfile RUN
+# block, alongside the measurement above, and it fails if a future apt changes
+# either default (issue #123).
 apt_update_with_retry() {
   local max_retries="${APT_UPDATE_MAX_RETRIES:-5}"
   local initial_delay="${APT_UPDATE_INITIAL_DELAY:-5}"
@@ -144,6 +165,7 @@ cleanup_duplicate_apt_sources() {
 
 # Create box user if missing
 ensure_box_user() {
+  local skel_file
   if id "box" &>/dev/null; then
     log_info "box user already exists."
   else
@@ -155,6 +177,22 @@ ensure_box_user() {
     }
     passwd -d box 2>/dev/null || log_note "Could not remove password requirement"
     usermod -aG sudo box 2>/dev/null || log_note "Could not add to sudo group"
+    # `useradd -m` copies /etc/skel only when it creates the home directory
+    # itself. Over a directory that already exists it prints
+    #   useradd: warning: the home directory /home/box already exists.
+    #   useradd: Not copying any file from skel directory into it.
+    # and leaves the user without ~/.profile, which is the file that sources
+    # ~/.bashrc for an interactive *login* shell - so `su - box` and every ssh
+    # session would miss the PATH lines the install scripts append to ~/.bashrc.
+    # skel's .bashrc is deliberately not among the files copied back;
+    # ubuntu/24.04/js/Dockerfile explains why. Never overwrites, so a re-run is a
+    # no-op. (issue #123)
+    for skel_file in .profile .bash_logout; do
+      if [ -f "/etc/skel/$skel_file" ] && [ ! -e "/home/box/$skel_file" ]; then
+        cp -a "/etc/skel/$skel_file" "/home/box/$skel_file"
+        chown box:box "/home/box/$skel_file"
+      fi
+    done
     chmod 2775 /home/box 2>/dev/null || true
     log_success "box user created and configured"
   fi
@@ -238,9 +276,27 @@ resolve_node_lts_major() {
     echo "${NODE_VERSION%%.*}"
     return 0
   fi
+  # No `head -n1` in the middle of this pipeline. The feed is 330 kB with 287
+  # matching entries, so grep flushes long before head has taken its one line
+  # and left, and every writer behind it then writes into a pipe with no
+  # reader. Under the default disposition that is SIGPIPE, which `set -o
+  # pipefail` reports as exit 141; where SIGPIPE is ignored - a GitHub runner,
+  # because the step's shell inherits SIG_IGN from the runner process - it is
+  # EPIPE, and coreutils prints it. Run 34366976358's docker-build-push log
+  # carries the pair, `grep: write error: Broken pipe` and `tr: write error:
+  # Broken pipe`, immediately before this function's own answer (issue #123).
+  # awk keeps the first match and still reads to EOF, which is the shape the
+  # resolvers below already have (they end in `sort | tail`).
   major=$(fetch_release_feed "https://nodejs.org/dist/index.json" \
-    | tr '{' '\n' | grep '"lts":"' | head -n1 \
-    | sed -n 's/.*"version":"v\([0-9][0-9]*\)\..*/\1/p') || true
+    | tr '{' '\n' \
+    | awk '/"lts":"/ && !found {
+             if (match($0, /"version":"v[0-9]+\./)) {
+               major = substr($0, RSTART, RLENGTH)
+               gsub(/[^0-9]/, "", major)
+               print major
+               found = 1
+             }
+           }') || true
   if [[ "$major" =~ ^[0-9]+$ ]]; then
     echo "$major"
   else

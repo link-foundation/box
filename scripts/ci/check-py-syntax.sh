@@ -51,8 +51,38 @@ VERBOSE=0
 LIST_INPUTS=0
 FILES=()
 
+# The `|| true` this function used to end with is gone (issue #123, RC-17).
+# `git ls-files … || true` turns a git that could not read the index into an
+# empty list, and this gate then reported that emptiness as "the discovery glob
+# is wrong" — sending whoever reads it to check a glob that was never the
+# problem. The two answers are told apart below, and git's own stderr is left
+# alone so the reason arrives with the refusal.
 collect_files() {
-  git ls-files -- '*.py' | grep -v '^dev/log/' || true
+  local listing
+  # grep's exit 1 ("selected nothing") is a legitimately empty tree, not an
+  # error; git's status is the one that has to survive the pipeline.
+  listing="$(
+    git ls-files -- '*.py'
+    exit "${PIPESTATUS[0]}"
+  )" || return 1
+  printf '%s\n' "$listing" | { grep -v '^dev/log/' || [ "$?" = 1 ]; }
+}
+
+# discover_or_exit - collect_files with its two empty answers told apart, and
+# neither of them reported as a clean run. Called unsubshelled it ends the
+# script; called inside `$(...)` the status propagates, which is why every
+# caller pairs it with `|| exit $?`.
+discover_or_exit() {
+  local listing
+  if ! listing="$(collect_files)"; then
+    echo "::error title=check-py-syntax::could not list this repository's files - git ls-files failed and printed the reason above. Nothing was parsed; this is not a clean run." >&2
+    exit 2
+  fi
+  if [ -z "$listing" ]; then
+    echo "::error title=check-py-syntax::discovery matched no python file at all. Either the glob ('*.py') is wrong or this is not the repository they were written for; a gate that read nothing must not report a clean tree." >&2
+    exit 2
+  fi
+  printf '%s\n' "$listing"
 }
 
 # `git ls-files` answers about the current directory, not about the repository:
@@ -113,9 +143,15 @@ done
 if [ "$LIST_INPUTS" -eq 1 ]; then
   if [ "${#FILES[@]}" -eq 0 ]; then
     anchor_at_repository_root
-    mapfile -t FILES < <(collect_files)
+    # `$(...)` and not `< <(...)`: discover_or_exit ends the script when it
+    # cannot answer, and a process substitution's exit would end only the
+    # subshell, leaving this one to print an empty list and exit 0 - which is
+    # the false negative, one layer up, that the coverage gate would then read
+    # as fact.
+    LISTING="$(discover_or_exit)" || exit $?
+    while IFS= read -r f; do [ -n "$f" ] && FILES+=("$f"); done <<<"$LISTING"
   fi
-  [ "${#FILES[@]}" -gt 0 ] && printf '%s\n' "${FILES[@]}"
+  printf '%s\n' "${FILES[@]}"
   exit 0
 fi
 
@@ -128,7 +164,8 @@ fi
 
 if [ "${#FILES[@]}" -eq 0 ]; then
   anchor_at_repository_root
-  mapfile -t FILES < <(collect_files)
+  LISTING="$(discover_or_exit)" || exit $?
+  while IFS= read -r f; do [ -n "$f" ] && FILES+=("$f"); done <<<"$LISTING"
 fi
 
 if [ "${#FILES[@]}" -eq 0 ]; then

@@ -17,6 +17,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/release/docker-push-failure-classifier.sh
 source "$SCRIPT_DIR/docker-push-failure-classifier.sh"
+# shellcheck source=scripts/ci/capture-and-stream.sh
+source "$SCRIPT_DIR/../ci/capture-and-stream.sh"
 
 MAX_RETRIES="${MAX_RETRIES:-3}"
 INITIAL_DELAY="${INITIAL_DELAY:-10}"
@@ -30,13 +32,14 @@ push_with_retry() {
   local tag="$1"
   local attempt=1
   local delay="$INITIAL_DELAY"
-  local output
 
   while [ "$attempt" -le "$MAX_RETRIES" ]; do
     echo "==> Pushing $tag (attempt $attempt/$MAX_RETRIES)..."
     # Capture while still streaming: the output has to be inspectable to be
     # classified, but a silent 20-minute push is not debuggable (issue #115).
-    if output="$(docker push "$tag" 2>&1 | tee /dev/stderr)"; then
+    # `tee /dev/stderr` did both and truncated the caller's log while doing it
+    # (issue #123); scripts/ci/capture-and-stream.sh does both and does not.
+    if capture_and_stream docker push "$tag"; then
       echo "==> Successfully pushed $tag"
       return 0
     fi
@@ -44,7 +47,7 @@ push_with_retry() {
     # An expired or missing credential does not heal on a backoff. Fail on the
     # first attempt with an actionable message rather than repeating it three
     # times (issue #115).
-    if is_non_retryable_push_failure "$output"; then
+    if is_non_retryable_push_failure "$CAPTURED_OUTPUT"; then
       echo "==> ERROR: $tag failed with a permanent authentication error; not retrying"
       echo "::error title=Registry authentication failed::Pushing ${tag} failed with a permanent authentication error. See the job log for how to rotate the credential."
       docker_push_failure_guidance "$tag"

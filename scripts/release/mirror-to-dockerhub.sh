@@ -45,6 +45,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/release/docker-push-failure-classifier.sh
 source "$SCRIPT_DIR/docker-push-failure-classifier.sh"
+# shellcheck source=scripts/ci/capture-and-stream.sh
+source "$SCRIPT_DIR/../ci/capture-and-stream.sh"
 
 MIRROR_REQUIRED="${MIRROR_REQUIRED:-0}"
 MAX_RETRIES="${MAX_RETRIES:-3}"
@@ -80,15 +82,16 @@ done
 echo "==> Mirroring $SOURCE to Docker Hub"
 printf '    -> %s\n' "${TARGETS[@]}"
 
-output=""
 for attempt in $(seq 1 "$MAX_RETRIES"); do
   echo "==> Mirror attempt $attempt of $MAX_RETRIES"
-  if output="$(docker buildx imagetools create "${TAG_ARGS[@]}" "$SOURCE" 2>&1 | tee /dev/stderr)"; then
+  # Streamed and captured without reopening fd 2, which `tee /dev/stderr` did:
+  # it truncated the caller's log every time stderr was a file (issue #123).
+  if capture_and_stream docker buildx imagetools create "${TAG_ARGS[@]}" "$SOURCE"; then
     echo "==> Mirrored $SOURCE to ${#TARGETS[@]} Docker Hub tag(s)"
     exit 0
   fi
 
-  if is_non_retryable_push_failure "$output"; then
+  if is_non_retryable_push_failure "$CAPTURED_OUTPUT"; then
     echo "==> Docker Hub rejected the mirror with a permanent authentication error; not retrying"
     docker_push_failure_guidance "${TARGETS[0]}"
     break

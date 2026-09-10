@@ -1,0 +1,20 @@
+=== A. home pre-created (what WORKDIR /home/box does) ===
+useradd: warning: the home directory /home/box already exists.
+useradd: Not copying any file from skel directory into it.
+exit=0
+.
+..
+-- login shell PATH/bashrc reachability --
+BASHRC_SOURCED=no
+
+=== B. home not pre-created ===
+exit=0
+.
+..
+.bash_logout
+.bashrc
+.profile
+-- does .profile source .bashrc? --
+13:    # include .bashrc if it exists
+14:    if [ -f "$HOME/.bashrc" ]; then
+15:	. "$HOME/.bashrc"

@@ -314,7 +314,11 @@ jobs:
           # Create commit message with summary
           TOTAL_SIZE=$(python3 -c "import json; print(json.load(open('data/disk-space-measurements.json'))['total_size_mb'])" 2>/dev/null || echo "unknown")
 
-          git commit -m "chore: update component disk space measurements (${TOTAL_SIZE}MB total)"
+          # Guarded like every other commit in this repository: the subject is
+          # generated here, but the diffstat and file list git prints with it
+          # are not, and one exception is how the invariant stops holding
+          # (issue #123).
+          bash scripts/ci/run-with-commands-stopped.sh git commit -m "chore: update component disk space measurements (${TOTAL_SIZE}MB total)"
 
           # This job runs for about 18 minutes before it pushes, which is a wide
           # window for the release workflow to land a version bump. A single
@@ -344,8 +348,21 @@ jobs:
       # of what the three-hour run did, and a plain step without `if:` is
       # skipped as soon as anything above it fails — which is exactly when the
       # log is wanted (issue #115).
+      #
+      # And require it, rather than warning about its absence. `warn` made the
+      # one thing that must not happen — the only record of the run not being
+      # kept — into a line in the log of the run whose record is missing. The
+      # reason it was `warn` is that `!cancelled()` also holds when the job
+      # failed before the measurement, so the upload is gated on the measuring
+      # step having run instead: `tee measurement.log` above creates the file
+      # the moment that step starts, so from then on at least one of these two
+      # paths exists and an empty match means the evidence was lost. Written in
+      # the positive form because the `steps` context holds only steps that
+      # "have an `id` specified and have already run" (GitHub, "Contexts"), so a
+      # step that never started has no entry and `!= 'skipped'` would be true of
+      # that empty value (issue #123).
       - name: Upload measurement artifacts
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && (steps.measure.outcome == 'success' || steps.measure.outcome == 'failure') }}
         uses: actions/upload-artifact@v7
         with:
           name: disk-space-measurements
@@ -353,7 +370,7 @@ jobs:
             data/disk-space-measurements.json
             measurement.log
           retention-days: 30
-          if-no-files-found: warn
+          if-no-files-found: error
 
       - name: Summary
         if: ${{ !cancelled() }}

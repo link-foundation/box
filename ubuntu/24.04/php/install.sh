@@ -139,8 +139,23 @@ install_php_homebrew() {
         if brew list --formula 2>/dev/null | grep -E "^php(@[0-9.]+)?$" >/dev/null; then
           log_info "Phase: brew link starting at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
           # Link with timeout to catch potential hangs (Issue #53)
-          timeout --signal=TERM --kill-after=30 300 \
-            brew link --overwrite --force "$PHP_BREW_FORMULA" 2>&1 | grep -v "Warning" || true
+          # `brew link` prints its "Warning:" lines on a *successful* link, so the
+          # output was filtered - but `| grep -v "Warning" || true` made grep's status
+          # the pipeline's and then discarded it, so a link that failed was
+          # indistinguishable from one that worked. The filter belongs on the output;
+          # the status belongs to brew. Anchoring the pattern also stops a line that
+          # merely mentions a warning from being deleted with them. (issue #123)
+          local brew_link_out="" brew_link_status=0
+          brew_link_out="$(timeout --signal=TERM --kill-after=30 300 brew link --overwrite --force "$PHP_BREW_FORMULA" 2>&1)" || brew_link_status=$?
+          if [ "$brew_link_status" -eq 0 ]; then
+            printf '%s\n' "$brew_link_out" | grep -v '^Warning' || true
+          else
+            printf '%s\n' "$brew_link_out"
+            if [ "$brew_link_status" -eq 124 ]; then
+              log_warning "brew link TIMED OUT after 300s (issue #53 is about exactly this hang, and the old form could not report it)"
+            fi
+            log_warning "brew link --overwrite --force $PHP_BREW_FORMULA failed (exit $brew_link_status)"
+          fi
           log_info "Phase: brew link completed at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
           BREW_PREFIX=$(brew --prefix 2>/dev/null || echo "")

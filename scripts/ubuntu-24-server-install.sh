@@ -249,6 +249,22 @@ else
   }
   passwd -d box 2>/dev/null || log_note "Could not remove password requirement"
   usermod -aG sudo box 2>/dev/null || log_note "Could not add to sudo group"
+  # `useradd -m` copies /etc/skel only when it creates the home directory
+  # itself. Over a directory that already exists it prints
+  #   useradd: warning: the home directory /home/box already exists.
+  #   useradd: Not copying any file from skel directory into it.
+  # and leaves the user without ~/.profile, which is the file that sources
+  # ~/.bashrc for an interactive *login* shell - so `su - box` and every ssh
+  # session would miss the PATH lines the install scripts append to ~/.bashrc.
+  # skel's .bashrc is deliberately not among the files copied back;
+  # ubuntu/24.04/js/Dockerfile explains why. Never overwrites, so a re-run is a
+  # no-op. (issue #123)
+  for skel_file in .profile .bash_logout; do
+    if [ -f "/etc/skel/$skel_file" ] && [ ! -e "/home/box/$skel_file" ]; then
+      cp -a "/etc/skel/$skel_file" "/home/box/$skel_file"
+      chown box:box "/home/box/$skel_file"
+    fi
+  done
   log_success "box user created and configured"
 fi
 
@@ -860,7 +876,21 @@ if command -v brew &>/dev/null; then
       brew install php || true
 
       if brew list --formula 2>/dev/null | grep -E "^php(@[0-9.]+)?$" >/dev/null; then
-        brew link --overwrite --force php 2>&1 | grep -v "Warning" || true
+        # `brew link` prints its "Warning:" lines on a *successful* link, so the
+        # output was filtered - but `| grep -v "Warning" || true` made grep's status
+        # the pipeline's and then discarded it, so a link that failed was
+        # indistinguishable from one that worked. The filter belongs on the output;
+        # the status belongs to brew. Anchoring the pattern also stops a line that
+        # merely mentions a warning from being deleted with them. (issue #123)
+        brew_link_out=""
+        brew_link_status=0
+        brew_link_out="$(brew link --overwrite --force php 2>&1)" || brew_link_status=$?
+        if [ "$brew_link_status" -eq 0 ]; then
+          printf '%s\n' "$brew_link_out" | grep -v '^Warning' || true
+        else
+          printf '%s\n' "$brew_link_out"
+          log_warning "brew link --overwrite --force php failed (exit $brew_link_status)"
+        fi
 
         BREW_PREFIX=$(brew --prefix 2>/dev/null || echo "")
         if [[ -n "$BREW_PREFIX" && -d "$BREW_PREFIX/opt/php" ]]; then

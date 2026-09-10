@@ -34,6 +34,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/release/git-push-failure-classifier.sh
 source "$SCRIPT_DIR/git-push-failure-classifier.sh"
+# shellcheck source=scripts/ci/run-with-commands-stopped.sh
+source "$SCRIPT_DIR/../ci/run-with-commands-stopped.sh"
+# shellcheck source=scripts/ci/capture-and-stream.sh
+source "$SCRIPT_DIR/../ci/capture-and-stream.sh"
 
 REMOTE="${1:-origin}"
 BRANCH="${2:-main}"
@@ -63,7 +67,7 @@ fi
 # the run id makes each attempt's name unique - and `allowed_merge_methods` may
 # be `["merge"]` only, so the merge must not assume squash or rebase.
 land_via_pull_request() {
-  local slug pr_branch url attempt
+  local slug pr_branch url created attempt
 
   slug="$(printf '%s' "$LABEL" | tr -c 'A-Za-z0-9._-' '-' | sed 's/^-*//; s/-*$//')"
   pr_branch="release/${slug:-automation}-${GITHUB_RUN_ID:-local}"
@@ -72,13 +76,34 @@ land_via_pull_request() {
   trace "git push $REMOTE HEAD:$pr_branch"
   git push "$REMOTE" "HEAD:$pr_branch"
 
-  url="$(gh pr list --head "$pr_branch" --base "$BRANCH" --state open --json url --jq '.[0].url // ""' 2>/dev/null || true)"
+  # `gh pr list` answers with an empty string both when there is no open pull
+  # request - the ordinary case, which the create below handles - and when the
+  # query itself failed. Distinguished here rather than merged, because issue
+  # #123 is about exactly the reading that cannot tell those two apart: a failed
+  # query would otherwise be reported as "no pull request exists" and lead to a
+  # create that GitHub declines for a reason the log never states.
+  if ! url="$(gh pr list --head "$pr_branch" --base "$BRANCH" --state open --json url --jq '.[0].url // ""' 2>&1)"; then
+    log "Could not ask whether $pr_branch already has a pull request; gh said:"
+    printf '%s\n' "$url" | sed 's/^/    /' >&2
+    url=""
+  fi
+
   if [ -z "$url" ]; then
-    url="$(gh pr create --head "$pr_branch" --base "$BRANCH" \
+    # The URL is the last line of a successful create, but the whole output is
+    # what explains a failure - and `… | tail -n1` alone discards the exit
+    # status with it, so a declined create used to be handed to `gh pr merge`
+    # as if it were a URL.
+    if ! created="$(gh pr create --head "$pr_branch" --base "$BRANCH" \
       --title "$LABEL" \
       --body "Opened by scripts/release/git-push-with-retry.sh because a repository rule declined a direct push to \`$BRANCH\`." \
-      2>&1 | tail -n1)"
+      2>&1)"; then
+      log "::error title=git-push-with-retry::could not open a pull request for $pr_branch"
+      printf '%s\n' "$created" | sed 's/^/    /' >&2
+      return 1
+    fi
+    url="$(printf '%s\n' "$created" | tail -n1)"
   fi
+
   log "Pull request: $url"
 
   # `gh pr merge` answers "Pull request is not mergeable" for a few seconds
@@ -112,13 +137,16 @@ while :; do
   trace "git push $REMOTE HEAD:$BRANCH"
   # Capture while still streaming: the output has to be inspectable to be
   # classified, but a silent push is not debuggable (same reasoning as
-  # docker-push-with-retry.sh).
-  if output="$(git push "$REMOTE" "HEAD:$BRANCH" 2>&1 | tee /dev/stderr)"; then
+  # docker-push-with-retry.sh). Not `tee /dev/stderr`: that reopens the file
+  # behind fd 2 and truncates it, so a caller whose stderr is a file - the
+  # budget wrapper, a local run redirected to a log - loses everything written
+  # before the push (issue #123, scripts/ci/capture-and-stream.sh).
+  if capture_and_stream git push "$REMOTE" "HEAD:$BRANCH"; then
     log "Push succeeded"
     exit 0
   fi
 
-  if is_repository_rule_rejection "$output"; then
+  if is_repository_rule_rejection "$CAPTURED_OUTPUT"; then
     echo "::notice title=Direct push declined by a repository rule::Landing the commit on ${BRANCH} through a pull request instead."
     land_via_pull_request
     exit $?
@@ -126,7 +154,7 @@ while :; do
 
   # Auth, network, a missing remote: rebasing would hide the real error and
   # report a race that never happened.
-  if ! is_non_fast_forward_rejection "$output"; then
+  if ! is_non_fast_forward_rejection "$CAPTURED_OUTPUT"; then
     echo "::error title=Push to ${BRANCH} failed::The rejection is neither a lost race nor a repository rule, so no retry can fix it. See the output above." >&2
     exit 1
   fi
@@ -141,6 +169,9 @@ while :; do
   # Rebase, never force: the point is for the later commit to end up on top of
   # the earlier one. --force-with-lease would delete whatever the writer ahead
   # of us landed.
-  git pull --rebase "$REMOTE" "$BRANCH"
+  # A rebase that stops prints `could not apply <sha>... <subject>`, and the
+  # subject is the release description this commit was built from, so the same
+  # containment applies here as at the `git commit` that wrote it (issue #123).
+  run_with_commands_stopped git pull --rebase "$REMOTE" "$BRANCH"
   attempt=$((attempt + 1))
 done

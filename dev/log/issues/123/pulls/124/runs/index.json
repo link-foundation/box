@@ -1,0 +1,173 @@
+[
+  {
+    "run_id": 34366975942,
+    "workflow": "Security",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "1d9fb3e13b58747b6f374a988d2ada33c791f1a6",
+    "head_branch": "main",
+    "event": "push",
+    "created_at": "2026-09-09T14:56:51Z",
+    "updated_at": "2026-09-09T14:58:22Z",
+    "jobs": 5,
+    "job_conclusions": {
+      "success": 5
+    },
+    "annotations": 0,
+    "annotation_levels": {},
+    "url": "https://github.com/link-foundation/box/actions/runs/34366975942"
+  },
+  {
+    "run_id": 34366975837,
+    "workflow": "Scripts",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "1d9fb3e13b58747b6f374a988d2ada33c791f1a6",
+    "head_branch": "main",
+    "event": "push",
+    "created_at": "2026-09-09T14:56:51Z",
+    "updated_at": "2026-09-09T14:59:18Z",
+    "jobs": 8,
+    "job_conclusions": {
+      "success": 8
+    },
+    "annotations": 0,
+    "annotation_levels": {},
+    "url": "https://github.com/link-foundation/box/actions/runs/34366975837"
+  },
+  {
+    "run_id": 34366975992,
+    "workflow": "File sizes",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "1d9fb3e13b58747b6f374a988d2ada33c791f1a6",
+    "head_branch": "main",
+    "event": "push",
+    "created_at": "2026-09-09T14:56:51Z",
+    "updated_at": "2026-09-09T14:57:12Z",
+    "jobs": 2,
+    "job_conclusions": {
+      "success": 2
+    },
+    "annotations": 0,
+    "annotation_levels": {},
+    "url": "https://github.com/link-foundation/box/actions/runs/34366975992"
+  },
+  {
+    "run_id": 34366975852,
+    "workflow": "Docs",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "1d9fb3e13b58747b6f374a988d2ada33c791f1a6",
+    "head_branch": "main",
+    "event": "push",
+    "created_at": "2026-09-09T14:56:51Z",
+    "updated_at": "2026-09-09T14:57:09Z",
+    "jobs": 2,
+    "job_conclusions": {
+      "success": 2
+    },
+    "annotations": 0,
+    "annotation_levels": {},
+    "url": "https://github.com/link-foundation/box/actions/runs/34366975852"
+  },
+  {
+    "run_id": 34366975962,
+    "workflow": "Dockerfiles",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "1d9fb3e13b58747b6f374a988d2ada33c791f1a6",
+    "head_branch": "main",
+    "event": "push",
+    "created_at": "2026-09-09T14:56:51Z",
+    "updated_at": "2026-09-09T14:57:30Z",
+    "jobs": 2,
+    "job_conclusions": {
+      "success": 2
+    },
+    "annotations": 0,
+    "annotation_levels": {},
+    "url": "https://github.com/link-foundation/box/actions/runs/34366975962"
+  },
+  {
+    "run_id": 34366976068,
+    "workflow": "Links",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "1d9fb3e13b58747b6f374a988d2ada33c791f1a6",
+    "head_branch": "main",
+    "event": "push",
+    "created_at": "2026-09-09T14:56:51Z",
+    "updated_at": "2026-09-09T14:57:26Z",
+    "jobs": 2,
+    "job_conclusions": {
+      "success": 2
+    },
+    "annotations": 1,
+    "annotation_levels": {
+      "notice": 1
+    },
+    "url": "https://github.com/link-foundation/box/actions/runs/34366976068"
+  },
+  {
+    "run_id": 34366975873,
+    "workflow": "Workflows",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "1d9fb3e13b58747b6f374a988d2ada33c791f1a6",
+    "head_branch": "main",
+    "event": "push",
+    "created_at": "2026-09-09T14:56:51Z",
+    "updated_at": "2026-09-09T14:57:29Z",
+    "jobs": 3,
+    "job_conclusions": {
+      "success": 3
+    },
+    "annotations": 0,
+    "annotation_levels": {},
+    "url": "https://github.com/link-foundation/box/actions/runs/34366975873"
+  },
+  {
+    "run_id": 34366975927,
+    "workflow": "Measure Disk Space and Update README",
+    "status": "completed",
+    "conclusion": "cancelled",
+    "head_sha": "1d9fb3e13b58747b6f374a988d2ada33c791f1a6",
+    "head_branch": "main",
+    "event": "push",
+    "created_at": "2026-09-09T14:56:51Z",
+    "updated_at": "2026-09-09T15:57:19Z",
+    "jobs": 3,
+    "job_conclusions": {
+      "success": 2,
+      "cancelled": 1
+    },
+    "annotations": 5,
+    "annotation_levels": {
+      "failure": 3,
+      "warning": 2
+    },
+    "url": "https://github.com/link-foundation/box/actions/runs/34366975927"
+  },
+  {
+    "run_id": 34366976358,
+    "workflow": "Build and Release Docker Image",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "1d9fb3e13b58747b6f374a988d2ada33c791f1a6",
+    "head_branch": "main",
+    "event": "push",
+    "created_at": "2026-09-09T14:56:51Z",
+    "updated_at": "2026-09-09T16:42:01Z",
+    "jobs": 99,
+    "job_conclusions": {
+      "success": 94,
+      "skipped": 5
+    },
+    "annotations": 1,
+    "annotation_levels": {
+      "failure": 1
+    },
+    "url": "https://github.com/link-foundation/box/actions/runs/34366976358"
+  }
+]

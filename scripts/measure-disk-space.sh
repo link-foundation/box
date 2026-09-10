@@ -149,6 +149,16 @@ box_resolve() {
   fi
 }
 
+# Retry apt metadata refreshes, the same way ubuntu/24.04/common.sh does. This
+# script does not source common.sh (it runs on the runner, not inside a box), so
+# the function is duplicated; keep the two in step.
+#
+# The three -o options restate apt's own defaults on Ubuntu 24.04 (apt 2.8.3) -
+# measured, a bare `apt-get update` retries three times and times an idle
+# connection out after 30s - so the `apt-get install` lines further down this
+# file are not weaker for omitting them. The retry loop here is what apt does
+# not do by itself. See experiments/test-issue123-apt-retry-defaults.sh for the
+# measurement and the check that it stays true (issue #123).
 apt_update_with_retry() {
   local max_retries="${APT_UPDATE_MAX_RETRIES:-5}"
   local initial_delay="${APT_UPDATE_INITIAL_DELAY:-5}"
@@ -352,6 +362,22 @@ if ! id "box" &>/dev/null; then
   useradd -m -d /home/box -s /bin/bash box 2>/dev/null || adduser --disabled-password --gecos "" --home /home/box box
   passwd -d box 2>/dev/null || true
   usermod -aG sudo box 2>/dev/null || true
+  # `useradd -m` copies /etc/skel only when it creates the home directory
+  # itself. Over a directory that already exists it prints
+  #   useradd: warning: the home directory /home/box already exists.
+  #   useradd: Not copying any file from skel directory into it.
+  # and leaves the user without ~/.profile, which is the file that sources
+  # ~/.bashrc for an interactive *login* shell - so `su - box` and every ssh
+  # session would miss the PATH lines the install scripts append to ~/.bashrc.
+  # skel's .bashrc is deliberately not among the files copied back;
+  # ubuntu/24.04/js/Dockerfile explains why. Never overwrites, so a re-run is a
+  # no-op. (issue #123)
+  for skel_file in .profile .bash_logout; do
+    if [ -f "/etc/skel/$skel_file" ] && [ ! -e "/home/box/$skel_file" ]; then
+      cp -a "/etc/skel/$skel_file" "/home/box/$skel_file"
+      chown box:box "/home/box/$skel_file"
+    fi
+  done
 fi
 
 # --- Prepare APT ---
@@ -786,7 +812,20 @@ install_php() {
     export HOMEBREW_NO_ANALYTICS=1
     export HOMEBREW_NO_AUTO_UPDATE=1
     brew install php || true
-    brew link --overwrite --force php 2>&1 | grep -v "Warning" || true
+    # `brew link` prints its "Warning:" lines on a *successful* link, so the
+    # output was filtered - but `| grep -v "Warning" || true` made grep's status
+    # the pipeline's and then discarded it, so a link that failed was
+    # indistinguishable from one that worked. The filter belongs on the output;
+    # the status belongs to brew. Anchoring the pattern also stops a line that
+    # merely mentions a warning from being deleted with them. (issue #123)
+    local brew_link_out="" brew_link_status=0
+    brew_link_out="$(brew link --overwrite --force php 2>&1)" || brew_link_status=$?
+    if [ "$brew_link_status" -eq 0 ]; then
+      printf '%s\n' "$brew_link_out" | grep -v '^Warning' || true
+    else
+      printf '%s\n' "$brew_link_out"
+      log_warning "brew link --overwrite --force php failed (exit $brew_link_status)"
+    fi
   fi
 }
 measure_install "PHP (via Homebrew)" "Runtime" install_php

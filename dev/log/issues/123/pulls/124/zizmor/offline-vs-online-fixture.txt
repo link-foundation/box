@@ -1,0 +1,118 @@
+== analyser: ghcr.io/zizmorcore/zizmor:1.30.0 ==
+
+== offline ==
+   INFO zizmor: 🌈 zizmor v1.30.0
+   WARN audit: zizmor: zizmor is running in offline mode by default; some audits and auto-fixes will not be available. see https://docs.zizmor.sh/usage/#operating-modes for details
+   INFO audit: zizmor: 🌈 completed .github/workflows/vulnerable.yml
+  warning[artipacked]: credential persistence through GitHub Actions artifacts
+   --> .github/workflows/vulnerable.yml:8:9
+    |
+  8 |       - uses: actions/checkout@v4
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ does not set persist-credentials: false
+    |
+    = note: audit confidence → Low
+    = note: this finding has an auto-fix
+    = help: audit documentation → https://docs.zizmor.sh/audits/#artipacked
+  
+  warning[excessive-permissions]: overly broad permissions
+   --> .github/workflows/vulnerable.yml:5:3
+    |
+  5 | /   build:
+  6 | |     runs-on: ubuntu-24.04
+  7 | |     steps:
+  8 | |       - uses: actions/checkout@v4
+  9 | |       - uses: tj-actions/changed-files@v44
+    | |                                           ^
+    | |                                           |
+    | |___________________________________________this job
+    |                                             default permissions used due to no permissions: block
+    |
+    = note: audit confidence → Medium
+    = help: audit documentation → https://docs.zizmor.sh/audits/#excessive-permissions
+  
+  error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/vulnerable.yml:8:15
+    |
+  8 |       - uses: actions/checkout@v4
+    |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+  
+  error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/vulnerable.yml:9:15
+    |
+  9 |       - uses: tj-actions/changed-files@v44
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+  
+  7 findings (3 suppressed, 1 unsafe fixes): 0 informational, 0 low, 2 medium, 2 high
+
+== online ==
+   INFO zizmor: 🌈 zizmor v1.30.0
+   INFO audit: zizmor: 🌈 completed .github/workflows/vulnerable.yml
+  warning[artipacked]: credential persistence through GitHub Actions artifacts
+   --> .github/workflows/vulnerable.yml:8:9
+    |
+  8 |       - uses: actions/checkout@v4
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ does not set persist-credentials: false
+    |
+    = note: audit confidence → Low
+    = note: this finding has an auto-fix
+    = help: audit documentation → https://docs.zizmor.sh/audits/#artipacked
+  
+  warning[excessive-permissions]: overly broad permissions
+   --> .github/workflows/vulnerable.yml:5:3
+    |
+  5 | /   build:
+  6 | |     runs-on: ubuntu-24.04
+  7 | |     steps:
+  8 | |       - uses: actions/checkout@v4
+  9 | |       - uses: tj-actions/changed-files@v44
+    | |                                           ^
+    | |                                           |
+    | |___________________________________________this job
+    |                                             default permissions used due to no permissions: block
+    |
+    = note: audit confidence → Medium
+    = help: audit documentation → https://docs.zizmor.sh/audits/#excessive-permissions
+  
+  error[known-vulnerable-actions]: action has a known vulnerability
+   --> .github/workflows/vulnerable.yml:9:9
+    |
+  9 |       - uses: tj-actions/changed-files@v44
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GHSA-mrrh-fwg8-r2c3
+    |
+    = note: audit confidence → High
+    = note: this finding has an auto-fix
+    = help: audit documentation → https://docs.zizmor.sh/audits/#known-vulnerable-actions
+  
+  error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/vulnerable.yml:8:15
+    |
+  8 |       - uses: actions/checkout@v4
+    |               ^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = note: this finding has an auto-fix
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+  
+  error[unpinned-uses]: unpinned action reference
+   --> .github/workflows/vulnerable.yml:9:15
+    |
+  9 |       - uses: tj-actions/changed-files@v44
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ action is not pinned to a hash (required by blanket policy)
+    |
+    = note: audit confidence → High
+    = note: this finding has an auto-fix
+    = help: audit documentation → https://docs.zizmor.sh/audits/#unpinned-uses
+  
+  8 findings (3 suppressed, 4 unsafe fixes): 0 informational, 0 low, 2 medium, 3 high
+
+== difference ==
+  offline  known-vulnerable-actions: 0   offline banner: 1   7 findings (3 suppressed, 1 unsafe fixes): 0 informational, 0 low, 2 medium, 2 high
+  online   known-vulnerable-actions: 2   offline banner: 0   8 findings (3 suppressed, 4 unsafe fixes): 0 informational, 0 low, 2 medium, 3 high
+
+Reproduced: the offline default skips known-vulnerable-actions, and reports success without it.

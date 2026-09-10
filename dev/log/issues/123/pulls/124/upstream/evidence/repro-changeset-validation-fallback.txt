@@ -1,0 +1,129 @@
+### Reproduction: a changeset/changelog check reports success when it could not
+### determine what the pull request changed.
+###
+### bash experiments/issue-123/repro-changeset-validation-fallback.sh \
+###   /tmp/templates/java /tmp/templates/rust
+###
+### Three sites, two templates, one class -- a git command that cannot answer is
+### read as "nothing changed", and "nothing changed" is a pass:
+###
+###   java  validate-changeset.mjs:23-41 catches the failure and falls back to
+###         `git diff --name-only HEAD`, which lists *uncommitted* changes. A CI
+###         checkout has none, ever, so the fallback answers [] on every run.
+###   rust  check-changelog-fragment.rs:28-45 -- exec() prints the error and
+###         returns String::new(); :64-78 reads an empty string as "no files
+###         changed"; :110-113 prints "No changed files found" and exits 0.
+###   rust  check-version-modification.rs:34-40 -- the same exec() shape without
+###         even the eprintln!: `Ok(output)` is returned for any process that
+###         *ran*, whatever its exit status, and stderr is captured and dropped.
+###         :142-146 reads the empty diff as "No changes to Cargo.toml detected. /
+###         Version check passed." So this one is silent: no error text at all.
+###
+### All three are latent in the shipped workflows, which check out with
+### fetch-depth: 0 (java changeset-check; rust changelog-check at release.yml:173,
+### version-check at release.yml:195-207) -- and all three are a check whose
+### degraded path can only report success, so nothing would say it had stopped
+### working.
+###
+### git's own answer when origin/<base> does not resolve
+  git diff --name-only HEAD~1...HEAD -> file.txt (exit 0)
+  git diff --name-only origin/main...HEAD -> 'fatal: ambiguous argument 'origin/main...HEAD': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'' (exit 128)
+
+### java: the validator itself, on a pull request with a broken changeset
+  -- with no origin/main ref (a shallow or single-branch checkout):
+     Validating changesets...
+     
+     fatal: ambiguous argument 'origin/main...HEAD': unknown revision or path not in the working tree.
+     Use '--' to separate paths from revisions, like this:
+     'git <command> [<revision>...] -- [<file>...]'
+     Changed files: 0
+     
+     No source code changes detected. Changeset not required.
+     exit=0
+  -- with origin/main present, which is the only difference:
+     Validating changesets...
+     
+     Changed files: 2
+     Source code changes detected. Checking for changeset...
+     
+     Validating: .changeset/broken.md
+       ERROR: Changeset must have frontmatter section (---)
+     
+     Some changesets have validation errors.
+     exit=1
+
+### rust: check-changelog-fragment.rs, same pull request shape
+  -- with no origin/main ref (a shallow or single-branch checkout):
+     Checking for changelog fragment in PR diff...
+     
+     Comparing against origin/main...HEAD
+     Error executing git ["diff", "--name-only", "origin/main...HEAD"]
+     fatal: ambiguous argument 'origin/main...HEAD': unknown revision or path not in the working tree.
+     Use '--' to separate paths from revisions, like this:
+     'git <command> [<revision>...] -- [<file>...]'
+     
+     No changed files found
+     exit=0
+  -- with origin/main present, which is the only difference:
+     Checking for changelog fragment in PR diff...
+     
+     Comparing against origin/main...HEAD
+     Changed files:
+       scripts/.injection-fixture.txt
+     
+     Source files changed: 1
+       scripts/.injection-fixture.txt
+     
+     Changelog fragments added: 0
+     
+     ::error::No changelog fragment found in this PR. Please add a changelog entry in changelog.d/
+     
+     To create a changelog fragment:
+       Create a new .md file in changelog.d/ with your changes
+     
+     See changelog.d/README.md for more information.
+     exit=1
+
+### rust: check-version-modification.rs, the same swallow in a second script
+  -- with no origin/main ref (a shallow or single-branch checkout):
+     Checking for manual version modifications in Cargo.toml...
+     
+     No changes to Cargo.toml detected.
+     Version check passed.
+     exit=0
+  -- with origin/main present, which is the only difference:
+     Checking for manual version modifications in Cargo.toml...
+     
+     Error: Manual version change detected in Cargo.toml!
+     
+     Versions are managed automatically by the CI/CD pipeline.
+     Please do not modify the version field directly.
+     
+     To trigger a release, add a changelog fragment to changelog.d/
+     with the appropriate bump type (major, minor, or patch).
+     
+     See changelog.d/README.md for more information.
+     
+     If you need to undo your version change, run:
+       git checkout origin/main -- Cargo.toml
+     exit=1
+
+### reading
+###
+### The same tree and the same defect decide exit=0 or exit=1 on whether one ref
+### happens to exist. Note the third section: `check-version-modification.rs`
+### prints nothing between "Checking for manual version modifications" and
+### "Version check passed", while the Cargo.toml in that fixture carries a
+### hand-written `version = "9.9.9"` -- exactly what the script exists to reject.
+###
+### Direction matters, and it is what separates these three from their siblings:
+###   js validate-changeset.mjs:120, go :113, csharp :120  -- getAllChangesets()
+###     validates the whole changeset directory when the diff is unavailable.
+###   php validate-changeset.php:23-26  -- passes null as the added count, which
+###     makes ChangesetValidator count the directory.
+###   python  -- never consults git.
+###   rust detect-code-changes.rs:151-165  -- an empty diff falls back to
+###     `git ls-tree --name-only -r HEAD`, i.e. every file in the tree.
+### Those five err toward doing *more* work. The three above err toward none.

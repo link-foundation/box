@@ -135,9 +135,19 @@ else
     sed 's/^/    /' /tmp/actionlint-policy.log
     bad "actionlint (with its bundled shellcheck) reports no problems"
   fi
-  if docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/zizmorcore/zizmor:1.30.0 \
-    --min-confidence medium --min-severity medium --no-progress --format plain \
-    --config .github/zizmor.yml "$WORKFLOW_DIR" >/tmp/zizmor-policy.log 2>&1; then
+  # Same reasoning for zizmor, and one step further: this used to restate the
+  # image and both floors here, and it also ran the analyser with no token -
+  # the offline default that made the CI job a false negative (issue #123).
+  # scripts/ci/run-zizmor.sh is the single invocation now. Without a token
+  # locally the online audits cannot run, so the suite says so rather than
+  # reporting a clean result it did not measure.
+  ZIZMOR_ENV=()
+  if [ -z "${GH_TOKEN:-${GITHUB_TOKEN:-}}" ]; then
+    echo "  NOTE: no GH_TOKEN in this shell, so zizmor's online audits (known-vulnerable-actions) are skipped here; CI supplies one."
+    ZIZMOR_ENV=(ZIZMOR_ALLOW_OFFLINE=1)
+  fi
+  if env "${ZIZMOR_ENV[@]+"${ZIZMOR_ENV[@]}"}" bash scripts/ci/run-zizmor.sh regular \
+    >/tmp/zizmor-policy.log 2>&1; then
     ok "zizmor reports no medium+ findings"
   else
     sed 's/^/    /' /tmp/zizmor-policy.log

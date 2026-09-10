@@ -83,8 +83,17 @@ check "retry script sources the classifier" \
   "$(grep -c 'source .*docker-push-failure-classifier.sh' "$RETRY")" "1"
 check "retry script consults is_non_retryable_push_failure" \
   "$(grep -c 'is_non_retryable_push_failure' "$RETRY")" "1"
-check "push output is captured, not just echoed" \
-  "$(grep -cE 'output="\$\(docker push .* \| tee /dev/stderr\)"' "$RETRY")" "1"
+# This used to grep for the literal `output="$(docker push ... | tee /dev/stderr)"`,
+# which stopped being true when issue #123 retired that idiom: `tee` opens
+# /dev/stderr with O_TRUNC, so on the two paths where fd 2 is a regular file it
+# emptied the caller's log. The assertion was pinning the spelling rather than
+# the property, so a strictly better implementation failed it. It asks for the
+# two things the retry loop actually needs now, and the end-to-end block below
+# checks that they hold when it runs.
+check "push output is captured through capture_and_stream" \
+  "$(grep -c 'capture_and_stream docker push' "$RETRY")" "1"
+check "  the retired tee /dev/stderr idiom is gone from the retry loop" \
+  "$(grep -v '^[[:space:]]*#' "$RETRY" | grep -c 'tee /dev/stderr')" "0"
 check "an actionable annotation is emitted" \
   "$(grep -c '::error title=Registry authentication failed::' "$RETRY")" "1"
 
@@ -115,6 +124,18 @@ check "permanent failure explains how to rotate the token" \
   "$(grep -qc 'DOCKERHUB_TOKEN' "$STUB_DIR/out" && echo 1 || echo 0)" "1"
 check "permanent failure does not claim attempts were exhausted" \
   "$(grep -c 'after 3 attempts' "$STUB_DIR/out")" "0"
+
+# run_retry sends both streams to a regular file, which is exactly the case
+# `tee /dev/stderr` truncated: the reopen empties the file, so everything the
+# script printed before the push - including the attempt banner - was gone by
+# the time the push returned (issue #123). Both halves are asserted here: the
+# output has to be visible while it is produced *and* still inspectable after.
+check "the banner printed before the push survives in the caller's log" \
+  "$(grep -c '==> Pushing konard/box-js:latest (attempt 1/3)' "$STUB_DIR/out")" "1"
+check "  and the push's own output is streamed into the same log" \
+  "$(grep -c 'The push refers to repository' "$STUB_DIR/out")" "1"
+check "  and the captured copy is what the classifier read" \
+  "$(grep -c 'permanent authentication error; not retrying' "$STUB_DIR/out")" "1"
 
 status="$(run_retry 'denied: 403 Forbidden')"
 check "transient failure exits non-zero after retrying" "$status" "1"

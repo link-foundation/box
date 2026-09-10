@@ -109,7 +109,27 @@ if [ "${#FILES[@]}" -eq 0 ]; then
   # template we did not write is a false positive by construction — which is
   # why shellcheck, shfmt, the awk scan and the JavaScript parse all exclude
   # the same directory (issue #121).
-  while IFS= read -r f; do FILES+=("$f"); done < <(git ls-files '*.sh' | grep -v '^dev/log/')
+  #
+  # Command substitution rather than `< <(...)`, and the status of `git
+  # ls-files` rather than the status of the pipeline: a git that cannot read
+  # the index answers with an empty list, and an empty list used to walk
+  # straight past this block into a run over zero files that printed "OK - no
+  # variable leaks" and exited 0 (issue #123, RC-17). grep's exit 1 means it
+  # selected nothing, which is a legitimately empty tree; anything above 1 is
+  # an error.
+  if ! LISTING="$(
+    git ls-files '*.sh'
+    exit "${PIPESTATUS[0]}"
+  )"; then
+    echo "::error title=check-heredoc-vars::could not list this repository's shell scripts - git ls-files failed and printed the reason above. Nothing was scanned; this is not a clean run." >&2
+    exit 2
+  fi
+  LISTING="$(printf '%s\n' "$LISTING" | { grep -v '^dev/log/' || [ "$?" = 1 ]; })"
+  while IFS= read -r f; do [ -n "$f" ] && FILES+=("$f"); done <<<"$LISTING"
+  if [ "${#FILES[@]}" -eq 0 ]; then
+    echo "::error title=check-heredoc-vars::discovery matched no shell script at all. Either the glob ('*.sh') is wrong or this is not the repository it was written for; a gate that read nothing must not report a clean tree." >&2
+    exit 2
+  fi
 fi
 
 # The discovered set, one repository-relative path per line, nothing else,

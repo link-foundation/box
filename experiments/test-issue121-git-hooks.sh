@@ -578,11 +578,26 @@ done <<<"$GATES"
   || fail "only found $GATE_COUNT gates in $CHECKS; the grep above has drifted"
 
 # git requires an extensionless hook name, so every `*.sh` glob misses it.
+#
+# The `2>/dev/null` this loop used to call the linters with is gone (issue
+# #123). When this assertion failed once during a full experiment run, it could
+# say only "does not see the hook" — the discovery's own explanation had been
+# thrown away by the redirection, while the identical assertion two lines later
+# passed. A test that destroys the evidence for its own failure costs a whole
+# iteration to re-find, which is the same defect it is here to check for: the
+# linter's exit status and stderr are the answer, so both are kept and printed.
 for linter in run-shellcheck run-shfmt; do
-  if bash "$REPO_ROOT/scripts/ci/$linter.sh" --list 2>/dev/null | grep -qx '.githooks/pre-commit'; then
+  listing=""
+  rc=0
+  listing="$(bash "$REPO_ROOT/scripts/ci/$linter.sh" --list 2>&1)" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    fail "$linter.sh --list exited $rc, so it never answered" \
+      "$(printf '%s' "$listing" | head -3)"
+  elif printf '%s\n' "$listing" | grep -qx '.githooks/pre-commit'; then
     pass "$linter.sh discovers .githooks/pre-commit"
   else
-    fail "$linter.sh does not see the hook; nothing lints it"
+    fail "$linter.sh does not see the hook; nothing lints it" \
+      "$(printf '%s\n' "$listing" | wc -l) path(s) listed, none of them the hook"
   fi
 done
 

@@ -1,0 +1,186 @@
+[
+  {
+    "id": 102518098621,
+    "run_id": 34366976068,
+    "workflow_name": "Links",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34366976068",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX3o4KvQ",
+    "head_sha": "1d9fb3e13b58747b6f374a988d2ada33c791f1a6",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102518098621",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34366976068/job/102518098621",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-09T14:56:52Z",
+    "started_at": "2026-09-09T14:56:54Z",
+    "completed_at": "2026-09-09T14:57:16Z",
+    "name": "links / lychee",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-09T14:56:55Z",
+        "completed_at": "2026-09-09T14:56:56Z"
+      },
+      {
+        "name": "Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-09T14:56:56Z",
+        "completed_at": "2026-09-09T14:56:58Z"
+      },
+      {
+        "name": "Simulate a fresh merge with the base branch",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-09T14:56:58Z",
+        "completed_at": "2026-09-09T14:56:58Z"
+      },
+      {
+        "name": "Check links with lychee",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-09-09T14:56:58Z",
+        "completed_at": "2026-09-09T14:57:10Z"
+      },
+      {
+        "name": "Set up Node",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 5,
+        "started_at": "2026-09-09T14:57:10Z",
+        "completed_at": "2026-09-09T14:57:10Z"
+      },
+      {
+        "name": "Re-check the links no host ever answered",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 6,
+        "started_at": "2026-09-09T14:57:10Z",
+        "completed_at": "2026-09-09T14:57:10Z"
+      },
+      {
+        "name": "Look for Web Archive replacements",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 7,
+        "started_at": "2026-09-09T14:57:10Z",
+        "completed_at": "2026-09-09T14:57:10Z"
+      },
+      {
+        "name": "Fail if broken links were found",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 8,
+        "started_at": "2026-09-09T14:57:10Z",
+        "completed_at": "2026-09-09T14:57:10Z"
+      },
+      {
+        "name": "The gate's own fixtures still hold",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-09-09T14:57:10Z",
+        "completed_at": "2026-09-09T14:57:15Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 18,
+        "started_at": "2026-09-09T14:57:15Z",
+        "completed_at": "2026-09-09T14:57:15Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 19,
+        "started_at": "2026-09-09T14:57:15Z",
+        "completed_at": "2026-09-09T14:57:15Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102518098621",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056012,
+    "runner_name": "GitHub Actions 1000056012",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 102518257227,
+    "run_id": 34366976068,
+    "workflow_name": "Links",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34366976068",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX3pB2Sw",
+    "head_sha": "1d9fb3e13b58747b6f374a988d2ada33c791f1a6",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102518257227",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34366976068/job/102518257227",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-09T14:57:17Z",
+    "started_at": "2026-09-09T14:57:19Z",
+    "completed_at": "2026-09-09T14:57:25Z",
+    "name": "pipeline-status",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-09T14:57:20Z",
+        "completed_at": "2026-09-09T14:57:20Z"
+      },
+      {
+        "name": "Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-09T14:57:20Z",
+        "completed_at": "2026-09-09T14:57:23Z"
+      },
+      {
+        "name": "Check pipeline status",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-09T14:57:23Z",
+        "completed_at": "2026-09-09T14:57:23Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-09-09T14:57:23Z",
+        "completed_at": "2026-09-09T14:57:23Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-09-09T14:57:23Z",
+        "completed_at": "2026-09-09T14:57:23Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102518257227",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056017,
+    "runner_name": "GitHub Actions 1000056017",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  }
+]

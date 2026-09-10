@@ -150,7 +150,12 @@ log_success "npm updated to latest version"
 log_step "Installing Playwright, @playwright/test, and @puppeteer/browsers CLIs"
 
 log_info "Installing playwright, @playwright/test, and @puppeteer/browsers globally via npm..."
-run_with_retry npm install -g playwright @playwright/test @puppeteer/browsers --no-fund --force
+# No --force: it printed "npm warn using --force Recommended protections
+# disabled." on every JS build since issue #84 while changing nothing. Measured
+# in dev/log/issues/123/pulls/124/npm-force/measurement.txt - 12 runs, both
+# images, with and without the flag, including the reinstall run_with_retry
+# actually performs: exit=0 and Playwright 1.63.0 every time.
+run_with_retry npm install -g playwright @playwright/test @puppeteer/browsers --no-fund
 log_success "playwright, @playwright/test, and @puppeteer/browsers CLIs installed"
 
 # Verify installations

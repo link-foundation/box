@@ -12,19 +12,32 @@
 
 set -e
 
+# Everything this script prints about a changeset - its path, its body, the
+# commit subject built from it - was written by whoever opened the pull request
+# that added it, and the runner reads `##[<command>]` from the middle of any
+# line (issue #123). `run_with_commands_stopped` covers those prints; the
+# script's own `::error::`/`::warning::` annotations stay outside it.
+# shellcheck source=scripts/ci/run-with-commands-stopped.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../ci/run-with-commands-stopped.sh"
+
+# read_version_file: the same reader every release job uses, so this script and
+# the jobs that consume what it writes cannot disagree about what a version is.
+# shellcheck source=scripts/release/release-version.sh
+source "$(dirname "${BASH_SOURCE[0]}")/release-version.sh"
+
 CHANGESET_DIR=".changeset"
 VERSION_FILE="VERSION"
 DRY_RUN="${DRY_RUN:-false}"
 
 echo "Applying changesets to VERSION file..."
 
-# Get current version
-if [ ! -f "$VERSION_FILE" ]; then
-  echo "::error::VERSION file not found"
+# Get current version. Not `cat | tr` (issue #123): that reports an empty
+# VERSION file as an empty version, and the arithmetic below turns an empty
+# version into 1.0.0 - lower than every version this repository has published,
+# and this script is the one that pushes the result to main.
+if ! CURRENT_VERSION="$(read_version_file "$VERSION_FILE")"; then
   exit 1
 fi
-
-CURRENT_VERSION=$(cat "$VERSION_FILE" | tr -d '[:space:]')
 echo "Current version: $CURRENT_VERSION"
 
 # Parse version components
@@ -49,7 +62,7 @@ if [ "${#CHANGESETS[@]}" -eq 0 ]; then
 fi
 
 echo "Found changesets:"
-printf '%s\n' "${CHANGESETS[@]}"
+run_with_commands_stopped printf '%s\n' "${CHANGESETS[@]}"
 
 # Determine highest bump type
 HIGHEST_BUMP="patch"
@@ -57,7 +70,7 @@ DESCRIPTIONS=""
 
 for CHANGESET in "${CHANGESETS[@]}"; do
   echo ""
-  echo "Processing: $CHANGESET"
+  run_with_commands_stopped echo "Processing: $CHANGESET"
 
   # Read bump type from changeset
   BUMP_TYPE=$(grep -E "^bump:\s*(patch|minor|major)" "$CHANGESET" | sed 's/bump:\s*//' | tr -d '[:space:]')
@@ -125,7 +138,7 @@ echo "Updated VERSION file"
 echo ""
 echo "Deleting processed changesets:"
 for CHANGESET in "${CHANGESETS[@]}"; do
-  echo "  Removing: $CHANGESET"
+  run_with_commands_stopped echo "  Removing: $CHANGESET"
   rm -f "$CHANGESET"
 done
 
@@ -144,10 +157,16 @@ git config user.email "github-actions[bot]@users.noreply.github.com"
 echo ""
 echo "Committing version bump..."
 git add -A
+# git echoes the new commit's subject, and that subject is `$DESCRIPTIONS` -
+# the changeset bodies a pull request added. Release 2.9.0's notes quoted
+# `##[error]` while explaining issue #121's log injection, and the runner read
+# it: run 34366976358's "Apply Changesets" job concluded `success` carrying a
+# `failure` annotation nothing had produced. The guard stops the runner from
+# reading anything git prints here (issue #123).
 if [ -n "$DESCRIPTIONS" ]; then
-  git commit -m "$NEW_VERSION: $DESCRIPTIONS"
+  run_with_commands_stopped git commit -m "$NEW_VERSION: $DESCRIPTIONS"
 else
-  git commit -m "$NEW_VERSION"
+  run_with_commands_stopped git commit -m "$NEW_VERSION"
 fi
 
 echo "Pushing to main..."

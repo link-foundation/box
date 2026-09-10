@@ -104,12 +104,42 @@ anchor_at_repository_root() {
   cd "$root" || exit 2
 }
 
+# collect_files / discover_or_exit - the two empty answers told apart, neither
+# of them reported as a clean run (issue #123, RC-17). `mapfile < <(git ls-files
+# …)` discards git's exit status entirely: a git that could not read the index
+# produced an empty array, which this gate reported as "the discovery glob is
+# wrong" on the check path and as a clean, empty answer on the --list-inputs
+# path that the coverage gate reads as fact.
+collect_files() {
+  local listing
+  # grep's exit 1 ("selected nothing") is a legitimately empty tree, not an
+  # error; git's status is the one that has to survive the pipeline.
+  listing="$(
+    git ls-files -- '*.sh' '*.bash' '*.mjs' '*.js' '*.py' '*.yml' '*.yaml'
+    exit "${PIPESTATUS[0]}"
+  )" || return 1
+  printf '%s\n' "$listing" | { grep -v '^dev/log/' || [ "$?" = 1 ]; }
+}
+
+discover_or_exit() {
+  local listing
+  if ! listing="$(collect_files)"; then
+    echo "::error title=check-awk-portability::could not list this repository's files - git ls-files failed and printed the reason above. No awk program was scanned; this is not a clean run." >&2
+    exit 2
+  fi
+  if [ -z "$listing" ]; then
+    echo "::error title=check-awk-portability::discovery matched no file at all. Either the globs are wrong or this is not the repository they were written for; a gate that read nothing must not report a clean tree." >&2
+    exit 2
+  fi
+  printf '%s\n' "$listing"
+}
+
 if [ "${#FILES[@]}" -eq 0 ]; then
   anchor_at_repository_root
-  mapfile -t FILES < <(
-    git ls-files -- '*.sh' '*.bash' '*.mjs' '*.js' '*.py' '*.yml' '*.yaml' \
-      | grep -v '^dev/log/'
-  )
+  # `$(...)` and not `< <(...)`: discover_or_exit ends the script when it cannot
+  # answer, and a process substitution's exit would end only the subshell.
+  LISTING="$(discover_or_exit)" || exit $?
+  while IFS= read -r f; do [ -n "$f" ] && FILES+=("$f"); done <<<"$LISTING"
 fi
 
 # The discovered set, one repository-relative path per line, nothing else,
@@ -118,7 +148,7 @@ fi
 # `paths:` filter that matches none of them makes the job unreachable, which
 # looks exactly like a clean tree (issue #121).
 if [ "$LIST_INPUTS" -eq 1 ]; then
-  [ "${#FILES[@]}" -gt 0 ] && printf '%s\n' "${FILES[@]}"
+  printf '%s\n' "${FILES[@]}"
   exit 0
 fi
 

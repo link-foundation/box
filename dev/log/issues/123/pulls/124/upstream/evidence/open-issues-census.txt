@@ -1,0 +1,22 @@
+===== js =====
+#185 docker-publish writes :latest and :${VERSION} without reading back what they serve; the python template verifies and this one does not
+#184 `all_recovered` is computed from the re-asked subset alone, so a report holding one 404 and one connection reset ends the run green
+===== python =====
+===== rust =====
+#170 `all_recovered` is computed from the re-asked subset alone, so a report holding one 404 and one connection reset ends the run green
+===== php =====
+===== csharp =====
+#58 Link checker relies on --max-retries, which cannot cover a connection reset during connect: a healthy URL fails the run
+#57 `release.yml` first exercises `NUGET_API_KEY` at publish time, 55 capped minutes into the run, so an expired key costs the whole build (no `release-preflight` job)
+#56 `scripts/run-with-budget-warning.sh` does not exist and no step is wrapped; the job cap is the only timeout, and a job killed by it is reported `cancelled`
+#55 `release.yml` caps 7 of 7 (php) / 8 of 8 (csharp) jobs with `timeout-minutes` but ships no terminal `pipeline-status` job, so a cap that fires produces a grey run instead of a red one
+#54 `persist-credentials: false` is set on 2 of 27 checkouts (js) / 2 of 11 (php) / 1 of 13 (csharp); zizmor reports the rest but `--min-confidence medium` hides every one of them
+#53 `workflows.yml` runs actionlint but not zizmor, and there is no `.github/zizmor.yml`; adding it surfaces 4 high-severity `template-injection` and 2 high-severity `excessive-permissions` findings
+#52 `.github/zizmor.yml` declares `'*': hash-pin`, but the actionlint container is pinned by tag; `unpinned-uses` only covers *action* references and the `unpinned-images` audit that covers container references is Pedantic-persona
+#51 CI/CD: prove the release can be published before building it (preflight credentials on main)
+===== go =====
+#6 release.yml: Codecov upload can never succeed and is hidden twice (no token, fail_ci_if_error: false, continue-on-error: true) and is pinned to deprecated @v4
+#5 release.yml: cancellable concurrency around release jobs, always() instead of !cancelled(), workflow-level write permissions, and no post-publish verification
+===== java =====
+#6 release.yml: Codecov failures reported as success (fail_ci_if_error: false), action pinned to deprecated @v4, and v3-era file: input
+#5 release.yml: cancellable concurrency around release jobs, always() instead of !cancelled(), and no post-publish verification
