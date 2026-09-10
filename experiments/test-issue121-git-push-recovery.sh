@@ -319,7 +319,72 @@ else
   fail "the retries are bounded by GIT_PUSH_MAX_ATTEMPTS (got $(grep -c '^git push' "$F/git.log") pushes)"
 fi
 
-rm -rf "$A" "$B" "$C" "$D" "$E" "$F"
+# Scenario G: the `gh pr list` query itself fails. Issue #123: an empty answer
+# from a failed query used to be indistinguishable from "no pull request open",
+# so the run continued on a reading it had no evidence for. The recovery is the
+# same - try to create one - but the log has to say the question went
+# unanswered.
+G="$(mktemp -d)"
+make_stubs "$G" "case \"\$3\" in HEAD:main) printf '%s\n' 'remote: error: GH013: Repository rule violations found for refs/heads/main.' >&2; exit 1 ;; *) exit 0 ;; esac"
+cat >"$G/bin/gh" <<STUB
+#!/usr/bin/env bash
+echo "gh \$*" >> "$G/gh.log"
+case "\$2" in
+  list) echo "gh: could not resolve to a Repository" >&2; exit 1 ;;
+  create) echo "https://github.com/link-foundation/box/pull/999" ;;
+  merge) exit 0 ;;
+esac
+exit 0
+STUB
+chmod +x "$G/bin/gh"
+run_pusher "$G"
+G_EXIT=$?
+if [ "$G_EXIT" -eq 0 ]; then
+  pass "a failed pull-request query still lands the change"
+else
+  fail "a failed pull-request query still lands the change (got $G_EXIT)"
+fi
+if grep -q 'Could not ask whether' "$G/out.log" && grep -q 'could not resolve to a Repository' "$G/out.log"; then
+  pass "a failed pull-request query is reported with what gh said"
+else
+  fail "a failed pull-request query is reported with what gh said"
+fi
+
+# Scenario H: the create is declined. The URL is the last line of a successful
+# create and nothing more; taking that line without the exit status handed a
+# sentence of English to `gh pr merge` as if it were a pull request.
+H="$(mktemp -d)"
+make_stubs "$H" "case \"\$3\" in HEAD:main) printf '%s\n' 'remote: error: GH013: Repository rule violations found for refs/heads/main.' >&2; exit 1 ;; *) exit 0 ;; esac"
+cat >"$H/bin/gh" <<STUB
+#!/usr/bin/env bash
+echo "gh \$*" >> "$H/gh.log"
+case "\$2" in
+  list) echo "" ;;
+  create) echo "pull request create failed: GraphQL: Resource not accessible by integration" >&2; exit 1 ;;
+  merge) exit 0 ;;
+esac
+exit 0
+STUB
+chmod +x "$H/bin/gh"
+run_pusher "$H"
+H_EXIT=$?
+if [ "$H_EXIT" -ne 0 ]; then
+  pass "a declined pull-request create fails the job"
+else
+  fail "a declined pull-request create fails the job (got $H_EXIT)"
+fi
+if ! grep -q '^gh pr merge' "$H/gh.log"; then
+  pass "a declined create is not passed on to gh pr merge as a URL"
+else
+  fail "a declined create is not passed on to gh pr merge as a URL"
+fi
+if grep -q 'could not open a pull request' "$H/out.log"; then
+  pass "a declined create says so"
+else
+  fail "a declined create says so"
+fi
+
+rm -rf "$A" "$B" "$C" "$D" "$E" "$F" "$G" "$H"
 
 # --- Part 3: every writer of main uses it -----------------------------------
 

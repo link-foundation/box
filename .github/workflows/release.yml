@@ -163,9 +163,7 @@ jobs:
         env:
           GITHUB_HEAD_REF: ${{ github.head_ref }}
           GITHUB_BASE_REF: ${{ github.base_ref }}
-        run: |
-          chmod +x scripts/release/check-version.sh
-          ./scripts/release/check-version.sh
+        run: bash scripts/release/check-version.sh
 
   # === CHANGESET CHECK (PRs only) ===
   # Ensure PRs with code changes include a changeset
@@ -184,28 +182,7 @@ jobs:
         env:
           GITHUB_HEAD_REF: ${{ github.head_ref }}
           GITHUB_BASE_REF: ${{ github.base_ref }}
-        run: |
-          # Skip for branches that don't need changesets
-          if [[ "$GITHUB_HEAD_REF" == changeset-release/* ]] || [[ "$GITHUB_HEAD_REF" == changeset-manual-release-* ]]; then
-            echo "Skipping changeset check for release PR"
-            exit 0
-          fi
-
-          # Check if there are code changes (Dockerfile, scripts, etc.)
-          git fetch origin "$GITHUB_BASE_REF" 2>/dev/null || true
-          CODE_CHANGES=$(git diff --name-only "origin/${GITHUB_BASE_REF}...HEAD" | grep -E '^(Dockerfile|scripts/|ubuntu/|\.github/workflows/)' || true)
-
-          if [ -z "$CODE_CHANGES" ]; then
-            echo "No code changes detected, changeset not required"
-            exit 0
-          fi
-
-          echo "Code changes detected:"
-          echo "$CODE_CHANGES"
-          echo ""
-
-          chmod +x scripts/release/validate-changeset.sh
-          ./scripts/release/validate-changeset.sh
+        run: bash scripts/release/check-changeset-required.sh
 
   # === AUTOMATIC VERSION BUMP (push to main with changesets) ===
   apply-changesets:

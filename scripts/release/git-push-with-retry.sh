@@ -67,7 +67,7 @@ fi
 # the run id makes each attempt's name unique - and `allowed_merge_methods` may
 # be `["merge"]` only, so the merge must not assume squash or rebase.
 land_via_pull_request() {
-  local slug pr_branch url attempt
+  local slug pr_branch url created attempt
 
   slug="$(printf '%s' "$LABEL" | tr -c 'A-Za-z0-9._-' '-' | sed 's/^-*//; s/-*$//')"
   pr_branch="release/${slug:-automation}-${GITHUB_RUN_ID:-local}"
@@ -76,13 +76,34 @@ land_via_pull_request() {
   trace "git push $REMOTE HEAD:$pr_branch"
   git push "$REMOTE" "HEAD:$pr_branch"
 
-  url="$(gh pr list --head "$pr_branch" --base "$BRANCH" --state open --json url --jq '.[0].url // ""' 2>/dev/null || true)"
+  # `gh pr list` answers with an empty string both when there is no open pull
+  # request - the ordinary case, which the create below handles - and when the
+  # query itself failed. Distinguished here rather than merged, because issue
+  # #123 is about exactly the reading that cannot tell those two apart: a failed
+  # query would otherwise be reported as "no pull request exists" and lead to a
+  # create that GitHub declines for a reason the log never states.
+  if ! url="$(gh pr list --head "$pr_branch" --base "$BRANCH" --state open --json url --jq '.[0].url // ""' 2>&1)"; then
+    log "Could not ask whether $pr_branch already has a pull request; gh said:"
+    printf '%s\n' "$url" | sed 's/^/    /' >&2
+    url=""
+  fi
+
   if [ -z "$url" ]; then
-    url="$(gh pr create --head "$pr_branch" --base "$BRANCH" \
+    # The URL is the last line of a successful create, but the whole output is
+    # what explains a failure - and `… | tail -n1` alone discards the exit
+    # status with it, so a declined create used to be handed to `gh pr merge`
+    # as if it were a URL.
+    if ! created="$(gh pr create --head "$pr_branch" --base "$BRANCH" \
       --title "$LABEL" \
       --body "Opened by scripts/release/git-push-with-retry.sh because a repository rule declined a direct push to \`$BRANCH\`." \
-      2>&1 | tail -n1)"
+      2>&1)"; then
+      log "::error title=git-push-with-retry::could not open a pull request for $pr_branch"
+      printf '%s\n' "$created" | sed 's/^/    /' >&2
+      return 1
+    fi
+    url="$(printf '%s\n' "$created" | tail -n1)"
   fi
+
   log "Pull request: $url"
 
   # `gh pr merge` answers "Pull request is not mergeable" for a few seconds

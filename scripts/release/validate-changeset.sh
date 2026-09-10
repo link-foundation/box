@@ -14,11 +14,18 @@
 # named `##[error]anything.md`. The runner reads that from the middle of a line
 # (issue #123), so the paths are printed with command processing stopped; this
 # script's own `::error::`/`::warning::` annotations stay outside the guard.
-# shellcheck source=scripts/ci/run-with-commands-stopped.sh
-source "$(dirname "${BASH_SOURCE[0]}")/../ci/run-with-commands-stopped.sh"
+#
+# pr-diff-range.sh sources run-with-commands-stopped.sh, and is itself here
+# because `git diff --name-status "origin/${BASE_REF}...HEAD" 2>/dev/null` read
+# a range that does not resolve as "this pull request added no changeset". That
+# is the safe direction - this script fails either way - but it is the wrong
+# message: it sends a contributor who did add a changeset off to add another
+# one, when the truth is that the job could not see the base branch (issue
+# #123).
+# shellcheck source=scripts/release/pr-diff-range.sh
+source "$(dirname "${BASH_SOURCE[0]}")/pr-diff-range.sh"
 
 CHANGESET_DIR=".changeset"
-BASE_REF="${GITHUB_BASE_REF:-main}"
 HEAD_REF="${GITHUB_HEAD_REF:-}"
 
 echo "Validating changesets for PR..."
@@ -29,11 +36,12 @@ if [[ "$HEAD_REF" == changeset-release/* ]] || [[ "$HEAD_REF" == changeset-manua
   exit 0
 fi
 
-# Fetch base branch
-git fetch origin "$BASE_REF" 2>/dev/null || true
-
 # Get added changeset files (status 'A' for added)
-ADDED_CHANGESETS=$(git diff --name-status "origin/${BASE_REF}...HEAD" 2>/dev/null \
+if ! CHANGED_WITH_STATUS="$(pr_changed_files_with_status)"; then
+  exit 1
+fi
+
+ADDED_CHANGESETS=$(printf '%s\n' "$CHANGED_WITH_STATUS" \
   | grep "^A.*${CHANGESET_DIR}/.*\.md$" \
   | grep -v "README.md" \
   | awk '{print $2}')
