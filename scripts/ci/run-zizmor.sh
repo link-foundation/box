@@ -18,7 +18,7 @@
 #                             run without a token. CI must never set it, and
 #                             experiments/test-issue123-zizmor-token.sh asserts
 #                             that no workflow does.
-#   BOX_VERBOSE=1             trace every command this script runs
+#   BOX_VERBOSE=1             trace commands without exposing token values
 #
 # Exit code 0 = zizmor reported nothing at or above the pass's floors *and* it
 # ran with its full audit set.
@@ -150,6 +150,16 @@ if [ "$PRINT_ONLY" = "1" ]; then
   exit 0
 fi
 
+# xtrace expands assignment and test operands.  Passing the token to Docker by
+# environment *name* keeps it out of argv, but it does not keep a preceding
+# `set -x` from printing `TOKEN=...`, `[ -z ... ]`, and `export GH_TOKEN=...`.
+# Suspend tracing for the whole secret-dependent branch and discard the local
+# copy before restoring it.  The command traced afterwards contains only
+# `-e GH_TOKEN`, never its value (issue #125).
+if [ "${BOX_VERBOSE:-0}" = "1" ]; then
+  { set +x; } 2>/dev/null
+fi
+
 TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
 
 if [ -z "$TOKEN" ]; then
@@ -174,6 +184,11 @@ else
   # empty one.
   CMD=("$DOCKER" run --rm -v "$REPO_ROOT:/repo" -w /repo
     "$IMAGE" "${PASS_ARGS[@]}" "${COMMON_ARGS[@]}" "${TARGETS[@]}")
+fi
+
+unset TOKEN
+if [ "${BOX_VERBOSE:-0}" = "1" ]; then
+  set -x
 fi
 
 cd "$REPO_ROOT" || exit 2

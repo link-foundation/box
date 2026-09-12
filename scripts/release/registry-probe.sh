@@ -60,7 +60,7 @@
 #   REGISTRY_PROBE_USERNAME  basic-auth user for the push probe
 #   REGISTRY_PROBE_PASSWORD  basic-auth secret for the push probe
 #   REGISTRY_PROBE_TIMEOUT   per-request timeout in seconds (default 20)
-#   BOX_VERBOSE=1            trace every command
+#   BOX_VERBOSE=1            trace requests without credentials or bearer tokens
 #
 # Every probe leaves its answer in REGISTRY_PROBE_STATE and its reason in
 # REGISTRY_PROBE_DETAIL. Nothing is printed to stdout: `state="$(probe ...)"`
@@ -69,9 +69,9 @@
 
 set -uo pipefail
 
-if [ "${BOX_VERBOSE:-0}" = "1" ]; then
-  set -x
-fi
+registry_probe_trace() {
+  [ "${BOX_VERBOSE:-0}" = "1" ] && echo "[registry-probe] $*" >&2 || true
+}
 
 REGISTRY_PROBE_TIMEOUT="${REGISTRY_PROBE_TIMEOUT:-20}"
 
@@ -129,6 +129,12 @@ registry_probe_http() {
   local method="$1" url="$2"
   shift 2
 
+  # Never print HEADER arguments: Authorization carries the short-lived bearer
+  # token, and raw xtrace also expands REGISTRY_PROBE_PASSWORD while building
+  # the curl config.  Method and URL identify the failing request without
+  # exposing either credential (issue #125).
+  registry_probe_trace "${method} ${url}"
+
   local headers_file
   headers_file="$(mktemp)"
 
@@ -151,6 +157,12 @@ registry_probe_http() {
   response="$(curl "${args[@]}" "$url" 2>/dev/null)"
   local curl_status=$?
   [ -n "$config" ] && rm -f "$config"
+
+  if [ "$curl_status" -ne 0 ]; then
+    registry_probe_trace "${method} ${url} -> curl exit ${curl_status}"
+  else
+    registry_probe_trace "${method} ${url} -> HTTP ${response##*$'\n'}"
+  fi
 
   # Only the last block: --location dumps one header block per hop, and the
   # Location of a 302 the client already followed is not the Location the

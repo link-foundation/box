@@ -54,7 +54,7 @@
 #   DOCKERHUB_TOKEN        Docker Hub personal access token
 #   DOCKERHUB_REQUIRED     1 (default) to treat Docker Hub as a release target
 #   ALLOW_PRIVATE_GHCR     1 to downgrade a private GHCR package to a warning
-#   BOX_VERBOSE=1          trace every command
+#   BOX_VERBOSE=1          trace decisions without credential values
 #
 # When DOCKERHUB_TOKEN is empty the credentials are read from the Docker CLI's
 # config instead, so a job that logged in through OIDC trusted publishing
@@ -68,9 +68,9 @@
 
 set -uo pipefail
 
-if [ "${BOX_VERBOSE:-0}" = "1" ]; then
-  set -x
-fi
+preflight_trace() {
+  [ "${BOX_VERBOSE:-0}" = "1" ] && echo "[preflight] $*" >&2 || true
+}
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./registry-probe.sh
@@ -189,6 +189,16 @@ check_push() {
   local level="error"
   [ "$required" = "1" ] || level="warning"
 
+  # Raw xtrace cannot be used in a function whose positional parameters hold
+  # live registry credentials: it expands the `local ... secret="$5"` line and
+  # the environment assignment below.  These state-only messages preserve the
+  # useful diagnostic path without ever formatting the value (issue #125).
+  if [ -n "$secret" ]; then
+    preflight_trace "${label}: environment credential configured"
+  else
+    preflight_trace "${label}: no environment credential; checking Docker config"
+  fi
+
   if [ -z "$secret" ]; then
     local from_config
     from_config="$(docker_config_credentials "$registry")"
@@ -209,6 +219,7 @@ check_push() {
   REGISTRY_PROBE_USERNAME="$username" REGISTRY_PROBE_PASSWORD="$secret" \
     registry_probe_push "$registry" "$repository"
   local state="$REGISTRY_PROBE_STATE" detail="$REGISTRY_PROBE_DETAIL"
+  preflight_trace "${label}: ${registry}/${repository} -> ${state}"
 
   case "$state" in
     ok)
@@ -251,7 +262,9 @@ check_push() {
 # exists to skip.
 check_public() {
   local ref="$1"
+  preflight_trace "GHCR visibility: probing ${ref} anonymously"
   registry_probe_pull "$ref"
+  preflight_trace "GHCR visibility: ${ref} -> ${REGISTRY_PROBE_STATE}"
   case "$REGISTRY_PROBE_STATE" in
     published)
       row "GHCR visibility" "$ref" "public" "$REGISTRY_PROBE_DETAIL"
