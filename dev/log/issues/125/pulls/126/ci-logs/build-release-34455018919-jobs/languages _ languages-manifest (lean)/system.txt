@@ -1,0 +1,16 @@
+2026-09-10T09:01:56.9480000Z Requested labels: ubuntu-24.04
+2026-09-10T09:01:56.9480000Z Job defined at: link-foundation/box/.github/workflows/release-languages.yml@refs/heads/main
+2026-09-10T09:01:56.9480000Z Reusable workflow chain:
+2026-09-10T09:01:56.9480000Z link-foundation/box/.github/workflows/release.yml@refs/heads/main (90f1e2d95adbb0beb132da366b28d14a3746347c)
+2026-09-10T09:01:56.9480000Z -> link-foundation/box/.github/workflows/release-languages.yml@refs/heads/main (90f1e2d95adbb0beb132da366b28d14a3746347c)
+2026-09-10T09:01:56.9480000Z Waiting for a runner to pick up this job...
+2026-09-10T09:01:57.0780000Z Job is waiting for a hosted runner to come online.
+2026-09-10T09:01:56.9370000Z Evaluating languages.if
+2026-09-10T09:01:56.9370000Z Evaluating: (!cancelled() && (needs.preflight.result == 'success') && (needs.detect-changes.result == 'success') && (((((github.event_name == 'push') && (github.ref == 'refs/heads/main') && (needs.detect-changes.outputs.should-build == 'true'))) || ((github.event_name == 'workflow_dispatch')))))
+2026-09-10T09:01:56.9370000Z Expanded: (!false && ('success' == 'success') && ('success' == 'success') && ((('push' == 'push') && ('refs/heads/main' == 'refs/heads/main') && ('true' == 'true')) || (github.event_name == 'workflow_dispatch')))
+2026-09-10T09:01:56.9370000Z Result: true
+2026-09-10T09:01:56.9370000Z Evaluating languages.languages-manifest.if
+2026-09-10T09:01:56.9370000Z Evaluating: (!cancelled() && (needs.build-languages-amd64.result == 'success') && (needs.build-languages-arm64.result == 'success'))
+2026-09-10T09:01:56.9370000Z Expanded: (!false && ('success' == 'success') && ('success' == 'success'))
+2026-09-10T09:01:56.9370000Z Result: true
+2026-09-10T09:01:57.0790000Z Job is about to start running on the hosted runner: GitHub Actions 1000056805

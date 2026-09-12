@@ -1,0 +1,162 @@
+[
+  {
+    "id": 102799275368,
+    "run_id": 34455018599,
+    "workflow_name": "Dockerfiles",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34455018599",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX71B1aA",
+    "head_sha": "90f1e2d95adbb0beb132da366b28d14a3746347c",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102799275368",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34455018599/job/102799275368",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-10T08:24:48Z",
+    "started_at": "2026-09-10T08:24:51Z",
+    "completed_at": "2026-09-10T08:25:08Z",
+    "name": "dockerfiles / hadolint",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-10T08:24:52Z",
+        "completed_at": "2026-09-10T08:24:53Z"
+      },
+      {
+        "name": "Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-10T08:24:53Z",
+        "completed_at": "2026-09-10T08:24:55Z"
+      },
+      {
+        "name": "Simulate a fresh merge with the base branch",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-10T08:24:55Z",
+        "completed_at": "2026-09-10T08:24:55Z"
+      },
+      {
+        "name": "List the Dockerfiles that will be checked",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-09-10T08:24:55Z",
+        "completed_at": "2026-09-10T08:24:55Z"
+      },
+      {
+        "name": "hadolint every tracked Dockerfile",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-09-10T08:24:55Z",
+        "completed_at": "2026-09-10T08:25:05Z"
+      },
+      {
+        "name": "The runner's own fixtures still hold",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-09-10T08:25:05Z",
+        "completed_at": "2026-09-10T08:25:05Z"
+      },
+      {
+        "name": "Post Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12,
+        "started_at": "2026-09-10T08:25:05Z",
+        "completed_at": "2026-09-10T08:25:06Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 13,
+        "started_at": "2026-09-10T08:25:06Z",
+        "completed_at": "2026-09-10T08:25:06Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102799275368",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056707,
+    "runner_name": "GitHub Actions 1000056707",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 102799368192,
+    "run_id": 34455018599,
+    "workflow_name": "Dockerfiles",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34455018599",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX71HgAA",
+    "head_sha": "90f1e2d95adbb0beb132da366b28d14a3746347c",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102799368192",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34455018599/job/102799368192",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-10T08:25:08Z",
+    "started_at": "2026-09-10T08:25:10Z",
+    "completed_at": "2026-09-10T08:25:15Z",
+    "name": "pipeline-status",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-10T08:25:11Z",
+        "completed_at": "2026-09-10T08:25:11Z"
+      },
+      {
+        "name": "Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-10T08:25:11Z",
+        "completed_at": "2026-09-10T08:25:13Z"
+      },
+      {
+        "name": "Check pipeline status",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-10T08:25:13Z",
+        "completed_at": "2026-09-10T08:25:13Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-09-10T08:25:13Z",
+        "completed_at": "2026-09-10T08:25:13Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-09-10T08:25:13Z",
+        "completed_at": "2026-09-10T08:25:13Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102799368192",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056726,
+    "runner_name": "GitHub Actions 1000056726",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  }
+]

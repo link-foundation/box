@@ -1,0 +1,47 @@
+[
+  {
+    "run_id": 34455018634,
+    "job_id": 102799275383,
+    "job_name": "Measure Component Disk Space",
+    "path": ".github",
+    "blob_href": "https://github.com/link-foundation/box/blob/90f1e2d95adbb0beb132da366b28d14a3746347c/.github",
+    "start_line": 1847,
+    "start_column": null,
+    "end_line": 1847,
+    "end_column": null,
+    "annotation_level": "failure",
+    "title": "",
+    "message": "Process completed with exit code 1.",
+    "raw_details": ""
+  },
+  {
+    "run_id": 34455018634,
+    "job_id": 102804263649,
+    "job_name": "pipeline-status",
+    "path": ".github",
+    "blob_href": "https://github.com/link-foundation/box/blob/90f1e2d95adbb0beb132da366b28d14a3746347c/.github",
+    "start_line": 24,
+    "start_column": null,
+    "end_line": 24,
+    "end_column": null,
+    "annotation_level": "failure",
+    "title": "",
+    "message": "Process completed with exit code 1.",
+    "raw_details": ""
+  },
+  {
+    "run_id": 34455018634,
+    "job_id": 102804263649,
+    "job_name": "pipeline-status",
+    "path": ".github",
+    "blob_href": "https://github.com/link-foundation/box/blob/90f1e2d95adbb0beb132da366b28d14a3746347c/.github",
+    "start_line": 23,
+    "start_column": null,
+    "end_line": 23,
+    "end_column": null,
+    "annotation_level": "failure",
+    "title": "Pipeline failed",
+    "message": "Failing jobs: measure-disk-space",
+    "raw_details": ""
+  }
+]

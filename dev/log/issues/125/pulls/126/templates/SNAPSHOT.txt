@@ -1,0 +1,9 @@
+# Current reference-template revisions compared for issue #125.
+# Complete tracked trees are in <name>.file-tree.txt; copied content is
+# every .github/** and scripts/** path plus CI-consumed root config/docs.
+# Collected by experiments/issue-125/snapshot-templates.sh on 2026-09-12T16:55:51Z.
+# name  sha  committed  tracked-files  stored-files
+js  c3a6d23b693972a70097430f01e69fcee5a51ad2  2026-09-09T03:40:50+07:00  393  65
+python  470e17605fc37b33fd7ea4e8aa8d16eaab1d9253  2026-09-09T18:35:49+07:00  96  32
+rust  f63a061fb3e23e647de0455886528a121b997678  2026-09-09T14:57:42+07:00  158  45
+php  15c327be682deab6b65c69d48ef43e069d60bd01  2026-09-10T04:26:04+07:00  211  49

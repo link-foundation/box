@@ -1,0 +1,666 @@
+[
+  {
+    "id": 102799275221,
+    "run_id": 34455018681,
+    "workflow_name": "Scripts",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34455018681",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX71B01Q",
+    "head_sha": "90f1e2d95adbb0beb132da366b28d14a3746347c",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102799275221",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34455018681/job/102799275221",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-10T08:24:48Z",
+    "started_at": "2026-09-10T08:24:51Z",
+    "completed_at": "2026-09-10T08:25:41Z",
+    "name": "scripts / shellcheck",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-10T08:24:52Z",
+        "completed_at": "2026-09-10T08:24:52Z"
+      },
+      {
+        "name": "Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-10T08:24:52Z",
+        "completed_at": "2026-09-10T08:24:54Z"
+      },
+      {
+        "name": "Simulate a fresh merge with the base branch",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-10T08:24:54Z",
+        "completed_at": "2026-09-10T08:24:54Z"
+      },
+      {
+        "name": "shellcheck every tracked shell script",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-09-10T08:24:54Z",
+        "completed_at": "2026-09-10T08:25:17Z"
+      },
+      {
+        "name": "The runner's own fixtures still hold",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-09-10T08:25:17Z",
+        "completed_at": "2026-09-10T08:25:38Z"
+      },
+      {
+        "name": "Post Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-09-10T08:25:38Z",
+        "completed_at": "2026-09-10T08:25:38Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-09-10T08:25:38Z",
+        "completed_at": "2026-09-10T08:25:38Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102799275221",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056712,
+    "runner_name": "GitHub Actions 1000056712",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 102799275396,
+    "run_id": 34455018681,
+    "workflow_name": "Scripts",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34455018681",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX71B1hA",
+    "head_sha": "90f1e2d95adbb0beb132da366b28d14a3746347c",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102799275396",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34455018681/job/102799275396",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-10T08:24:48Z",
+    "started_at": "2026-09-10T08:24:50Z",
+    "completed_at": "2026-09-10T08:31:01Z",
+    "name": "scripts / regression suites",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-10T08:24:51Z",
+        "completed_at": "2026-09-10T08:24:52Z"
+      },
+      {
+        "name": "Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-10T08:24:52Z",
+        "completed_at": "2026-09-10T08:24:53Z"
+      },
+      {
+        "name": "Simulate a fresh merge with the base branch",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-10T08:24:53Z",
+        "completed_at": "2026-09-10T08:24:53Z"
+      },
+      {
+        "name": "List the suites that will run",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-09-10T08:24:53Z",
+        "completed_at": "2026-09-10T08:24:53Z"
+      },
+      {
+        "name": "Run every experiment suite",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-09-10T08:24:53Z",
+        "completed_at": "2026-09-10T08:30:59Z"
+      },
+      {
+        "name": "Upload suite logs",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-09-10T08:30:59Z",
+        "completed_at": "2026-09-10T08:31:00Z"
+      },
+      {
+        "name": "Post Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12,
+        "started_at": "2026-09-10T08:31:00Z",
+        "completed_at": "2026-09-10T08:31:00Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 13,
+        "started_at": "2026-09-10T08:31:00Z",
+        "completed_at": "2026-09-10T08:31:00Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102799275396",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056709,
+    "runner_name": "GitHub Actions 1000056709",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 102799275425,
+    "run_id": 34455018681,
+    "workflow_name": "Scripts",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34455018681",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX71B1oQ",
+    "head_sha": "90f1e2d95adbb0beb132da366b28d14a3746347c",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102799275425",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34455018681/job/102799275425",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-10T08:24:48Z",
+    "started_at": "2026-09-10T08:24:51Z",
+    "completed_at": "2026-09-10T08:25:07Z",
+    "name": "scripts / formatting",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-10T08:24:52Z",
+        "completed_at": "2026-09-10T08:24:52Z"
+      },
+      {
+        "name": "Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-10T08:24:52Z",
+        "completed_at": "2026-09-10T08:24:55Z"
+      },
+      {
+        "name": "Simulate a fresh merge with the base branch",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-10T08:24:55Z",
+        "completed_at": "2026-09-10T08:24:55Z"
+      },
+      {
+        "name": "Every shell script is formatted",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-09-10T08:24:55Z",
+        "completed_at": "2026-09-10T08:24:59Z"
+      },
+      {
+        "name": "The formatter gate's own fixtures still hold",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-09-10T08:24:59Z",
+        "completed_at": "2026-09-10T08:25:04Z"
+      },
+      {
+        "name": "Post Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-09-10T08:25:04Z",
+        "completed_at": "2026-09-10T08:25:04Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-09-10T08:25:05Z",
+        "completed_at": "2026-09-10T08:25:05Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102799275425",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056710,
+    "runner_name": "GitHub Actions 1000056710",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 102799275443,
+    "run_id": 34455018681,
+    "workflow_name": "Scripts",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34455018681",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX71B1sw",
+    "head_sha": "90f1e2d95adbb0beb132da366b28d14a3746347c",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102799275443",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34455018681/job/102799275443",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-10T08:24:48Z",
+    "started_at": "2026-09-10T08:24:50Z",
+    "completed_at": "2026-09-10T08:24:58Z",
+    "name": "scripts / JavaScript syntax",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-10T08:24:51Z",
+        "completed_at": "2026-09-10T08:24:51Z"
+      },
+      {
+        "name": "Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-10T08:24:51Z",
+        "completed_at": "2026-09-10T08:24:54Z"
+      },
+      {
+        "name": "Simulate a fresh merge with the base branch",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-10T08:24:54Z",
+        "completed_at": "2026-09-10T08:24:54Z"
+      },
+      {
+        "name": "Every JavaScript module parses",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-09-10T08:24:54Z",
+        "completed_at": "2026-09-10T08:24:55Z"
+      },
+      {
+        "name": "Checker fixtures and the coverage-gap reproduction",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-09-10T08:24:55Z",
+        "completed_at": "2026-09-10T08:24:56Z"
+      },
+      {
+        "name": "Post Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-09-10T08:24:56Z",
+        "completed_at": "2026-09-10T08:24:56Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-09-10T08:24:56Z",
+        "completed_at": "2026-09-10T08:24:56Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102799275443",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056711,
+    "runner_name": "GitHub Actions 1000056711",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 102799275457,
+    "run_id": 34455018681,
+    "workflow_name": "Scripts",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34455018681",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX71B1wQ",
+    "head_sha": "90f1e2d95adbb0beb132da366b28d14a3746347c",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102799275457",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34455018681/job/102799275457",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-10T08:24:48Z",
+    "started_at": "2026-09-10T08:25:27Z",
+    "completed_at": "2026-09-10T08:25:32Z",
+    "name": "scripts / awk portability",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-10T08:25:27Z",
+        "completed_at": "2026-09-10T08:25:28Z"
+      },
+      {
+        "name": "Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-10T08:25:28Z",
+        "completed_at": "2026-09-10T08:25:30Z"
+      },
+      {
+        "name": "Simulate a fresh merge with the base branch",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-10T08:25:30Z",
+        "completed_at": "2026-09-10T08:25:30Z"
+      },
+      {
+        "name": "No awk program depends on a GNU-only regex escape",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-09-10T08:25:30Z",
+        "completed_at": "2026-09-10T08:25:30Z"
+      },
+      {
+        "name": "Checker fixtures and the mawk/gawk reproduction",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-09-10T08:25:30Z",
+        "completed_at": "2026-09-10T08:25:31Z"
+      },
+      {
+        "name": "Post Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-09-10T08:25:31Z",
+        "completed_at": "2026-09-10T08:25:31Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-09-10T08:25:31Z",
+        "completed_at": "2026-09-10T08:25:31Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102799275457",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056713,
+    "runner_name": "GitHub Actions 1000056713",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 102799275530,
+    "run_id": 34455018681,
+    "workflow_name": "Scripts",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34455018681",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX71B2Cg",
+    "head_sha": "90f1e2d95adbb0beb132da366b28d14a3746347c",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102799275530",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34455018681/job/102799275530",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-10T08:24:48Z",
+    "started_at": "2026-09-10T08:24:50Z",
+    "completed_at": "2026-09-10T08:24:57Z",
+    "name": "scripts / Python syntax",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-10T08:24:51Z",
+        "completed_at": "2026-09-10T08:24:52Z"
+      },
+      {
+        "name": "Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-10T08:24:52Z",
+        "completed_at": "2026-09-10T08:24:54Z"
+      },
+      {
+        "name": "Simulate a fresh merge with the base branch",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-10T08:24:54Z",
+        "completed_at": "2026-09-10T08:24:54Z"
+      },
+      {
+        "name": "Every Python file parses",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-09-10T08:24:54Z",
+        "completed_at": "2026-09-10T08:24:54Z"
+      },
+      {
+        "name": "Checker fixtures",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-09-10T08:24:54Z",
+        "completed_at": "2026-09-10T08:24:55Z"
+      },
+      {
+        "name": "Post Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-09-10T08:24:55Z",
+        "completed_at": "2026-09-10T08:24:55Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-09-10T08:24:55Z",
+        "completed_at": "2026-09-10T08:24:55Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102799275530",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056714,
+    "runner_name": "GitHub Actions 1000056714",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 102799275586,
+    "run_id": 34455018681,
+    "workflow_name": "Scripts",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34455018681",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX71B2Qg",
+    "head_sha": "90f1e2d95adbb0beb132da366b28d14a3746347c",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102799275586",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34455018681/job/102799275586",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-10T08:24:49Z",
+    "started_at": "2026-09-10T08:24:50Z",
+    "completed_at": "2026-09-10T08:24:59Z",
+    "name": "scripts / heredoc variables",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-10T08:24:51Z",
+        "completed_at": "2026-09-10T08:24:52Z"
+      },
+      {
+        "name": "Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-10T08:24:52Z",
+        "completed_at": "2026-09-10T08:24:54Z"
+      },
+      {
+        "name": "Simulate a fresh merge with the base branch",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-10T08:24:54Z",
+        "completed_at": "2026-09-10T08:24:54Z"
+      },
+      {
+        "name": "No variable leaks out of a quoted heredoc",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-09-10T08:24:54Z",
+        "completed_at": "2026-09-10T08:24:56Z"
+      },
+      {
+        "name": "Checker fixtures and the run 33972074753 reproduction",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-09-10T08:24:56Z",
+        "completed_at": "2026-09-10T08:24:57Z"
+      },
+      {
+        "name": "Post Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-09-10T08:24:57Z",
+        "completed_at": "2026-09-10T08:24:57Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-09-10T08:24:57Z",
+        "completed_at": "2026-09-10T08:24:57Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102799275586",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056715,
+    "runner_name": "GitHub Actions 1000056715",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 102801087242,
+    "run_id": 34455018681,
+    "workflow_name": "Scripts",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34455018681",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX72wbCg",
+    "head_sha": "90f1e2d95adbb0beb132da366b28d14a3746347c",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102801087242",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34455018681/job/102801087242",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-10T08:31:01Z",
+    "started_at": "2026-09-10T08:31:03Z",
+    "completed_at": "2026-09-10T08:31:08Z",
+    "name": "pipeline-status",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-10T08:31:04Z",
+        "completed_at": "2026-09-10T08:31:04Z"
+      },
+      {
+        "name": "Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-10T08:31:04Z",
+        "completed_at": "2026-09-10T08:31:06Z"
+      },
+      {
+        "name": "Check pipeline status",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-10T08:31:06Z",
+        "completed_at": "2026-09-10T08:31:07Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-09-10T08:31:07Z",
+        "completed_at": "2026-09-10T08:31:07Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-09-10T08:31:07Z",
+        "completed_at": "2026-09-10T08:31:07Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102801087242",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056744,
+    "runner_name": "GitHub Actions 1000056744",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  }
+]

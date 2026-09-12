@@ -1,0 +1,29 @@
+==> Checking 4 staged path(s) from the index
+  ok        shfmt                  3360 ms
+            ==> shfmt not on PATH; using mvdan/shfmt:v3.10.0
+            ==> shfmt -d over 2 shell script(s)
+            ==> Every shell script matches shfmt -i 2 -ci -bn
+  ok        shellcheck             1711 ms
+            ==> shellcheck --severity=warning over 2 tracked shell script(s)
+            ==> shellcheck not on PATH; using koalaman/shellcheck:stable
+            ==> No shellcheck findings at or above severity 'warning'
+  ok        heredoc-vars             42 ms
+            check-heredoc-vars.sh: OK — no variable leaks out of a quoted heredoc (2 file(s) checked).
+  ok        awk-portability         573 ms
+            check-awk-portability.sh: OK — no GNU-only regex escapes in awk programs (1 file(s) mentioning awk checked).
+  ok        path-coverage          1788 ms
+            check-workflow-path-coverage.mjs: 48 script(s) across 15 workflow(s); every file each one reads can start a run that runs it.
+  ok        checkout-credentials    226 ms
+            check-checkout-credentials.mjs: 55 checkout step(s) across 19 file(s); each one states what happens to the job token, and it matches what its job does.
+  ok        required-docs          1253 ms
+            check-required-docs.sh: OK — 6 document(s), 24 section(s), and 54 documentation mention(s) in scripts/ and .github/.
+  ok        file-line-limits       3513 ms
+
+            Checked 318 tracked files against a 1500-line limit (warning at 1350).
+            All checked files are within the limit.
+  ok        secretlint            16368 ms
+            ==> Canary: secretlint must find a planted key before its silence means anything
+            ==> Canary detected (secretlint exit 1); the rules are live
+            ==> secretlint 13.0.5 over 4 named path(s)
+            ==> No secrets found
+==> 9 gate(s) ran, 0 failed, 0 could not run

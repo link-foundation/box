@@ -1,0 +1,25 @@
+role	box	js	python	rust	php
+desktop-release	.	.	.	x	.
+dockerfiles	x	.	.	.	.
+docs	x	.	x	.	x
+example-app	.	x	.	.	.
+file-sizes	x	.	.	.	.
+links	x	x	x	x	x
+measure-disk-space	x	.	.	.	.
+pr-tests	x	.	.	.	.
+release	x	x	x	x	x
+release-dind	x	.	.	.	.
+release-essentials	x	.	.	.	.
+release-full	x	.	.	.	.
+release-js	x	.	.	.	.
+release-languages	x	.	.	.	.
+scripts	x	.	.	.	.
+security	x	x	x	x	x
+workflows	x	x	x	x	x
+
+# 17 role(s) total
+# box     15 role(s)
+# js       5 role(s)
+# python   5 role(s)
+# rust     5 role(s)
+# php      5 role(s)

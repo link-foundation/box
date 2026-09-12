@@ -1,0 +1,9 @@
+2026-09-10T08:24:49.6820000Z Evaluating preflight.if
+2026-09-10T08:24:49.6820000Z Evaluating: !cancelled()
+2026-09-10T08:24:49.6820000Z Expanded: !false
+2026-09-10T08:24:49.6820000Z Result: true
+2026-09-10T08:24:49.6940000Z Job is about to start running on the hosted runner: GitHub Actions 1000056721
+2026-09-10T08:24:49.6900000Z Requested labels: ubuntu-24.04
+2026-09-10T08:24:49.6900000Z Job defined at: link-foundation/box/.github/workflows/release.yml@refs/heads/main
+2026-09-10T08:24:49.6900000Z Waiting for a runner to pick up this job...
+2026-09-10T08:24:49.6950000Z Job is waiting for a hosted runner to come online.

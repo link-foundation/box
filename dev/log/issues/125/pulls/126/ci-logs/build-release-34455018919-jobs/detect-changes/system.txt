@@ -1,0 +1,9 @@
+2026-09-10T08:25:08.9730000Z Evaluating detect-changes.if
+2026-09-10T08:25:08.9730000Z Evaluating: (!cancelled() && (((needs.apply-changesets.result == 'success') || (needs.apply-changesets.result == 'skipped'))) && (((needs.version-bump.result == 'success') || (needs.version-bump.result == 'skipped'))))
+2026-09-10T08:25:08.9730000Z Expanded: (!false && (('success' == 'success') || (needs.apply-changesets.result == 'skipped')) && (('skipped' == 'success') || ('skipped' == 'skipped')))
+2026-09-10T08:25:08.9730000Z Result: true
+2026-09-10T08:25:09.2540000Z Requested labels: ubuntu-24.04
+2026-09-10T08:25:09.2540000Z Job defined at: link-foundation/box/.github/workflows/release.yml@refs/heads/main
+2026-09-10T08:25:09.2540000Z Waiting for a runner to pick up this job...
+2026-09-10T08:25:09.2580000Z Job is waiting for a hosted runner to come online.
+2026-09-10T08:25:09.2580000Z Job is about to start running on the hosted runner: GitHub Actions 1000056725
