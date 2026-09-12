@@ -81,6 +81,8 @@
 #                           password (default 1; set to 0 to disable)
 #   BUDGET_CAPTURE_OUTPUT   relay the command's output instead of handing it the
 #                           step's own streams (default 1; set to 0 to disable)
+#   BUDGET_STATE_PARENT     parent directory for private control state (default
+#                           RUNNER_TEMP in GitHub Actions, then TMPDIR or /tmp)
 #   BUDGET_VERBOSE          trace the liveness and signalling decisions (default 0)
 #
 # Exit codes: the command's own status, or 124 on timeout (matching timeout(1)).
@@ -128,11 +130,22 @@ esac
 
 trace() { [ "${verbose}" = "1" ] && echo "[budget] $*" >&2 || true; }
 
-status_dir="$(mktemp -d "${TMPDIR:-/tmp}/budget-status.XXXXXX")"
+# The wrapped command is allowed to manage its own temporary files.  In
+# particular, measure-disk-space.sh deliberately clears /tmp before measuring a
+# clean installation.  RUNNER_TEMP is outside /tmp on GitHub-hosted runners and
+# is reserved for job-scoped temporary data, so keep the wrapper's parent-owned
+# control files there.  BUDGET_STATE_PARENT gives other CI systems the same
+# separation; TMPDIR remains the portable local fallback.
+state_parent="${BUDGET_STATE_PARENT:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}}"
+if ! status_dir="$(mktemp -d "${state_parent%/}/budget-status.XXXXXX")"; then
+  echo "Could not create budget control state under ${state_parent}." >&2
+  exit 2
+fi
 status_file="${status_dir}/status"
 stdout_file="${status_dir}/stdout"
 stderr_file="${status_dir}/stderr"
 trap 'rm -rf "${status_dir}"' EXIT
+trace "control state: ${status_dir}"
 
 # Relaying the command's output, rather than lending it this step's own stdout,
 # is what keeps a survivor from holding the step open (issue #123; see the
