@@ -1,0 +1,16 @@
+2026-09-10T09:45:38.9690000Z Evaluating dind.if
+2026-09-10T09:45:38.9690000Z Evaluating: (!cancelled() && (needs.preflight.result == 'success') && (needs.detect-changes.result == 'success') && (((((github.event_name == 'push') && (github.ref == 'refs/heads/main') && (needs.detect-changes.outputs.should-build == 'true'))) || ((github.event_name == 'workflow_dispatch')))))
+2026-09-10T09:45:38.9690000Z Expanded: (!false && ('success' == 'success') && ('success' == 'success') && ((('push' == 'push') && ('refs/heads/main' == 'refs/heads/main') && ('true' == 'true')) || (github.event_name == 'workflow_dispatch')))
+2026-09-10T09:45:38.9690000Z Result: true
+2026-09-10T09:45:38.9690000Z Evaluating dind.build-dind-amd64.if
+2026-09-10T09:45:38.9690000Z Evaluating: (!cancelled() && (((inputs.js-manifest-result == 'success') || (inputs.js-manifest-result == 'skipped'))) && (((inputs.essentials-manifest-result == 'success') || (inputs.essentials-manifest-result == 'skipped'))) && (((inputs.languages-manifest-result == 'success') || (inputs.languages-manifest-result == 'skipped'))) && (((inputs.full-manifest-result == 'success') || (inputs.full-manifest-result == 'skipped'))) && (((((github.event_name == 'push') && (github.ref == 'refs/heads/main') && (fromJSON(inputs.changes).should-build == 'true'))) || ((github.event_name == 'workflow_dispatch')))))
+2026-09-10T09:45:38.9690000Z Expanded: (!false && (('success' == 'success') || (inputs.js-manifest-result == 'skipped')) && (('success' == 'success') || (inputs.essentials-manifest-result == 'skipped')) && (('success' == 'success') || (inputs.languages-manifest-result == 'skipped')) && (('success' == 'success') || (inputs.full-manifest-result == 'skipped')) && ((('push' == 'push') && ('refs/heads/main' == 'refs/heads/main') && ('true' == 'true')) || (github.event_name == 'workflow_dispatch')))
+2026-09-10T09:45:38.9690000Z Result: true
+2026-09-10T09:45:39.1620000Z Requested labels: ubuntu-24.04
+2026-09-10T09:45:39.1620000Z Job defined at: link-foundation/box/.github/workflows/release-dind.yml@refs/heads/main
+2026-09-10T09:45:39.1620000Z Reusable workflow chain:
+2026-09-10T09:45:39.1620000Z link-foundation/box/.github/workflows/release.yml@refs/heads/main (90f1e2d95adbb0beb132da366b28d14a3746347c)
+2026-09-10T09:45:39.1620000Z -> link-foundation/box/.github/workflows/release-dind.yml@refs/heads/main (90f1e2d95adbb0beb132da366b28d14a3746347c)
+2026-09-10T09:45:39.1620000Z Waiting for a runner to pick up this job...
+2026-09-10T09:45:39.4990000Z Job is about to start running on the hosted runner: GitHub Actions 1000056834
+2026-09-10T09:45:39.4980000Z Job is waiting for a hosted runner to come online.

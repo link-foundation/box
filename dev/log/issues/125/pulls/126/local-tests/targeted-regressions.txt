@@ -1,0 +1,226 @@
+=== experiments/test-issue125-budget-state-survives-tmp-cleanup.sh ===
+PASS: clearing command temp files does not corrupt the wrapper status
+PASS: output written before tmp cleanup is relayed
+PASS: wrapper emits no missing-control-file noise
+PASS: wrapper removes its RUNNER_TEMP state on exit
+PASS: BUDGET_STATE_PARENT overrides RUNNER_TEMP and is traceable
+STATUS 0
+
+=== experiments/test-issue125-verbose-secret-redaction.sh ===
+PASS: zizmor still succeeds in verbose mode
+PASS: zizmor verbose output redacts its credential
+PASS: registry probe still answers in verbose mode
+PASS: registry probe verbose output redacts its credential
+PASS: credential preflight still succeeds in verbose mode
+PASS: credential preflight verbose output redacts its credential
+
+Passed: 6
+Failed: 0
+STATUS 0
+
+=== experiments/test-issue123-zizmor-token.sh ===
+=== Part 1: the shipped workflow hands both passes a token ===
+PASS: scripts/ci/run-zizmor.sh exists and is executable
+PASS: .github/workflows/workflows.yml runs exactly the two passes, both through the runner
+PASS: both zizmor steps bind GH_TOKEN from secrets.GITHUB_TOKEN
+PASS: the regular pass names GH_TOKEN on the docker command line
+PASS: the pedantic pass names GH_TOKEN on the docker command line
+PASS: no workflow sets ZIZMOR_ALLOW_OFFLINE
+
+=== Part 2: an offline run is a failure, not a line in the log ===
+PASS: a run that reports no findings and no banner passes
+PASS: the passing run says nothing about offline mode
+PASS: the token reaches the container's environment
+PASS: GITHUB_TOKEN is accepted when GH_TOKEN is unset
+PASS: GITHUB_TOKEN is forwarded under the name zizmor reads
+PASS: an analyser that says it ran offline fails the job
+PASS: the failure names the audit that did not run
+PASS: the failure is an error annotation
+PASS: ZIZMOR_ALLOW_OFFLINE=1 downgrades it for a local run
+PASS: and says so rather than passing silently
+PASS: a missing token fails before anything is analysed
+PASS: the missing-token error explains what is silently skipped
+PASS: the analyser is not started at all without a token
+PASS: ZIZMOR_ALLOW_OFFLINE=1 allows a local run with no token
+PASS: the tokenless local run is announced
+PASS: a tokenless run passes no -e flag rather than an empty token
+PASS: findings reported by zizmor still fail the job
+PASS: --print is inert
+PASS: --print shows the command that would run
+PASS: an unknown pass is a usage error
+PASS: no pass at all is a usage error
+
+=== Part 3: the mutation control - the pre-fix command line ===
+PASS: the pre-fix invocation exits 0, which is why the run was green
+PASS: the pre-fix invocation prints the offline banner, exactly as run 34366975873 did
+PASS: the pre-fix invocation leaves the container with no token
+
+=== Part 4: every tracked caller of the analyser passes a token ===
+PASS: found tracked callers of the analyser to check
+PASS: experiments/reproduce-issue121-checkout-credentials.sh passes GH_TOKEN into the container
+PASS: experiments/reproduce-issue123-zizmor-offline-audits.sh passes GH_TOKEN into the container
+PASS: experiments/test-issue121-workflow-audit-scope.sh goes through the runner, which passes the token
+PASS: experiments/test-issue123-zizmor-token.sh passes GH_TOKEN into the container
+PASS: scripts/ci/run-zizmor.sh passes GH_TOKEN into the container
+
+=== Summary ===
+Passed: 36
+Failed: 0
+STATUS 0
+
+=== experiments/test-issue117-registry-probe.sh ===
+== Part 1: reference parsing follows docker pull rules ==
+PASS: ubuntu:24.04 -> docker.io|library/ubuntu|24.04
+PASS: ubuntu -> docker.io|library/ubuntu|latest
+PASS: konard/box:2.6.0 -> docker.io|konard/box|2.6.0
+PASS: konard/box-dind:2.6.0-amd64 -> docker.io|konard/box-dind|2.6.0-amd64
+PASS: ghcr.io/link-foundation/box:2.6.0 -> ghcr.io|link-foundation/box|2.6.0
+PASS: ghcr.io/link-foundation/box -> ghcr.io|link-foundation/box|latest
+PASS: localhost:5000/box:1 -> localhost:5000|box|1
+PASS: ghcr.io/a/b@sha256:abc -> ghcr.io|a/b|sha256:abc
+
+== Part 2: the four states an anonymous consumer can be in ==
+PASS: ghcr.io/astral-sh/uv:0.9.0 -> published
+PASS: ghcr.io/astral-sh/uv:0.0.0-nope -> missing
+PASS: ghcr.io/link-foundation/box:2.6.0 -> private
+PASS: konard/box:2.6.0 -> missing
+PASS: konard/box:2.4.0 -> published
+PASS: konard/box:2.5.0 -> unknown
+PASS: konard/box:2.3.0 -> unknown
+PASS: ghcr.io/x/y:1 -> unknown
+PASS: an unknown registry is 'unknown', and is not guessed at
+
+== Part 3: the anonymous probe is anonymous ==
+PASS: no credential reaches the registry on the pull path
+PASS: both the token and the manifest request are unauthenticated
+
+== Part 4: the push probe attempts a write ==
+PASS: push docker.io/konard/box -> missing-credentials
+PASS: push docker.io/konard/box -> invalid-credentials
+PASS: push ghcr.io/link-foundation/box -> insufficient-scope
+PASS: push ghcr.io/link-foundation/box -> ok
+PASS: the upload session is cancelled, so the probe publishes nothing
+PASS: push ghcr.io/link-foundation/box -> invalid-credentials
+PASS: push ghcr.io/link-foundation/box -> unknown
+PASS: push ghcr.io/link-foundation/box -> unknown
+PASS: push ghcr.io/link-foundation/box -> unknown
+PASS: push example.invalid/a/b -> unknown
+
+== Part 5: the answer and the reason both reach the caller ==
+PASS: the pull probe prints nothing, so it is never called in a subshell
+PASS: the reason reaches the caller alongside the state
+PASS: the push probe prints nothing either
+
+passed: 32
+failed: 0
+STATUS 0
+
+=== experiments/test-issue117-preflight.sh ===
+=== Part 1: misconfiguration is not the same as a bad credential ===
+PASS: an unknown --mode exits 2, not 1
+PASS: an unknown option exits 2
+PASS: a missing image name exits 2 and says which variable
+PASS: the happy path exits 0
+PASS: the happy path reports how many writes it actually proved
+
+=== Part 2: release mode fails on anything short of a proven write ===
+PASS: an expired Docker Hub token fails the run before any build
+PASS: and annotates it as an error, naming the registry
+PASS: and says why it is stopping
+PASS: a token that authenticates but cannot write is a failure
+PASS: a registry that did not answer blocks the release (unknown is not a pass)
+PASS: a credential that is simply absent fails too, and says so distinctly
+PASS: and no write is attempted with an empty credential
+
+=== Part 3: report mode warns, and never overstates what it checked ===
+PASS: report mode exits 0 with everything broken (a PR is not a release)
+PASS: report mode emits no error annotations
+PASS: report mode emits one warning per problem it found (4)
+PASS: and does not report 'accepted a write' when it verified nothing
+PASS: PREFLIGHT_MODE=report is equivalent to --mode report
+
+=== Part 4: an optional mirror is not probed at all ===
+PASS: DOCKERHUB_REQUIRED=0 releases on GHCR alone
+PASS: and sends no request to Docker Hub
+
+=== Part 5: an unreachable GHCR package blocks the release ===
+PASS: a private registry-of-record package is a blocking failure
+PASS: and the annotation carries the manual runbook (there is no API for it)
+PASS: ALLOW_PRIVATE_GHCR=1 downgrades it to a warning
+PASS: a package that does not exist yet is not a visibility failure
+PASS: a rate-limited visibility check warns instead of claiming 'private'
+
+=== Part 6: a credential left by docker login (OIDC) is checked too ===
+PASS: an OIDC login with no PAT in the environment passes the preflight
+PASS: and the credential from the Docker config is what gets probed
+PASS: and the secret is never echoed into the log
+PASS: a config holding some other registry's credential is not mistaken for one
+
+=== Part 7: machine-readable outputs ===
+PASS: GITHUB_OUTPUT carries failures= and ok= for downstream jobs
+PASS: the step summary states each target's verified state
+PASS: the step summary covers visibility as well as write access
+
+==========================================
+Passed: 31
+Failed: 0
+==========================================
+STATUS 0
+=== experiments/test-issue117-preflight-gating.sh ===
+=== Part 1: the preflight job ===
+PASS: release.yml defines a preflight job
+PASS: the preflight waits for nothing (it is the first thing the run does)
+PASS: the preflight requests packages: write, so it probes with the scope the builds push with
+PASS: the preflight runs preflight-credentials.sh in release mode
+PASS: and in report mode for a pull request, which tests code rather than releasing
+PASS: the preflight passes both registries' credentials, or it would check nothing
+
+=== Part 2: everything expensive is behind it ===
+PASS: js needs the preflight
+PASS: js runs only when the preflight succeeded
+PASS: essentials needs the preflight
+PASS: essentials runs only when the preflight succeeded
+PASS: languages needs the preflight
+PASS: languages runs only when the preflight succeeded
+PASS: full needs the preflight
+PASS: full runs only when the preflight succeeded
+PASS: dind needs the preflight
+PASS: dind runs only when the preflight succeeded
+PASS: create-release needs the preflight
+PASS: create-release runs only when the preflight succeeded
+PASS: apply-changesets needs the preflight
+PASS: apply-changesets runs only when the preflight succeeded
+PASS: version-bump needs the preflight
+PASS: version-bump runs only when the preflight succeeded
+
+=== Part 3: one Docker Hub login, with a path that needs no stored token ===
+PASS: release-js.yml has Docker Hub logins to check
+PASS: release-js.yml logs in to Docker Hub only through the shared action
+PASS: release-js.yml passes the OIDC connection id through, so setting one variable is enough
+PASS: release-js.yml still tolerates a Docker Hub login failure (issue #82)
+PASS: release-essentials.yml has Docker Hub logins to check
+PASS: release-essentials.yml logs in to Docker Hub only through the shared action
+PASS: release-essentials.yml passes the OIDC connection id through, so setting one variable is enough
+PASS: release-essentials.yml still tolerates a Docker Hub login failure (issue #82)
+PASS: release-languages.yml has Docker Hub logins to check
+PASS: release-languages.yml logs in to Docker Hub only through the shared action
+PASS: release-languages.yml passes the OIDC connection id through, so setting one variable is enough
+PASS: release-languages.yml still tolerates a Docker Hub login failure (issue #82)
+PASS: release-full.yml has Docker Hub logins to check
+PASS: release-full.yml logs in to Docker Hub only through the shared action
+PASS: release-full.yml passes the OIDC connection id through, so setting one variable is enough
+PASS: release-full.yml still tolerates a Docker Hub login failure (issue #82)
+PASS: release-dind.yml has Docker Hub logins to check
+PASS: release-dind.yml logs in to Docker Hub only through the shared action
+PASS: release-dind.yml passes the OIDC connection id through, so setting one variable is enough
+PASS: release-dind.yml still tolerates a Docker Hub login failure (issue #82)
+PASS: the action logs in with OIDC when a connection id is configured
+PASS: the action falls back to the personal access token
+PASS: a job with no credential at all fails the login instead of skipping it
+PASS: the OIDC path refuses to run in a job that cannot mint a token
+
+==========================================
+Passed: 46
+Failed: 0
+==========================================
+STATUS 0

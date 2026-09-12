@@ -1,0 +1,33 @@
+=== Part 1: liveness is asked of the process table, not of kill(2) ===
+PASS: a command that finished is finished, whatever else is in its process group
+PASS: an overrun with survivors still exits 124
+PASS: a survivor that outlives SIGTERM is escalated to SIGKILL
+PASS: a survivor that outlives SIGKILL is reported, not silently called terminated
+PASS: the report names the process that survived
+PASS: an overrun the wrapper does terminate reports no survivors
+
+=== Part 2: a survivor cannot hold the step open ===
+PASS: a piped step ends when its command does, even though a survivor holds the pipe (0s)
+PASS: a piped step that overruns ends with its budget, not with its survivor (1s)
+PASS: and the overrun is still reported through the relay
+PASS: the defect is still reachable with BUDGET_CAPTURE_OUTPUT=0 (25s), so the assertion above is not vacuous
+
+=== Part 3: SIGTERM first, SIGKILL second ===
+PASS: a command that ignores SIGTERM is killed anyway, and within the grace period (2s)
+PASS: the command's own output survives the termination it is being terminated by
+
+=== Part 4: the relay is transparent ===
+PASS: the command's exit status is the wrapper's exit status
+PASS: stdout is relayed to stdout, and nothing else is
+PASS: stderr is relayed to stderr, and nothing else is
+PASS: order within a stream is preserved, and nothing is relayed twice
+PASS: 20000 lines are relayed exactly once each, last line included
+
+=== Part 5: the repository is held to this ===
+PASS: the wrapper in the tree is the one this suite describes
+PASS: the step from run 34366975927 is still wrapped, and still pipes - which is now safe
+PASS: no workflow opts out of the relay
+
+=== Summary ===
+Passed: 20
+Failed: 0

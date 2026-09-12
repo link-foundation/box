@@ -1,0 +1,326 @@
+[
+  {
+    "id": 102799274969,
+    "run_id": 34455018634,
+    "workflow_name": "Measure Disk Space and Update README",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34455018634",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX71Bz2Q",
+    "head_sha": "90f1e2d95adbb0beb132da366b28d14a3746347c",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102799274969",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34455018634/job/102799274969",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-09-10T08:24:48Z",
+    "started_at": "2026-09-10T08:24:51Z",
+    "completed_at": "2026-09-10T08:24:59Z",
+    "name": "Validate measurement scripts",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-10T08:24:51Z",
+        "completed_at": "2026-09-10T08:24:52Z"
+      },
+      {
+        "name": "Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-10T08:24:52Z",
+        "completed_at": "2026-09-10T08:24:54Z"
+      },
+      {
+        "name": "Simulate a fresh merge with the base branch",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-10T08:24:54Z",
+        "completed_at": "2026-09-10T08:24:54Z"
+      },
+      {
+        "name": "Syntax-check the scripts",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-09-10T08:24:54Z",
+        "completed_at": "2026-09-10T08:24:54Z"
+      },
+      {
+        "name": "Syntax-check the generated box-user script",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-09-10T08:24:54Z",
+        "completed_at": "2026-09-10T08:24:54Z"
+      },
+      {
+        "name": "Check for variables leaking out of quoted heredocs",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-09-10T08:24:54Z",
+        "completed_at": "2026-09-10T08:24:55Z"
+      },
+      {
+        "name": "Regression tests for issue",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-09-10T08:24:55Z",
+        "completed_at": "2026-09-10T08:24:57Z"
+      },
+      {
+        "name": "Check the command line interface",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-09-10T08:24:57Z",
+        "completed_at": "2026-09-10T08:24:57Z"
+      },
+      {
+        "name": "Validate the committed measurements",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-09-10T08:24:57Z",
+        "completed_at": "2026-09-10T08:24:57Z"
+      },
+      {
+        "name": "Post Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 18,
+        "started_at": "2026-09-10T08:24:57Z",
+        "completed_at": "2026-09-10T08:24:57Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 19,
+        "started_at": "2026-09-10T08:24:57Z",
+        "completed_at": "2026-09-10T08:24:57Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102799274969",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056704,
+    "runner_name": "GitHub Actions 1000056704",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 102799275383,
+    "run_id": 34455018634,
+    "workflow_name": "Measure Disk Space and Update README",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34455018634",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX71B1dw",
+    "head_sha": "90f1e2d95adbb0beb132da366b28d14a3746347c",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102799275383",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34455018634/job/102799275383",
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-09-10T08:24:48Z",
+    "started_at": "2026-09-10T08:24:51Z",
+    "completed_at": "2026-09-10T08:42:03Z",
+    "name": "Measure Component Disk Space",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-10T08:24:52Z",
+        "completed_at": "2026-09-10T08:24:52Z"
+      },
+      {
+        "name": "Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-10T08:24:52Z",
+        "completed_at": "2026-09-10T08:24:55Z"
+      },
+      {
+        "name": "Free up disk space",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-09-10T08:24:55Z",
+        "completed_at": "2026-09-10T08:26:40Z"
+      },
+      {
+        "name": "Create data directory",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-09-10T08:26:40Z",
+        "completed_at": "2026-09-10T08:26:40Z"
+      },
+      {
+        "name": "Run disk space measurement",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 5,
+        "started_at": "2026-09-10T08:26:40Z",
+        "completed_at": "2026-09-10T08:42:00Z"
+      },
+      {
+        "name": "Update README with component sizes",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 6,
+        "started_at": "2026-09-10T08:42:00Z",
+        "completed_at": "2026-09-10T08:42:00Z"
+      },
+      {
+        "name": "Check for changes",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 7,
+        "started_at": "2026-09-10T08:42:00Z",
+        "completed_at": "2026-09-10T08:42:00Z"
+      },
+      {
+        "name": "Validate measurements",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 8,
+        "started_at": "2026-09-10T08:42:00Z",
+        "completed_at": "2026-09-10T08:42:00Z"
+      },
+      {
+        "name": "Commit and push changes",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 9,
+        "started_at": "2026-09-10T08:42:00Z",
+        "completed_at": "2026-09-10T08:42:00Z"
+      },
+      {
+        "name": "Fail on invalid measurements",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 10,
+        "started_at": "2026-09-10T08:42:00Z",
+        "completed_at": "2026-09-10T08:42:00Z"
+      },
+      {
+        "name": "Upload measurement artifacts",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-09-10T08:42:00Z",
+        "completed_at": "2026-09-10T08:42:01Z"
+      },
+      {
+        "name": "Summary",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12,
+        "started_at": "2026-09-10T08:42:01Z",
+        "completed_at": "2026-09-10T08:42:01Z"
+      },
+      {
+        "name": "Post Checkout repository",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 24,
+        "started_at": "2026-09-10T08:42:01Z",
+        "completed_at": "2026-09-10T08:42:01Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 25,
+        "started_at": "2026-09-10T08:42:01Z",
+        "completed_at": "2026-09-10T08:42:01Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102799275383",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056705,
+    "runner_name": "GitHub Actions 1000056705",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 102804263649,
+    "run_id": 34455018634,
+    "workflow_name": "Measure Disk Space and Update README",
+    "head_branch": "main",
+    "run_url": "https://api.github.com/repos/link-foundation/box/actions/runs/34455018634",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOQ2-R2c8AAAAX75yS4Q",
+    "head_sha": "90f1e2d95adbb0beb132da366b28d14a3746347c",
+    "url": "https://api.github.com/repos/link-foundation/box/actions/jobs/102804263649",
+    "html_url": "https://github.com/link-foundation/box/actions/runs/34455018634/job/102804263649",
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-09-10T08:42:04Z",
+    "started_at": "2026-09-10T08:42:06Z",
+    "completed_at": "2026-09-10T08:42:12Z",
+    "name": "pipeline-status",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-09-10T08:42:07Z",
+        "completed_at": "2026-09-10T08:42:07Z"
+      },
+      {
+        "name": "Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-09-10T08:42:07Z",
+        "completed_at": "2026-09-10T08:42:10Z"
+      },
+      {
+        "name": "Check pipeline status",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 3,
+        "started_at": "2026-09-10T08:42:10Z",
+        "completed_at": "2026-09-10T08:42:10Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v6",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-09-10T08:42:10Z",
+        "completed_at": "2026-09-10T08:42:10Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-09-10T08:42:10Z",
+        "completed_at": "2026-09-10T08:42:10Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/link-foundation/box/check-runs/102804263649",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000056751,
+    "runner_name": "GitHub Actions 1000056751",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  }
+]
