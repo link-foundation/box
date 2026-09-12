@@ -35,6 +35,14 @@ violated an ownership invariant none of those names express: parent control
 state must not live in a namespace the child is allowed to erase. The new
 regression makes that invariant executable.
 
+The deliberately verbose final gate also demonstrated why practice 11 must
+cover generated diagnostics, not merely source text: raw xtrace expanded a
+live token before staged secretlint rejected the saved log. The fix removes
+secret values from diagnostics at all three credential-consuming sites, and a
+canary regression proves both function and non-disclosure. This tightens the
+secrets-detection practice without assuming GitHub's masker is present in local
+or third-party CI logs.
+
 The selected `RUNNER_TEMP` fix also follows the source's broader principles:
 use the platform-provided job scope, fail clearly when state cannot be created,
 keep optional tracing off by default, and verify a failure path rather than

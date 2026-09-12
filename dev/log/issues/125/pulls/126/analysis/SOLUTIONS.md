@@ -70,3 +70,39 @@ first-attempt stderr, converting it to annotations, or extending timeouts would
 make the signal less accurate. The roughly six-to-ten-minute stalled attempts
 are a possible future performance budget, but issue #125 provides no failed
 final publication to justify changing that policy.
+
+## Selected: state-only tracing around credentials
+
+Raw Bash xtrace is unsafe in credential-consuming functions because it prints
+expanded arguments. The selected fix keeps the useful request, branch, and
+result state while ensuring no secret value is ever formatted:
+
+- zizmor disables xtrace before reading either token variable, exports the
+  chosen value, unsets its local copy, and only then restores xtrace;
+- registry probe logs method, URL, curl exit, and HTTP status, never basic-auth
+  configuration, headers, or bearer tokens;
+- credential preflight logs whether a credential source exists and the probe's
+  state, never the value or the environment assignment.
+
+Verbose mode remains opt-in and all three code paths retain functional coverage
+plus explicit negative assertions for their canary values.
+
+### Alternative: rely on GitHub's automatic masker
+
+Rejected. The discovery occurred in a local log, where no runner masker exists.
+GitHub also documents specific automatically recognized formats and asks users
+to register other values before output. Avoiding disclosure at the source works
+in CI, local runs, redirected files, and third-party CI systems.
+
+### Alternative: redact saved logs after execution
+
+Rejected as the primary control. It leaves the value observable during command
+execution and depends on every consumer knowing every possible token form.
+Mechanical redaction was used only to quarantine the initially discovered
+local files before they were replaced by clean reruns.
+
+### Alternative: disable verbose diagnostics entirely
+
+Rejected. Opt-in diagnostics are valuable on failure. State-only trace messages
+preserve the decision path operators need while credentials contribute no
+diagnostic value.

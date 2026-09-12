@@ -8,12 +8,21 @@ templates, the current hive-mind guidance, and the issue/PR discussion state.
 
 ## Result
 
-The only false CI verdict is run `34455018634`. The disk measurement completed
-successfully, generated all 27 component measurements, and uploaded its
-artifact, but the wrapped command had deleted the wrapper's own private files.
+The only false verdict among the nine audited runs is `34455018634`. The disk
+measurement completed successfully, generated all 27 component measurements,
+and uploaded its artifact, but the wrapped command had deleted the wrapper's
+own private files.
 That converted command exit 0 into wrapper exit 1 and discarded nearly all
 live output. `scripts/ci/run-with-budget-warning.sh` now keeps parent-owned
 state under `RUNNER_TEMP`, independently of the child's `TMPDIR`.
+
+The deliberately forced-verbose final gate then exposed a second, latent
+defect: raw xtrace printed live credentials in three code paths. Staged
+secretlint stopped the affected logs before commit or push. Zizmor now suspends
+tracing around token handling, while registry probe and credential preflight
+emit state-only diagnostics. The canary regression changed from three secrecy
+failures to six total passes, and clean real-token online logs replaced the
+quarantined copies.
 
 The other signal is accurate:
 
@@ -55,6 +64,8 @@ from the Actions API rather than inferred from log text.
   the 99-job release run; see `ci-logs/README.md`.
 - `artifacts/`: artifact API listings and every non-expired artifact available
   during collection. `artifacts/index.tsv` maps ids to files.
+- `local-tests/`: complete local verification results, including the official
+  complete experiment run and the deliberately forced-verbose diagnostic run.
 - `analysis/`: requirements, timeline, root causes, alternatives, the complete
   warning/error census, and before/after reproductions.
 - `templates/`: full tracked file trees and copies of every CI/CD-relevant file
@@ -73,6 +84,7 @@ bash experiments/issue-125/compare-template-roles.sh \
 bash experiments/issue-125/compare-template-roles.sh --workflows \
   > dev/log/issues/125/pulls/126/templates/workflow-role-matrix.tsv
 bash experiments/test-issue125-budget-state-survives-tmp-cleanup.sh
+bash experiments/test-issue125-verbose-secret-redaction.sh
 ```
 
 The first two snapshot commands require their documented network/checkouts;

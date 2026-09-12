@@ -57,3 +57,24 @@ search found no report for the deletion race, so
 was filed with a no-Docker reproduction, a conditional `TMPDIR` workaround, and
 the `RUNNER_TEMP`/`BUDGET_STATE_PARENT` fix. The Python, Rust, and PHP wrappers
 track completion without placing status files under `TMPDIR` and are unaffected.
+
+## Shell tracing and secret masking
+
+The official [Bash `set` reference](https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html)
+specifies that xtrace prints commands and arguments after expansion. That makes
+raw xtrace structurally unsuitable around assignments, tests, or command
+arguments containing credentials.
+
+GitHub's official [secrets reference](https://docs.github.com/en/actions/reference/security/secrets)
+documents formats that Actions masks automatically, and its workflow-command
+reference requires other values to be registered with `add-mask` before they
+are printed. Neither mechanism protects redirected local output. The selected
+implementation therefore prevents expansion into logs and treats platform
+masking as defense in depth. Saved source pages are
+`../research/bash-set-builtin.html` and
+`../research/github-actions-secrets.html`.
+
+All four reference-template snapshots have zero xtrace entry points. The
+credential-disclosure finding therefore has no related-template instance to
+report upstream; the exhaustive local dispositions are in
+`VERBOSE-SECRET-SWEEP.md`.

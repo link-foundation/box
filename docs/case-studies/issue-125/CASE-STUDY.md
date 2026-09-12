@@ -81,6 +81,25 @@ notices, test fixture vocabulary, and one lychee report notice were truthful or
 inert. The audit fixed the observer that lied and retained diagnostics that told
 the truth.
 
+## The verifier found another observer bug
+
+The full worktree gate was also run with opt-in `BOX_VERBOSE=1`. That exercise
+made two real online zizmor logs contain the live GitHub token: Bash xtrace
+prints arguments after expansion, including token assignment, tests, and
+export. The staged secret scanner rejected those logs, so no affected commit
+or push was created.
+
+A whole-codebase sweep found the same raw-xtrace class in registry probe and
+credential preflight. Zizmor now disables tracing for the complete secret
+branch; the registry paths use state-only messages that omit credentials and
+authorization headers. An offline canary test went from three functional
+passes plus three secrecy failures to six passes. Both real online verbose
+zizmor modes were rerun and saved cleanly.
+
+The lesson is the same as the temporary-directory failure: diagnostic
+machinery is production code. It must not change a command's verdict, lose its
+output, or disclose data merely because observation was enabled.
+
 The full record—126 jobs, annotations, artifacts, lexical census, current
 template trees, hive-mind verification, timeline, alternatives, and before/after
 outputs—is under `dev/log/issues/125/pulls/126/`.

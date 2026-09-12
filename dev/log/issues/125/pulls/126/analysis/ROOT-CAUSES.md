@@ -96,8 +96,30 @@ to its successful summary. The same log reports zero link errors. A notice is
 neither a warning nor an error, and removing it would make the report harder to
 find.
 
+## RC-8 — raw verbose tracing expanded credentials
+
+The forced-verbose local verification uncovered a separate security defect
+before commit: each real zizmor log contained the live GitHub token five times.
+The staged secretlint gate rejected that snapshot, and nothing containing the
+token was committed or pushed.
+
+`run-zizmor.sh` passed `-e GH_TOKEN` to Docker by name, but raw `set -x` was
+already active when the script assigned, tested, and exported the token. Bash
+traces arguments after parameter expansion, so keeping a token out of container
+argv did not keep it out of the shell trace. The whole-codebase sweep found the
+same class in two release paths: `registry-probe.sh` expanded basic-auth and
+bearer-token headers, and `preflight-credentials.sh` expanded credentials held
+in positional parameters and environment assignments.
+
+The fix suspends zizmor xtrace around the entire secret-dependent branch and
+uses state-only trace functions in the registry scripts. A single offline
+regression produced three functional passes plus three secrecy failures before
+the fix and six passes afterward. The exhaustive xtrace-site disposition is in
+`VERBOSE-SECRET-SWEEP.md`.
+
 ## Closure
 
-Only RC-1 and RC-2 require a code change, and one ownership correction closes
-both. RC-3 through RC-7 are retained because altering truthful diagnostics to
-make a word census quieter would reduce CI accuracy—the opposite of issue #125.
+One ownership correction closes RC-1 and RC-2. Safe tracing at all three
+credential-consuming sites closes RC-8. RC-3 through RC-7 are retained because
+altering truthful diagnostics to make a word census quieter would reduce CI
+accuracy—the opposite of issue #125.

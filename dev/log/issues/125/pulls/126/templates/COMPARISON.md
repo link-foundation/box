@@ -76,3 +76,9 @@ measurement, security, pull-request builds/tests, and regression suites. There
 is no copied implementation to patch independently. The central correction
 therefore covers every live call site. Copies below `dev/log/` are immutable
 evidence from other projects and are not executable repository code.
+
+The later verbose-secret sweep also searched these four complete snapshots.
+None contains a shell or workflow xtrace entry point, so the three
+credential-tracing defects found in box have no template counterpart. The
+budget-state defect remains the only issue #125 finding requiring an upstream
+template report.

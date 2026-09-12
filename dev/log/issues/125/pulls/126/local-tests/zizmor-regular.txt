@@ -1,0 +1,99 @@
++ IMAGE=ghcr.io/zizmorcore/zizmor:1.30.0
++ DOCKER=docker
++ ALLOW_OFFLINE=0
++ OFFLINE_MARKER='running in offline mode'
++ TARGETS=(.github/workflows .github/actions)
++ COMMON_ARGS=(--no-progress --format plain --config .github/zizmor.yml)
++ PRINT_ONLY=0
++ PASS=
++ '[' 1 -gt 0 ']'
++ case "$1" in
++ PASS=regular
++ shift
++ '[' 0 -gt 0 ']'
++ '[' -z regular ']'
++ case "$PASS" in
++ PASS_ARGS=(--min-confidence medium --min-severity medium)
++ CMD=("$DOCKER" run --rm -v "$REPO_ROOT:/repo" -w /repo -e GH_TOKEN "$IMAGE" "${PASS_ARGS[@]}" "${COMMON_ARGS[@]}" "${TARGETS[@]}")
++ '[' 0 = 1 ']'
++ '[' 1 = 1 ']'
++ cd /tmp/gh-issue-solver-1789231529166
++ echo '==> zizmor (regular pass): docker run --rm -v /tmp/gh-issue-solver-1789231529166:/repo -w /repo -e GH_TOKEN ghcr.io/zizmorcore/zizmor:1.30.0 --min-confidence medium --min-severity medium --no-progress --format plain --config .github/zizmor.yml .github/workflows .github/actions'
+==> zizmor (regular pass): docker run --rm -v /tmp/gh-issue-solver-1789231529166:/repo -w /repo -e GH_TOKEN ghcr.io/zizmorcore/zizmor:1.30.0 --min-confidence medium --min-severity medium --no-progress --format plain --config .github/zizmor.yml .github/workflows .github/actions
++ capture_and_stream docker run --rm -v /tmp/gh-issue-solver-1789231529166:/repo -w /repo -e GH_TOKEN ghcr.io/zizmorcore/zizmor:1.30.0 --min-confidence medium --min-severity medium --no-progress --format plain --config .github/zizmor.yml .github/workflows .github/actions
++ local __tmp __status=0
++ '[' 21 -eq 0 ']'
+++ mktemp /tmp/capture-and-stream.XXXXXX
++ __tmp=/tmp/capture-and-stream.2fXvXB
++ tee /tmp/capture-and-stream.2fXvXB
++ docker run --rm -v /tmp/gh-issue-solver-1789231529166:/repo -w /repo -e GH_TOKEN ghcr.io/zizmorcore/zizmor:1.30.0 --min-confidence medium --min-severity medium --no-progress --format plain --config .github/zizmor.yml .github/workflows .github/actions
+ INFO zizmor: 🌈 zizmor v1.30.0
+ INFO audit: zizmor: 🌈 completed .github/actions/dockerhub-login/action.yml
+ INFO audit: zizmor: 🌈 completed .github/actions/free-disk-space/action.yml
+ INFO audit: zizmor: 🌈 completed .github/actions/setup-buildx-resilient/action.yml
+ INFO audit: zizmor: 🌈 completed .github/actions/simulate-fresh-merge/action.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/dockerfiles.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/docs.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/file-sizes.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/links.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/measure-disk-space.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/pr-tests.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-dind.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-essentials.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-full.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-js.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-languages.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/scripts.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/security.yml
+No findings to report. Good job! (246 ignored, 248 suppressed)
+ INFO audit: zizmor: 🌈 completed .github/workflows/workflows.yml
++ __status=0
+++ cat /tmp/capture-and-stream.2fXvXB
++ CAPTURED_OUTPUT=' INFO zizmor: 🌈 zizmor v1.30.0
+ INFO audit: zizmor: 🌈 completed .github/actions/dockerhub-login/action.yml
+ INFO audit: zizmor: 🌈 completed .github/actions/free-disk-space/action.yml
+ INFO audit: zizmor: 🌈 completed .github/actions/setup-buildx-resilient/action.yml
+ INFO audit: zizmor: 🌈 completed .github/actions/simulate-fresh-merge/action.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/dockerfiles.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/docs.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/file-sizes.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/links.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/measure-disk-space.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/pr-tests.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-dind.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-essentials.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-full.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-js.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-languages.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/scripts.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/security.yml
+No findings to report. Good job! (246 ignored, 248 suppressed)
+ INFO audit: zizmor: 🌈 completed .github/workflows/workflows.yml'
++ rm -f /tmp/capture-and-stream.2fXvXB
++ return 0
++ STATUS=0
++ printf %s ' INFO zizmor: 🌈 zizmor v1.30.0
+ INFO audit: zizmor: 🌈 completed .github/actions/dockerhub-login/action.yml
+ INFO audit: zizmor: 🌈 completed .github/actions/free-disk-space/action.yml
+ INFO audit: zizmor: 🌈 completed .github/actions/setup-buildx-resilient/action.yml
+ INFO audit: zizmor: 🌈 completed .github/actions/simulate-fresh-merge/action.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/dockerfiles.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/docs.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/file-sizes.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/links.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/measure-disk-space.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/pr-tests.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-dind.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-essentials.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-full.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-js.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release-languages.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/release.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/scripts.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/security.yml
+No findings to report. Good job! (246 ignored, 248 suppressed)
+ INFO audit: zizmor: 🌈 completed .github/workflows/workflows.yml'
++ grep -qF 'running in offline mode'
++ exit 0

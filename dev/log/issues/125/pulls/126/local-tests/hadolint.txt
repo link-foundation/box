@@ -1,0 +1,3 @@
+==> hadolint not on PATH; using hadolint/hadolint:v2.14.0
+==> Checking 23 Dockerfile(s) (failing at severity 'info' and above)
+==> No hadolint findings at or above the configured threshold

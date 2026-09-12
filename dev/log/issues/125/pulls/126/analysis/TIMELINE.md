@@ -22,6 +22,9 @@ All times are UTC.
 | 16:45:45 | Draft PR #126 was opened. | `pr.json` |
 | 2026-09-12 | The local reproducer failed on the merge baseline and the current JavaScript template, then passed after state isolation. | `analysis/reproducer-*.log` |
 | 2026-09-12 | The related JavaScript-template defect was reported as issue #189. | `upstream/js-issue-189.json` |
+| 2026-09-12 | The deliberately forced-verbose final gate put the live GitHub token into each local zizmor log five times. Staged secretlint rejected the snapshot before commit or push. | local verification; `analysis/VERBOSE-SECRET-SWEEP.md` |
+| 2026-09-12 | An offline canary regression reproduced credential disclosure in zizmor, registry-probe, and credential-preflight tracing: three functional passes and three secrecy failures. | `analysis/verbose-secret-redaction-before.txt` |
+| 2026-09-12 | Raw xtrace was removed from the two registry credential paths and suspended around zizmor's token branch. The regression passed 6/6 and real online verbose zizmor passed in both modes without a token or placeholder in either saved log. | `analysis/verbose-secret-redaction-after.txt`; `local-tests/zizmor-*.txt` |
 
 The ordering rules out an installation failure: the control directory vanished
 one second after the wrapper began, the child continued for another 918 seconds,
