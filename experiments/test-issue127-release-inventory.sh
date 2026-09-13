@@ -166,12 +166,67 @@ else
   : >"$ACTUAL"
 fi
 
-LANGUAGE_LINE="$(awk '/^  build-languages-amd64:$/ {injob=1}
-                      injob && /^        language: \[/ {print; exit}' \
-  .github/workflows/release-languages.yml)"
-DIND_LINE="$(awk '/^  build-dind-amd64:$/ {injob=1}
-                  injob && /^        variant: \[/ {print; exit}' \
-  .github/workflows/release-dind.yml)"
+LANGUAGE_LINES="$WORK/language-matrices"
+DIND_LINES="$WORK/dind-matrices"
+INVENTORY_LANGUAGES="$WORK/inventory-languages"
+INVENTORY_DIND="$WORK/inventory-dind"
+
+sed -n '/^        language: \[/p' \
+  .github/workflows/release-languages.yml >"$LANGUAGE_LINES"
+sed -n '/^        variant: \[/p' \
+  .github/workflows/release-dind.yml >"$DIND_LINES"
+
+bash -c '
+  source "$1"
+  for entry in "${LANGUAGE_IMAGES[@]}"; do printf "%s\n" "${entry#*|}"; done
+' _ "$INVENTORY" >"$INVENTORY_LANGUAGES"
+bash -c '
+  source "$1"
+  for entry in "${DIND_IMAGES[@]}"; do printf "%s\n" "${entry#*|}"; done
+' _ "$INVENTORY" >"$INVENTORY_DIND"
+
+# matrix_suffixes KIND LINE - normalize one inline workflow matrix to image
+# suffixes so its members can be compared with the shared inventory.
+matrix_suffixes() {
+  local kind="$1" line="$2"
+  printf '%s\n' "$line" \
+    | sed 's/.*\[//; s/\].*//; s/,/ /g' \
+    | tr ' ' '\n' \
+    | sed '/^$/d' \
+    | if [ "$kind" = "language" ]; then
+      sed 's/^/-/'
+    else
+      sed 's/^full$/-dind/; /-dind$/! s/$/-dind/; s/^/-/; s/^--/-/'
+    fi
+}
+
+# matrices_match KIND LINES EXPECTED - require the amd64, arm64 and manifest
+# matrices and compare every one with the corresponding inventory subset.
+matrices_match() {
+  local kind="$1" lines="$2" expected="$3" line candidate number=0
+  [ "$(wc -l <"$lines")" -eq 3 ] || return 1
+  while IFS= read -r line; do
+    number=$((number + 1))
+    candidate="$WORK/${kind}-matrix-${number}"
+    matrix_suffixes "$kind" "$line" >"$candidate"
+    cmp -s <(LC_ALL=C sort "$expected") <(LC_ALL=C sort "$candidate") || return 1
+  done <"$lines"
+}
+
+if matrices_match language "$LANGUAGE_LINES" "$INVENTORY_LANGUAGES"; then
+  pass "all three language publishing matrices equal the shared inventory"
+else
+  fail "an amd64, arm64, or manifest language matrix drifted from the inventory"
+fi
+
+if matrices_match dind "$DIND_LINES" "$INVENTORY_DIND"; then
+  pass "all three dind publishing matrices equal the shared inventory"
+else
+  fail "an amd64, arm64, or manifest dind matrix drifted from the inventory"
+fi
+
+LANGUAGE_LINE="$(head -n 1 "$LANGUAGE_LINES")"
+DIND_LINE="$(head -n 1 "$DIND_LINES")"
 
 {
   printf '\n-essentials\n-js\n'
