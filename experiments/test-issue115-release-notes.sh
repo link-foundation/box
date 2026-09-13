@@ -16,6 +16,7 @@ set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
 SCRIPT="scripts/release/build-release-notes.sh"
+INVENTORY="scripts/release/image-inventory.sh"
 
 # create-release lives in the entry workflow; the build matrices moved into
 # release-<family>.yml when release.yml was split (issue #115, RC-8). Resolving
@@ -169,9 +170,13 @@ for var in VERSION REPO GHCR_IMAGE DOCKERHUB_IMAGE; do
   fi
 done
 
-# The generator's own list must equal the matrix. If a language is added to
-# release.yml and not here, the notes would omit it silently.
-SCRIPT_LANGS="$(sed -n '/^LANGUAGE_IMAGES=(/,/^)/p' "$SCRIPT" \
+# The shared release inventory must equal the matrix. If a language is added
+# to the workflow and not there, both the notes and the post-release gate would
+# omit it silently (issue #127).
+SCRIPT_LANGS="$(bash -c '
+  source "$1"
+  printf "%s\n" "${LANGUAGE_IMAGES[@]}"
+' _ "$INVENTORY" 2>/dev/null \
   | grep -o '|-[a-z0-9+]*' | sed 's/^|-//' | tr '\n' ' ' | sed 's/ $//')"
 MATRIX_LANGS="$(echo "$LANGUAGES" | tr -s ' ' | sed 's/^ //; s/ $//')"
 if [ "$SCRIPT_LANGS" = "$MATRIX_LANGS" ]; then
@@ -265,6 +270,7 @@ fi
 SANDBOX="$TMP/sandbox"
 mkdir -p "$SANDBOX/scripts/release"
 cp "$SCRIPT" "$SANDBOX/scripts/release/"
+cp "$INVENTORY" "$SANDBOX/scripts/release/"
 # The stub answers the two network entry points and inherits everything else -
 # media types, the platform-list parser, the "which of these are missing"
 # comparison - from the real probe, so what the generator renders is decided by

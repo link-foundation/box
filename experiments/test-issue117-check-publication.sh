@@ -39,6 +39,7 @@ trap 'rm -rf "$WORK"' EXIT
 
 mkdir -p "$WORK/scripts/release"
 cp scripts/release/check-publication.sh "$WORK/scripts/release/"
+cp scripts/release/image-inventory.sh "$WORK/scripts/release/"
 
 cat >"$WORK/scripts/release/registry-probe.sh" <<'STUB'
 #!/usr/bin/env bash
@@ -174,14 +175,15 @@ echo ""
 echo "== Part 3: it checks what it says it checks =="
 
 run published published
-# Four images on two registries, at two tags each: the version and `latest`.
-# `latest` joined the sample with issue #119c - it is the tag v2.7.0 broke, and
-# a check that only reads the version tag would have passed that release.
+# Twenty-eight images on two registries, at two tags each: the version and
+# `latest`. `latest` joined the check with issue #119c - it is the tag v2.7.0
+# broke, and a check that only reads the version tag would have passed that
+# release.
 PROBED="$(wc -l <"$STUB_LOG")"
-if [ "$PROBED" -eq 16 ]; then
-  pass "both registries are probed for all four sampled images, at both tags"
+if [ "$PROBED" -eq 112 ]; then
+  pass "both registries are probed for all 28 images, at both tags"
 else
-  fail "expected 16 probes, got $PROBED"
+  fail "expected 112 probes, got $PROBED"
   sed 's/^/      /' "$STUB_LOG" >&2
 fi
 
@@ -190,15 +192,18 @@ for reference in \
   "ghcr.io/link-foundation/box:2.6.0" \
   "ghcr.io/link-foundation/box-essentials:2.6.0" \
   "ghcr.io/link-foundation/box-js:2.6.0" \
+  "ghcr.io/link-foundation/box-python:2.6.0" \
   "ghcr.io/link-foundation/box-dind:2.6.0" \
+  "ghcr.io/link-foundation/box-python-dind:2.6.0" \
   "konard/box:2.6.0" \
+  "konard/box-python:2.6.0" \
   "konard/box-dind:2.6.0"; do
   grep -qxF "$reference" "$STUB_LOG" || missing="${missing} ${reference}"
 done
 if [ -z "$missing" ]; then
-  pass "the sample spans both image families and the dind layering"
+  pass "the inventory spans both registries, language images, and dind layers"
 else
-  fail "the sample misses:${missing}"
+  fail "the inventory misses:${missing}"
 fi
 
 run published published CHECK_SUFFIXES="-python"
