@@ -8,8 +8,8 @@
 # more for the dind variants. A hand-written row per image is a false negative
 # waiting to happen - add a language to the build matrix and the release notes
 # stay silent about it, with nothing to notice. The tables are generated from
-# one list here, and experiments/test-issue115-release-notes.sh asserts that
-# list matches the matrix in release.yml.
+# one shared list, and experiments/test-issue127-release-inventory.sh asserts
+# that list matches the publishing workflow matrices.
 #
 # Usage:
 #   VERSION=2.5.0 REPO=link-foundation/box \
@@ -47,32 +47,10 @@ RELEASE_DATE="${RELEASE_DATE:-$(date -u +%Y-%m-%d)}"
 EXPECTED_PLATFORMS="${EXPECTED_PLATFORMS-linux/amd64 linux/arm64}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./image-inventory.sh
+source "${SCRIPT_DIR}/image-inventory.sh"
 # shellcheck source=./registry-probe.sh
 source "${SCRIPT_DIR}/registry-probe.sh"
-
-# label|suffix. The suffix is appended to both image names, so one list drives
-# Docker Hub, GHCR and their dind variants.
-COMBO_IMAGES=(
-  "Full Box|"
-  "Essentials|-essentials"
-  "JS|-js"
-)
-
-# Must stay in sync with the `language:` matrix in .github/workflows/release.yml
-# (asserted by experiments/test-issue115-release-notes.sh).
-LANGUAGE_IMAGES=(
-  "Python|-python"
-  "Go|-go"
-  "Rust|-rust"
-  "Java|-java"
-  "Kotlin|-kotlin"
-  "Ruby|-ruby"
-  "PHP|-php"
-  "Perl|-perl"
-  "Swift|-swift"
-  "Lean|-lean"
-  "Rocq|-rocq"
-)
 
 # --- what the probe measured, rendered into the tables (issue #119d) --------
 #
@@ -227,17 +205,6 @@ table() {
   printf '\n### %s\n\n' "$heading"
   rows "$@"
 }
-
-# The dind variants layer an inner Docker daemon on every published image
-# (issue #80), so their list is the combo and language lists with -dind added.
-dind_entries() {
-  local entry
-  for entry in "${COMBO_IMAGES[@]}" "${LANGUAGE_IMAGES[@]}"; do
-    printf '%s + dind|%s-dind\n' "${entry%%|*}" "${entry#*|}"
-  done
-}
-
-mapfile -t DIND_IMAGES < <(dind_entries)
 
 # --- publication check (issue #115 principle #13, corrected by issue #117) ----
 #

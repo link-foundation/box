@@ -44,7 +44,8 @@
 #   GHCR_IMAGE         Full GHCR image, registry/owner/name (required)
 #   DOCKERHUB_IMAGE    Docker Hub image, namespace/name (required)
 #   CHECK_SUFFIXES     Space-separated image suffixes to check
-#                      (default: the three combo images plus -dind)
+#                      (default: all families in image-inventory.sh; when set,
+#                      the base image is always included)
 #   CHECK_TAGS         Space-separated tags to check (default: "$VERSION latest")
 #   EXPECTED_PLATFORMS Platforms every checked reference must carry
 #                      (default: linux/amd64 linux/arm64; empty disables the
@@ -74,15 +75,20 @@ for var in VERSION GHCR_IMAGE DOCKERHUB_IMAGE; do
 done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./image-inventory.sh
+source "${SCRIPT_DIR}/image-inventory.sh"
 # shellcheck source=./registry-probe.sh
 source "${SCRIPT_DIR}/registry-probe.sh"
 
-# A sample, not the full 56. This runs after every image has been pushed, and
-# its job is to answer one question - "did this release reach anyone?" - not to
-# re-inventory the build. The four cover both image families and the dind
-# layering, so a whole-registry failure cannot hide behind a lucky tag.
-read -r -a SUFFIXES <<<"${CHECK_SUFFIXES:--essentials -js -dind}"
-SUFFIXES=("" "${SUFFIXES[@]}")
+# Every GHCR image is part of the release contract. A sample can detect a
+# whole-registry outage, but it cannot detect one missing language or dind
+# package. CHECK_SUFFIXES remains available for focused diagnostics and tests.
+if [ "${CHECK_SUFFIXES+x}" = "x" ]; then
+  read -r -a SUFFIXES <<<"${CHECK_SUFFIXES}"
+  SUFFIXES=("" "${SUFFIXES[@]}")
+else
+  mapfile -t SUFFIXES < <(image_inventory_suffixes)
+fi
 
 # `latest` is checked alongside the version because it is the tag that broke:
 # every reference of v2.7.0 was fine at :2.7.0 and amd64-only at :latest, and a
@@ -101,6 +107,7 @@ GHCR_TOTAL=0
 GHCR_PRIVATE=0
 DOCKERHUB_PULLABLE=0
 DOCKERHUB_TOTAL=0
+GHCR_UNAVAILABLE=()
 GHCR_INCOMPLETE=()
 DOCKERHUB_INCOMPLETE=()
 UNMEASURED=()
@@ -119,7 +126,8 @@ REGRESSIONS=()
 # children, but a plain manifest declares no platform at all, and a plain
 # manifest under an unsuffixed tag is exactly what a single-architecture job
 # leaves behind. Answering that case costs one extra request for the config
-# blob, which is why the sample stays small.
+# blob. The extra request is required because each image family is part of the
+# release contract.
 check() {
   local reference="$1" kind="$2" previous="${3:-}"
   local platforms missing lost
@@ -138,6 +146,9 @@ check() {
       published) GHCR_PULLABLE=$((GHCR_PULLABLE + 1)) ;;
       private) GHCR_PRIVATE=$((GHCR_PRIVATE + 1)) ;;
     esac
+    if [ "$REGISTRY_PROBE_STATE" != "published" ]; then
+      GHCR_UNAVAILABLE+=("${reference} is ${REGISTRY_PROBE_STATE}: ${REGISTRY_PROBE_DETAIL}")
+    fi
   else
     DOCKERHUB_TOTAL=$((DOCKERHUB_TOTAL + 1))
     if [ "$REGISTRY_PROBE_STATE" = "published" ]; then
@@ -220,6 +231,10 @@ if [ "$GHCR_PULLABLE" -eq 0 ]; then
   else
     echo "::error title=Release v${VERSION} published nothing to the registry of record::None of the checked ghcr.io references can be pulled anonymously. The GitHub Release exists but there is no image behind it." >&2
   fi
+  STATUS=1
+elif [ "$GHCR_PULLABLE" -lt "$GHCR_TOTAL" ]; then
+  printf '%s\n' "${GHCR_UNAVAILABLE[@]}" | sed 's/^/    /' >&2
+  echo "::error title=Release v${VERSION} is incomplete on the registry of record::${#GHCR_UNAVAILABLE[@]} of ${GHCR_TOTAL} checked GHCR references cannot be pulled anonymously. Every image and both the v${VERSION} and latest tags are required; republish the missing references before treating this release as healthy." >&2
   STATUS=1
 fi
 

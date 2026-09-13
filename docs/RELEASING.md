@@ -108,12 +108,14 @@ DOCKERHUB_IMAGE=konard/box \
   bash scripts/release/check-publication.sh
 ```
 
-Exit 0 means a reader can pull the release. Exit 1 says which of the ways of
-reaching nobody happened: nothing was pushed, what was pushed is private, or
-what was pushed resolves and does not carry the architectures the release built
-(issue #119). The same script runs at the end of every release, after the
-GitHub Release has been created, so a release that reaches nobody turns the run
-red instead of being reported as a success.
+Exit 0 means a reader can pull every GHCR image family at both the version and
+`latest` tags. Exit 1 identifies an incomplete publication: a reference is
+missing, private, unanswered, or does not carry the architectures the release
+built (issues #119 and #127). The same script runs at the end of every release,
+after the GitHub Release has been created, so an incomplete GHCR release turns
+the run red instead of being reported as a success. Docker Hub remains an
+optional mirror when a tag is absent; a mirror tag that exists with incomplete
+platform coverage still fails because it gives users a broken answer.
 
 Until the visibility is flipped, the preflight blocks releases on `main` with
 `::error title=GHCR package is private::`. That is deliberate: publishing more

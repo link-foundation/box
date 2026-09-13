@@ -46,6 +46,7 @@ trap 'rm -rf "$WORK"' EXIT
 
 mkdir -p "$WORK/scripts/release"
 cp scripts/release/check-publication.sh "$WORK/scripts/release/"
+cp scripts/release/image-inventory.sh "$WORK/scripts/release/"
 
 cat >"$WORK/scripts/release/registry-probe.sh" <<'STUB'
 #!/usr/bin/env bash
