@@ -92,7 +92,7 @@ apt_update_with_retry
 
 # Core system tools
 maybe_sudo apt-get install -y \
-  wget curl unzip zip git sudo ca-certificates gnupg \
+  wget curl unzip zip git sudo ca-certificates gnupg file \
   build-essential expect screen
 
 # Common development libraries used by multiple language runtimes

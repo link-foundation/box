@@ -685,6 +685,10 @@ jobs:
           docker run --rm --entrypoint=/bin/bash "$IMG" -c 'docker buildx version'
           docker run --rm --entrypoint=/bin/bash "$IMG" -c 'docker compose version'
           docker run --rm --entrypoint=/bin/bash "$IMG" -c 'cat /etc/box/variant'
+          # Every base except JS inherits the essentials attachment tools.
+          if [ "$VARIANT" != js ]; then
+            bash scripts/ci/test-box.sh attachments "$IMG"
+          fi
           echo "=== ${IMG} smoke tests passed ==="
 
       - name: Test documented dind examples

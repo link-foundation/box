@@ -266,10 +266,10 @@ $(grep -nE '^\s*docker run --rm (box-test|"\$\{IMAGE\}")' $WORKFLOWS)"
 fi
 
 CALLS="$(grep -h 'scripts/ci/test-box.sh' $WORKFLOWS | wc -l)"
-if [ "$CALLS" -eq 5 ]; then
-  pass "all five test steps call the shared script"
+if [ "$CALLS" -eq 6 ]; then
+  pass "all five image test steps and the DinD attachment check call the shared script"
 else
-  fail "all five test steps call the shared script (found $CALLS)"
+  fail "all five image test steps and the DinD attachment check call the shared script (found $CALLS)"
 fi
 
 # The pre-merge test and the released-image smoke test must ask for the same

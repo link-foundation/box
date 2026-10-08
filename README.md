@@ -45,6 +45,7 @@ carries exactly one version per language. See
 - **Git**
 - **GitHub CLI (gh)**
 - **Homebrew**
+- **file** (file type and MIME detection for attachment validation)
 
 ## Modular Architecture
 
