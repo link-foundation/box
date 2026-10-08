@@ -3,10 +3,12 @@
 #
 # Usage: scripts/ci/test-box.sh PROFILE IMAGE
 #
-#   PROFILE  js | essentials | full | <language>
+#   PROFILE  js | essentials | full | attachments | <language>
 #            (<language> is any directory under ubuntu/24.04/ that ships a
 #             single runtime: python, go, rust, java, kotlin, ruby, php, perl,
 #             swift, lean, rocq, ...)
+#            attachments checks file/MIME detection alone, including DinD
+#            images without starting their Docker daemon.
 #   IMAGE    any image reference docker can run - a locally built tag in the
 #            pre-merge jobs, a pushed registry reference in the release job.
 #
@@ -196,6 +198,29 @@ check_cli_tools() {
   box glab-setup-git-identity --version
 }
 
+check_attachment_validation() {
+  echo "--- Attachment validation ---"
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  vlog "docker run --rm --network none --entrypoint=/bin/bash --memory=256m $IMAGE (file/MIME checks)"
+  # Bypass the entrypoint so this also works for DinD without starting dockerd.
+  # Run as the image's default box user, offline: both file and its magic
+  # database must already be usable for validating downloaded attachments.
+  # shellcheck disable=SC2016  # variables expand inside the container
+  docker run --rm --network none --entrypoint=/bin/bash --memory=256m "$IMAGE" -euc '
+    file --version
+    tmp="$(mktemp -d)"
+    trap '\''rm -rf "$tmp"'\'' EXIT
+    printf "%s" "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==" \
+      | base64 --decode > "$tmp/image.png"
+    printf "%s\n" "<!DOCTYPE html><html><body>Not Found</body></html>" > "$tmp/error.png"
+    png_mime="$(file --brief --mime-type "$tmp/image.png")"
+    html_mime="$(file --brief --mime-type "$tmp/error.png")"
+    printf "PNG MIME type: %s\nHTML MIME type: %s\n" "$png_mime" "$html_mime"
+    test "$png_mime" = image/png
+    test "$html_mime" = text/html
+  '
+}
+
 # --- freshness and one-version-per-language invariants (issue #112) -----------
 
 expected_node_major() {
@@ -289,6 +314,7 @@ case "$PROFILE" in
   essentials)
     echo "=== Testing essentials box: $IMAGE ==="
     check_cli_tools
+    check_attachment_validation
     ;;
 
   full)
@@ -310,6 +336,7 @@ case "$PROFILE" in
     done
 
     check_cli_tools
+    check_attachment_validation
 
     # expect: interactive automation tool (issue #64)
     box expect -v
@@ -322,6 +349,10 @@ case "$PROFILE" in
       CHECKS_RUN=$((CHECKS_RUN + 1))
       docker run --rm "$PHP_METHOD_REFERENCE_IMAGE" cat /home/box/.php-install-method
     fi
+    ;;
+
+  attachments)
+    check_attachment_validation
     ;;
 
   *)

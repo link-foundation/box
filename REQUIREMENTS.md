@@ -48,6 +48,7 @@ The Docker image MUST include:
 - LLD linker
 - Assembly tools (GNU Assembler, NASM, LLVM-MC, FASM)
 - `expect` (interactive automation tool for scripting TTY interactions)
+- `file` (file type and MIME detection for validating downloaded attachments)
 
 ### FR-4: Multi-Architecture Support
 
