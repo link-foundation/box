@@ -701,6 +701,7 @@ jobs:
           set -e
           echo "=== Testing documented dind examples against ${DIND_IMAGE} ==="
           tests/dind/example-basic-docker-ps.sh
+          tests/dind/example-live-restore.sh
           tests/dind/example-commit-cycle.sh
           tests/dind/example-sudoers-extension.sh
           tests/dind/example-storage-driver-vfs.sh

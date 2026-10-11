@@ -87,6 +87,7 @@ The entrypoint supports these environment variables:
 | --- | --- | --- |
 | `DIND_STORAGE_DRIVER` | auto | Override the inner dockerd storage driver. |
 | `DIND_DATA_ROOT` | `/var/lib/docker` | Override the inner dockerd data root. |
+| `DIND_LIVE_RESTORE` | `1` | Enable live restore for the nested daemon. Set to `0` to omit the flag and use Docker's default. An existing `live-restore` key in `/etc/docker/daemon.json` takes precedence, including `false`. |
 | `DIND_LOG_FILE` | `/var/log/dockerd.log` | Write dockerd logs to this path. |
 | `DIND_WAIT_SECONDS` | `30` | Wait this many seconds for dockerd readiness. |
 | `DIND_SKIP_DAEMON` | `0` | Set to `1` to skip starting the nested dockerd. This is the supported Docker-outside-of-Docker (DooD) switch: mount the host socket at `/var/run/docker.sock` and the in-container CLI talks to the host daemon directly (see [Docker-outside-of-Docker (DooD)](#docker-outside-of-docker-dood)). Also used for setup/commit containers and Sysbox. |
@@ -106,6 +107,35 @@ docker run -d --privileged \
   -v box-dind-data:/var/lib/docker \
   --name box-dind \
   konard/box-dind sleep infinity
+```
+
+## Surviving a Nested Daemon Restart
+
+The entrypoint enables Docker's [live restore](https://docs.docker.com/engine/daemon/live-restore/)
+by default. Nested containers keep running when the inner `dockerd` stops and
+can reconnect when it is relaunched with the same daemon settings. Check it with:
+
+```bash
+docker exec box-dind docker info --format '{{.LiveRestoreEnabled}}'
+# true
+```
+
+To use Docker's default shutdown behavior, pass `-e DIND_LIVE_RESTORE=0` when
+starting the box. If `/etc/docker/daemon.json` already defines `live-restore`,
+that value controls the behavior regardless of the environment variable. The
+entrypoint omits its flag in that case because Docker rejects duplicate
+directives even when their values agree.
+
+This protects against a restart of the nested daemon. It does not restart the
+daemon automatically or keep tasks alive if the outer box container is killed.
+Docker requires unchanged storage and network settings for reconnection.
+
+CI verifies the enabled default and opt-out by stopping and relaunching the
+nested daemon with a running container, then checking its PID and restart count.
+It also checks both config-file boolean values for startup conflicts:
+
+```bash
+DIND_IMAGE=box-dind-js tests/dind/example-live-restore.sh
 ```
 
 ## Reusing Host Images (Preload)
