@@ -12,6 +12,29 @@ chmod a+rx "$config_dir"
 printf '%s\n' '{"live-restore":true}' >"$config_dir/true.json"
 printf '%s\n' '{"live-restore":false}' >"$config_dir/false.json"
 
+prepare_nested_cgroups() {
+  # Only touch the throwaway container's private cgroup namespace. Like Moby's
+  # hack/dind, move root processes to a leaf before enabling v2 controllers.
+  # Bound retries because docker exec can briefly add processes to the root.
+  docker exec -u root "$1" /bin/bash -c '
+    set -euo pipefail
+    [ -f /sys/fs/cgroup/cgroup.controllers ] || exit 0
+    mkdir -p /sys/fs/cgroup/init
+    for ((i=0; i<10; i++)); do
+      xargs -rn1 </sys/fs/cgroup/cgroup.procs >/sys/fs/cgroup/init/cgroup.procs || true
+      if sed -e "s/ / +/g" -e "s/^/+/" </sys/fs/cgroup/cgroup.controllers \
+        >/sys/fs/cgroup/cgroup.subtree_control; then
+        exit 0
+      fi
+      sleep 1
+    done
+    echo "could not enable nested cgroup v2 controllers" >&2
+    cat /sys/fs/cgroup/cgroup.type /sys/fs/cgroup/cgroup.procs \
+      /sys/fs/cgroup/cgroup.controllers /sys/fs/cgroup/cgroup.subtree_control >&2
+    exit 1
+  '
+}
+
 restart_inner_dockerd() {
   local container="$1" driver
   driver="$(docker exec "$container" docker info --format '{{.Driver}}')"
@@ -50,12 +73,13 @@ for mode in default opt-out config-true config-false; do
       ;;
   esac
   log "checking live restore: $mode"
-  run_dind_container "$container" --memory=512m -e DIND_HOST_PASSTHROUGH=off "${args[@]}"
+  run_dind_container "$container" --memory=512m --cgroupns=private -e DIND_HOST_PASSTHROUGH=off "${args[@]}"
   wait_for_inner_docker "$container"
   actual="$(docker exec "$container" docker info --format '{{.LiveRestoreEnabled}}')"
   [ "$actual" = "$expected" ] || fail "$mode: expected live restore $expected, got $actual"
 
   if [ "$mode" = default ] || [ "$mode" = opt-out ]; then
+    prepare_nested_cgroups "$container"
     # Build a minimal sleep image from this container's binary and libraries,
     # following the offline docker-import fixture used by the preload example.
     docker exec "$container" /bin/bash -c '
