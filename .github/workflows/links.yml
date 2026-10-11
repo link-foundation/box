@@ -144,9 +144,12 @@ jobs:
       # which a CI address range collects from rate-limiting and load-shedding
       # hosts, is reported broken without a single retry and fails this gate:
       # a false positive (issue #121). Ask those URLs again, outside lychee. A
-      # failure carrying a status code is a host's answer and stays final, so a
-      # 404 is never re-asked and cannot be recovered here.
-      - name: Re-check the links no host ever answered
+      # temporary HTTP error (408, 429, 500, 502, 503 or 504) can also recover:
+      # PR #132 failed on two healthy GitHub docs links answering 503. Retry
+      # those within the same wall-clock budget; only an accepted status can
+      # recover them. Permanent failures such as 404 remain final. URLs with
+      # fragments stay final because the recovery's HEAD cannot check anchors.
+      - name: Re-check unanswered links and temporary HTTP errors
         if: steps.lychee.outputs.exit_code != 0
         id: recheck
         run: node scripts/ci/recheck-broken-links.mjs

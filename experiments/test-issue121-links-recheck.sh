@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # test-issue121-links-recheck.sh
 #
-# The links gate re-asks the URLs no host answered, and nothing else.
+# The links gate re-asks unanswered URLs and temporary HTTP errors (PR #132).
 #
 # Why this exists (issue #121). lychee classifies an error by the phase it
 # happened in and answers `false` for the connect phase, so `--max-retries`
@@ -15,11 +15,11 @@
 # The re-check is therefore allowed to downgrade a failure, and the assertions
 # here are about the limits of that permission:
 #
-#   1. a failure a host answered (a status code, "Rejected status code") is
-#      never re-asked and never recovered;
+#   1. permanent HTTP failures, local files and fragment failures are never
+#      re-asked and never recovered;
 #   2. `all_recovered` - the output that skips the failing step - is written
-#      only when the *whole* report was failures no host answered and every one
-#      of them answers now. The reference template writes it while answered
+#      only when the *whole* report was retryable failures and every one
+#      of them answers now. The reference template writes it while permanent
 #      failures are still in the report, which ends the job green with a 404 in
 #      it; reproduced against the template's own script by
 #      experiments/issue-121-template-recheck/, reported upstream as
@@ -138,13 +138,13 @@ import { allRecovered, parseAcceptRanges, extractLycheeRequestOptions }
 
 const cases = [
   ["nothing but unanswered failures, all recovered -> true",
-    allRecovered({ finalFailureCount: 0, unansweredCount: 2, recoveredCount: 2, stillBrokenCount: 0 }) === true],
+    allRecovered({ finalFailureCount: 0, retryableCount: 2, recoveredCount: 2, stillBrokenCount: 0 }) === true],
   ["an answered failure is still in the report -> false",
-    allRecovered({ finalFailureCount: 1, unansweredCount: 1, recoveredCount: 1, stillBrokenCount: 0 }) === false],
+    allRecovered({ finalFailureCount: 1, retryableCount: 1, recoveredCount: 1, stillBrokenCount: 0 }) === false],
   ["a URL that never answered the re-check either -> false",
-    allRecovered({ finalFailureCount: 0, unansweredCount: 2, recoveredCount: 1, stillBrokenCount: 1 }) === false],
+    allRecovered({ finalFailureCount: 0, retryableCount: 2, recoveredCount: 1, stillBrokenCount: 1 }) === false],
   ["nothing was re-asked at all -> false",
-    allRecovered({ finalFailureCount: 0, unansweredCount: 0, recoveredCount: 0, stillBrokenCount: 0 }) === false],
+    allRecovered({ finalFailureCount: 0, retryableCount: 0, recoveredCount: 0, stillBrokenCount: 0 }) === false],
 
   ["the accept list accepts a 200", parseAcceptRanges("100..=103,200..=299")(200) === true],
   ["the accept list rejects a 404", parseAcceptRanges("100..=103,200..=299")(404) === false],
@@ -261,7 +261,7 @@ if grep -qx 'all_recovered=true' "$TMP/github_output"; then
 else
   pass "a 404 alongside a recovered URL leaves all_recovered unset"
 fi
-if grep -q 'never answered lychee' "$TMP/recheck.out"; then
+if grep -q 'Link recovered on re-check' "$TMP/recheck.out"; then
   pass "the recovered URL is still reported as recovered"
 else
   fail "the recovered URL was not reported" "$(cat "$TMP/recheck.out")"

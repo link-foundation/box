@@ -26,7 +26,7 @@
  *   LYCHEE_OUTPUT   Path to lychee's markdown output (default: lychee/out.md)
  *   RECOVERED_URLS  Path to the list of URLs the re-check
  *                   (scripts/ci/recheck-broken-links.mjs) found healthy after
- *                   lychee got no answer at all, one per line
+ *                   lychee got no answer or a temporary HTTP error, one per line
  *                   (default: lychee/recovered.txt). Those URLs are skipped;
  *                   a missing file skips nothing.
  *   GITHUB_OUTPUT   Set by GitHub Actions; receives `all_archived`
