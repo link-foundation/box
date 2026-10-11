@@ -25,6 +25,10 @@
 #                        being vfs the entrypoint emits a one-time warning naming
 #                        the fuse-overlayfs (copy-on-write) remediation. (issue #104)
 #   DIND_DATA_ROOT       Override --data-root for dockerd (default: /var/lib/docker)
+#   DIND_LIVE_RESTORE    Enable live restore by default so nested containers keep
+#                        running when dockerd stops. Set to "0" to omit the flag.
+#                        An existing live-restore key in /etc/docker/daemon.json
+#                        takes precedence, avoiding duplicate flag/config errors.
 #   DIND_LOG_FILE        Where to write dockerd logs (default: /var/log/dockerd.log)
 #   DIND_WAIT_SECONDS    How long to wait for dockerd to come up (default: 30)
 #   DIND_SKIP_DAEMON     If set to "1", do not start the nested dockerd. This is
@@ -115,6 +119,7 @@ set -eu
 
 DIND_STORAGE_DRIVER="${DIND_STORAGE_DRIVER:-}"
 DIND_DATA_ROOT="${DIND_DATA_ROOT:-/var/lib/docker}"
+DIND_LIVE_RESTORE="${DIND_LIVE_RESTORE:-1}"
 DIND_LOG_FILE="${DIND_LOG_FILE:-/var/log/dockerd.log}"
 DIND_WAIT_SECONDS="${DIND_WAIT_SECONDS:-30}"
 DIND_SKIP_DAEMON="${DIND_SKIP_DAEMON:-0}"
@@ -257,18 +262,21 @@ storage_driver_candidates() {
 launch_dockerd() {
   storage_driver="$1"
 
+  set -- --host=unix:///var/run/docker.sock \
+    --data-root="$DIND_DATA_ROOT" \
+    --storage-driver="$storage_driver"
+  # Docker rejects a directive supplied both as a flag and in daemon.json,
+  # even when the values agree. Honor either configured boolean (issue #131).
+  # -z also accepts JSON whitespace spanning lines before the colon.
+  if [ "$DIND_LIVE_RESTORE" = "1" ] \
+    && ! grep -qzs '"live-restore"[[:space:]]*:' /etc/docker/daemon.json; then
+    set -- "$@" --live-restore
+  fi
+
   if [ "$(id -u)" -eq 0 ]; then
-    nohup /usr/bin/dockerd \
-      --host=unix:///var/run/docker.sock \
-      --data-root="$DIND_DATA_ROOT" \
-      --storage-driver="$storage_driver" \
-      >>"$DIND_LOG_FILE" 2>&1 &
+    nohup /usr/bin/dockerd "$@" >>"$DIND_LOG_FILE" 2>&1 &
   else
-    nohup sudo -n /usr/bin/dockerd \
-      --host=unix:///var/run/docker.sock \
-      --data-root="$DIND_DATA_ROOT" \
-      --storage-driver="$storage_driver" \
-      >>"$DIND_LOG_FILE" 2>&1 &
+    nohup sudo -n /usr/bin/dockerd "$@" >>"$DIND_LOG_FILE" 2>&1 &
   fi
 
   DIND_DOCKERD_PID="$!"
