@@ -16,6 +16,9 @@ register_image "$snapshot_image"
 log "starting a box with a running nested dockerd"
 run_dind_container "$running_container" -e DIND_HOST_PASSTHROUGH=off
 wait_for_inner_docker "$running_container"
+if logs_contain "$running_container" "Removed stale"; then
+  fail "a fresh box has no stale pid files and should not report removing any"
+fi
 
 # The snapshot keeps the old daemon's pid files because /var/run is part of the
 # container's writable layer (issue #133).
