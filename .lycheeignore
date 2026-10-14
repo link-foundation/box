@@ -41,6 +41,10 @@ https://hub\.docker\.com/settings/
 https://manpages\.ubuntu\.com
 https://www\.gnu\.org
 
+# packages.ubuntu.com takes 19-30s to answer, so lychee's 30s timeout trips on
+# it often enough to fail the scheduled run on main. The pages are correct.
+https://packages\.ubuntu\.com
+
 # flatassembler.net offers no TLS suite lychee's rustls build will negotiate
 # ("received fatal alert: HandshakeFailure"). The site is up in a browser.
 https://(arm\.)?flatassembler\.net

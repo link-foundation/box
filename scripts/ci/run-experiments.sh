@@ -71,6 +71,7 @@ declare -A SKIP_SUITES=(
   ['test-issue121-provenance-metadata-leak.sh']="needs docker: drives a real buildx build to reproduce the metadata provenance leak (its offline twin, test-issue121-log-injection.sh, runs here)"
   ['measure-issue121-apt-recommends.sh']="needs docker and a network: resolves apt dependency plans in ubuntu:24.04 to measure what --no-install-recommends drops; a measurement, not an assertion (its recorded output is in dev/log/issues/121/pulls/122/apt-recommends/)"
   ['reproduce-issue123-zizmor-offline-audits.sh']="needs docker, a network and a GitHub token: runs zizmor twice over a fixture pinning a known-vulnerable action to measure which audits the offline default removes; a measurement, not an assertion (its offline twin, test-issue123-zizmor-token.sh, runs here)"
+  ['reproduce-issue133-containerd-pid.sh']="needs docker and a privileged box-dind image: commits a running nested daemon and resumes it to reproduce the stale containerd pid file (its offline twin, test-issue133-stale-pid-files.sh, runs here; tests/dind/example-snapshot-resume.sh covers it in PR CI)"
   ['reproduce-issue121-actionlint-version-gap.sh']="needs docker and a network: runs two pinned actionlint images over the same fixtures to measure which checks the older one cannot make; a measurement, not an assertion (the version floor it argues for is asserted offline by test-issue121-workflow-audit-scope.sh)"
 )
 
