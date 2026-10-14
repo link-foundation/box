@@ -33,7 +33,10 @@ run_case() (
 
   # shellcheck disable=SC1090
   DIND_ENTRYPOINT_SOURCE_ONLY=1 . "$ENTRYPOINT"
+  # Read by the sourced start_dockerd, which shellcheck cannot follow.
+  # shellcheck disable=SC2034
   DIND_DATA_ROOT="$WORK/data"
+  # shellcheck disable=SC2034
   DIND_LOG_FILE="$WORK/daemon.log"
 
   as_root() {
@@ -56,6 +59,7 @@ run_case() (
     return 1
   }
   fix_socket_permissions() { :; }
+  # shellcheck disable=SC2034
   launch_dockerd() { DIND_DOCKERD_PID=0; }
   wait_for_dockerd_ready() { return 0; }
 
