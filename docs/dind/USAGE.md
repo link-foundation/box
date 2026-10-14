@@ -488,6 +488,29 @@ CI covers this behavior here:
 DIND_IMAGE=box-dind-js tests/dind/example-commit-cycle.sh
 ```
 
+### Resuming a Snapshot of a Running Box
+
+`docker commit` also works while the nested daemon is running, for example to
+resume a box after its container was killed. The snapshot keeps `/var/run`,
+including `/var/run/docker.pid` and
+`/var/run/docker/containerd/containerd.pid` from the old daemon. In the new
+container those PIDs can belong to unrelated processes, and dockerd would then
+exit with `failed to save containerd pid to disk: process with PID N is still
+running`.
+
+When no dockerd is running, the entrypoint removes both files before it starts
+the daemon and logs each removal. A running containerd keeps its pid file, so a
+daemon relaunched under [live restore](#surviving-a-nested-daemon-restart)
+still reuses it. Images released before this fix lack the sudoers entry for
+the removal; for those, delete the files as root before starting the snapshot.
+
+CI commits a box with a running daemon, points both files at a live PID, and
+checks that the resumed box starts dockerd:
+
+```bash
+DIND_IMAGE=box-dind-js tests/dind/example-snapshot-resume.sh
+```
+
 ## Sudoers Contract
 
 The image installs `/etc/sudoers.d/box-dind` with passwordless sudo for only the
@@ -498,7 +521,12 @@ root operations required by the DIND entrypoint:
 /usr/bin/chgrp
 /usr/bin/chmod
 /usr/bin/mkdir
+/usr/bin/rm -fv /var/run/docker.pid
+/usr/bin/rm -fv /var/run/docker/containerd/containerd.pid
 ```
+
+The `rm` entries match those exact arguments only; they let the entrypoint
+clear pid files inherited from a [snapshot](#resuming-a-snapshot-of-a-running-box).
 
 Do not broaden this file into general passwordless sudo. If a derived image
 needs one additional root capability, add a separate sudoers file with the exact
@@ -605,6 +633,7 @@ docker build -f ubuntu/24.04/dind/Dockerfile \
 
 DIND_IMAGE=box-dind-js tests/dind/example-basic-docker-ps.sh
 DIND_IMAGE=box-dind-js tests/dind/example-commit-cycle.sh
+DIND_IMAGE=box-dind-js tests/dind/example-snapshot-resume.sh
 DIND_IMAGE=box-dind-js tests/dind/example-sudoers-extension.sh
 DIND_IMAGE=box-dind-js tests/dind/example-storage-driver-vfs.sh
 DIND_IMAGE=box-dind-js tests/dind/example-preload-images.sh

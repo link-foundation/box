@@ -703,6 +703,7 @@ jobs:
           tests/dind/example-basic-docker-ps.sh
           tests/dind/example-live-restore.sh
           tests/dind/example-commit-cycle.sh
+          tests/dind/example-snapshot-resume.sh
           tests/dind/example-sudoers-extension.sh
           tests/dind/example-storage-driver-vfs.sh
           tests/dind/example-preload-images.sh

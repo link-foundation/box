@@ -94,6 +94,7 @@ if id box &>/dev/null; then
   log_step "Configuring scoped sudo for dind entrypoint"
   printf '%s\n' \
     'box ALL=(root) NOPASSWD: /usr/bin/dockerd, /usr/bin/chgrp, /usr/bin/chmod, /usr/bin/mkdir' \
+    'box ALL=(root) NOPASSWD: /usr/bin/rm -fv /var/run/docker.pid, /usr/bin/rm -fv /var/run/docker/containerd/containerd.pid' \
     | maybe_sudo install -m 0440 -o root -g root /dev/stdin /etc/sudoers.d/box-dind
   if command_exists visudo; then
     maybe_sudo visudo -cf /etc/sudoers.d/box-dind >/dev/null

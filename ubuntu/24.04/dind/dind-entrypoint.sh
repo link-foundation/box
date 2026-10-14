@@ -341,6 +341,41 @@ warn_if_vfs_storage_driver() {
   fi
 }
 
+# Pid files that dockerd and its managed containerd refuse to overwrite while
+# the recorded PID is alive. The paths are fixed because the box-dind sudoers
+# entry allows removing exactly these files and nothing else.
+DIND_DOCKERD_PID_FILE=/var/run/docker.pid
+DIND_CONTAINERD_PID_FILE=/var/run/docker/containerd/containerd.pid
+
+# Remove one pid file as root. `rm -v` reports whether a file was removed, so
+# the log stays quiet on a fresh container and no root-only directory has to be
+# listed first (/var/run/docker is mode 0700).
+remove_stale_pid_file() {
+  pid_file="$1"
+  owner="$2"
+  if removed="$(as_root /usr/bin/rm -fv "$pid_file" 2>/dev/null)"; then
+    if [ -n "$removed" ]; then
+      log "Removed stale ${pid_file}: no ${owner} is running in this container"
+    fi
+    return 0
+  fi
+  warn "Cannot remove stale ${pid_file}; ${owner} may refuse to start if its recorded PID is reused"
+}
+
+# `docker commit` keeps /var/run because it is part of the container's writable
+# layer, so a container started from such a snapshot inherits the old daemon's
+# pid files. When the recorded PID now belongs to another process, dockerd and
+# its managed containerd exit with "process with PID N is still running".
+# Callers run this only after confirming no dockerd is running. A running
+# containerd is kept: with live restore it outlives dockerd, which reuses it
+# through its pid file. (issue #133)
+clear_stale_pid_files() {
+  remove_stale_pid_file "$DIND_DOCKERD_PID_FILE" dockerd
+  if ! pgrep -x containerd >/dev/null 2>&1; then
+    remove_stale_pid_file "$DIND_CONTAINERD_PID_FILE" containerd
+  fi
+}
+
 start_dockerd() {
   if pgrep -x dockerd >/dev/null 2>&1; then
     log "dockerd already running (pid $(pgrep -x dockerd | head -n1))"
@@ -353,6 +388,7 @@ start_dockerd() {
     return 1
   fi
   prepare_log_file
+  clear_stale_pid_files
 
   # iptables modules and overlay mounts depend on the outer runtime. Auto mode
   # retries conservative drivers only when dockerd exits before it is ready.
