@@ -69,7 +69,7 @@
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { extractErrorsSection, readFailureEntries } from './check-web-archive.mjs';
+import { readFailureEntries, validateFailureReport } from './check-web-archive.mjs';
 
 // Read from process.env inside main() only: the assertions in
 // experiments/test-issue121-links-recheck.sh import this module, and
@@ -299,18 +299,8 @@ async function main() {
     process.env.LINKS_WORKFLOW || '.github/workflows/links.yml';
   const options = extractLycheeRequestOptions(readFileSync(workflow, 'utf8'));
   const report = readFileSync(lycheeOutput, 'utf8');
+  validateFailureReport(report, process.env.LYCHEE_EXIT_CODE);
   const failures = parseLycheeFailures(report);
-  const exitCode = process.env.LYCHEE_EXIT_CODE;
-  const rows = extractErrorsSection(report).match(/^[ \t]*[*-][ \t]+\[/gm) ?? [];
-  const counts = [...report.matchAll(/^\|[^|\r\n]*\b(?:Errors|Timeouts)\s*\|[ \t]*(\d+)[ \t]*\|/gm)];
-  const total = counts.reduce((sum, row) => sum + Number(row[1]), 0);
-  if ((exitCode !== undefined && exitCode !== '2') ||
-      rows.length !== failures.length ||
-      (counts.length > 0 && total !== failures.length) ||
-      (exitCode === '2' && counts.length !== 2)) {
-    console.error('Link recovery skipped because the checker exit status or report is incomplete.');
-    return;
-  }
 
   const canRetry = (failure) =>
     /^https?:\/\//i.test(failure.url) &&

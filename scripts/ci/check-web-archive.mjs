@@ -90,6 +90,26 @@ export function readFailureEntries(content) {
   }));
 }
 
+/** Require the reported failure total before issuing a recovery verdict. */
+export function validateFailureReport(report, exitCode) {
+  const failures = readFailureEntries(report);
+  const rows = extractErrorsSection(report).match(/^[ \t]*[*-][ \t]+\[/gm) ?? [];
+  const counts = new Map(
+    Array.from(report.matchAll(/^\|[^|\r\n]*\b(Errors|Timeouts|Unknown)[ \t]*\|[ \t]*(\d+)[ \t]*\|/gm),
+      ([, name, count]) => [name, Number(count)])
+  );
+  const total = (counts.get('Errors') ?? 0) + (counts.get('Timeouts') ?? 0);
+  if ((exitCode !== undefined && exitCode !== '2') ||
+      rows.length !== failures.length ||
+      (counts.size > 0 && total !== failures.length) ||
+      (counts.get('Unknown') ?? 0) > 0 ||
+      (exitCode === '2' &&
+        (!counts.has('Errors') || !counts.has('Timeouts') || total === 0 ||
+          !/^# Summary[ \t]*\r?$/m.test(report)))) {
+    throw new Error('The checker exit status or report is incomplete.');
+  }
+}
+
 export function extractBrokenLinks(content) {
   const urls = new Set();
   const others = new Set();
@@ -295,13 +315,15 @@ async function main() {
   console.log('=== Web Archive Fallback Check ===\n');
   console.log(`Reading lychee output from: ${lycheeOutput}\n`);
 
-  if (!existsSync(lycheeOutput)) {
+  const exitCode = process.env.LYCHEE_EXIT_CODE;
+  if (exitCode === undefined && !existsSync(lycheeOutput)) {
     console.log('No lychee output file found. Skipping web archive check.');
     setOutput('all_archived', 'true');
     process.exit(0);
   }
 
   const content = readFileSync(lycheeOutput, 'utf-8');
+  validateFailureReport(content, exitCode);
   const { urls: reportedUrls, others: unarchivableLinks } =
     extractBrokenLinks(content);
 

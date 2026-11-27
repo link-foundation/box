@@ -37,6 +37,7 @@ test('a runtime failure or incomplete report cannot be recovered', () => {
   const reportFile = join(dir, 'report.md');
   const recovered = join(dir, 'recovered.txt');
   const temporary = [
+    '# Summary',
     '| Errors | 0 |',
     '| Timeouts | 1 |',
     '## Timeouts per input',
@@ -47,16 +48,19 @@ test('a runtime failure or incomplete report cannot be recovered', () => {
       ['1', temporary],
       ['2', temporary.replace('| Errors | 0 |', '| Errors | 1 |')],
       ['2', temporary + '\n* [404] <broken'],
+      ['2', temporary.replace('| Errors | 0 |', '| Errors | 0 |\n| Unknown | 1 |')],
     ]) {
       writeFileSync(output, '');
       writeFileSync(reportFile, content);
-      const run = spawnSync(process.execPath, ['scripts/ci/recheck-broken-links.mjs'], {
-        env: { ...process.env, LYCHEE_EXIT_CODE: code, LYCHEE_OUTPUT: reportFile,
-          GITHUB_OUTPUT: output, RECOVERED_OUTPUT: recovered, RECHECK_BUDGET_SECONDS: '0' },
-        encoding: 'utf8',
-      });
-      assert.equal(run.status, 0, run.stderr);
-      assert.match(run.stderr, /checker exit status or report is incomplete/);
+      for (const script of ['recheck-broken-links', 'check-web-archive']) {
+        const run = spawnSync(process.execPath, ['scripts/ci/' + script + '.mjs'], {
+          env: { ...process.env, LYCHEE_EXIT_CODE: code, LYCHEE_OUTPUT: reportFile,
+            GITHUB_OUTPUT: output, RECOVERED_OUTPUT: recovered, RECHECK_BUDGET_SECONDS: '0' },
+          encoding: 'utf8',
+        });
+        assert.equal(run.status, script === 'check-web-archive' ? 1 : 0, run.stderr);
+        assert.match(run.stderr, /checker exit status or report is incomplete/);
+      }
       assert.equal(readFileSync(output, 'utf8'), '');
     }
   } finally {

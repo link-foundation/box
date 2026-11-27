@@ -181,6 +181,7 @@ jobs:
         env:
           LYCHEE_OUTPUT: lychee/out.md
           RECOVERED_URLS: lychee/recovered.txt
+          LYCHEE_EXIT_CODE: ${{ steps.lychee.outputs.exit_code }}
 
       - name: Report a link checker execution failure
         if: >-
