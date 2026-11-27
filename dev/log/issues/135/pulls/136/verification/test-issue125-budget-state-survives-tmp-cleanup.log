@@ -1,0 +1,5 @@
+PASS: clearing command temp files does not corrupt the wrapper status
+PASS: output written before tmp cleanup is relayed
+PASS: wrapper emits no missing-control-file noise
+PASS: wrapper removes its RUNNER_TEMP state on exit
+PASS: BUDGET_STATE_PARENT overrides RUNNER_TEMP and is traceable

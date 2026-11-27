@@ -1,0 +1,242 @@
+name: Links
+
+# Ported from the template's links.yml (issue #115, R3/R5; hive-mind principle
+# #12, "documentation validation"). Nothing in this repository had ever checked
+# a URL. Reproduced against the tree as it was at 024dd6a, the run reports 113
+# failures over 16 files (107 distinct URLs, log in
+# dev/log/issues/115/pulls/116/logs/lychee-baseline-024dd6a.log): 85 GHCR
+# package pages the README advertised for images that have never been pushed,
+# 14 relative links to files that are not there - CI logs GitHub's 90-day
+# retention had already removed, and paths off by one `../` - three dead
+# upstream URLs, and a handful of hosts that answer a link checker with 429,
+# 503 or a TLS handshake failure.
+#
+# Reproduce locally with the same image and the same arguments:
+#
+#   docker run --rm -v "$PWD:/repo" -w /repo lycheeverse/lychee:0.24.2 \
+#     --no-progress --include-fragments --max-retries 2 --timeout 30 \
+#     --exclude-path dev/log './**/*.md'
+#
+# dev/log/ is excluded because it holds verbatim copies of other projects'
+# documentation, collected as issue evidence; their links are not ours to fix.
+# Known false positives - login-gated pages, rate-limiting hosts - are in
+# .lycheeignore, each with the reason it is there.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.md'
+      - '.lycheeignore'
+      - '.github/workflows/links.yml'
+      - 'scripts/ci/check-web-archive.mjs'
+      - 'scripts/ci/recheck-broken-links.mjs'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**.md'
+      - '.lycheeignore'
+      - '.github/workflows/links.yml'
+      - 'scripts/ci/check-web-archive.mjs'
+      - 'scripts/ci/recheck-broken-links.mjs'
+  # Weekly: a link rots without anyone touching this repository. The three dead
+  # upstream URLs this port found had all been correct when they were written.
+  schedule:
+    - cron: '0 6 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # actions/checkout's first act is `git init`, and a git with no configured
+  # `init.defaultBranch` answers it with a thirteen-line advice block - "Using
+  # 'master' as the name for the initial branch... this default branch name will
+  # change" - at the top of every job log. 19 checkouts in the runs issue #121
+  # lists printed 247 lines of it, in jobs where nothing was wrong. No step can
+  # fix it, because it is printed before the first step of ours runs; git reads
+  # configuration from the environment too, and the environment is there from
+  # the start. Ported from the js template, which carries the same three lines
+  # with the same reasoning.
+  GIT_CONFIG_COUNT: '1'
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+
+jobs:
+  link-checker:
+    name: links / lychee
+    runs-on: ubuntu-24.04
+    # A full run is ~10s cached, ~30s cold. 10 minutes is the ceiling that stops
+    # one slow external host from holding a runner.
+    timeout-minutes: 10
+    concurrency:
+      group: check-${{ github.workflow }}-${{ github.ref }}-link-checker
+      cancel-in-progress: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # A pull_request checkout is GitHub's merge preview, computed when the
+      # pull request was last synchronised and never recomputed as main moves.
+      # Merge the base branch first, so this job reports on what merging would
+      # actually produce (issue #115, best practice #7).
+      - name: Simulate a fresh merge with the base branch
+        uses: ./.github/actions/simulate-fresh-merge
+
+      # A `uses:` step takes the budget GitHub applies to a whole step, since it
+      # cannot be routed through scripts/ci/run-with-budget-warning.sh (issue
+      # #121, docs/CI-TIMEOUT-BUDGETS.md). The slowest run measured took 30
+      # seconds; 5 minutes bounds a slow external host without waiting for the
+      # job cap, which would report the job *cancelled* and skip the reporting
+      # steps below - including the recovery pass that tells a false positive
+      # from a real broken link.
+      #
+      # --include-fragments: without it lychee resolves a link's *document* and
+      # stops, so `docs/RELEASING.md#making-the-ghcr-packages-public` passes as
+      # long as the file exists, whatever the headings inside it say - and an
+      # anchor is exactly the part of a link that a heading rename breaks. This
+      # gate had never checked one (issue #121). Measured on this tree: a
+      # fixture that renames the target heading of a same-file and a cross-file
+      # anchor passes without the flag and fails with it; over the whole corpus
+      # the flag reports 681 links, 473 unique, 667 OK, 0 errors in 14.6s, after
+      # the three genuinely dead remote anchors it found were fixed (docker's
+      # #entrypoint-default-command-to-execute-at-runtime, jpetazzo/dind's
+      # #warning-..., and a GitHub docs page that moved). Evidence:
+      # dev/log/issues/121/pulls/122/doc-fragments/. It applies to remote
+      # anchors too, which is why the number of requests does not change: lychee
+      # already fetched those pages, it just discarded their ids.
+      - name: Check links with lychee
+        id: lychee
+        timeout-minutes: 5
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress
+            --cache
+            --max-cache-age 1d
+            --include-fragments
+            --max-retries 2
+            --timeout 30
+            --exclude-path dev/log
+            './**/*.md'
+          # Not a failure yet: a broken link that the Wayback Machine has
+          # archived gets a concrete replacement suggested below, which is more
+          # use to the author than a bare red X.
+          fail: false
+          output: lychee/out.md
+          jobSummary: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node
+        if: steps.lychee.outputs.exit_code != 0
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      # lychee classifies an error by the phase it happened in, and a failure
+      # during connect is never retried - `--max-retries` does not apply to it
+      # (lycheeverse/lychee#2297). So a healthy host that answers one TCP reset,
+      # which a CI address range collects from rate-limiting and load-shedding
+      # hosts, is reported broken without a single retry and fails this gate:
+      # a false positive (issue #121). Ask those URLs again, outside lychee. A
+      # temporary HTTP error (408, 429, 500, 502, 503 or 504) can also recover:
+      # PR #132 failed on two healthy GitHub docs links answering 503. Retry
+      # those within the same wall-clock budget; only an accepted status can
+      # recover them. Permanent failures such as 404 remain final. URLs with
+      # fragments stay final because the recovery's HEAD cannot check anchors.
+      - name: Re-check unanswered links and temporary HTTP errors
+        if: steps.lychee.outputs.exit_code != 0
+        id: recheck
+        run: node scripts/ci/recheck-broken-links.mjs
+        env:
+          LYCHEE_OUTPUT: lychee/out.md
+          RECOVERED_OUTPUT: lychee/recovered.txt
+
+      # `!= 'true'`, never `== 'false'`: a skipped or crashed re-check leaves
+      # the output empty, and only the `!=` form reads that as "still failing".
+      - name: Look for Web Archive replacements
+        if: >-
+          steps.lychee.outputs.exit_code != 0 &&
+          steps.recheck.outputs.all_recovered != 'true'
+        run: node scripts/ci/check-web-archive.mjs
+        env:
+          LYCHEE_OUTPUT: lychee/out.md
+          RECOVERED_URLS: lychee/recovered.txt
+
+      - name: Fail if broken links were found
+        if: >-
+          ${{ !cancelled() && steps.lychee.outputs.exit_code != 0 &&
+          steps.recheck.outputs.all_recovered != 'true' }}
+        run: |
+          echo "::error title=links::lychee found broken links."
+          echo
+          echo "An archive URL is a suggested replacement; it does not make the"
+          echo "live link valid. For each broken link, in order of preference:"
+          echo "  1. Point at the current location of the same content."
+          echo "  2. Point at the archive.org snapshot suggested above."
+          echo "  3. Pin a GitHub link to the commit that still holds the file."
+          echo "  4. Delete the link if the content is gone and not worth citing."
+          echo "  5. Add the URL to .lycheeignore *with a reason* - but only if"
+          echo "     the link is correct and merely unverifiable (login-gated,"
+          echo "     rate-limited, bot-blocked). A dead link is not a false"
+          echo "     positive, and silencing it is the defect issue #115 is about."
+          echo
+          echo "Reproduce locally:"
+          echo "  docker run --rm -v \"\$PWD:/repo\" -w /repo lycheeverse/lychee:0.24.2 \\"
+          echo "    --no-progress --include-fragments --max-retries 2 --timeout 30 \\"
+          echo "    --exclude-path dev/log './**/*.md'"
+          exit 1
+
+      - name: The gate's own fixtures still hold
+        if: ${{ !cancelled() }}
+        run: bash experiments/test-issue115-links-gate.sh
+
+  # === TERMINAL STATUS GATE ===
+  #
+  # The job that makes every other job's result reach the run's conclusion
+  # (issue #121, reference-template best practice "every workflow gets a
+  # terminal status gate").
+  #
+  # GitHub derives a run's conclusion from its jobs, and one cancellation
+  # outranks any number of failures - so a run holding a failed job can still
+  # come out grey, and everything that reads the run rather than each job (the
+  # badge, `gh run list`, the run list quoted in issue #121 itself) reads that
+  # as "no verdict" rather than "something broke". A gate's own conclusion is a
+  # job conclusion, so when it errors the run is red no matter what else was
+  # cancelled. The rationale, the measured run and the supersede-versus-overrun
+  # rule are in scripts/ci/check-pipeline-status.sh.
+  #
+  # `!cancelled()`, not `always()`: cancelling a whole run is somebody's
+  # decision and repainting it red would be a false positive, so this job is
+  # skipped there. `cancelled()` is run-level, so a job cancelled on its own -
+  # an overrun, or a per-job concurrency group firing - still reaches the gate.
+  #
+  # `needs` must name every other job in this file, or a job's result cannot
+  # reach here at all. That is not left to review:
+  # scripts/ci/check-status-gate-covers-all-jobs.mjs derives the list from this
+  # workflow and fails when the two disagree.
+  pipeline-status:
+    name: pipeline-status
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [link-checker]
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # Anonymous `git ls-remote` is enough to resolve the branch head, which is
+      # how the script tells a superseded run from an overrun; no token is
+      # persisted for it.
+      - name: Check pipeline status
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          RUN_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: bash scripts/ci/check-pipeline-status.sh

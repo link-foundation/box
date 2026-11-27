@@ -1,0 +1,61 @@
+# CI/CD audit for issue 135 and PR 136
+
+The audit covers the nine runs named in [issue 135](https://github.com/link-foundation/box/issues/135), their job and artifact metadata, the surrounding default-branch history, the [PR discussion](https://github.com/link-foundation/box/pull/136), and all four requested reference trees. The initial issue comments, PR conversation, inline reviews, submitted reviews, and required sub-issues were empty. The snapshots and inventories are in [github](github/).
+
+## Requirements and verification
+
+| Requirement | Finding and implementation | Verification |
+| --- | --- | --- |
+| Restore Links on main | The GitHub project formerly cited in the issue 80 case study returned 404 in two consecutive weekly scans. The case study now links to the specific Wayback snapshot identified by both runs. | Run 45443984715 lines 304, 336, 355 and 395, run 44115877567, and the GitHub API 404 in [verification](verification/). The archive replay from the local network was rate-limited. The snapshot URL came from two Actions lookups, and the availability API independently returned it with `available: true` and capture status 200. |
+| Fix false link verdicts across the pipeline | Retry completed, fully accounted-for scans only. Restrict rechecks to transient failures. Match the scanner's GET method and accepted statuses, preserve final failures for an otherwise recoverable URL, and leave anchor and local file validation to the scanner. Distinguish a failed scanner from a scan with broken links. | `test-issue135-link-verdicts.sh`, `test-issue121-links-recheck.sh`, and `test-issue131-links-recheck.sh`. The bounded localhost experiment gives HEAD 200 and GET 404: Box's baseline passes falsely and the fixed Box rejects recovery. |
+| Make archive diagnostics truthful | Both helpers parse the report's Errors and Timeouts sections; ignore successful redirects and the runner footer and preserve exact URL punctuation. Separate a valid response with no snapshot from a timeout, error status, or malformed payload. Bound requests and retain the original link verdict. | `test-issue135-link-verdicts.sh`, including mocked absent, present, unreachable, and malformed archive responses. The Links job also runs tests that enforce the terminal gate. |
+| Restore disk measurement | The historical temporary-file bug had already been repaired on main. Add its regression to measurement preflight. Require preflight success before installation, require fresh output, validate it before replacing tracked data and rendering README, and only publish from main. Distinguish git diff errors from a changed file. | `test-issue125-budget-state-survives-tmp-cleanup.sh` and `test-issue135-measure-workflow.sh`. [Manual branch validation](https://github.com/link-foundation/box/actions/runs/45954663314) executes the installer and output pipeline without publication. |
+| Audit remaining workflows, warnings, errors and misleading passes | Inspect the six other named workflow groups and the successful and failing adjacent runs. Retain the security, formatting, file size, docs, Dockerfile, workflow and release gates. Fix the Scripts fixture that could fail on a valid anchor. | [Run and signal disposition](#run-and-signal-disposition), [extracted annotations](github/actions-command-census.tsv), and the PR workflow runs. |
+| Compare all four template trees and adopt applicable practices | Pin all trees, index every workflow, action and CI script, compare their roles and root tools, and map Hive Mind's practices to the Box pipeline. | [Template comparison](templates.md), complete tracked trees and CI file fingerprints in [github](github/). |
+| Report genuinely shared issues | Reproduced wrong HTTP-method recovery in JS, Python and PHP. Reproduced unavailable/missing archive conflation in Python and PHP. Rust's current check already uses GET. | Five [public reports](upstream/reports.txt) with isolated reproduction, workaround, and code suggestions. [Fixture output](verification/). |
+| Leave diagnostics available for the next run | The Links dispatch input enables scanner verbosity and per-request retry diagnostics. Measurement dispatch exposes the existing opt-in diagnostics to the budget wrapper. | Workflow regression assertions. Both dispatch inputs default to false. |
+| Ship one reviewed change with release automation | Use the repository's changeset to trigger an automatic patch after merge. Keep the evidence and regressions in PR 136. | [Changeset](../../../../../../.changeset/ci-verdicts.md), Actions checks for the current PR head, and Git ancestry of main. |
+
+## Timeline and root causes
+
+| UTC date | Evidence and disposition |
+| --- | --- |
+| 2026-09-10 | Measurement run [34455018634](https://github.com/link-foundation/box/actions/runs/34455018634) failed. Lines 649–655 show removal of the wrapper's state after the installer cleans system temp, while 2453–2454 show the propagated exit 1. The installer deliberately removes files inside system temp; the parent wrapper had stored its status and forwarding files there. PR 126 moved state into `RUNNER_TEMP`. The historical artifact had expired by audit time; our earlier [PR 126 evidence](https://github.com/link-foundation/box/tree/main/dev/log/issues/125/pulls/126) preserves the successful measurements. |
+| 2026-10-06 | Links [37466341052](https://github.com/link-foundation/box/actions/runs/37466341052) failed on an HTTP 503 from a healthy GitHub Discussion. This was a temporary response. Commit `2095b5c` added bounded recovery of temporary status codes. |
+| 2026-10-11 | Scripts [38157957100](https://github.com/link-foundation/box/actions/runs/38157957100) failed the valid-anchor fixture at lines 1070–1102. The fixture piped complete program output through `grep -q` with `pipefail`. A match lets grep exit before the producer finishes, so the producer can receive SIGPIPE. A bounded reproduction recorded exit 141 in the verification logs. The committed test now captures output and command status separately before checking the anchor. |
+| 2026-10-13 | Links [38406835991](https://github.com/link-foundation/box/actions/runs/38406835991) identified 30-second timeouts for the Ubuntu package page. Existing commit `d8d7c0c` documents that service in the ignore file. |
+| 2026-10-14 | The release, docs, sizes, scripts, workflows and links runs for `a63b605` succeeded. |
+| 2026-11-10 | Links [42833999978](https://github.com/link-foundation/box/actions/runs/42833999978) was green on the same source subsequently checked by the November failures. This bounds the observation window without establishing when the upstream GitHub repository stopped being public. |
+| 2026-11-17 / 2026-11-24 | Both scheduled Links scans reached the old repository URL and returned 404. Both suggested the archive from 2020-10-11. The repeatable live 404 explains the failed gate. Local fixture tests separately found the latent false-green and diagnostic defects. |
+| 2026-11-27 | Issue 135 was opened and PR 136 linked. The audit reproduced the historical disk regression and link false green, compared the pinned trees, and filed shared defects upstream. |
+
+## Run and signal disposition
+
+| Named run | Recorded result | Disposition |
+| --- | --- | --- |
+| 45443984715 Links | Failed | Genuine persistent GitHub 404. Correct the authored link. |
+| 45220072505 Security | Passed | CodeQL and secret scanning succeeded. The selected tables and job metadata carry the actual check conclusions. |
+| 38633908376 File sizes | Passed | Size gate and its final status passed. |
+| 38633908390 Build and Release | Passed | Build and publication completed. The raw GH archive replaces the formatted CLI output, which hit the job-log download request limit. |
+| 38633908272 Docs | Passed | Required documentation and final status passed. |
+| 38633908325 Scripts | Passed | Static and regression jobs passed. Adjacent earlier anchor failure repaired by this PR. |
+| 38633908273 Workflows | Passed | Workflow lint/audit and terminal status passed. |
+| 34455018599 Dockerfiles | Passed | Hadolint accepted the Dockerfiles and final status passed. |
+| 34455018634 Measure Disk Space | Failed | False negative for the installer, accurate failure for evidence capture. Existing wrapper repair plus new preflight, freshness and publication checks. |
+
+The GitHub command census indexes both streamed logs and raw job archives with line numbers. Repeated terminal errors report the same failed dependency. Successful scan notices point to reports; retries identify recovered URLs. Release job traces also contain commands that would emit warnings in other scenarios. A warning string in a step's echoed shell body is not a runner warning. Actual warnings from stripped manpages are expected in the minimal image, and temporary registry retries can succeed without dropping the final publication verification. Prior suppressed-host cases, prototype fixtures and unexplained external failures were kept distinct. Historical CI statuses show that a green build alone could miss the wrapper ordering, report completeness and GET/HEAD defects.
+
+## Design alternatives and prior art
+
+- Changing the case-study reference preserves source attribution and the historical example. Removing it loses detail, and broadly accepting 404 would hide other dead links. The existing Wayback host exemption addresses bot/rate protection. Preserve the timestamped target given by the runner.
+- Lychee remains the scanner and the authority for anchors. Its [CLI](https://lychee.cli.rs/guides/cli/) uses GET by default. [Lychee issue 2297](https://github.com/lycheeverse/lychee/issues/2297) already tracks connect-phase retries; the bounded retry helper works around that gap. Switching to structured JSON could simplify report validation in a future action change. Pinning the existing textual contract keeps the PR's human-readable job summary and both consumers together. PHP and Python's archives illustrate why a single boolean or nullable URL cannot describe lookup availability.
+- GitHub's [job dependency semantics](https://docs.github.com/en/actions/using-jobs/using-jobs-in-a-workflow) already give the needed preflight gate. A fresh output pathname allows the existing validator and renderer to run as-is under their normal entry points. Timestamp heuristics and the committed JSON cannot prove the installer produced a document. The budget wrapper and existing status gate preserve capacity and outcome diagnostics.
+- The existing Box Actions and shell tooling already solve image-specific CI. Replacing the release chain with package workflows would lose native multi-architecture builds and registry validation. Compare interfaces and failure semantics using the role matrix, then reuse matching practices.
+
+## Evidence and reproduction
+
+- [ci-logs](ci-logs/) holds compressed Actions logs. For `.log.gz`, use `gzip -dc`; for `.zip`, use `unzip -l` and `unzip -p ARCHIVE 'MEMBER'`. The adjacent `.error.txt` files document the formatted CLI's download-limit failures before the raw archive fallback.
+- [artifact-metadata](artifact-metadata/) and [job-metadata](job-metadata/) preserve GitHub API details for the cited runs. The older artifact expired.
+- [github](github/) holds the primary data and the complete tree inventories. [research](research/) contains the pinned Lychee formatter and the prior workflow. [upstream](upstream/) contains submitted text and issue URLs.
+- From the repository root, run `python3 experiments/issue-135/index-evidence.py` to regenerate the census and role index. Run `python3 experiments/issue-135/reproduce-head-get.py . node scripts/ci/recheck-broken-links.mjs` for the bounded network-free loopback reproduction.
+- Run the new offline suites with `bash experiments/test-issue135-link-verdicts.sh` and `bash experiments/test-issue135-measure-workflow.sh`. Each uses mocks or validates narrowly scoped workflow structure. The runner installs the real components in the manual measurement.

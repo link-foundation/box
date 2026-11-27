@@ -1,0 +1,15 @@
+.github/workflows/dockerfiles.yml: pipeline-status covers all 1 other job(s).
+.github/workflows/docs.yml: pipeline-status covers all 1 other job(s).
+.github/workflows/file-sizes.yml: pipeline-status covers all 1 other job(s).
+.github/workflows/links.yml: pipeline-status covers all 1 other job(s).
+.github/workflows/measure-disk-space.yml: pipeline-status covers all 2 other job(s).
+.github/workflows/pr-tests.yml: no gate needed; a workflow_call file reports through the job that calls it.
+.github/workflows/release-dind.yml: status covers all 3 other job(s).
+.github/workflows/release-essentials.yml: status covers all 3 other job(s).
+.github/workflows/release-full.yml: status covers all 3 other job(s).
+.github/workflows/release-js.yml: status covers all 3 other job(s).
+.github/workflows/release-languages.yml: status covers all 3 other job(s).
+.github/workflows/release.yml: pipeline-status covers all 14 other job(s).
+.github/workflows/scripts.yml: pipeline-status covers all 7 other job(s).
+.github/workflows/security.yml: pipeline-status covers all 2 other job(s).
+.github/workflows/workflows.yml: pipeline-status covers all 2 other job(s).

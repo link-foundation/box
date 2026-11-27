@@ -1,0 +1,2 @@
+GitHub listed 56 retained Docker build-record artifacts for the historical release. The download endpoint did not return a readable ZIP. The official per-job release log archive was retrieved and verified.
+error downloading link-foundation~box~XZRMEH.dockerbuild: error extracting zip archive: zip: not a valid zip file

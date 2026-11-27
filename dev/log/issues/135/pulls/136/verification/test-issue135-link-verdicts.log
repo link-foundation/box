@@ -1,0 +1,12 @@
+✔ both consumers read errors and timeouts and ignore redirects (4.694886ms)
+✔ a runtime failure or incomplete report cannot be recovered (631.083777ms)
+✔ link recovery tests the same GET method as the checker (58.822749ms)
+✔ an archive outage or invalid payload is distinct from a successful empty lookup (6.671422ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 716.478876
