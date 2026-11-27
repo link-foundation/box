@@ -80,11 +80,7 @@ if command_exists opam; then
     opam repo add rocq-released https://rocq-prover.org/opam/released 2>/dev/null || true
     opam update 2>/dev/null || true
 
-    if opam install rocq-prover -y; then
-      log_success "Rocq Prover installed via opam install"
-    else
-      opam install coq -y || true
-    fi
+    opam install rocq-prover -y || opam install coq -y || true
 
     eval "$(opam env --switch=default 2>/dev/null)" || true
   else
@@ -98,6 +94,13 @@ if command_exists opam; then
       echo 'test -r $HOME/.opam/opam-init/init.sh && . $HOME/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true'
     } >>"$HOME/.bashrc"
   fi
+fi
+
+if ! { { command_exists rocq && rocq -v; } \
+  || { command_exists rocqc && rocqc --version; } \
+  || { command_exists coqc && coqc --version; }; }; then
+  log_warning "Rocq/Coq installation failed: no working prover executable"
+  exit 1
 fi
 
 # Ensure .opam directory exists (required for COPY --from in full-box)

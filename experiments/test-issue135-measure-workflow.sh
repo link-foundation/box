@@ -65,6 +65,30 @@ PYTHON
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
+
+for installer in scripts/ubuntu-24-server-install.sh ubuntu/24.04/{full-box,rocq}/install.sh; do
+  sed -n '/^if ! { { command_exists rocq && rocq -v; }/,/^fi$/p' "$installer" >"$work/rocq-check.sh"
+  [[ -s "$work/rocq-check.sh" ]]
+  if (
+    command_exists() { return 1; }
+    log_warning() { :; }
+    log_error() { :; }
+    # shellcheck source=/dev/null
+    source "$work/rocq-check.sh"
+  ); then
+    echo "$installer passed with no prover executable" >&2
+    exit 1
+  fi
+  (
+    command_exists() { [[ "$1" == rocq || "$1" == coqc ]]; }
+    rocq() { return 1; }
+    coqc() { [[ "$1" == --version ]]; }
+    # shellcheck source=/dev/null
+    source "$work/rocq-check.sh"
+  )
+done
+echo 'Rocq installers reject missing provers and accept a working Coq fallback.'
+
 bash scripts/ci/extract-quoted-heredoc.sh scripts/measure-disk-space.sh EOF_BOX >"$work/generated.sh"
 sed -n '/^measure_install() {/,/^}/p; /^install_php() {/,/^}/p; /^install_swift() {/,/^}/p; /^install_lean() {/,/^}/p' "$work/generated.sh" >"$work/functions.sh"
 # shellcheck source=/dev/null

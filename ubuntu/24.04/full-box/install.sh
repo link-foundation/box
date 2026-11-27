@@ -275,6 +275,13 @@ if command_exists opam; then
   fi
 fi
 
+if ! { { command_exists rocq && rocq -v; } ||
+  { command_exists rocqc && rocqc --version; } ||
+  { command_exists coqc && coqc --version; }; }; then
+  log_error "Rocq/Coq installation failed: no working prover executable"
+  exit 1
+fi
+
 # --- Homebrew + PHP ---
 log_step "Installing Homebrew + PHP"
 if ! command_exists brew; then

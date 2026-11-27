@@ -809,11 +809,7 @@ if command -v opam &>/dev/null; then
     opam repo add rocq-released https://rocq-prover.org/opam/released 2>/dev/null || true
     opam update 2>/dev/null || true
 
-    if opam install rocq-prover -y; then
-      log_success "Rocq Prover installed via opam install"
-    else
-      opam install coq -y || true
-    fi
+    opam install rocq-prover -y || opam install coq -y || true
 
     eval "$(opam env --switch=default 2>/dev/null)" || true
   else
@@ -827,6 +823,13 @@ if command -v opam &>/dev/null; then
       echo 'test -r $HOME/.opam/opam-init/init.sh && . $HOME/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true'
     } >> "$HOME/.bashrc"
   fi
+fi
+
+if ! { { command_exists rocq && rocq -v; } ||
+  { command_exists rocqc && rocqc --version; } ||
+  { command_exists coqc && coqc --version; }; }; then
+  log_error "Rocq/Coq installation failed: no working prover executable"
+  exit 1
 fi
 
 # --- Homebrew ---
