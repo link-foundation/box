@@ -32,6 +32,7 @@ The audit covers the nine runs named in [issue 135](https://github.com/link-foun
 | 2026-11-27 07:45 | The corrected run passed with 12,869 MB across 27 components. The validated artifact records actual Lean, Rocq, Homebrew, PHP and Swift installs. Its one Box-generated Rocq error came from treating the published package as an absent local pin source. That command was removed from the measurement, server, Rocq image and full image installers. Every entry point now verifies an executable, and the offline regression tests missing and working fallback binaries. |
 | 2026-11-27 08:01 | Scripts [45961808401](https://github.com/link-foundation/box/actions/runs/45961808401) completed 100 suites successfully and failed the resource-headroom fixture. Lines 1177–1178 show the runner had zero swap against the fixture’s 1 MB target. The provisioning script correctly declined to allocate below its minimum. The fixture now uses explicit swap and disk readings for each decision. The focused suite passed all 40 checks. |
 | 2026-11-27 08:12 | The [direct-package measurement](https://github.com/link-foundation/box/actions/runs/45960896164) installed Rocq 9.3.0 from the package registry, verified Lean, Homebrew, PHP and Swift, and again rendered the README with 12,869 MB across 27 components. The hosted run skipped the publication step. |
+| 2026-11-27 09:16 | The [Docker PR matrix](https://github.com/link-foundation/box/actions/runs/45961808705) passed all 15 language builds, all 14 DinD variants, the full image and both final status jobs on the last commit that changed the installers. The full job took 42m39s. The subsequent swap fixture and evidence changes leave all runtime sources unchanged. |
 
 ## Run and signal disposition
 
@@ -48,6 +49,8 @@ The audit covers the nine runs named in [issue 135](https://github.com/link-foun
 | 34455018634 Measure Disk Space | Failed | False negative for the installer, accurate failure for evidence capture. Existing wrapper repair plus new preflight, freshness and publication checks. |
 
 The GitHub command census indexes both streamed logs and raw job archives with line numbers. Repeated terminal errors report the same failed dependency. Successful scan notices point to reports; retries identify recovered URLs. Release job traces also contain commands that would emit warnings in other scenarios. A warning string in a step's echoed shell body is not a runner warning. Actual warnings from stripped manpages are expected in the minimal image, and temporary registry retries can succeed without dropping the final publication verification. Prior suppressed-host cases, prototype fixtures and unexplained external failures were kept distinct. Historical CI statuses show that a green build alone could miss the wrapper ordering, report completeness and GET/HEAD defects.
+
+The verified Docker matrix emitted five early budget warnings for Java, Swift, essentials DinD, PHP DinD and the full chain. Each indicated the configured 70% threshold, and every job finished within budget. The full chain warning is on line 6882 of the full job log in the matrix archive.
 
 ## Hidden failures from the first manual measurement
 
