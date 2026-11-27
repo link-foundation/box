@@ -395,6 +395,8 @@ NODE_MAJOR="$(box_resolve resolve_node_lts_major 24)"
 NVM_INSTALL_VERSION="$(box_resolve resolve_nvm_version v0.40.7)"
 JAVA_MAJOR="$(box_resolve resolve_java_lts_major 25)"
 DOTNET_SDK_CHANNEL="$(box_resolve resolve_dotnet_apt_channel 8.0)"
+SWIFT_CANDIDATES="$(box_resolve resolve_swift_versions 6.3.3)"
+SWIFT_CANDIDATES="${SWIFT_CANDIDATES//$'\n'/ }"
 log_note "Resolved versions: Node ${NODE_MAJOR} LTS, nvm ${NVM_INSTALL_VERSION}, Java ${JAVA_MAJOR} LTS, .NET ${DOTNET_SDK_CHANNEL}"
 log_debug "Version policy source: ${BOX_COMMON_SH:-<none, using pinned fallbacks>}"
 
@@ -490,6 +492,7 @@ JSON_OUTPUT_FILE="${1:-/tmp/disk-space-measurements.json}"
 : "${NODE_MAJOR:?must be passed in by scripts/measure-disk-space.sh}"
 : "${NVM_INSTALL_VERSION:?must be passed in by scripts/measure-disk-space.sh}"
 : "${JAVA_MAJOR:?must be passed in by scripts/measure-disk-space.sh}"
+: "${SWIFT_CANDIDATES:?must be passed in by scripts/measure-disk-space.sh}"
 
 # Git and tool installers must look up configuration under the box account.
 export XDG_CONFIG_HOME="$HOME/.config"
@@ -747,8 +750,10 @@ measure_install "Kotlin (via SDKMAN)" "Runtime" install_kotlin
 
 # --- Lean ---
 install_lean() {
-  curl https://elan.lean-lang.org/elan-init.sh -sSf | sh -s -- -y --default-toolchain stable
-  [ -f "$HOME/.elan/env" ] && \. "$HOME/.elan/env"
+  curl https://elan.lean-lang.org/elan-init.sh -sSf | sh -s -- -y --default-toolchain stable || return
+  export PATH="$HOME/.elan/bin:$PATH"
+  elan toolchain install stable || return
+  lean --version
 }
 measure_install "Lean (via elan)" "Runtime" install_lean
 
@@ -758,7 +763,7 @@ measure_install "Lean (via elan)" "Runtime" install_lean
 # --- Opam + Rocq ---
 install_opam_rocq() {
   sudo apt-get install -y bubblewrap 2>/dev/null || true
-  bash -c "sh <(curl -fsSL https://opam.ocaml.org/install.sh) --no-backup" <<< "y" || sudo apt-get install -y opam || true
+  bash -c "sh <(curl -fsSL https://opam.ocaml.org/install.sh) --no-backup" <<< "" || sudo apt-get install -y opam || return
 
   if command -v opam &>/dev/null; then
     opam init --disable-sandboxing --auto-setup -y || true
@@ -920,7 +925,7 @@ install_swift() {
       # swift.org/404.html, and curl treats the 302 itself as success.
       remote_file_exists() { curl -fsSIL --max-time 30 "$1" >/dev/null 2>&1; }
     fi
-    for candidate in $(box_resolve resolve_swift_versions 6.3.3); do
+    for candidate in $SWIFT_CANDIDATES; do
       candidate_package="swift-${candidate}-${SWIFT_RELEASE}-${SWIFT_FILE_SUFFIX}"
       candidate_url="https://download.swift.org/swift-${candidate}-release/${SWIFT_DIR}/swift-${candidate}-${SWIFT_RELEASE}/${candidate_package}.tar.gz"
       if remote_file_exists "$candidate_url"; then
@@ -931,14 +936,17 @@ install_swift() {
       fi
     done
 
-    TEMP_DIR=$(mktemp -d)
-    if [ -n "$SWIFT_URL" ] && curl -fsSL "$SWIFT_URL" -o "$TEMP_DIR/swift.tar.gz"; then
-      mkdir -p "$HOME/.swift"
-      tar -xzf "$TEMP_DIR/swift.tar.gz" -C "$TEMP_DIR"
-      cp -r "$TEMP_DIR/${SWIFT_PACKAGE}/usr" "$HOME/.swift/"
-      rm -rf "$TEMP_DIR"
-      export PATH="$HOME/.swift/usr/bin:$PATH"
+    if [ -z "$SWIFT_URL" ]; then
+      log_warning "No Swift build found for ${SWIFT_FILE_SUFFIX}"
+      return 1
     fi
+    mkdir -p "$HOME/.swift" || return
+    curl -fsSL "$SWIFT_URL" | tar -xz -C "$HOME/.swift" --strip-components=1 "$SWIFT_PACKAGE/usr" || return
+    export PATH="$HOME/.swift/usr/bin:$PATH"
+    "$HOME/.swift/usr/bin/swift" --version
+  else
+    log_warning "Swift is unavailable on architecture $ARCH"
+    return 1
   fi
 }
 measure_install "Swift 6.x" "Runtime" install_swift
@@ -976,9 +984,10 @@ log_debug "Generated script: /tmp/box-measure.sh ($(wc -l </tmp/box-measure.sh) 
 # because sudo's env_reset policy rejects unlisted variables.
 measurement_status=0
 if [ "$EUID" -eq 0 ]; then
-  su - box -c "env NODE_MAJOR='$NODE_MAJOR' NVM_INSTALL_VERSION='$NVM_INSTALL_VERSION' JAVA_MAJOR='$JAVA_MAJOR' BOX_VERBOSE='$BOX_VERBOSE' bash /tmp/box-measure.sh '$JSON_TMP_COPY'" || measurement_status=$?
+  printf -v swift_candidates_arg '%q' "$SWIFT_CANDIDATES"
+  su - box -c "env NODE_MAJOR='$NODE_MAJOR' NVM_INSTALL_VERSION='$NVM_INSTALL_VERSION' JAVA_MAJOR='$JAVA_MAJOR' SWIFT_CANDIDATES=$swift_candidates_arg BOX_VERBOSE='$BOX_VERBOSE' bash /tmp/box-measure.sh '$JSON_TMP_COPY'" || measurement_status=$?
 else
-  sudo -i -u box env "NODE_MAJOR=$NODE_MAJOR" "NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION" "JAVA_MAJOR=$JAVA_MAJOR" "BOX_VERBOSE=$BOX_VERBOSE" bash /tmp/box-measure.sh "$JSON_TMP_COPY" || measurement_status=$?
+  sudo -i -u box env "NODE_MAJOR=$NODE_MAJOR" "NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION" "JAVA_MAJOR=$JAVA_MAJOR" "SWIFT_CANDIDATES=$SWIFT_CANDIDATES" "BOX_VERBOSE=$BOX_VERBOSE" bash /tmp/box-measure.sh "$JSON_TMP_COPY" || measurement_status=$?
 fi
 
 # Copy the updated measurements back to the original location

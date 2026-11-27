@@ -1,3 +1,5 @@
 Measurement workflow ordering, output isolation, and publication guard passed.
 Measurement validator accepts finite data and rejects non-finite or all-zero results.
 A failed PHP installation leaves a partial result and sets the failure status.
+Swift uses the parent candidates and fails if a matching tarball is missing.
+Lean installs the toolchain before reading its version.

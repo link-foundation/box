@@ -54,7 +54,7 @@ PYTHON
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 bash scripts/ci/extract-quoted-heredoc.sh scripts/measure-disk-space.sh EOF_BOX >"$work/generated.sh"
-sed -n '/^measure_install() {/,/^}/p; /^install_php() {/,/^}/p' "$work/generated.sh" >"$work/functions.sh"
+sed -n '/^measure_install() {/,/^}/p; /^install_php() {/,/^}/p; /^install_swift() {/,/^}/p; /^install_lean() {/,/^}/p' "$work/generated.sh" >"$work/functions.sh"
 # shellcheck source=/dev/null
 source "$work/functions.sh"
 
@@ -70,3 +70,32 @@ measure_install PHP Runtime install_php
 [[ "$measurement_failed" -eq 1 ]]
 [[ "$(cat "$work/results")" == "0 0" ]]
 echo 'A failed PHP installation leaves a partial result and sets the failure status.'
+
+export HOME="$work/home"
+package=swift-6.3.3-RELEASE-ubuntu24.04
+mkdir -p "$work/$package/usr/bin"
+printf '#!/bin/sh\nprintf "Swift fixture\\n"\n' >"$work/$package/usr/bin/swift"
+chmod +x "$work/$package/usr/bin/swift"
+tar -czf "$work/swift.tar.gz" -C "$work" "$package"
+uname() { printf 'x86_64\n'; }
+remote_file_exists() { [[ "$1" == */"$package.tar.gz" ]]; }
+curl() {
+  case "$*" in
+    *"$package.tar.gz") cat "$work/swift.tar.gz" ;;
+    *elan-init.sh*) printf ':\n' ;;
+    *) return 22 ;;
+  esac
+}
+SWIFT_CANDIDATES='99.9.9 6.3.3'
+[[ "$(install_swift)" == 'Swift fixture' ]]
+SWIFT_CANDIDATES='99.9.9'
+if install_swift; then
+  echo 'missing Swift tarball passed measurement' >&2
+  exit 1
+fi
+echo 'Swift uses the parent candidates and fails if a matching tarball is missing.'
+
+elan() { [[ "$*" == 'toolchain install stable' ]] && touch "$work/lean-installed"; }
+lean() { [[ "$1" == --version && -f "$work/lean-installed" ]]; }
+install_lean
+echo 'Lean installs the toolchain before reading its version.'

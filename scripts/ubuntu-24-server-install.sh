@@ -324,6 +324,8 @@ locate_box_common_sh || log_warning "Version policy helpers unavailable; using p
 NODE_MAJOR="$(box_resolve resolve_node_lts_major 24)"
 NVM_INSTALL_VERSION="$(box_resolve resolve_nvm_version v0.40.7)"
 JAVA_MAJOR="$(box_resolve resolve_java_lts_major 25)"
+SWIFT_CANDIDATES="$(box_resolve resolve_swift_versions 6.3.3)"
+SWIFT_CANDIDATES="${SWIFT_CANDIDATES//$'\n'/ }"
 log_info "Resolved versions: Node ${NODE_MAJOR} LTS, nvm ${NVM_INSTALL_VERSION}, Java ${JAVA_MAJOR} LTS"
 log_debug "Version policy source: ${BOX_COMMON_SH:-<none, using pinned fallbacks>}"
 
@@ -482,6 +484,7 @@ set -euo pipefail
 : "${NODE_MAJOR:?must be passed in by scripts/ubuntu-24-server-install.sh}"
 : "${NVM_INSTALL_VERSION:?must be passed in by scripts/ubuntu-24-server-install.sh}"
 : "${JAVA_MAJOR:?must be passed in by scripts/ubuntu-24-server-install.sh}"
+: "${SWIFT_CANDIDATES:?must be passed in by scripts/ubuntu-24-server-install.sh}"
 
 BOX_VERBOSE="${BOX_VERBOSE:-0}"
 # Trace every command when asked. Off by default: this install log already runs
@@ -748,7 +751,6 @@ if [ ! -d "$HOME/.elan" ]; then
   curl https://elan.lean-lang.org/elan-init.sh -sSf | sh -s -- -y --default-toolchain stable
   if [ -f "$HOME/.elan/env" ]; then
     \. "$HOME/.elan/env"
-    log_success "Lean installed successfully"
   fi
   if ! grep -q 'elan' "$HOME/.bashrc" 2>/dev/null; then
     {
@@ -760,13 +762,19 @@ if [ ! -d "$HOME/.elan" ]; then
 else
   log_info "Lean (elan) already installed."
 fi
+export PATH="$HOME/.elan/bin:$PATH"
+if [[ "$(elan toolchain list)" == 'no installed toolchains' ]]; then
+  elan toolchain install stable
+fi
+lean_version="$(lean --version)"
+log_success "Lean installed: $lean_version"
 
 # --- Opam + Rocq (Coq theorem prover) ---
 if ! command -v opam &>/dev/null; then
   log_info "Installing Opam (OCaml package manager)..."
   sudo apt-get install -y bubblewrap || true
 
-  bash -c "sh <(curl -fsSL https://opam.ocaml.org/install.sh) --no-backup" <<< "y" || {
+  bash -c "sh <(curl -fsSL https://opam.ocaml.org/install.sh) --no-backup" <<< "" || {
     sudo apt-get install -y opam || true
   }
 
@@ -1043,7 +1051,6 @@ if ! command -v swift &>/dev/null; then
       # swift.org/404.html, and curl treats the 302 itself as success.
       remote_file_exists() { curl -fsSIL --max-time 30 "$1" >/dev/null 2>&1; }
     fi
-    SWIFT_CANDIDATES="$(box_resolve resolve_swift_versions 6.3.3)"
     SWIFT_VERSION=""
     SWIFT_URL=""
     SWIFT_PACKAGE=""
@@ -1250,9 +1257,10 @@ log_debug "Generated script: /tmp/box-user-setup.sh ($(wc -l </tmp/box-user-setu
 # each one (issue #115). `env` is used rather than a bare VAR=value prefix
 # because sudo's env_reset policy rejects unlisted variables.
 if [ "$EUID" -eq 0 ]; then
-  su - box -c "env NODE_MAJOR='$NODE_MAJOR' NVM_INSTALL_VERSION='$NVM_INSTALL_VERSION' JAVA_MAJOR='$JAVA_MAJOR' BOX_VERBOSE='$BOX_VERBOSE' bash /tmp/box-user-setup.sh"
+  printf -v swift_candidates_arg '%q' "$SWIFT_CANDIDATES"
+  su - box -c "env NODE_MAJOR='$NODE_MAJOR' NVM_INSTALL_VERSION='$NVM_INSTALL_VERSION' JAVA_MAJOR='$JAVA_MAJOR' SWIFT_CANDIDATES=$swift_candidates_arg BOX_VERBOSE='$BOX_VERBOSE' bash /tmp/box-user-setup.sh"
 else
-  sudo -i -u box env "NODE_MAJOR=$NODE_MAJOR" "NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION" "JAVA_MAJOR=$JAVA_MAJOR" "BOX_VERBOSE=$BOX_VERBOSE" bash /tmp/box-user-setup.sh
+  sudo -i -u box env "NODE_MAJOR=$NODE_MAJOR" "NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION" "JAVA_MAJOR=$JAVA_MAJOR" "SWIFT_CANDIDATES=$SWIFT_CANDIDATES" "BOX_VERBOSE=$BOX_VERBOSE" bash /tmp/box-user-setup.sh
 fi
 
 # Clean up the temporary script
