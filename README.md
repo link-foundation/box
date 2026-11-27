@@ -347,39 +347,39 @@ The container runs as the `box` user with home directory at `/home/box`. All lan
 <!-- COMPONENT_SIZES_START -->
 ## Component Sizes
 
-_Last updated: 2026-11-27T07:45:09Z_
+_Last updated: 2026-11-27T10:23:09Z_
 
-**Total installation size: 12869.0 MB**
+**Total installation size: 12871.0 MB**
 
 | Component | Category | Size (MB) |
 |-----------|----------|-----------|
-| Swift 6.x | Runtime | 3716.75 |
-| Lean (via elan) | Runtime | 3278.16 |
-| Opam + Rocq/Coq | Runtime | 1030.28 |
-| PHP (via Homebrew) | Runtime | 965.4 |
+| Swift 6.x | Runtime | 3716.78 |
+| Lean (via elan) | Runtime | 3278.15 |
+| Opam + Rocq/Coq | Runtime | 1032.34 |
+| PHP (via Homebrew) | Runtime | 965.37 |
 | Rust (via rustup) | Runtime | 674.28 |
-| .NET SDK 10.0 | Runtime | 636.72 |
-| SDKMAN + Java 25 | Runtime | 465.42 |
-| Pyenv + Python (latest) | Runtime | 434.01 |
-| Perlbrew + Perl (latest) | Runtime | 372.04 |
-| NVM + Node.js 26 | Runtime | 309.65 |
-| Go (latest) | Runtime | 295.98 |
-| Kotlin (via SDKMAN) | Runtime | 187.47 |
+| .NET SDK 10.0 | Runtime | 636.76 |
+| SDKMAN + Java 25 | Runtime | 465.43 |
+| Pyenv + Python (latest) | Runtime | 433.98 |
+| Perlbrew + Perl (latest) | Runtime | 372.03 |
+| NVM + Node.js 26 | Runtime | 309.66 |
+| Go (latest) | Runtime | 295.99 |
+| Kotlin (via SDKMAN) | Runtime | 187.46 |
 | rbenv + Ruby (latest) | Runtime | 175.36 |
-| R Language | Runtime | 131.54 |
+| R Language | Runtime | 131.55 |
 | Bun | Runtime | 107.41 |
-| Deno | Runtime | 97.23 |
+| Deno | Runtime | 97.21 |
 | C/C++ Tools (CMake, Clang, LLVM, LLD) | Build Tools | 58.84 |
 | Assembly Tools (NASM, FASM) | Build Tools | 3.92 |
 | GitLab CLI | Development Tools | 29.2 |
 | gh-setup-git-identity | Development Tools | 4.63 |
-| glab-setup-git-identity | Development Tools | 4.42 |
-| GitHub CLI | Development Tools | 0.36 |
-| Homebrew | Package Manager | 217.45 |
-| Python Build Dependencies | Dependencies | 41.84 |
+| glab-setup-git-identity | Development Tools | 4.43 |
+| GitHub CLI | Development Tools | 0.23 |
+| Homebrew | Package Manager | 217.64 |
+| Python Build Dependencies | Dependencies | 41.86 |
 | Bubblewrap | Dependencies | 0.18 |
 | Ruby Build Dependencies | Dependencies | 0.0 |
-| Essential Tools | System | 0.75 |
+| Essential Tools | System | 0.72 |
 
 _Note: Sizes are measured after cleanup and may vary based on system state and package versions._
 
