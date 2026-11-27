@@ -55,3 +55,7 @@ run	archive member	line	message
 45954592803	45954592803.log.gz	440	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0070182Z ##[notice]https://github.com/nestybox/sysbox/blob/master/docs/user-guide/install-package.md failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
 45954592803	45954592803.log.gz	441	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0071966Z ##[notice]https://github.com/containers/podman/blob/main/docs/tutorials/rootless_tutorial.md failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
 45954592803	45954592803.log.gz	442	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0073732Z ##[notice]https://github.com/docker-library/docker/blob/master/Dockerfile-dind-rootless.template failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+45961808401	45961808401.log.gz	1218	scripts / regression suites\tUNKNOWN STEP\t2026-11-27T07:56:58.7000772Z ##[error]Suite failed with exit status 1
+45961808401	45961808401.log.gz	1287	scripts / regression suites\tUNKNOWN STEP\t2026-11-27T08:01:29.6476737Z ##[error]Process completed with exit code 1.
+45961808401	45961808401.log.gz	2369	pipeline-status\tCheck pipeline status\t2026-11-27T08:01:41.1428993Z ##[error]Failing jobs: experiments
+45961808401	45961808401.log.gz	2370	pipeline-status\tCheck pipeline status\t2026-11-27T08:01:41.1438078Z ##[error]Process completed with exit code 1.

@@ -209,50 +209,6 @@ fi
 
 # --- 4. the swap the export grows into -----------------------------------------
 
-# `plan` exists so this can be checked at all: provisioning needs root, and a
-# test that needs root is a test that does not run. Every input and the decision
-# taken from it are on the output, because a plan that hides what it acted on is
-# not reviewable after the fact.
-plan="$(ENSURE_SWAP_TARGET_MB=32768 ENSURE_SWAP_RESERVE_MB=0 bash "$ENSURE_SWAP" plan)"
-if printf '%s' "$plan" | grep -q '^\[ensure-swap\] plan: current=[0-9]*MB target=32768MB'; then
-  pass "plan mode prints the reading it decided on"
-else
-  fail "plan mode printed: $plan"
-fi
-
-if printf '%s' "$plan" | grep -qE '^\[ensure-swap\] decision: allocate [0-9]+MB at '; then
-  pass "plan mode names the size and the file it would allocate"
-else
-  fail "plan mode took no decision: $plan"
-fi
-
-# The whole point is to spend disk on memory, and the build needs ~60 GB of
-# that disk for the chain plus ~25 GB more to export the full box into. A
-# swapfile that takes the disk the build needs would trade one SIGKILL for a
-# `no space left on device`, so the reserve is not advice.
-guard="$(ENSURE_SWAP_RESERVE_MB=999999999 bash "$ENSURE_SWAP" plan)"
-if printf '%s' "$guard" | grep -q '^\[ensure-swap\] decision: skip'; then
-  pass "a reserve that cannot be met means no swapfile, not a smaller disk"
-else
-  fail "the reserve guard did not hold: $guard"
-fi
-
-ENSURE_SWAP_RESERVE_MB=999999999 bash "$ENSURE_SWAP" plan >/dev/null 2>&1
-if [ "$?" = "0" ]; then
-  pass "declining to provision is not a job failure"
-else
-  fail "the reserve guard failed the caller instead of declining"
-fi
-
-# Called twice - which is what a re-run does - it must not stack a second
-# swapfile on top of the first.
-enough="$(ENSURE_SWAP_TARGET_MB=1 bash "$ENSURE_SWAP" plan)"
-if printf '%s' "$enough" | grep -q 'already meets the 1MB target'; then
-  pass "swap that already meets the target is left alone"
-else
-  fail "a met target still produced: $enough"
-fi
-
 # `provision` is the default because the workflow calls it with no argument; a
 # typo must not silently become one of the two real modes.
 bash "$ENSURE_SWAP" definitely-not-a-mode >/dev/null 2>&1
@@ -352,6 +308,51 @@ STUB
 STUB_DIR="$(mktemp -d)"
 make_swap_stubs "$STUB_DIR/bin"
 trap 'rm -rf "$STUB_DIR"' EXIT
+
+# `plan` exists so this can be checked at all: provisioning needs root, and a
+# test that needs root is a test that does not run. Every input and the decision
+# taken from it are on the output, because a plan that hides what it acted on is
+# not reviewable after the fact.
+plan="$(PATH="$STUB_DIR/bin:$PATH" STUB_SWAP_TOTAL_MB=0 ENSURE_SWAP_TARGET_MB=32768 ENSURE_SWAP_RESERVE_MB=0 bash "$ENSURE_SWAP" plan)"
+if printf '%s' "$plan" | grep -q '^\[ensure-swap\] plan: current=0MB target=32768MB'; then
+  pass "plan mode prints the reading it decided on"
+else
+  fail "plan mode printed: $plan"
+fi
+
+if printf '%s' "$plan" | grep -qE '^\[ensure-swap\] decision: allocate [0-9]+MB at '; then
+  pass "plan mode names the size and the file it would allocate"
+else
+  fail "plan mode took no decision: $plan"
+fi
+
+# The whole point is to spend disk on memory, and the build needs ~60 GB of
+# that disk for the chain plus ~25 GB more to export the full box into. A
+# swapfile that takes the disk the build needs would trade one SIGKILL for a
+# `no space left on device`, so the reserve is not advice.
+PATH="$STUB_DIR/bin:$PATH" STUB_FREE_MB=40960 ENSURE_SWAP_RESERVE_MB=40961 bash "$ENSURE_SWAP" plan >"$STUB_DIR/reserve-plan.log" 2>&1
+guard_status=$?
+guard="$(cat "$STUB_DIR/reserve-plan.log")"
+if printf '%s' "$guard" | grep -q '^\[ensure-swap\] decision: skip (only -1MB is free above the 40961MB reserve)'; then
+  pass "a reserve that cannot be met means no swapfile, not a smaller disk"
+else
+  fail "the reserve guard did not hold: $guard"
+fi
+
+if [ "$guard_status" = "0" ]; then
+  pass "declining to provision is not a job failure"
+else
+  fail "the reserve guard failed the caller instead of declining"
+fi
+
+# Called twice - which is what a re-run does - it must not stack a second
+# swapfile on top of the first.
+enough="$(PATH="$STUB_DIR/bin:$PATH" STUB_SWAP_TOTAL_MB=1 ENSURE_SWAP_TARGET_MB=1 bash "$ENSURE_SWAP" plan)"
+if printf '%s' "$enough" | grep -q 'already meets the 1MB target'; then
+  pass "swap that already meets the target is left alone"
+else
+  fail "a met target still produced: $enough"
+fi
 
 # Every scenario gets its own log and its own swapfile path, so one scenario
 # cannot make the next one pass.
