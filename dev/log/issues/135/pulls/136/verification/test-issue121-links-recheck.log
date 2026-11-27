@@ -1,51 +1,51 @@
-PASS: scripts/ci/recheck-broken-links.mjs exists
-PASS: scripts/ci/check-web-archive.mjs exists
-PASS: .github/workflows/links.yml exists
+PASS: scr…sts
+PASS: scr…sts
+PASS: [REDACTED]
 
 == Part 1: the parser tells an answered failure from an unanswered one ==
-  PASS: a 404 marker is an answer
-  PASS: a 500 marker is an answer
+  PASS: [REDACTED]
+  PASS: [REDACTED]
   PASS: [ERROR] is not an answer
   PASS: [TIMEOUT] is not an answer
   PASS: [UNKNOWN] is not an answer
-  PASS: a missing local file is parsed too
-  PASS: every entry is parsed
+  PASS: [REDACTED]
+  PASS: eve…sed
 
 == Part 2: all_recovered means the whole report was noise ==
-  PASS: nothing but unanswered failures, all recovered -> true
-  PASS: an answered failure is still in the report -> false
-  PASS: a URL that never answered the re-check either -> false
-  PASS: nothing was re-asked at all -> false
-  PASS: the accept list accepts a 200
-  PASS: the accept list rejects a 404
-  PASS: a bare status in the list is accepted
-  PASS: a workflow without --accept gets lychees default
-  PASS: a workflow with --accept is read from the workflow
+  PASS: not…d -> true
+  PASS: [REDACTED]> false
+  PASS: [REDACTED]> false
+  PASS: not…l -> false
+  PASS: the…200
+  PASS: the…404
+  PASS: [REDACTED]
+  PASS: [REDACTED]
+  PASS: [REDACTED]
 
 == Part 3: end to end, against a host that answers on 127.0.0.1 ==
-PASS: the stand-in host answers on 127.0.0.1:8732
-PASS: the re-check exits 0 (it downgrades failures; it never raises one)
-PASS: a report of nothing but unanswered failures, all healthy now, sets all_recovered=true
-PASS: the recovered URL is written to the file the Wayback step reads
-PASS: a 404 alongside a recovered URL leaves all_recovered unset
-PASS: the recovered URL is still reported as recovered
-PASS: the 404 URL is not in the recovered list
-PASS: a report of answered failures only is not re-asked at all
-PASS: a report holding only a 404 leaves all_recovered unset
+PASS: the…732
+PASS: the…ne)
+PASS: [REDACTED]
+PASS: the…ads
+PASS: [REDACTED]
+PASS: the…red
+PASS: the…ist
+PASS: [REDACTED]
+PASS: [REDACTED]
 
 == Part 4: the Wayback step skips what the re-check recovered ==
-PASS: the Wayback step passes when every broken URL was recovered (exit 0)
-PASS: it says why it skipped the URL
-PASS: it does not look a recovered URL up in the Wayback Machine
+PASS: the… 0)
+PASS: [REDACTED]
+PASS: [REDACTED]
 
 == Part 5: the workflow reads the output so that a skip fails safe ==
-PASS: the re-check step runs the script
-PASS: the re-check step is addressable as steps.recheck
-PASS: the re-check only runs after a link failure
-PASS: the recovered list is handed to the Wayback step
-PASS: the re-check writes the list the Wayback step reads
-PASS: both consumers read all_recovered with != 'true' (2)
-PASS: no consumer reads all_recovered with == 'false'
-PASS: the failing step still runs on its own when the re-check recovered nothing
+PASS: the…ipt
+PASS: the…eck
+PASS: the…ure
+PASS: the…tep
+PASS: the…ads
+PASS: bot…(2)
+PASS: [REDACTED]
+PASS: the…ing
 
 39 passed, 0 failed

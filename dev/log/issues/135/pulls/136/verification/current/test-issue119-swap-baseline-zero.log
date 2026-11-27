@@ -1,0 +1,63 @@
+PASS: sam…ine
+PASS: sam…/='
+PASS: sam…ee'
+PASS: sam…m '
+PASS: sam…of'
+PASS: sam…p '
+PASS: sam…p '
+PASS: sam…ize
+PASS: RES…med
+PASS: thr…for
+PASS: the…ine
+PASS: RES…eld
+PASS: [REDACTED]
+PASS: loo…les
+PASS: loo…ing
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: pla… on
+PASS: pla…ate
+PASS: [REDACTED]
+PASS: dec…ure
+FAIL: a met target still produced: [ensure-swap] plan: current=0MB target=1MB need=1MB free=132001MB reserve=40960MB allocatable=91041MB size=1MB file=/box-ci-swapfile
+[ensure-swap] decision: skip (only 91041MB is free above the 40960MB reserve)
+PASS: [REDACTED]
+PASS: the…ove
+PASS: 307…ile
+PASS: the…ach
+PASS: the…lan
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: the… on
+PASS: [REDACTED]
+PASS: the…ate
+PASS: [REDACTED]
+PASS: swa…log
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: rec…pon
+PASS: pr-…ses
+PASS: pr-…wap
+PASS: pr-…ngs
+PASS: pr-…res
+PASS: pr-…S -> essentials -> languages -> full)'
+PASS: pr-…S -> essentials -> languages -> full)' ends
+PASS: pr-…ain
+PASS: pr-…S -> essentials -> languages -> full)'
+PASS: pr-…ses
+PASS: pr-…wap
+PASS: pr-…ngs
+PASS: pr-…res
+PASS: pr-…nt'
+PASS: pr-…nds
+PASS: pr-…ain
+PASS: pr-…nt'
+PASS: pr-…box
+PASS: pr-…xty
+PASS: pr-…ler
+
+================ issue #119 CI resource headroom ================
+passed: 39
+failed: 1

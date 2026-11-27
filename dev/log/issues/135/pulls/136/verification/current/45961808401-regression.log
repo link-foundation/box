@@ -1,0 +1,538 @@
+scripts / regression suites	UNKNOWN STEP	﻿2026-11-27T07:55:43.1919897Z Current runner version: '2.338.2'
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1938678Z ##[group]Runner Image Provisioner
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1939346Z Hosted Compute Agent
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1940034Z Version: 20261111.635
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1940530Z Commit: b8a…2ed
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1941042Z Build Date: 2026-11-11T01:49:01Z
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1941521Z Worker ID: {2c28d43a-dae7-43fb-a8aa-4bf3db63a855}
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1942030Z Region: us-west-2
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1942443Z Cloud: AWS
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1942829Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1943783Z ##[group]Operating System
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1944216Z Ubuntu
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1944578Z 24.04.5
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1944944Z LTS
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1945311Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1945682Z ##[group]Runner Image
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1946093Z Image: ubuntu-24.04
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1946507Z Version: 20261116.133.1
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1947436Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261116.133/images/ubuntu/Ubuntu2404-Readme.md
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1948553Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261116.133
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1949224Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1950325Z ##[group]GITHUB_TOKEN Permissions
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1951936Z Contents: read
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1952397Z Metadata: read
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1952767Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1954469Z Secret source: Actions
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1955125Z Cache mode: write
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.1955640Z Prepare workflow directory
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.2227338Z Prepare all required actions
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.2278213Z Getting action download info
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:43.5939458Z Download action repository 'actions/checkout@v6' (SHA:d23441a48e516b6c34aea4fa41551a30e30af803)
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.0186291Z Download action repository 'actions/upload-artifact@v7' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.2568168Z Complete job name: scripts / regression suites
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3297561Z ##[group]Run actions/checkout@v6
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3298705Z with:
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3299486Z   persist-credentials: false
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3300668Z   repository: link-foundation/box
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3306776Z   token: ***
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3307608Z   ssh-strict: true
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3308362Z   ssh-user: git
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3309107Z   clean: true
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3310022Z   sparse-checkout-cone-mode: true
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3310909Z   fetch-depth: 1
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3311667Z   fetch-tags: false
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3312436Z   show-progress: true
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3313207Z   lfs: false
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3314056Z   submodules: false
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3314859Z   set-safe-directory: true
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3315742Z   allow-unsafe-pr-checkout: false
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3316838Z env:
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3317508Z   GIT_CONFIG_COUNT: 1
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3318329Z   GIT_CONFIG_KEY_0: ini…nch
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3319232Z   GIT_CONFIG_VALUE_0: main
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:45.3320297Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:48.5002990Z Syncing repository: link-foundation/box
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:48.5004670Z ##[group]Getting Git version info
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:48.5005059Z Working directory is '/home/runner/work/box/box'
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:48.5005674Z [command]/usr/bin/git version
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:48.8513777Z git version 2.56.1
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:48.8537157Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:48.8549566Z Temporarily overriding HOME='/ho…630' before making global git config changes
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:48.8550956Z Adding repository directory to the temporary git global config as a safe directory
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:48.8554521Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/box/box
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:48.8942899Z Deleting the contents of '/home/runner/work/box/box'
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:48.8945565Z ##[group]Determining repository object format
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:48.8947197Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:48.8948043Z ##[group]Initializing the repository
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:48.8951211Z [command]/usr/bin/git init /home/runner/work/box/box
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.0158779Z Initialized empty Git repository in /home/runner/work/box/box/.git/
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.0168114Z [command]/usr/bin/git remote add origin https://github.com/link-foundation/box
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.0221033Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.0221481Z ##[group]Disabling automatic garbage collection
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.0223901Z [command]/usr/bin/git config --local gc.auto 0
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.0248280Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.0248723Z ##[group]Setting up auth
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.0249163Z Removing SSH command configuration
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.0253640Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.0281149Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.4062562Z Removing HTTP extra header
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.4067550Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.4094250Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.4237966Z Removing includeIf entries pointing to credentials config files
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.4243075Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.4290014Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.4414971Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-e8d6bfb1-c16e-4649-8f61-49d12c232bdc.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.4443003Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/box/box/.git.path /home/runner/work/_temp/git-credentials-e8d6bfb1-c16e-4649-8f61-49d12c232bdc.config
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.4493140Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/box/box/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-e8d6bfb1-c16e-4649-8f61-49d12c232bdc.config
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.4515329Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-e8d6bfb1-c16e-4649-8f61-49d12c232bdc.config
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.4535878Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-e8d6bfb1-c16e-4649-8f61-49d12c232bdc.config
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.4554722Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.4555130Z ##[group]Fetching the repository
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:49.4560591Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +ff54ce102b2bd5e11f16688ea9d8356f3e101c15:refs/remotes/pull/136/merge
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:50.9642177Z From https://github.com/link-foundation/box
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:50.9642819Z  * [new ref]         ff54ce102b2bd5e11f16688ea9d8356f3e101c15 -> pull/136/merge
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:50.9646704Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:50.9647321Z ##[group]Determining the checkout info
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:50.9647974Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:50.9652544Z [command]/usr/bin/git sparse-checkout disable
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:50.9729246Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:50.9752641Z ##[group]Checking out the ref
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:50.9756597Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/136/merge
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4000079Z Note: switching to 'refs/remotes/pull/136/merge'.
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4000537Z 
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4000752Z You are in 'detached HEAD' state. You can look around, make experimental
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4002431Z changes and commit them, and you can discard any commits you make in this
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4003800Z state without impacting any branches by switching back to a branch.
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4004110Z 
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4004417Z If you want to create a new branch to retain commits you create, you may
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4004884Z do so (now or later) by using -c with the switch command. Example:
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4005169Z 
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4005363Z   git switch -c <new-branch-name>
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4005615Z 
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4005811Z Or undo this operation with:
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4006025Z 
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4006137Z   git switch -
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4006335Z 
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4006560Z Turn off this advice by setting config variable advice.detachedHead to false
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4006939Z 
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4007298Z HEAD is now at ff54ce1 Merge 329…970 into a89…a90
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4025341Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4066550Z [command]/usr/bin/git log -1 --format=%H
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4086006Z ff54ce102b2bd5e11f16688ea9d8356f3e101c15
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4092734Z ##[group]Removing auth
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4093307Z Removing SSH command configuration
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4094882Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4116969Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4277293Z Removing HTTP extra header
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4280143Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4302322Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4451473Z Removing includeIf entries pointing to credentials config files
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4454208Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4477138Z includeif.gitdir:/home/runner/work/box/box/.git.path
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4477673Z includeif.gitdir:/home/runner/work/box/box/.git/worktrees/*.path
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4477992Z includeif.gitdir:/github/workspace/.git.path
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4478302Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4484846Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/box/box/.git.path
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4507892Z /home/runner/work/_temp/git-credentials-e8d6bfb1-c16e-4649-8f61-49d12c232bdc.config
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4516751Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/box/box/.git.path /home/runner/work/_temp/git-credentials-e8d6bfb1-c16e-4649-8f61-49d12c232bdc.config
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4542579Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/box/box/.git/worktrees/*.path
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4559552Z /home/runner/work/_temp/git-credentials-e8d6bfb1-c16e-4649-8f61-49d12c232bdc.config
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4566285Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/box/box/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-e8d6bfb1-c16e-4649-8f61-49d12c232bdc.config
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4595272Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4611325Z /github/runner_temp/git-credentials-e8d6bfb1-c16e-4649-8f61-49d12c232bdc.config
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4615743Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-e8d6bfb1-c16e-4649-8f61-49d12c232bdc.config
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4639586Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4657503Z /github/runner_temp/git-credentials-e8d6bfb1-c16e-4649-8f61-49d12c232bdc.config
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4662437Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-e8d6bfb1-c16e-4649-8f61-49d12c232bdc.config
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4684761Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4834228Z Removing credentials config '/home/runner/work/_temp/git-credentials-e8d6bfb1-c16e-4649-8f61-49d12c232bdc.config'
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.4839481Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5044643Z Prepare all required actions
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5094715Z ##[group]Run ./.github/actions/simulate-fresh-merge
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5094985Z with:
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5095221Z   verbose: false
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5095426Z env:
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5095649Z   GIT_CONFIG_COUNT: 1
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5095906Z   GIT_CONFIG_KEY_0: ini…nch
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5096176Z   GIT_CONFIG_VALUE_0: main
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5096429Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5157802Z ##[start-action display=Merge the base branch into the merge preview;id=__self.__run]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5196968Z ##[group]Run # Tracing is opt-in via the input, or automatic when the run was started
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5197577Z ^[[36;1m# Tracing is opt-in via the input, or automatic when the run was started^[[0m
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5198035Z ^[[36;1m# with "Enable debug logging" (RUNNER_DEBUG=1) - the same convention as^[[0m
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5198583Z ^[[36;1m# setup-buildx-resilient. RUNNER_DEBUG is a runner variable, not part of^[[0m
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5199020Z ^[[36;1m# the `env` context, so it has to be read here rather than in `env:`.^[[0m
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5199402Z ^[[36;1mif [ "${VERBOSE}" = "true" ] || [ "${RUNNER_DEBUG:-}" = "1" ]; then^[[0m
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5199982Z ^[[36;1m  export BOX_VERBOSE=1^[[0m
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5200251Z ^[[36;1mfi^[[0m
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.5200520Z ^[[36;1mbash "${GITHUB_WORKSPACE}/scripts/ci/simulate-fresh-merge.sh"^[[0m
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.7818538Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.7818963Z env:
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.7819343Z   GIT_CONFIG_COUNT: 1
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.7819583Z   GIT_CONFIG_KEY_0: ini…nch
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.7820125Z   GIT_CONFIG_VALUE_0: main
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.7820363Z   BASE_REF: main
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.7820593Z   VERBOSE: false
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.7820815Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.7915223Z === Simulating a fresh merge with main ===
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:51.7952580Z Shallow checkout; deepening before the merge...
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8305864Z Merge preview:      ff54ce102b2bd5e11f16688ea9d8356f3e101c15
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8317076Z Base branch tip:    a89…a90
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8342699Z The merge preview already contains every commit on main. Nothing to do.
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8361388Z ##[end-action id=__self.__run;outcome=success;conclusion=success;duration_ms=1320]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8397295Z ##[group]Run bash scripts/ci/run-experiments.sh --list
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8397737Z ^[[36;1mbash scripts/ci/run-experiments.sh --list^[[0m
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8425104Z shell: /usr/bin/bash -e {0}
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8425369Z env:
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8425584Z   GIT_CONFIG_COUNT: 1
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8425865Z   GIT_CONFIG_KEY_0: ini…nch
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8426137Z   GIT_CONFIG_VALUE_0: main
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8426413Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8522961Z SKIP  measure-issue121-apt-recommends.sh             needs docker and a network: resolves apt dependency plans in ubuntu:24.04 to measure what --no-install-recommends drops; a measurement, not an assertion (its recorded output is in dev/log/issues/121/pulls/122/apt-recommends/)
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8531011Z SKIP  node-lts-integration-test.sh                   needs network: resolves the live Node LTS feed (covered by the version-policy CI tier)
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8538582Z RUN   preload-unit-test.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8547539Z SKIP  reproduce-issue121-actionlint-version-gap.sh   needs docker and a network: runs two pinned actionlint images over the same fixtures to measure which checks the older one cannot make; a measurement, not an assertion (the version floor it argues for is asserted offline by test-issue121-workflow-audit-scope.sh)
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8555597Z RUN   reproduce-issue121-awk-run-block-range.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8564161Z RUN   reproduce-issue121-checkout-credentials.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8572037Z RUN   reproduce-issue121-git-init-hint.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8580426Z RUN   reproduce-issue121-mjs-syntax-gap.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8587802Z RUN   reproduce-issue121-push-rejection-texts.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8595592Z RUN   reproduce-issue121-subdirectory-discovery.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8603764Z RUN   reproduce-issue121-workflow-trigger-gap.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8612385Z SKIP  reproduce-issue123-zizmor-offline-audits.sh    needs docker, a network and a GitHub token: run…re)
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8621467Z SKIP  reproduce-issue133-containerd-pid.sh           needs docker and a privileged box-dind image: commits a running nested daemon and resumes it to reproduce the stale containerd pid file (its offline twin, test-issue133-stale-pid-files.sh, runs here; tests/dind/example-snapshot-resume.sh covers it in PR CI)
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8629139Z SKIP  rust-refresh-layer-test.sh                     needs docker: builds layers to measure image size
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8636809Z RUN   test-add-measurement-fix.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8644765Z RUN   test-bashrc-merge-fix.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8652472Z RUN   test-bashrc-merge.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8660273Z RUN   test-du-exit-code-issue57.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8668512Z RUN   test-issue100-buildx-mirror-fallback.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8677053Z RUN   test-issue104-build-retry.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8684584Z RUN   test-issue104-logs-contain.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8692151Z RUN   test-issue104-vfs-warning.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8699577Z RUN   test-issue108-detect-changes.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8707158Z RUN   test-issue112-supersede.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8715456Z RUN   test-issue115-base-image-preflight.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8723139Z RUN   test-issue115-ci-policy.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8730750Z RUN   test-issue115-elan-toolchain.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8738291Z RUN   test-issue115-experiment-runner.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8746011Z RUN   test-issue115-fresh-merge.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8753634Z RUN   test-issue115-hadolint-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8761505Z RUN   test-issue115-heredoc-extraction.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8769117Z RUN   test-issue115-heredoc-unbound-vars.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8777425Z RUN   test-issue115-language-coverage.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8785330Z RUN   test-issue115-line-limits.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8793768Z RUN   test-issue115-links-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8801779Z RUN   test-issue115-manifest-script.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8809054Z RUN   test-issue115-push-retry-classifier.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8816725Z RUN   test-issue115-registry-split.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8824543Z RUN   test-issue115-release-notes.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8832254Z RUN   test-issue115-secretlint-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8840163Z RUN   test-issue115-shellcheck-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8847456Z RUN   test-issue115-shfmt-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8854936Z RUN   test-issue115-test-box.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8862752Z RUN   test-issue115-workflow-split.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8870407Z RUN   test-issue117-check-publication.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8877993Z RUN   test-issue117-preflight-gating.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8886038Z RUN   test-issue117-preflight.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8893639Z RUN   test-issue117-registry-probe.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8901756Z RUN   test-issue119-check-publication.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8909215Z RUN   test-issue119-ci-resource-headroom.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8917130Z RUN   test-issue119-image-tags.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8925327Z RUN   test-issue119-manifest-media-type.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8933996Z RUN   test-issue119-platform-coverage.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8942051Z RUN   test-issue119-tag-policy.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8949586Z RUN   test-issue121-awk-portability.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8957850Z RUN   test-issue121-buildx-cleanup.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8965844Z RUN   test-issue121-checkout-credentials.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8973970Z RUN   test-issue121-clock-independence.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8981610Z RUN   test-issue121-git-hooks.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8989081Z RUN   test-issue121-git-init-hint.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.8997141Z RUN   test-issue121-git-push-recovery.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9005534Z RUN   test-issue121-links-recheck.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9013552Z RUN   test-issue121-log-injection.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9021532Z RUN   test-issue121-mjs-syntax.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9028995Z RUN   test-issue121-path-coverage.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9037020Z RUN   test-issue121-pipeline-status-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9044672Z RUN   test-issue121-playwright-deps.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9053619Z SKIP  test-issue121-provenance-metadata-leak.sh      needs docker: drives a real buildx build to reproduce the metadata provenance leak (its offline twin, test-issue121-log-injection.sh, runs here)
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9061009Z RUN   test-issue121-py-syntax.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9068989Z RUN   test-issue121-readme-updater.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9076892Z RUN   test-issue121-reclaim-large-packages.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9085107Z RUN   test-issue121-required-docs.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9093252Z RUN   test-issue121-timeout-budgets.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9101160Z RUN   test-issue121-workflow-audit-scope.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9109035Z RUN   test-issue123-apt-retry-defaults.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9116985Z RUN   test-issue123-artifact-upload-fail-closed.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9124996Z RUN   test-issue123-brew-link-status.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9133474Z RUN   test-issue123-budget-enforcement.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9141261Z RUN   test-issue123-discovery-fail-closed.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9148717Z RUN   test-issue123-home-skel.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9156917Z RUN   test-issue123-log-capture-truncation.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9164954Z RUN   test-issue123-log-command-injection.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9173047Z RUN   test-issue123-npm-force.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9180663Z RUN   test-issue123-overrun-not-supersede.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9188076Z RUN   test-issue123-pr-diff-range.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9196525Z RUN   test-issue123-release-version.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9204449Z RUN   test-issue123-sigpipe-writers.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9212440Z RUN   test-issue123-workflow-yaml.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9220144Z RUN   test-issue123-zizmor-token.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9227975Z RUN   test-issue125-budget-state-survives-tmp-cleanup.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9236102Z RUN   test-issue125-verbose-secret-redaction.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9244080Z RUN   test-issue127-release-inventory.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9252606Z RUN   test-issue129-file.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9260227Z RUN   test-issue131-links-recheck.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9268103Z RUN   test-issue131-live-restore.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9276703Z RUN   test-issue133-stale-pid-files.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9284451Z RUN   test-issue135-link-verdicts.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9292297Z RUN   test-issue135-measure-workflow.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9299618Z RUN   test-issue82-dockerhub-login-tolerance.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9307567Z RUN   test-issue82-pr-parallel-tests.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9315308Z RUN   test-issue84-apply-changesets-quotes.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9323156Z RUN   test-issue90-release-workflow-policy.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9330625Z RUN   test-issue92-apt-retry-policy.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9337978Z RUN   test-json-manipulation.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9346033Z RUN   test-language-installs.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9353676Z RUN   test-sed-fix.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9361988Z SKIP  verify-full-box-tooling.sh                     needs docker and a pulled full-box image (tens of GB); manual probe behind scripts/ci/test-box.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9369498Z RUN   verify-script-syntax.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9377718Z RUN   version-policy-unit-test.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9411840Z ##[group]Run bash scripts/ci/run-with-budget-warning.sh 600 "every experiment suite" \
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9412376Z ^[[36;1mbash scripts/ci/run-with-budget-warning.sh 600 "every experiment suite" \^[[0m
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9412753Z ^[[36;1m  bash scripts/ci/run-experiments.sh^[[0m
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9438786Z shell: /usr/bin/bash -e {0}
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9439043Z env:
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9439346Z   GIT_CONFIG_COUNT: 1
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9439594Z   GIT_CONFIG_KEY_0: ini…nch
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9440054Z   GIT_CONFIG_VALUE_0: main
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9440293Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9584266Z Running every experiment suite with a 600s budget (warning at 420s).
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9708152Z ==> SKIP measure-issue121-apt-recommends.sh (needs docker and a network: resolves apt dependency plans in ubuntu:24.04 to measure what --no-install-recommends drops; a measurement, not an assertion (its recorded output is in dev/log/issues/121/pulls/122/apt-recommends/))
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9709955Z ==> SKIP node-lts-integration-test.sh (needs network: resolves the live Node LTS feed (covered by the version-policy CI tier))
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:52.9710564Z ==> RUN  preload-unit-test.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:53.9835766Z ==> SKIP reproduce-issue121-actionlint-version-gap.sh (needs docker and a network: runs two pinned actionlint images over the same fixtures to measure which checks the older one cannot make; a measurement, not an assertion (the version floor it argues for is asserted offline by test-issue121-workflow-audit-scope.sh))
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:53.9836951Z ==> RUN  reproduce-issue121-awk-run-block-range.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:55:53.9839034Z ==> RUN  reproduce-issue121-checkout-credentials.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:03.0811807Z ==> RUN  reproduce-issue121-git-init-hint.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:03.0812200Z ==> RUN  reproduce-issue121-mjs-syntax-gap.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:04.0928289Z ==> RUN  reproduce-issue121-push-rejection-texts.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:04.0929352Z ==> RUN  reproduce-issue121-subdirectory-discovery.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:05.1042187Z ==> RUN  reproduce-issue121-workflow-trigger-gap.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:05.1043645Z ==> SKIP reproduce-issue123-zizmor-offline-audits.sh (needs docker, a network and a GitHub token: run…e))
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:05.1045372Z ==> SKIP reproduce-issue133-containerd-pid.sh (needs docker and a privileged box-dind image: commits a running nested daemon and resumes it to reproduce the stale containerd pid file (its offline twin, test-issue133-stale-pid-files.sh, runs here; tests/dind/example-snapshot-resume.sh covers it in PR CI))
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:05.1046623Z ==> SKIP rust-refresh-layer-test.sh (needs docker: builds layers to measure image size)
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:05.1047101Z ==> RUN  test-add-measurement-fix.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:06.1159108Z ==> RUN  test-bashrc-merge-fix.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:06.1159493Z ==> RUN  test-bashrc-merge.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:06.1160113Z ==> RUN  test-du-exit-code-issue57.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:06.1160414Z ==> RUN  test-issue100-buildx-mirror-fallback.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:09.1496491Z ==> RUN  test-issue104-build-retry.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:09.1497005Z ==> RUN  test-issue104-logs-contain.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:11.1706788Z ==> RUN  test-issue104-vfs-warning.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:11.1707302Z ==> RUN  test-issue108-detect-changes.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:12.1817084Z ==> RUN  test-issue112-supersede.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:23.2998949Z ==> RUN  test-issue115-base-image-preflight.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:23.2999334Z ==> RUN  test-issue115-ci-policy.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:26.3348484Z ==> RUN  test-issue115-elan-toolchain.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:26.3348984Z ==> RUN  test-issue115-experiment-runner.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:28.3578607Z ==> RUN  test-issue115-fresh-merge.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:28.3579003Z ==> RUN  test-issue115-hadolint-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:29.3699018Z ==> RUN  test-issue115-heredoc-extraction.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:29.3700155Z ==> RUN  test-issue115-heredoc-unbound-vars.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:30.3811751Z ==> RUN  test-issue115-language-coverage.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:31.3926256Z ==> RUN  test-issue115-line-limits.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:32.4042352Z ==> RUN  test-issue115-links-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:34.4282017Z ==> RUN  test-issue115-manifest-script.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:34.4282463Z ==> RUN  test-issue115-push-retry-classifier.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:35.4392134Z ==> RUN  test-issue115-registry-split.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:35.4392660Z ==> RUN  test-issue115-release-notes.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:36.4511196Z ==> RUN  test-issue115-secretlint-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:36.4511774Z ==> RUN  test-issue115-shellcheck-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:50.6046750Z ==> RUN  test-issue115-shfmt-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:55.6620163Z ==> RUN  test-issue115-test-box.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:56.6737475Z ==> RUN  test-issue115-workflow-split.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:56.6739296Z ==> RUN  test-issue117-check-publication.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:57.6851005Z ==> RUN  test-issue117-preflight-gating.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:57.6851709Z ==> RUN  test-issue117-preflight.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:57.6852311Z ==> RUN  test-issue117-registry-probe.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:57.6852791Z ==> RUN  test-issue119-check-publication.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6957222Z ==> RUN  test-issue119-ci-resource-headroom.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6958161Z ##[group]test-issue119-ci-resource-headroom.sh failed (exit 1)
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6958565Z     PASS: sam…ine
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6958880Z     PASS: sam…/='
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6959180Z     PASS: sam…ee'
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6959427Z     PASS: sam…m '
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6959957Z     PASS: sam…of'
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6960230Z     PASS: sam…p '
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6960493Z     PASS: sam…p '
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6960811Z     PASS: sam…ize
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6961254Z     PASS: RES…med
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6961646Z     PASS: thr…for
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6961971Z     PASS: the…ine
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6962396Z     PASS: RES…eld
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6962771Z     PASS: [REDACTED]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6963112Z     PASS: loo…les
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6963487Z     PASS: loo…ing
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6963839Z     PASS: [REDACTED]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6964209Z     PASS: [REDACTED]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6964573Z     PASS: [REDACTED]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6964896Z     PASS: [REDACTED]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6965231Z     PASS: pla… on
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6965544Z     PASS: pla…ate
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6965904Z     PASS: [REDACTED]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6966265Z     PASS: dec…ure
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6966801Z     FAIL: a met target still produced: [ensure-swap] plan: current=0MB target=1MB need=1MB free=90085MB reserve=40960MB allocatable=49125MB size=1MB file=/box-ci-swapfile
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6967387Z     [ensure-swap] decision: skip (only 49125MB is free above the 40960MB reserve)
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6967786Z     PASS: [REDACTED]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6968205Z     PASS: the…ove
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6968585Z     PASS: 307…ile
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6969203Z     PASS: the…ach
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6969605Z     PASS: the…lan
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6970107Z     PASS: [REDACTED]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6970420Z     PASS: [REDACTED]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6970789Z     PASS: the… on
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6971111Z     PASS: [REDACTED]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6971473Z     PASS: the…ate
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6971818Z     PASS: [REDACTED]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6972145Z     PASS: swa…log
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6972522Z     PASS: [REDACTED]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6972876Z     PASS: [REDACTED]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6973251Z     PASS: rec…pon
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6973597Z     PASS: pr-…ses
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6973900Z     PASS: pr-…wap
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6974273Z     PASS: pr-…ngs
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6974676Z     PASS: pr-…res
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6975161Z     PASS: pr-…S -> essentials -> languages -> full)'
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6975694Z     PASS: pr-…S -> essentials -> languages -> full)' ends
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6976142Z     PASS: pr-…ain
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6976647Z     PASS: pr-…S -> essentials -> languages -> full)'
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6977103Z     PASS: pr-…ses
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6977411Z     PASS: pr-…wap
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6977822Z     PASS: pr-…ngs
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6978227Z     PASS: pr-…res
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6978646Z     PASS: pr-…nt'
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6979063Z     PASS: pr-…nds
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6979465Z     PASS: pr-…ain
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6980160Z     PASS: pr-…nt'
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6980752Z     PASS: pr-…box
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6981356Z     PASS: pr-…xty
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6981769Z     PASS: pr-…ler
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6982071Z     
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6982348Z     ================ issue #119 CI resource headroom ================
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6982631Z     passed: 39
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6982879Z     failed: 1
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.6983302Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.7000772Z ##[error]Suite failed with exit status 1
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.7005802Z ==> RUN  test-issue119-image-tags.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.7006125Z ==> RUN  test-issue119-manifest-media-type.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.7006496Z ==> RUN  test-issue119-platform-coverage.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.7006791Z ==> RUN  test-issue119-tag-policy.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:58.7007062Z ==> RUN  test-issue121-awk-portability.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:59.7092556Z ==> RUN  test-issue121-buildx-cleanup.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:56:59.7092946Z ==> RUN  test-issue121-checkout-credentials.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:57:01.7293997Z ==> RUN  test-issue121-clock-independence.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:24.2882387Z ==> RUN  test-issue121-git-hooks.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:26.3099447Z ==> RUN  test-issue121-git-init-hint.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:27.3214986Z ==> RUN  test-issue121-git-push-recovery.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:27.3215615Z ==> RUN  test-issue121-links-recheck.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:27.3215958Z ==> RUN  test-issue121-log-injection.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:27.3216335Z ==> RUN  test-issue121-mjs-syntax.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:29.3422336Z ==> RUN  test-issue121-path-coverage.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:30.3528539Z ==> RUN  test-issue121-pipeline-status-gate.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:31.3633934Z ==> RUN  test-issue121-playwright-deps.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:31.3635059Z ==> SKIP test-issue121-provenance-metadata-leak.sh (needs docker: drives a real buildx build to reproduce the metadata provenance leak (its offline twin, test-issue121-log-injection.sh, runs here))
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:31.3635867Z ==> RUN  test-issue121-py-syntax.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:31.3636229Z ==> RUN  test-issue121-readme-updater.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:32.3746175Z ==> RUN  test-issue121-reclaim-large-packages.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:32.3746593Z ==> RUN  test-issue121-required-docs.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:34.3964507Z ==> RUN  test-issue121-timeout-budgets.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:40.4591363Z ==> RUN  test-issue121-workflow-audit-scope.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T07:59:40.4591807Z ==> RUN  test-issue123-apt-retry-defaults.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:00:27.9751601Z ==> RUN  test-issue123-artifact-upload-fail-closed.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:00:27.9752307Z ==> RUN  test-issue123-brew-link-status.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:00:27.9754920Z ==> RUN  test-issue123-budget-enforcement.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:00.3297137Z ==> RUN  test-issue123-discovery-fail-closed.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:00.3297744Z ==> RUN  test-issue123-home-skel.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:01.3405271Z ==> RUN  test-issue123-log-capture-truncation.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:01.3405737Z ==> RUN  test-issue123-log-command-injection.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:02.3515236Z ==> RUN  test-issue123-npm-force.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:02.3515843Z ==> RUN  test-issue123-overrun-not-supersede.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:03.3628763Z ==> RUN  test-issue123-pr-diff-range.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:04.3742014Z ==> RUN  test-issue123-release-version.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:05.3864715Z ==> RUN  test-issue123-sigpipe-writers.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:06.3981330Z ==> RUN  test-issue123-workflow-yaml.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:09.4284627Z ==> RUN  test-issue123-zizmor-token.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:09.4285206Z ==> RUN  test-issue125-budget-state-survives-tmp-cleanup.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:09.4285672Z ==> RUN  test-issue125-verbose-secret-redaction.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:09.4285967Z ==> RUN  test-issue127-release-inventory.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:09.4286229Z ==> RUN  test-issue129-file.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:09.4286526Z ==> RUN  test-issue131-links-recheck.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:11.4518576Z ==> RUN  test-issue131-live-restore.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:11.4519369Z ==> RUN  test-issue133-stale-pid-files.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:11.4522367Z ==> RUN  test-issue135-link-verdicts.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:11.4522994Z ==> RUN  test-issue135-measure-workflow.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:11.4523578Z ==> RUN  test-issue82-dockerhub-login-tolerance.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:11.4524154Z ==> RUN  test-issue82-pr-parallel-tests.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:11.4524707Z ==> RUN  test-issue84-apply-changesets-quotes.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:11.4525268Z ==> RUN  test-issue90-release-workflow-policy.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:11.4525799Z ==> RUN  test-issue92-apt-retry-policy.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:11.4526307Z ==> RUN  test-json-manipulation.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:12.4635860Z ==> RUN  test-language-installs.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6436189Z ==> RUN  test-sed-fix.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6436889Z ==> SKIP verify-full-box-tooling.sh (needs docker and a pulled full-box image (tens of GB); manual probe behind scripts/ci/test-box.sh)
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6437457Z ==> RUN  verify-script-syntax.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6437770Z ==> RUN  version-policy-unit-test.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6437957Z 
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6438064Z ================ experiment suites ================
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6438352Z passed:  100
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6438890Z failed:  1
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6439095Z skipped: 8
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6439314Z 
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6439494Z Failing suites (full output above, logs in /tmp/experiment-logs):
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6440023Z   test-issue119-ci-resource-headroom.sh
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6460205Z every experiment suite finished in 337s of its 600s budget (exit 1).
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6476737Z ##[error]Process completed with exit code 1.
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6585995Z ##[group]Run actions/upload-artifact@v7
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6586313Z with:
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6586530Z   name: experiment-logs
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6586781Z   path: /tmp/experiment-logs/
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6587039Z   if-no-files-found: error
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6587278Z   retention-days: 7
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6587528Z   compression-level: 6
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6587753Z   overwrite: false
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6588258Z   include-hidden-files: false
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6588542Z   archive: true
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6588748Z env:
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6588988Z   GIT_CONFIG_COUNT: 1
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6589222Z   GIT_CONFIG_KEY_0: ini…nch
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6589471Z   GIT_CONFIG_VALUE_0: main
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.6590109Z ##[endgroup]
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.8100101Z With the provided path, there will be 101 files uploaded
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.8102556Z Artifact name is valid!
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:29.8102875Z Root directory input is valid!
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:30.5176952Z Uploading artifact: experiment-logs.zip
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:30.5203421Z Beginning upload of artifact content to blob storage
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.2011956Z Uploaded bytes 136984
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.2906840Z Finished uploading artifact content to blob storage!
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.2908228Z SHA256 digest of uploaded artifact is f3c35fec0f54775b17ace11aa79553082a9caeab6eb9dce2d9561de4b2d4f1ca
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.2909025Z Finalizing artifact upload
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.8389622Z Artifact experiment-logs successfully finalized. Artifact ID 15181203734
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.8390699Z Artifact experiment-logs has been successfully uploaded! Final size is 136984 bytes. Artifact ID is 15181203734
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.8393064Z Artifact download URL: https://github.com/link-foundation/box/actions/runs/45961808401/artifacts/15181203734
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.8544146Z Post job cleanup.
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.9162592Z [command]/usr/bin/git version
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.9194392Z git version 2.56.1
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.9221088Z Temporarily overriding HOME='/ho…270' before making global git config changes
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.9222102Z Adding repository directory to the temporary git global config as a safe directory
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.9224925Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/box/box
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.9250699Z Removing SSH command configuration
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.9255766Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.9281336Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.9451978Z Removing HTTP extra header
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.9456067Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.9480655Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.9652652Z Removing includeIf entries pointing to credentials config files
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.9657823Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.9682384Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+scripts / regression suites	UNKNOWN STEP	2026-11-27T08:01:31.9946714Z Cleaning up orphan processes

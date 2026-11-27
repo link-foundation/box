@@ -1,38 +1,38 @@
-PASS: .lycheeignore exists
-PASS: .github/workflows/links.yml exists
-PASS: scripts/ci/check-web-archive.mjs exists
-PASS: every script .github/workflows/links.yml runs exists in the tree
-PASS: scripts/ci/check-web-archive.mjs parses as an ES module
-PASS: lychee itself does not abort the job (the later steps still run)
-PASS: a non-zero lychee exit code fails the job explicitly
-PASS: the broken-link report is written to the job summary
-PASS: the vendored evidence tree is excluded, like every other linter here
-PASS: anchors are checked, not just the documents they point into
-PASS: the header comment, the args and the failure message all carry the flag
-PASS: the check is also scheduled: a link rots without anyone touching the repo
-PASS: the job has a timeout
-PASS: 15 ignore pattern(s) are defined
-PASS: .lycheeignore states the rule it is applying
-PASS: no ignore pattern silences https://hub.docker.com/r/konard/box-js
-PASS: no ignore pattern silences https://github.com/link-foundation/box
-PASS: no ignore pattern silences https://github.com/link-foundation/box/issues/115
-PASS: no ignore pattern silences https://github.com/link-assistant/hive-mind/blob/main/docs/CI-CD-BEST-PRACTICES.md
-PASS: no ignore pattern silences https://docs.docker.com/build/ci/github-actions/
-PASS: no ignore pattern silences https://archive.org/help/wayback_api.php
-PASS: the redirects section is not scanned (a redirect is not a broken link)
-PASS: a 404 URL is extracted as a broken URL
-PASS: a missing local file is extracted as unarchivable, not as a URL
-PASS: the same broken URL is reported once
-PASS: a report without the "Errors per input" heading is still parsed in full
-PASS: a Wayback timestamp renders as a date
-PASS: a missing lychee report is skipped, not failed
-PASS: a broken local link fails the check (no archive can answer for it)
-PASS: a clean report passes
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: scr…sts
+PASS: eve…ree
+PASS: scr…ule
+PASS: lyc…un)
+PASS: [REDACTED]
+PASS: the…ary
+PASS: the…ere
+PASS: anc…nto
+PASS: the…lag
+PASS: the…epo
+PASS: the…out
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: the…nk)
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: the…nce
+PASS: [REDACTED] "Errors per input" heading is still parsed in full
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
 --- the --include-fragments mutation fixture ---
-PASS: with the flag, anchors that resolve are reported OK (no false positive)
-PASS: with the flag, a renamed same-file heading is reported broken
-PASS: with the flag, a renamed heading in another file is reported broken
-PASS: without the flag the same broken anchors pass, so the flag is what checks them
+PASS: wit…ve)
+PASS: wit…ken
+PASS: wit…ken
+PASS: wit…hem
 note: set LINKS_LIVE=1 to run lychee for real (needs docker + network)
 
 34 passed, 0 failed

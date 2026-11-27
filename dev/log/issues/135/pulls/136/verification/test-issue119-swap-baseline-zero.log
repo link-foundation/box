@@ -1,62 +1,62 @@
-PASS: sample mode prints exactly one [resources] line
-PASS: sample reports 'disk /='
-PASS: sample reports 'MB free'
-PASS: sample reports 'mem '
-PASS: sample reports 'MB available of'
-PASS: sample reports 'swap '
-PASS: sample reports 'top '
-PASS: sample names the biggest process by resident memory, with a size
-PASS: RESOURCE_MONITOR_TOP_PROCESSES bounds how many processes are named
-PASS: three processes are named when three are asked for
-PASS: the process list stays on the one [resources] line
-PASS: RESOURCE_MONITOR_TOP_PROCESSES=0 reports '?' rather than an empty field
-PASS: an unreadable filesystem is reported as '?', not as 0
-PASS: loop mode stops after RESOURCE_MONITOR_MAX_SAMPLES samples
-PASS: loop mode stops once its caller is gone instead of orphaning
-PASS: a free-space reading below the threshold is flagged LOW-DISK
-PASS: an available-memory reading below the threshold is flagged LOW-MEM
-PASS: a healthy reading carries no warning
-PASS: an unknown mode exits 2 instead of silently sampling
-PASS: plan mode prints the reading it decided on
-PASS: plan mode names the size and the file it would allocate
-PASS: a reserve that cannot be met means no swapfile, not a smaller disk
-PASS: declining to provision is not a job failure
+PASS: sam…ine
+PASS: sam…/='
+PASS: sam…ee'
+PASS: sam…m '
+PASS: sam…of'
+PASS: sam…p '
+PASS: sam…p '
+PASS: sam…ize
+PASS: RES…med
+PASS: thr…for
+PASS: the…ine
+PASS: RES…eld
+PASS: [REDACTED]
+PASS: loo…les
+PASS: loo…ing
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: pla… on
+PASS: pla…ate
+PASS: [REDACTED]
+PASS: dec…ure
 FAIL: a met target still produced: [ensure-swap] plan: current=0MB target=1MB need=1MB free=132001MB reserve=40960MB allocatable=91041MB size=1MB file=/box-ci-swapfile
 [ensure-swap] decision: skip (only 91041MB is free above the 40960MB reserve)
-PASS: an unknown ensure-swap mode exits 2 instead of provisioning
-PASS: the default target is the 32 GB the measured 18.8 GB peak needs room above
-PASS: 3071MB of swap and 118000MB free means a 29697MB swapfile
-PASS: the happy path allocates, formats and enables, in that order, once each
-PASS: the result is reported from the kernel, not assumed from the plan
-PASS: a successful provision warns about nothing
-PASS: a filesystem without fallocate falls back to dd
-PASS: the dd fallback produces a file mkswap can work on
-PASS: a swapon that refuses the preallocated file is retried
-PASS: the retry rewrites the file with dd rather than repeating fallocate
-PASS: a retry that works is not reported as a problem
-PASS: swap that cannot be enabled is a warning on the job's log
-PASS: a swapfile that could not be enabled does not keep the disk it took
-PASS: an already-active swapfile is left exactly as it is
-PASS: recognising it costs no fallocate, mkswap or swapon
-PASS: pr-test-full reclaims the tool cache it never uses
-PASS: pr-test-full keeps the runner's swap
-PASS: pr-test-full has no free-disk-space step still using the old settings
-PASS: pr-test-full does not boot a buildx builder that `docker build` ignores
-PASS: pr-test-full samples resources from inside 'Build full chain (JS -> essentials -> languages -> full)'
-PASS: pr-test-full stops the sampler when 'Build full chain (JS -> essentials -> languages -> full)' ends
-PASS: pr-test-full provisions swap before it builds the chain
-PASS: pr-test-full provisions that swap before, not after, 'Build full chain (JS -> essentials -> languages -> full)'
-PASS: pr-test-dind reclaims the tool cache it never uses
-PASS: pr-test-dind keeps the runner's swap
-PASS: pr-test-dind has no free-disk-space step still using the old settings
-PASS: pr-test-dind does not boot a buildx builder that `docker build` ignores
-PASS: pr-test-dind samples resources from inside 'Build base box for dind variant'
-PASS: pr-test-dind stops the sampler when 'Build base box for dind variant' ends
-PASS: pr-test-dind provisions swap before it builds the chain
-PASS: pr-test-dind provisions that swap before, not after, 'Build base box for dind variant'
-PASS: pr-test-dind provisions swap only for the variant that builds the full box
-PASS: pr-test-dind gives the full variant 90 minutes and the other 13 sixty
-PASS: pr-tests.yml full-chain jobs carry the headroom and the sampler
+PASS: [REDACTED]
+PASS: the…ove
+PASS: 307…ile
+PASS: the…ach
+PASS: the…lan
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: the… on
+PASS: [REDACTED]
+PASS: the…ate
+PASS: [REDACTED]
+PASS: swa…log
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: rec…pon
+PASS: pr-…ses
+PASS: pr-…wap
+PASS: pr-…ngs
+PASS: pr-…res
+PASS: pr-…S -> essentials -> languages -> full)'
+PASS: pr-…S -> essentials -> languages -> full)' ends
+PASS: pr-…ain
+PASS: pr-…S -> essentials -> languages -> full)'
+PASS: pr-…ses
+PASS: pr-…wap
+PASS: pr-…ngs
+PASS: pr-…res
+PASS: pr-…nt'
+PASS: pr-…nds
+PASS: pr-…ain
+PASS: pr-…nt'
+PASS: pr-…box
+PASS: pr-…xty
+PASS: pr-…ler
 
 ================ issue #119 CI resource headroom ================
 passed: 39
