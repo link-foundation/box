@@ -50,7 +50,7 @@ The audit covers the nine runs named in [issue 135](https://github.com/link-foun
 
 The GitHub command census indexes both streamed logs and raw job archives with line numbers. Repeated terminal errors report the same failed dependency. Successful scan notices point to reports; retries identify recovered URLs. Release job traces also contain commands that would emit warnings in other scenarios. A warning string in a step's echoed shell body is not a runner warning. Actual warnings from stripped manpages are expected in the minimal image, and temporary registry retries can succeed without dropping the final publication verification. Prior suppressed-host cases, prototype fixtures and unexplained external failures were kept distinct. Historical CI statuses show that a green build alone could miss the wrapper ordering, report completeness and GET/HEAD defects.
 
-The verified Docker matrix emitted five early budget warnings for Java, Swift, essentials DinD, PHP DinD and the full chain. Each indicated the configured 70% threshold, and every job finished within budget. The full chain warning is on line 6882 of the full job log in the matrix archive.
+The verified Docker matrix emitted six early budget warnings for Java, Swift, essentials DinD, PHP DinD, Rocq DinD and the full chain. Each indicated the configured 70% threshold, and every job finished within budget. The full chain warning is on line 7943 of the full job log in the matrix archive.
 
 ## Hidden failures from the first manual measurement
 
