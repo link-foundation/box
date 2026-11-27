@@ -17,3 +17,35 @@ abort 'validate the fresh result before updating the README' unless steps.index(
 abort 'publication must be main-only' unless publish.fetch('if').include?("github.ref == 'refs/heads/main'")
 puts 'Measurement workflow ordering, output isolation, and publication guard passed.'
 RUBY
+
+python3 - <<'PYTHON'
+import json
+from pathlib import Path
+import subprocess
+import tempfile
+
+validator = ['python3', 'scripts/ci/validate-measurements.py']
+document = json.loads(Path('data/disk-space-measurements.json').read_text())
+
+with tempfile.TemporaryDirectory() as directory:
+    path = Path(directory, 'measurement.json')
+    for total, sizes, expected in (
+        (1000, [100] * 10, None),
+        (float('nan'), [100] * 10, 'total_size_mb must be a finite number'),
+        (1000, [float('inf')] + [100] * 9, 'components[0].size_mb must be a finite number'),
+        (1000, [0] * 10, 'components must add up to a positive finite size'),
+    ):
+        document['total_size_mb'] = total
+        document['components'] = [
+            {'name': str(i), 'category': 'test', 'size_mb': size}
+            for i, size in enumerate(sizes)
+        ]
+        path.write_text(json.dumps(document))
+        check = subprocess.run([*validator, path], capture_output=True, text=True)
+        if expected is None:
+            assert check.returncode == 0, check.stdout + check.stderr
+        else:
+            assert check.returncode == 1 and expected in check.stdout, check.stdout + check.stderr
+
+print('Measurement validator accepts finite data and rejects non-finite or all-zero results.')
+PYTHON

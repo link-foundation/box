@@ -26,6 +26,7 @@ Exit code 0 = valid; 1 = invalid; 2 = usage error.
 
 import argparse
 import json
+import math
 import sys
 
 DEFAULT_PATH = "data/disk-space-measurements.json"
@@ -40,6 +41,15 @@ REQUIRED_COMPONENT_KEYS = ("name", "category", "size_mb")
 def annotate(level, message, path):
     """Emit a GitHub Actions annotation as well as a plain line."""
     print(f"::{level} file={path}::{message}")
+
+
+def is_finite_number(value):
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 def main(argv):
@@ -78,8 +88,8 @@ def main(argv):
             errors.append(f"missing required key '{key}'")
 
     total = data.get("total_size_mb")
-    if not isinstance(total, (int, float)) or isinstance(total, bool):
-        errors.append(f"total_size_mb must be a number, got {total!r}")
+    if not is_finite_number(total):
+        errors.append(f"total_size_mb must be a finite number, got {total!r}")
         total = None
     elif total < args.min_total_mb:
         errors.append(
@@ -107,8 +117,8 @@ def main(argv):
             if key not in component:
                 errors.append(f"{where} is missing '{key}'")
         size = component.get("size_mb")
-        if not isinstance(size, (int, float)) or isinstance(size, bool):
-            errors.append(f"{where}.size_mb must be a number, got {size!r}")
+        if not is_finite_number(size):
+            errors.append(f"{where}.size_mb must be a finite number, got {size!r}")
         elif size < 0:
             errors.append(f"{where}.size_mb is negative ({size})")
         else:
@@ -117,7 +127,9 @@ def main(argv):
 
     # The total is reported separately from the per-component numbers, so the
     # two can disagree. A large gap means components went unattributed.
-    if total is not None and components and summed > 0:
+    if components and (not math.isfinite(summed) or summed <= 0):
+        errors.append("components must add up to a positive finite size")
+    elif total is not None and components:
         drift = abs(total - summed) / max(total, 1.0)
         debug(f"total_size_mb={total}, sum(components)={summed:.1f}, drift={drift:.1%}")
         if drift > 0.5:
