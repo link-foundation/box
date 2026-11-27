@@ -491,6 +491,10 @@ JSON_OUTPUT_FILE="${1:-/tmp/disk-space-measurements.json}"
 : "${NVM_INSTALL_VERSION:?must be passed in by scripts/measure-disk-space.sh}"
 : "${JAVA_MAJOR:?must be passed in by scripts/measure-disk-space.sh}"
 
+# Git and tool installers must look up configuration under the box account.
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_CACHE_HOME="$HOME/.cache"
+
 BOX_VERBOSE="${BOX_VERBOSE:-0}"
 # Trace every command when asked. Off by default: this log is already ~1800
 # lines, and `set -x` over a 40-minute install run is unreadable unless you are
@@ -551,6 +555,7 @@ with open('$JSON_OUTPUT_FILE', 'w') as f:
   log_success "Recorded: $name - ${size_mb}MB"
 }
 
+measurement_failed=0
 measure_install() {
   local name="$1"
   local category="$2"
@@ -576,6 +581,7 @@ measure_install() {
   else
     log_warning "Installation of $name failed"
     add_measurement "$name" "$category" 0 0
+    measurement_failed=1
   fi
 }
 
@@ -628,9 +634,9 @@ export NVM_DIR="$HOME/.nvm"
 
 # --- Pyenv + Python ---
 install_pyenv_python() {
-  curl https://pyenv.run | bash
   export PYENV_ROOT="$HOME/.pyenv"
   export PATH="$PYENV_ROOT/bin:$PATH"
+  curl https://pyenv.run | bash || return
   eval "$(pyenv init --path)"
   eval "$(pyenv init -)"
 
@@ -759,20 +765,38 @@ install_opam_rocq() {
     eval "$(opam env --switch=default 2>/dev/null)" || true
     opam repo add rocq-released https://rocq-prover.org/opam/released 2>/dev/null || true
     opam update 2>/dev/null || true
-    opam pin add rocq-prover --yes 2>/dev/null || opam install rocq-prover -y 2>/dev/null || opam install coq -y 2>/dev/null || true
+    # Keep compiler failures visible and bound parallel builds on CI runners.
+    local OPAMJOBS="${OPAMJOBS:-2}"
+    export OPAMJOBS
+    if ! opam pin add rocq-prover --yes && ! opam install rocq-prover -y && ! opam install coq -y; then
+      log_info "Trying Ubuntu's Coq package after the opam build failed"
+      maybe_sudo apt-get install -y coq || return
+    fi
+    if command_exists rocq; then
+      rocq -v
+    elif command_exists rocqc; then
+      rocqc --version
+    else
+      coqc --version
+    fi
+  else
+    return 1
   fi
 }
 measure_install "Opam + Rocq/Coq" "Runtime" install_opam_rocq
 
 # --- Homebrew ---
 install_homebrew() {
-  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
+  local installer
+  installer="$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || return
+  PATH="/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$PATH" NONINTERACTIVE=1 /bin/bash -c "$installer" || return
 
   if [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
   elif [[ -x "$HOME/.linuxbrew/bin/brew" ]]; then
     eval "$("$HOME/.linuxbrew/bin/brew" shellenv)"
   fi
+  brew --version
 }
 # Use du-based measurement for Homebrew because the outer script pre-creates
 # /home/linuxbrew/.linuxbrew before this runs, making the df-delta near-zero.
@@ -796,6 +820,7 @@ if install_homebrew; then
 else
   log_warning "Installation of Homebrew failed"
   add_measurement "Homebrew" "Package Manager" 0 0
+  measurement_failed=1
 fi
 
 # Load Homebrew
@@ -808,10 +833,9 @@ fi
 # --- PHP ---
 install_php() {
   if command -v brew &>/dev/null; then
-    brew tap shivammathur/php || true
     export HOMEBREW_NO_ANALYTICS=1
     export HOMEBREW_NO_AUTO_UPDATE=1
-    brew install php || true
+    brew install php || return
     # `brew link` prints its "Warning:" lines on a *successful* link, so the
     # output was filtered - but `| grep -v "Warning" || true` made grep's status
     # the pipeline's and then discarded it, so a link that failed was
@@ -825,7 +849,13 @@ install_php() {
     else
       printf '%s\n' "$brew_link_out"
       log_warning "brew link --overwrite --force php failed (exit $brew_link_status)"
+      return "$brew_link_status"
     fi
+    local php_prefix
+    php_prefix="$(brew --prefix php)" || return
+    "$php_prefix/bin/php" --version
+  else
+    return 1
   fi
 }
 measure_install "PHP (via Homebrew)" "Runtime" install_php
@@ -913,7 +943,8 @@ install_swift() {
 }
 measure_install "Swift 6.x" "Runtime" install_swift
 
-log_success "Box user measurements complete"
+log_info "Box user measurement attempts complete"
+exit "$measurement_failed"
 EOF_BOX
 
 chmod +x /tmp/box-measure.sh
@@ -943,10 +974,11 @@ log_debug "Generated script: /tmp/box-measure.sh ($(wc -l </tmp/box-measure.sh) 
 # versions resolved above are passed explicitly; /tmp/box-measure.sh asserts
 # each one (issue #115). `env` is used rather than a bare VAR=value prefix
 # because sudo's env_reset policy rejects unlisted variables.
+measurement_status=0
 if [ "$EUID" -eq 0 ]; then
-  su - box -c "env NODE_MAJOR='$NODE_MAJOR' NVM_INSTALL_VERSION='$NVM_INSTALL_VERSION' JAVA_MAJOR='$JAVA_MAJOR' BOX_VERBOSE='$BOX_VERBOSE' bash /tmp/box-measure.sh '$JSON_TMP_COPY'"
+  su - box -c "env NODE_MAJOR='$NODE_MAJOR' NVM_INSTALL_VERSION='$NVM_INSTALL_VERSION' JAVA_MAJOR='$JAVA_MAJOR' BOX_VERBOSE='$BOX_VERBOSE' bash /tmp/box-measure.sh '$JSON_TMP_COPY'" || measurement_status=$?
 else
-  sudo -i -u box env "NODE_MAJOR=$NODE_MAJOR" "NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION" "JAVA_MAJOR=$JAVA_MAJOR" "BOX_VERBOSE=$BOX_VERBOSE" bash /tmp/box-measure.sh "$JSON_TMP_COPY"
+  sudo -i -u box env "NODE_MAJOR=$NODE_MAJOR" "NVM_INSTALL_VERSION=$NVM_INSTALL_VERSION" "JAVA_MAJOR=$JAVA_MAJOR" "BOX_VERBOSE=$BOX_VERBOSE" bash /tmp/box-measure.sh "$JSON_TMP_COPY" || measurement_status=$?
 fi
 
 # Copy the updated measurements back to the original location
@@ -965,6 +997,11 @@ FINAL_MB=$(get_disk_usage_mb)
 TOTAL_MB=$(awk "BEGIN {printf \"%.2f\", $FINAL_MB - $BASELINE_MB}")
 
 finalize_json_output "$TOTAL_MB"
+
+if [ "$measurement_status" -ne 0 ]; then
+  log_error "One or more box-user measurements failed. Partial results saved to: $JSON_OUTPUT_FILE"
+  exit "$measurement_status"
+fi
 
 log_step "Measurement Complete!"
 log_success "Total installation size: ${TOTAL_MB}MB"

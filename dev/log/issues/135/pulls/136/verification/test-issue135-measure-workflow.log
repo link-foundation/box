@@ -1,3 +1,3 @@
 Measurement workflow ordering, output isolation, and publication guard passed.
 Measurement validator accepts finite data and rejects non-finite or all-zero results.
-data/disk-space-measurements.json: OK — 4830.0 MB total across 27 components (generated at 2026-09-06T04:47:03Z)
+A failed PHP installation leaves a partial result and sets the failure status.

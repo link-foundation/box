@@ -15,6 +15,7 @@ update = named.fetch('Update README with component sizes')
 publish = named.fetch('Commit and push changes')
 abort 'validate the fresh result before updating the README' unless steps.index(validate) < steps.index(update) && validate.fetch('run').end_with?('validate-measurements.py measurement.json')
 abort 'publication must be main-only' unless publish.fetch('if').include?("github.ref == 'refs/heads/main'")
+abort 'hosted measurement must remove runner-owned Homebrew' unless named.fetch('Free up disk space').fetch('run').include?('sudo rm -rf /home/linuxbrew/.linuxbrew')
 puts 'Measurement workflow ordering, output isolation, and publication guard passed.'
 RUBY
 
@@ -49,3 +50,23 @@ with tempfile.TemporaryDirectory() as directory:
 
 print('Measurement validator accepts finite data and rejects non-finite or all-zero results.')
 PYTHON
+
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+bash scripts/ci/extract-quoted-heredoc.sh scripts/measure-disk-space.sh EOF_BOX >"$work/generated.sh"
+sed -n '/^measure_install() {/,/^}/p; /^install_php() {/,/^}/p' "$work/generated.sh" >"$work/functions.sh"
+# shellcheck source=/dev/null
+source "$work/functions.sh"
+
+log_info() { :; }
+log_warning() { :; }
+cleanup_for_measurement() { :; }
+get_disk_usage_bytes() { printf '0\n'; }
+add_measurement() { printf '%s %s\n' "$3" "$4" >>"$work/results"; }
+brew() { return 19; }
+
+measurement_failed=0
+measure_install PHP Runtime install_php
+[[ "$measurement_failed" -eq 1 ]]
+[[ "$(cat "$work/results")" == "0 0" ]]
+echo 'A failed PHP installation leaves a partial result and sets the failure status.'

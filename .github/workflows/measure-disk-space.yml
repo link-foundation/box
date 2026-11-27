@@ -202,6 +202,9 @@ jobs:
           sudo rm -rf /opt/hostedtoolcache
           sudo rm -rf /usr/local/share/boost
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          # The hosted image ships Homebrew owned by runner. The measurement
+          # installs it as box and must measure a fresh installation.
+          sudo rm -rf /home/linuxbrew/.linuxbrew
 
           # Refresh apt cache to ensure all packages are available
           source ubuntu/24.04/common.sh
