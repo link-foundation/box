@@ -80,9 +80,7 @@ if command_exists opam; then
     opam repo add rocq-released https://rocq-prover.org/opam/released 2>/dev/null || true
     opam update 2>/dev/null || true
 
-    if opam pin add rocq-prover --yes 2>/dev/null; then
-      log_success "Rocq Prover pinned and installed"
-    elif opam install rocq-prover -y 2>/dev/null; then
+    if opam install rocq-prover -y; then
       log_success "Rocq Prover installed via opam install"
     else
       opam install coq -y || true

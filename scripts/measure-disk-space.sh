@@ -773,7 +773,7 @@ install_opam_rocq() {
     # Keep compiler failures visible and bound parallel builds on CI runners.
     local OPAMJOBS="${OPAMJOBS:-2}"
     export OPAMJOBS
-    if ! opam pin add rocq-prover --yes && ! opam install rocq-prover -y && ! opam install coq -y; then
+    if ! opam install rocq-prover -y && ! opam install coq -y; then
       log_info "Trying Ubuntu's Coq package after the opam build failed"
       maybe_sudo apt-get install -y coq || return
     fi

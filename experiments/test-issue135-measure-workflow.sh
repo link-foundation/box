@@ -17,6 +17,18 @@ abort 'validate the fresh result before updating the README' unless steps.index(
 abort 'publication must be main-only' unless publish.fetch('if').include?("github.ref == 'refs/heads/main'")
 abort 'hosted measurement must remove runner-owned Homebrew' unless named.fetch('Free up disk space').fetch('run').include?('sudo rm -rf /home/linuxbrew/.linuxbrew')
 puts 'Measurement workflow ordering, output isolation, and publication guard passed.'
+
+%w[
+  scripts/measure-disk-space.sh
+  scripts/ubuntu-24-server-install.sh
+  ubuntu/24.04/full-box/install.sh
+  ubuntu/24.04/rocq/install.sh
+].each do |file|
+  source = File.read(file)
+  abort "#{file} must install the published Rocq package" unless source.include?('opam install rocq-prover -y')
+  abort "#{file} still tries to pin a local Rocq directory" if source.include?('opam pin add rocq-prover')
+end
+puts 'All Rocq installers use the published opam package.'
 RUBY
 
 python3 - <<'PYTHON'
