@@ -58,74 +58,45 @@ function setOutput(name, value) {
   console.log(`${name}=${value}`);
 }
 
-/**
- * Extract the "Errors per input" section of a lychee markdown report.
- *
- * Everything after it - most importantly "## Redirects per input" - describes
- * links that resolved successfully, so scanning the whole report would make
- * every redirected link look broken. Reports without that heading (older
- * lychee versions, hand-written fixtures) are parsed in full.
- *
- * @param {string} content - The markdown content from lychee
- * @returns {string} The errors section, or the whole document when there is none
+/** Extract only failure sections, excluding successful redirects and summaries.
+ * Legacy reports without per-input headings are parsed in full.
  */
 export function extractErrorsSection(content) {
   const lines = content.split('\n');
-  const start = lines.findIndex((line) =>
-    /^#+\s+Errors per input\s*$/.test(line)
-  );
-  if (start === -1) {
-    return content;
-  }
-  const heading = /^(#+)\s/.exec(lines[start])[1].length;
-  const section = [];
-  for (const line of lines.slice(start + 1)) {
-    const next = /^(#+)\s/.exec(line);
-    if (next && next[1].length <= heading) {
-      break; // a sibling or parent heading ends the errors section
+  const sections = [];
+  let depth = 0;
+  let hasSections = false;
+  for (const line of lines) {
+    const heading = /^(#+)\s+(.+?)\s*$/.exec(line);
+    if (heading && /per input$/.test(heading[2])) hasSections = true;
+    if (heading && depth && heading[1].length <= depth) depth = 0;
+    if (heading && /^(Errors|Timeouts) per input$/.test(heading[2])) {
+      depth = heading[1].length;
+    } else if (depth) {
+      sections.push(line);
     }
-    section.push(line);
   }
-  return section.join('\n');
+  return hasSections ? sections.join('\n') : content;
 }
 
-/**
- * Extract broken links from lychee markdown output.
- * Lychee markdown format includes lines like:
- *   * [404] https://example.com/broken-link
- *   * [ERROR] <file:///repo/missing.yml> | File not found
- * @param {string} content - The markdown content from lychee
- * @returns {{urls: string[], others: string[]}} Broken http(s) URLs, and broken
- *   links that cannot be looked up in the Wayback Machine (local files,
- *   unresolvable root-relative links, ...)
- */
-export function extractBrokenLinks(content) {
+/** Read the same failure entries for recovery and archive suggestions. */
+export function readFailureEntries(content) {
   const section = extractErrorsSection(content);
-  const urls = [];
-  const others = [];
+  const pattern = /^[ \t]*[*-][ \t]+\[([^\]\r\n]+)\][ \t]+(?:<([^>\r\n]+)>|([^\s<>|]+))(?:[ \t]+\(at [^)\r\n]*\))?[ \t]*(?:\|[ \t]*)?([^\r\n]*)$/gim;
+  return Array.from(section.matchAll(pattern), ([, marker, bracketed, bare, detail]) => ({
+    marker: marker.trim(),
+    url: bracketed ?? bare,
+    detail: detail.trim(),
+  }));
+}
 
-  // One bullet per broken link; the status marker is always present, so it
-  // anchors the match. Any link shape then qualifies, including the non-HTTP
-  // failures (a missing local file, an unresolvable root-relative link) that
-  // the Wayback Machine cannot answer.
-  const entryPattern =
-    /^\s*(?:\*|-)\s+\[(?:4\d\d|5\d\d|ERROR|TIMEOUT|UNKNOWN)\]\s+<?([^\s>|)]+)>?/gim;
-  let match;
-  while ((match = entryPattern.exec(section)) !== null) {
-    const link = match[1].trim().replace(/[.,;!?]+$/, '');
-    if (!link) {
-      continue;
-    }
-    if (/^https?:\/\//i.test(link)) {
-      if (!urls.includes(link)) {
-        urls.push(link);
-      }
-    } else if (!others.includes(link)) {
-      others.push(link);
-    }
+export function extractBrokenLinks(content) {
+  const urls = new Set();
+  const others = new Set();
+  for (const { url } of readFailureEntries(content)) {
+    (/^https?:\/\//i.test(url) ? urls : others).add(url);
   }
-
-  return { urls, others };
+  return { urls: [...urls], others: [...others] };
 }
 
 /**
@@ -166,16 +137,16 @@ export function splitRecoveredUrls(urls, recoveredText) {
 /**
  * Ask the Wayback Machine whether a URL has an archived snapshot.
  * @param {string} url - The URL to check
- * @returns {Promise<{available: boolean, archiveUrl: string|null, timestamp: string|null}>}
+ * @returns {Promise<{available: boolean, archiveUrl?: string, timestamp?: string, error?: string}>}
  */
-async function checkWaybackMachine(url) {
+export async function checkWaybackMachine(url, { fetchImpl = fetch, timeoutMs = 10_000 } = {}) {
   const apiUrl = `${WAYBACK_API}${encodeURIComponent(url)}`;
 
   const controller = new AbortController();
-  const timeoutId = globalThis.setTimeout(() => controller.abort(), 10000);
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(apiUrl, {
+    const response = await fetchImpl(apiUrl, {
       headers: {
         'User-Agent': 'box-link-checker/1.0 (GitHub Actions CI)',
       },
@@ -183,28 +154,30 @@ async function checkWaybackMachine(url) {
     });
 
     if (!response.ok) {
-      console.warn(`  Wayback API returned ${response.status} for ${url}`);
-      return { available: false, archiveUrl: null, timestamp: null };
+      return { available: false, error: 'HTTP ' + response.status };
     }
 
     const data = await response.json();
-
-    if (data.archived_snapshots?.closest?.available === true) {
-      const snapshot = data.archived_snapshots.closest;
-      const archiveUrl = snapshot.url.replace(/^http:\/\//, 'https://');
-      return {
-        available: true,
-        archiveUrl,
-        timestamp: snapshot.timestamp,
-      };
+    const snapshots = data?.archived_snapshots;
+    if (!snapshots || typeof snapshots !== 'object' || Array.isArray(snapshots)) {
+      return { available: false, error: 'invalid snapshot response' };
     }
-
-    return { available: false, archiveUrl: null, timestamp: null };
+    const snapshot = snapshots.closest;
+    if (snapshot?.available === true) {
+      const archiveUrl = new URL(snapshot.url);
+      if (!['http:', 'https:'].includes(archiveUrl.protocol) ||
+          typeof snapshot.timestamp !== 'string') {
+        return { available: false, error: 'invalid snapshot URL or timestamp' };
+      }
+      archiveUrl.protocol = 'https:';
+      return { available: true, archiveUrl: archiveUrl.href, timestamp: snapshot.timestamp };
+    }
+    if (Object.keys(snapshots).length === 0 || snapshot?.available === false) {
+      return { available: false };
+    }
+    return { available: false, error: 'invalid snapshot response' };
   } catch (error) {
-    console.warn(
-      `  Failed to check Wayback Machine for ${url}: ${error.message}`
-    );
-    return { available: false, archiveUrl: null, timestamp: null };
+    return { available: false, error: error.message };
   } finally {
     globalThis.clearTimeout(timeoutId);
   }
@@ -360,22 +333,36 @@ async function main() {
 
   const withArchive = [];
   const withoutArchive = [];
+  let failedLookups = 0;
+  const deadline = Date.now() + 30_000;
 
   for (const url of brokenUrls) {
     console.log(`Checking: ${url}`);
-    const result = await checkWaybackMachine(url);
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      console.log('Web Archive lookup budget expired. Remaining snapshots could not be checked.');
+      failedLookups += 1;
+      break;
+    }
+    const result = await checkWaybackMachine(url, { timeoutMs: Math.min(10_000, remaining) });
 
     if (result.available) {
       const date = formatTimestamp(result.timestamp);
       console.log(`  ✓ Archived on ${date}: ${result.archiveUrl}`);
       withArchive.push({ url, archiveUrl: result.archiveUrl, date });
+    } else if (result.error) {
+      console.log('  Web Archive lookup failed for %s (%s). Snapshot availability is unknown.', url, result.error);
+      failedLookups += 1;
     } else {
       console.log('  ✗ Not found in Web Archive');
       withoutArchive.push(url);
     }
 
     // Small delay to avoid rate-limiting the Wayback API
-    await new Promise((resolve) => globalThis.setTimeout(resolve, 500));
+    const waitMs = Math.min(500, deadline - Date.now());
+    if (waitMs > 0 && url !== brokenUrls.at(-1)) {
+      await new Promise((resolve) => globalThis.setTimeout(resolve, waitMs));
+    }
   }
 
   console.log('\n=== Web Archive Check Summary ===\n');
@@ -384,7 +371,8 @@ async function main() {
   reportUnarchivedUrls(withoutArchive);
 
   const allArchived =
-    withoutArchive.length === 0 && unarchivableLinks.length === 0;
+    withoutArchive.length === 0 && unarchivableLinks.length === 0 &&
+    failedLookups === 0;
   setOutput('all_archived', allArchived ? 'true' : 'false');
 
   if (!allArchived) {
