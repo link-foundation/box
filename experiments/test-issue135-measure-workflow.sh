@@ -86,10 +86,8 @@ curl() {
     *) return 22 ;;
   esac
 }
-SWIFT_CANDIDATES='99.9.9 6.3.3'
-[[ "$(install_swift)" == 'Swift fixture' ]]
-SWIFT_CANDIDATES='99.9.9'
-if install_swift; then
+[[ "$(SWIFT_CANDIDATES='99.9.9 6.3.3' install_swift)" == 'Swift fixture' ]]
+if SWIFT_CANDIDATES='99.9.9' install_swift; then
   echo 'missing Swift tarball passed measurement' >&2
   exit 1
 fi

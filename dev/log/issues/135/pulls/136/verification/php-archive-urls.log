@@ -1,0 +1,5 @@
+Array
+(
+    [0] => https://example.com/docs
+    [1] => https://example.com/path(part)
+)

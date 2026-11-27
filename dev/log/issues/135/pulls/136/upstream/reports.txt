@@ -3,3 +3,6 @@ https://github.com/link-foundation/python-ai-driven-development-pipeline-templat
 https://github.com/link-foundation/php-ai-driven-development-pipeline-template/issues/41
 https://github.com/link-foundation/python-ai-driven-development-pipeline-template/issues/171
 https://github.com/link-foundation/php-ai-driven-development-pipeline-template/issues/42
+https://github.com/link-foundation/js-ai-driven-development-pipeline-template/issues/324
+https://github.com/link-foundation/python-ai-driven-development-pipeline-template/issues/172
+https://github.com/link-foundation/php-ai-driven-development-pipeline-template/issues/43
