@@ -94,7 +94,7 @@ else
   fail "lychee aborts the job, so the Wayback lookup and summary never run"
 fi
 
-if [[ "$WORKFLOW_SRC" == *"steps.lychee.outputs.exit_code != 0"* ]] \
+if [[ "$WORKFLOW_SRC" == *"steps.lychee.outputs.exit_code != '0'"* ]] \
   && [[ "$WORKFLOW_SRC" == *"exit 1"* ]]; then
   pass "a non-zero lychee exit code fails the job explicitly"
 else
@@ -348,7 +348,7 @@ MD
 
   # Intact: the same-file heading exists, so both anchors resolve.
   printf '\n## The Section\n' >>"$FRAG_DIR/a.md"
-  if frag_run --include-fragments | grep -q '0 Errors'; then
+  if intact=$(frag_run --include-fragments) && grep -q '0 Errors' <<<"$intact"; then
     pass "with the flag, anchors that resolve are reported OK (no false positive)"
   else
     fail "with the flag, valid anchors are reported broken"

@@ -1,0 +1,4 @@
+Re-check: 1 lychee failure(s), 0 final, 1 transient or unanswered
+::notice::http://127.0.0.1:34085/missing answers 100..=103,200..=299 on re-check -- not a broken link
+Re-check finished: 1 recovered, 0 still failing
+FAIL: HEAD 200 concealed GET 404

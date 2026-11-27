@@ -33,6 +33,9 @@ on:
       - 'scripts/ci/extract-quoted-heredoc.sh'
       - 'scripts/ci/validate-measurements.py'
       - 'scripts/ci/summarize-measurements.py'
+      - 'scripts/ci/run-with-budget-warning.sh'
+      - 'experiments/test-issue125-budget-state-survives-tmp-cleanup.sh'
+      - 'experiments/test-issue135-measure-workflow.sh'
   # Allow manual trigger
   workflow_dispatch:
     inputs:
@@ -121,6 +124,11 @@ jobs:
 
       # Argument handling is the other half of what broke: the documented
       # no-argument invocation used to abort on `$1: unbound variable`.
+      - name: Regression tests for measurement output and budget state
+        run: |
+          bash experiments/test-issue125-budget-state-survives-tmp-cleanup.sh
+          bash experiments/test-issue135-measure-workflow.sh
+
       - name: Check the command line interface
         run: |
           ./scripts/measure-disk-space.sh --help > /dev/null
@@ -138,6 +146,7 @@ jobs:
     # Pull requests stop at `validate`; measuring installs every toolchain on a
     # bare runner and ends in a push to main.
     if: github.event_name != 'pull_request'
+    needs: validate
     runs-on: ubuntu-24.04
     # 180 was "3 hours max for full installation measurement" - a number nobody
     # had checked against a run. Every successful run of this job in the
@@ -193,6 +202,9 @@ jobs:
           sudo rm -rf /opt/hostedtoolcache
           sudo rm -rf /usr/local/share/boost
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          # The hosted image ships Homebrew owned by runner. The measurement
+          # installs it as box and must measure a fresh installation.
+          sudo rm -rf /home/linuxbrew/.linuxbrew
 
           # Refresh apt cache to ensure all packages are available
           source ubuntu/24.04/common.sh
@@ -207,6 +219,8 @@ jobs:
 
       - name: Run disk space measurement
         id: measure
+        env:
+          BUDGET_VERBOSE: ${{ inputs.verbose && '1' || '0' }}
         run: |
           set -o pipefail
           echo "=== Starting disk space measurement ==="
@@ -223,28 +237,30 @@ jobs:
           # budget (issue #121, docs/CI-TIMEOUT-BUDGETS.md).
           bash scripts/ci/run-with-budget-warning.sh 2400 "disk space measurement" \
             sudo env "BOX_VERBOSE=$BOX_VERBOSE" ./scripts/measure-disk-space.sh \
-            --json-output data/disk-space-measurements.json 2>&1 | tee measurement.log
+            --json-output measurement.json 2>&1 | tee measurement.log
 
           echo "=== Measurement complete ==="
 
           # Check if JSON was created
-          if [ -f data/disk-space-measurements.json ]; then
-            echo "json_created=true" >> "$GITHUB_OUTPUT"
+          if [ -s measurement.json ]; then
             echo ""
             echo "=== Measurements JSON ==="
-            cat data/disk-space-measurements.json
+            cat measurement.json
           else
-            echo "json_created=false" >> "$GITHUB_OUTPUT"
             echo "::error::JSON file was not created"
             exit 1
           fi
 
+      # Check the fresh output before updating the README or copying it over the committed data.
+      - name: Validate measurements
+        run: python3 scripts/ci/validate-measurements.py measurement.json
+
       - name: Update README with component sizes
-        if: steps.measure.outputs.json_created == 'true'
         env:
           JSON_FILE: data/disk-space-measurements.json
           README_FILE: README.md
         run: |
+          cp measurement.json data/disk-space-measurements.json
           chmod +x scripts/update-readme-sizes.sh
           ./scripts/update-readme-sizes.sh
 
@@ -255,52 +271,19 @@ jobs:
       - name: Check for changes
         id: changes
         run: |
-          if git diff --quiet README.md data/disk-space-measurements.json 2>/dev/null; then
-            echo "has_changes=false" >> "$GITHUB_OUTPUT"
-            echo "No changes detected"
-          else
-            echo "has_changes=true" >> "$GITHUB_OUTPUT"
-            echo "Changes detected:"
-            git diff --stat README.md data/disk-space-measurements.json 2>/dev/null || true
-          fi
-
-      # The thresholds used to be compared with `[ -lt ]`, but total_size_mb is
-      # a float ("7286.0"), so that test never once evaluated: bash printed
-      # "integer expression expected", returned 2, and the `||` fell through to
-      # "valid". A measurement reporting 5 MB with a plausible component count
-      # would have been committed as good. The checks live in a script now, so
-      # they are testable and shared with the pull request gate (issue #115).
-      #
-      # `if ... then valid=true else valid=false` was wrong in the same way the
-      # `[ -lt ]` test was, one level up: the validator documents 0 = valid,
-      # 1 = invalid, 2 = usage error, and argparse exits 2 as well - so a
-      # SyntaxError, a renamed flag or a missing file all read as "these
-      # measurements are invalid" and quietly threw away three hours of work
-      # with the job green (issue #121). Only 1 means invalid. Anything else
-      # means the question was not answered, which is an error, not a verdict.
-      - name: Validate measurements
-        id: validate
-        run: |
-          set +e
-          python3 scripts/ci/validate-measurements.py data/disk-space-measurements.json
-          rc=$?
-          set -e
-          case "$rc" in
-            0)
-              echo "valid=true" >> "$GITHUB_OUTPUT"
-              ;;
+          status=0
+          git diff --quiet -- README.md data/disk-space-measurements.json || status=$?
+          case "$status" in
+            0) echo "has_changes=false" >> "$GITHUB_OUTPUT" ;;
             1)
-              echo "valid=false" >> "$GITHUB_OUTPUT"
-              echo "::warning::The measurements are invalid; nothing will be committed."
+              echo "has_changes=true" >> "$GITHUB_OUTPUT"
+              git diff --stat -- README.md data/disk-space-measurements.json
               ;;
-            *)
-              echo "::error title=Measurement validation could not run::validate-measurements.py exited $rc, which is neither valid (0) nor invalid (1). The measurement is not being discarded on the strength of an answer nobody got."
-              exit 1
-              ;;
+            *) exit "$status" ;;
           esac
 
       - name: Commit and push changes
-        if: steps.changes.outputs.has_changes == 'true' && steps.validate.outputs.valid == 'true'
+        if: github.ref == 'refs/heads/main' && steps.changes.outputs.has_changes == 'true'
         env:
           # Only read on the fallback path, when a repository rule declines the
           # direct push and the commit has to arrive as a pull request.
@@ -333,17 +316,6 @@ jobs:
 
           echo "Changes committed and pushed successfully"
 
-      # Deliberately NOT gated on has_changes. It used to be, which meant a
-      # measurement that was invalid AND identical to the committed one passed
-      # the workflow silently — the failure mode that keeps a broken number in
-      # the README for as long as it stays broken.
-      - name: Fail on invalid measurements
-        if: steps.validate.outputs.valid != 'true'
-        run: |
-          echo "::error::Invalid measurements detected. Not committing to prevent data corruption."
-          echo "Please investigate the measurement logs and fix the underlying issue."
-          exit 1
-
       # Always upload, especially on failure: measurement.log is the only record
       # of what the three-hour run did, and a plain step without `if:` is
       # skipped as soon as anything above it fails — which is exactly when the
@@ -367,7 +339,7 @@ jobs:
         with:
           name: disk-space-measurements
           path: |
-            data/disk-space-measurements.json
+            measurement.json
             measurement.log
           retention-days: 30
           if-no-files-found: error
@@ -380,8 +352,8 @@ jobs:
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
-          if [ -f data/disk-space-measurements.json ]; then
-            python3 scripts/ci/summarize-measurements.py data/disk-space-measurements.json >> "$GITHUB_STEP_SUMMARY"
+          if [ -s measurement.json ]; then
+            python3 scripts/ci/summarize-measurements.py measurement.json >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Measurement JSON not found" >> "$GITHUB_STEP_SUMMARY"
           fi

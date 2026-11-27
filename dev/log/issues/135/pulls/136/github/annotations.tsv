@@ -1,0 +1,41 @@
+34455018634	2454	Measure Component Disk Space	UNKNOWN STEP	2026-09-10T08:42:00.4885403Z ##[error]Process completed with exit code 1.
+34455018634	2696	pipeline-status	UNKNOWN STEP	2026-09-10T08:42:10.1859522Z ##[error]Failing jobs: measure-disk-space
+34455018634	2697	pipeline-status	UNKNOWN STEP	2026-09-10T08:42:10.1871082Z ##[error]Process completed with exit code 1.
+35719326243	299	links / lychee	UNKNOWN STEP	2026-09-22T11:03:49.9982310Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/35719326243#summary-106718247559
+36566801031	299	links / lychee	UNKNOWN STEP	2026-09-29T12:14:50.0796235Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/36566801031#summary-109400605848
+37466341052	307	links / lychee	UNKNOWN STEP	2026-10-06T12:51:59.3450307Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/37466341052#summary-112278207862
+37466341052	363	links / lychee	UNKNOWN STEP	2026-10-06T12:52:05.7911447Z ##[notice]Broken link detected: https://github.com/orgs/community/discussions/45969
+37466341052	395	links / lychee	UNKNOWN STEP	2026-10-06T12:52:05.8163318Z ##[error]lychee found broken links.
+37466341052	412	links / lychee	UNKNOWN STEP	2026-10-06T12:52:05.8174374Z ##[error]Process completed with exit code 1.
+37466341052	629	pipeline-status	UNKNOWN STEP	2026-10-06T12:52:21.5812454Z ##[error]Failing jobs: link-checker
+37466341052	630	pipeline-status	UNKNOWN STEP	2026-10-06T12:52:21.5823954Z ##[error]Process completed with exit code 1.
+37747039934	300	links / lychee	UNKNOWN STEP	2026-10-08T08:01:16.4149661Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/37747039934#summary-113210863743
+38157957089	300	links / lychee	UNKNOWN STEP	2026-10-11T17:03:57.5277047Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/38157957089#summary-114524726834
+38157957100	1102	scripts / regression suites	UNKNOWN STEP	2026-10-11T17:04:32.3287956Z ##[error]Suite failed with exit status 1
+38157957100	1183	scripts / regression suites	UNKNOWN STEP	2026-10-11T17:09:45.4216409Z ##[error]Process completed with exit code 1.
+38157957100	2084	pipeline-status	UNKNOWN STEP	2026-10-11T17:09:57.5824131Z ##[error]Failing jobs: experiments
+38157957100	2085	pipeline-status	UNKNOWN STEP	2026-10-11T17:09:57.5831913Z ##[error]Process completed with exit code 1.
+38406835991	307	links / lychee	UNKNOWN STEP	2026-10-13T13:41:19.6361199Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/38406835991#summary-115328544323
+38406835991	363	links / lychee	UNKNOWN STEP	2026-10-13T13:43:54.6345293Z ##[error]Broken link detected: https://packages.ubuntu.com/noble/fasm
+38406835991	373	links / lychee	UNKNOWN STEP	2026-10-13T13:43:54.6401920Z ##[error]Process completed with exit code 1.
+38406835991	399	links / lychee	UNKNOWN STEP	2026-10-13T13:43:54.6560227Z ##[error]lychee found broken links.
+38406835991	416	links / lychee	UNKNOWN STEP	2026-10-13T13:43:54.6567346Z ##[error]Process completed with exit code 1.
+38406835991	634	pipeline-status	UNKNOWN STEP	2026-10-13T13:44:07.2920416Z ##[error]Failing jobs: link-checker
+38406835991	635	pipeline-status	UNKNOWN STEP	2026-10-13T13:44:07.2932301Z ##[error]Process completed with exit code 1.
+38633908399	300	links / lychee	UNKNOWN STEP	2026-10-14T20:39:49.9991288Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/38633908399#summary-116092113459
+39411790593	300	links / lychee	UNKNOWN STEP	2026-10-20T10:59:56.8228536Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/39411790593#summary-118591091894
+40497985564	300	links / lychee	UNKNOWN STEP	2026-10-27T11:41:38.3461144Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/40497985564#summary-122168202603
+41646781886	300	links / lychee	UNKNOWN STEP	2026-11-03T13:43:14.1022437Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/41646781886#summary-125954093894
+42833999978	300	links / lychee	UNKNOWN STEP	2026-11-10T14:26:17.3640520Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/42833999978#summary-129891204287
+44115877567	307	links / lychee	UNKNOWN STEP	2026-11-17T15:35:20.9588052Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/44115877567#summary-134153646610
+44115877567	363	links / lychee	UNKNOWN STEP	2026-11-17T15:35:27.2735983Z ##[notice]Broken link detected: https://github.com/qdm12/docker-proxy-acl-alpine
+44115877567	395	links / lychee	UNKNOWN STEP	2026-11-17T15:35:27.2889256Z ##[error]lychee found broken links.
+44115877567	412	links / lychee	UNKNOWN STEP	2026-11-17T15:35:27.2898467Z ##[error]Process completed with exit code 1.
+44115877567	630	pipeline-status	UNKNOWN STEP	2026-11-17T15:35:40.6200485Z ##[error]Failing jobs: link-checker
+44115877567	631	pipeline-status	UNKNOWN STEP	2026-11-17T15:35:40.6213306Z ##[error]Process completed with exit code 1.
+45443984715	307	links / lychee	UNKNOWN STEP	2026-11-24T17:02:32.3250887Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/45443984715#summary-138622554211
+45443984715	363	links / lychee	UNKNOWN STEP	2026-11-24T17:02:33.9976069Z ##[notice]Broken link detected: https://github.com/qdm12/docker-proxy-acl-alpine
+45443984715	395	links / lychee	UNKNOWN STEP	2026-11-24T17:02:34.0160484Z ##[error]lychee found broken links.
+45443984715	412	links / lychee	UNKNOWN STEP	2026-11-24T17:02:34.0172392Z ##[error]Process completed with exit code 1.
+45443984715	630	pipeline-status	UNKNOWN STEP	2026-11-24T17:02:51.2482224Z ##[error]Failing jobs: link-checker
+45443984715	631	pipeline-status	UNKNOWN STEP	2026-11-24T17:02:51.2491077Z ##[error]Process completed with exit code 1.

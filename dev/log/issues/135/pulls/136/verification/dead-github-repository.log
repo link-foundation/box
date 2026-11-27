@@ -1,0 +1,3 @@
+HTTP/2.0 404 Not Found
+X-Ratelimit-Reset: 1795764045
+{"message":"Not Found","documentation_url":"https://docs.github.com/rest/repos/repos#get-a-repository","status":"404"}gh: Not Found (HTTP 404)

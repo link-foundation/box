@@ -1,0 +1,1 @@
+check-workflow-path-coverage.mjs: 48 script(s) across 15 workflow(s); every file each one reads can start a run that runs it.

@@ -243,7 +243,7 @@ fi
 # --- Rocq/Coq (Opam) ---
 log_step "Installing Rocq/Coq"
 if ! command_exists opam; then
-  bash -c "sh <(curl -fsSL https://opam.ocaml.org/install.sh) --no-backup" <<< "y" || {
+  bash -c "sh <(curl -fsSL https://opam.ocaml.org/install.sh) --no-backup" <<< "" || {
     sudo apt-get install -y opam || true
   }
 fi
@@ -262,7 +262,7 @@ if command_exists opam; then
   if [ "$ROCQ_ACCESSIBLE" = false ]; then
     opam repo add rocq-released https://rocq-prover.org/opam/released 2>/dev/null || true
     opam update 2>/dev/null || true
-    opam pin add rocq-prover --yes 2>/dev/null || opam install rocq-prover -y 2>/dev/null || opam install coq -y || true
+    opam install rocq-prover -y || opam install coq -y || true
     eval "$(opam env --switch=default 2>/dev/null)" || true
   fi
 
@@ -273,6 +273,13 @@ if command_exists opam; then
       echo 'test -r $HOME/.opam/opam-init/init.sh && . $HOME/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true'
     } >> "$HOME/.bashrc"
   fi
+fi
+
+if ! { { command_exists rocq && rocq -v; } ||
+  { command_exists rocqc && rocqc --version; } ||
+  { command_exists coqc && coqc --version; }; }; then
+  log_error "Rocq/Coq installation failed: no working prover executable"
+  exit 1
 fi
 
 # --- Homebrew + PHP ---

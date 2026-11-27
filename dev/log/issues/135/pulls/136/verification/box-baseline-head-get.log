@@ -1,0 +1,6 @@
+Re-check: 1 lychee failure(s); 0 final, 1 eligible for retry
+::notice title=Link recovered on re-check::http://127.0.0.1:46803/missing failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+Re-check finished: 1 recovered, 0 still broken
+all_recovered=true: every failure in the report was retryable, and all URLs return an accepted status now.
+FAIL: HEAD 200 concealed GET 404
+Baseline exit 1 (expected 1)

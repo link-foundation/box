@@ -1,0 +1,86 @@
+=== Part 1: the failure mode, reproduced from scratch ===
+  ok: the quoted heredoc makes the generated script fail
+  ok: it fails with exactly the CI error: NODE_MAJOR: unbound variable
+  ok: the generated file kept the literal text ${NODE_MAJOR} instead of the value 24
+  ok: passing the value in explicitly fixes it (exit code)
+  ok: and the value actually arrives
+  ok: omitting it still fails (a fix must not silently install the wrong version)
+  ok: and fails with a named, actionable message instead of a bare line number
+
+=== Part 2: the checker catches it, and only it ===
+  ok: flags a leaked ${NODE_MAJOR}
+  ok: flags a leaked $JAVA_MAJOR
+  ok: and exits non-zero
+  ok: no false positive on a clean generated script
+  ok:   (and reports nothing at all)
+  ok:   never flags PERLBREW_LIB
+  ok:   never flags outsep
+  ok:   never flags NOT_A_REFERENCE
+  ok:   never flags ALSO_NOT_A_REFERENCE
+  ok:   never flags MAYBE
+  ok:   never flags HOME
+  ok: an exported variable read by a plain child process is not a leak
+  ok: every name in a multi-variable export is collected, not just the first
+  ok:   (SECOND_VAR is not reported)
+  ok: a quoted value containing spaces does not hide the names after it
+  ok: a NAME= inside a quoted value is not an export
+  ok:   (INNER_VAR is still reported)
+  ok: export -f does not register a variable of that name
+  ok: but exporting is not enough across su - (the environment is reset)
+  ok: and the message names the barrier rather than blaming the export
+  ok: does not police prose or JSON heredocs
+  ok: does not flag an unquoted heredoc (it expands at write time)
+  ok: a <<'EOF' inside a string literal is not an opener
+  ok:   (and nothing after it is reported as a leaked variable)
+  ok: a <<<'EOF' herestring is not an opener
+  ok: a real opener after a quoted example is still caught
+
+=== Part 3: the real tree ===
+  ok: no variable leaks out of a quoted heredoc anywhere in the repository
+  ok: scripts/measure-disk-space.sh asserts NODE_MAJOR inside the generated script
+  ok: scripts/measure-disk-space.sh asserts NVM_INSTALL_VERSION inside the generated script
+  ok: scripts/measure-disk-space.sh asserts JAVA_MAJOR inside the generated script
+  ok: scripts/measure-disk-space.sh asserts SWIFT_CANDIDATES inside the generated script
+  ok: scripts/measure-disk-space.sh passes the resolved versions at every invocation of the generated script
+  ok: scripts/ubuntu-24-server-install.sh asserts NODE_MAJOR inside the generated script
+  ok: scripts/ubuntu-24-server-install.sh asserts NVM_INSTALL_VERSION inside the generated script
+  ok: scripts/ubuntu-24-server-install.sh asserts JAVA_MAJOR inside the generated script
+  ok: scripts/ubuntu-24-server-install.sh asserts SWIFT_CANDIDATES inside the generated script
+  ok: scripts/ubuntu-24-server-install.sh passes the resolved versions at every invocation of the generated script
+  ok: check-heredoc-vars.sh runs in CI
+
+=== Part 4: the verbose mode (default off) ===
+  ok: measure-disk-space.sh --help exits 0
+  ok: measure-disk-space.sh --help documents --verbose
+  ok: measure-disk-space.sh rejects an unknown option with exit 2
+  ok: measure-disk-space.sh parses an empty argument list without an unbound variable
+  ok:   (and the prologue exits cleanly)
+  ok: measure-disk-space.sh defaults BOX_VERBOSE to 0
+  ok: measure-disk-space.sh only traces the generated script when BOX_VERBOSE=1
+  ok:   (and never enables tracing unconditionally)
+  ok: measure-disk-space.sh passes BOX_VERBOSE across the su/sudo boundary
+  ok: measure-disk-space.sh log_debug is silent by default
+  ok: measure-disk-space.sh log_debug prints when BOX_VERBOSE=1
+  ok: ubuntu-24-server-install.sh --help exits 0
+  ok: ubuntu-24-server-install.sh --help documents --verbose
+  ok: ubuntu-24-server-install.sh rejects an unknown option with exit 2
+  ok: ubuntu-24-server-install.sh parses an empty argument list without an unbound variable
+  ok:   (and the prologue exits cleanly)
+  ok: ubuntu-24-server-install.sh defaults BOX_VERBOSE to 0
+  ok: ubuntu-24-server-install.sh only traces the generated script when BOX_VERBOSE=1
+  ok:   (and never enables tracing unconditionally)
+  ok: ubuntu-24-server-install.sh passes BOX_VERBOSE across the su/sudo boundary
+  ok: ubuntu-24-server-install.sh log_debug is silent by default
+  ok: ubuntu-24-server-install.sh log_debug prints when BOX_VERBOSE=1
+  ok: measure-disk-space.yml exposes the verbose switch
+
+== The --list-inputs contract ==
+  ok: --list-inputs exits 0
+  ok: --list-inputs names 223 input(s)
+  ok: every line is a repository-relative path that exists
+  ok: and names each of them once
+  ok: and names scripts/ci/check-heredoc-vars.sh, which this gate demonstrably reads
+  ok: and excludes dev/log, as the sweep itself does
+  ok: and gives the same answer from a subdirectory, being about the repository
+
+=== 75 passed, 0 failed ===

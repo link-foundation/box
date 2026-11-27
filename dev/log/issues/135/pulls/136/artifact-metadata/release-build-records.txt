@@ -1,0 +1,1 @@
+GitHub returned 56 retained Docker build records. Their download endpoint returns the native gzip-compressed OCI build records even though its path ends in /zip. The gh run download client tried to open a ZIP and failed. The audit fetched the native bytes, checked each archive, and recorded SHA-256 digests.

@@ -1,0 +1,15 @@
+✔ the two HTTP 503 failures recover only after successful responses (305.362704ms)
+✔ temporary HTTP statuses in numeric markers and error details are retried (1697.796512ms)
+✔ 404s, missing files, and broken fragments remain failures alongside a recovered 503 (214.579656ms)
+✔ a persistent 503 exhausts the budget and never sets all_recovered (562.729371ms)
+✔ a temporary error followed by a 404 stops retrying and stays failed (195.663637ms)
+✔ the same temporary failure cited in two files counts as one recovered URL (196.489808ms)
+✔ one slow request cannot exceed the budget or start requests after it (35.051935ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3226.579483

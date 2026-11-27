@@ -336,8 +336,8 @@ assert_workflow "the re-check step runs the script" \
   "run: node scripts/ci/recheck-broken-links.mjs"
 assert_workflow "the re-check step is addressable as steps.recheck" \
   "id: recheck"
-assert_workflow "the re-check only runs when lychee failed" \
-  "if: steps.lychee.outputs.exit_code != 0"
+assert_workflow "the re-check only runs after a link failure" \
+  "if: steps.lychee.outputs.exit_code == '2'"
 assert_workflow "the recovered list is handed to the Wayback step" \
   "RECOVERED_URLS: lychee/recovered.txt"
 assert_workflow "the re-check writes the list the Wayback step reads" \
@@ -358,7 +358,7 @@ else
   pass "no consumer reads all_recovered with == 'false'"
 fi
 if grep -q "steps.recheck.outputs.all_recovered != 'true'" "$WORKFLOW" \
-  && grep -q '!cancelled() && steps.lychee.outputs.exit_code != 0' "$WORKFLOW"; then
+  && grep -qF "!cancelled() && steps.lychee.outputs.exit_code == '2'" "$WORKFLOW"; then
   pass "the failing step still runs on its own when the re-check recovered nothing"
 else
   fail "the failing step's condition no longer names both lychee and the re-check"

@@ -1,0 +1,28 @@
+issue-135-85870cf3b42a
+329…970
+a89…a90
+data/disk-space-measurements.json: OK — 12869.0 MB total across 27 components (generated at 2026-11-27T07:45:09Z)
+✔ both consumers read errors and timeouts and ignore redirects (4.283299ms)
+✔ a runtime failure or incomplete report cannot be recovered (531.110351ms)
+✔ link recovery tests the same GET method as the checker (52.549198ms)
+✔ an archive outage or invalid payload is distinct from a successful empty lookup (5.589355ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 609.205505
+Measurement workflow ordering, output isolation, and publication guard passed.
+All Rocq installers use the published opam package.
+Measurement validator accepts finite data and rejects non-finite or all-zero results.
+Rocq installers reject missing provers and accept a working Coq fallback.
+A failed PHP installation leaves a partial result and sets the failure status.
+Swift uses the parent candidates and fails if a matching tarball is missing.
+Lean installs the toolchain before reading its version.
+PASS: cle…tus
+PASS: out…yed
+PASS: wra…ise
+PASS: wra…xit
+PASS: BUD…ble

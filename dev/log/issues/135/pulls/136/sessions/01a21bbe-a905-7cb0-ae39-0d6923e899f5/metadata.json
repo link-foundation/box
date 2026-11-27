@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 3,
+  "collectedAt": "2026-11-27T09:34:58.679Z",
+  "issueNumber": 135,
+  "prNumber": "136",
+  "branchName": "issue-135-85870cf3b42a",
+  "tool": "codex",
+  "sessionId": "01a21bbe-a905-7cb0-ae39-0d6923e899f5",
+  "rawCommand": "/home/box/.nvm/versions/node/v26.13.1/bin/node /home/box/.bun/install/global/node_modules/@link-assistant/hive-mind/src/solve.mjs https://github.com/link-foundation/box/issues/135 --development-log --deep-analysis --auto-merge --tool codex --think medium --attach-logs --verbose --no-tool-check --disable-report-issue --language en",
+  "developmentLogDirectory": "./dev/log/issues/135/pulls/136",
+  "caseStudyDirectory": "./docs/case-studies/issue-135",
+  "artifacts": {
+    "solveLog": "./dev/log/issues/135/pulls/136/sessions/01a21bbe-a905-7cb0-ae39-0d6923e899f5/solve.log",
+    "solveLogRange": {
+      "startByte": 0,
+      "endByte": 2185585
+    },
+    "sessionFiles": [
+      "./dev/log/issues/135/pulls/136/sessions/01a21bbe-a905-7cb0-ae39-0d6923e899f5/codex-01a21bbe-a905-7cb0-ae39-0d6923e899f5.jsonl"
+    ]
+  }
+}

@@ -128,7 +128,8 @@ containers on that daemon.
 - [`linuxserver/docker-socket-proxy`](https://github.com/linuxserver/docker-socket-proxy) — fork of the Tecnativa
   proxy.
 - [`titpetric/docker-proxy-acl`](https://github.com/titpetric/docker-proxy-acl) and
-  [`qdm12/docker-proxy-acl-alpine`](https://github.com/qdm12/docker-proxy-acl-alpine) — minimal allowlist proxies for
+  [`qdm12/docker-proxy-acl-alpine` (source mirror)](https://github.com/micoud/docker-proxy-acl-alpine/tree/0448afc1574007bc27ca6711d3fe854226ec74b5)
+  ([original archive](https://web.archive.org/web/20201011040051/https://github.com/qdm12/docker-proxy-acl-alpine)) — minimal allowlist proxies for
   endpoints (sometimes referred to as "jpillora-style" though jpillora's project is no longer the canonical one).
 - [`FoxxMD/docker-proxy-filter`](https://github.com/FoxxMD/docker-proxy-filter) — sits behind a Tecnativa-style proxy
   and **rewrites** API responses, filtering `/containers/json` results by name and by label, returning 404 for

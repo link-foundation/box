@@ -22,7 +22,7 @@
  * retry 408, 429, 500, 502, 503 and 504 within the same bounded budget. Only an
  * accepted response recovers a URL; a persistent error still fails the gate.
  * Other HTTP failures, including 404, remain final. Fragment URLs also remain
- * final because a HEAD request cannot validate an anchor.
+ * final because a status response cannot validate an anchor.
  *
  * Divergence from the template, deliberate
  * ----------------------------------------
@@ -69,6 +69,7 @@
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { readFailureEntries, validateFailureReport } from './check-web-archive.mjs';
 
 // Read from process.env inside main() only: the assertions in
 // experiments/test-issue121-links-recheck.sh import this module, and
@@ -95,20 +96,7 @@ const RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
  * @returns {Array<{marker: string, url: string, detail: string, answered: boolean, status: number|null}>}
  */
 export function parseLycheeFailures(content) {
-  const failures = [];
-  const entryPattern =
-    /^\s*(?:\*|-)\s+\[([^\]]+)\]\s+<?([^\s>|)]+)>?(?:\s+\(at [^)]*\))?\s*\|?\s*(.*)$/gim;
-
-  let match;
-  while ((match = entryPattern.exec(content)) !== null) {
-    const marker = match[1].trim();
-    const url = match[2].trim().replace(/[.,;!?]+$/, '');
-    const detail = match[3].trim();
-
-    if (!url) {
-      continue;
-    }
-
+  return readFailureEntries(content).map(({ marker, url, detail }) => {
     const answered =
       /^\d{3}$/.test(marker) || /rejected status code/i.test(detail);
     const statusMatch = /^\d{3}$/.test(marker)
@@ -116,10 +104,8 @@ export function parseLycheeFailures(content) {
       : detail.match(/rejected status code:\s*(\d{3})\b/i)?.[1];
     const status = statusMatch ? Number(statusMatch) : null;
 
-    failures.push({ marker, url, detail, answered, status });
-  }
-
-  return failures;
+    return { marker, url, detail, answered, status };
+  });
 }
 
 /**
@@ -253,11 +239,12 @@ export async function recheckFailures(urls, options) {
 
       try {
         response = await fetchImpl(url, {
-          method: 'HEAD',
+          method: 'GET',
           redirect: 'follow',
           signal: controller.signal,
           headers: { 'user-agent': options.userAgent },
         });
+        await response.body?.cancel();
       } catch {
         // Still no answer this round; it stays eligible for the next one.
         if (options.verbose) {
@@ -311,18 +298,24 @@ async function main() {
   const workflow =
     process.env.LINKS_WORKFLOW || '.github/workflows/links.yml';
   const options = extractLycheeRequestOptions(readFileSync(workflow, 'utf8'));
-  const failures = parseLycheeFailures(readFileSync(lycheeOutput, 'utf8'));
+  const report = readFileSync(lycheeOutput, 'utf8');
+  validateFailureReport(report, process.env.LYCHEE_EXIT_CODE);
+  const failures = parseLycheeFailures(report);
 
   const canRetry = (failure) =>
     /^https?:\/\//i.test(failure.url) &&
-    !new URL(failure.url).hash &&
+    URL.canParse(failure.url) &&
+    !failure.url.includes('#') &&
+    (/^(ERROR|TIMEOUT|UNKNOWN)$/i.test(failure.marker) ||
+      /^\d{3}$/.test(failure.marker)) &&
     (!failure.answered || RETRYABLE_HTTP_STATUSES.has(failure.status));
   // Local files, anchors and permanent HTTP errors cannot be verified by
   // this recovery pass. They stay final even if every other URL recovers.
   const finalFailures = failures.filter((failure) => !canRetry(failure));
+  const finalUrls = new Set(finalFailures.map(({ url }) => url));
   const retryable = [
-    ...new Set(failures.filter(canRetry).map((failure) => failure.url)),
-  ];
+    ...new Set(failures.filter(canRetry).map(({ url }) => url)),
+  ].filter((url) => !finalUrls.has(url));
 
   console.log(
     `Re-check: ${failures.length} lychee failure(s); ` +

@@ -1,0 +1,51 @@
+PASS: scr…sts
+PASS: scr…sts
+PASS: [REDACTED]
+
+== Part 1: the parser tells an answered failure from an unanswered one ==
+  PASS: [REDACTED]
+  PASS: [REDACTED]
+  PASS: [ERROR] is not an answer
+  PASS: [TIMEOUT] is not an answer
+  PASS: [UNKNOWN] is not an answer
+  PASS: [REDACTED]
+  PASS: eve…sed
+
+== Part 2: all_recovered means the whole report was noise ==
+  PASS: not…d -> true
+  PASS: [REDACTED]> false
+  PASS: [REDACTED]> false
+  PASS: not…l -> false
+  PASS: the…200
+  PASS: the…404
+  PASS: [REDACTED]
+  PASS: [REDACTED]
+  PASS: [REDACTED]
+
+== Part 3: end to end, against a host that answers on 127.0.0.1 ==
+PASS: the…732
+PASS: the…ne)
+PASS: [REDACTED]
+PASS: the…ads
+PASS: [REDACTED]
+PASS: the…red
+PASS: the…ist
+PASS: [REDACTED]
+PASS: [REDACTED]
+
+== Part 4: the Wayback step skips what the re-check recovered ==
+PASS: the… 0)
+PASS: [REDACTED]
+PASS: [REDACTED]
+
+== Part 5: the workflow reads the output so that a skip fails safe ==
+PASS: the…ipt
+PASS: the…eck
+PASS: the…ure
+PASS: the…tep
+PASS: the…ads
+PASS: bot…(2)
+PASS: [REDACTED]
+PASS: the…ing
+
+39 passed, 0 failed

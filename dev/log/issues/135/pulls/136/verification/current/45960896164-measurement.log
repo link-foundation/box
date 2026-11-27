@@ -1,0 +1,1942 @@
+Running disk space measurement with a 2400s budget (warning at 1680s).
+
+==> Starting Disk Space Measurement
+
+[i] Results will be saved to: measurement.json
+[*] Initialized JSON output at measurement.json
+[*] Baseline disk usage: 33977MB
+
+==> Running pre-flight checks
+
+[✓] Pre-flight checks passed
+[*] Creating box user...
+passwd: pas…ed.
+
+==> Preparing APT sources
+
+[*] Updating apt sources (attempt 1/5)...
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+Hit:6 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease
+Hit:2 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble InRelease
+Hit:3 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates InRelease
+Hit:4 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-backports InRelease
+Hit:5 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-security InRelease
+Reading package lists...
+[✓] Apt sources updated
+
+==> Measuring System Prerequisites
+
+[i] Resolved versions: Node 26 LTS, nvm v0.41.0, Java 25 LTS, .NET 10.0
+[*] Measuring installation: Essential Tools
+Reading package lists...
+Building dependency tree...
+Reading state information...
+wget is already the newest version (1.21.4-1ubuntu4.5).
+curl is already the newest version (8.5.0-2ubuntu10.16).
+unzip is already the newest version (6.0-28ubuntu4.1).
+zip is already the newest version (3.0-13ubuntu0.2).
+git is already the newest version (1:2.56.1-0ppa1~ubuntu24.04.1).
+git set to manually installed.
+sudo is already the newest version (1.9.15p5-3ubuntu5.24.04.4).
+ca-certificates is already the newest version (20260816ubuntu0.24.04.2).
+gnupg is already the newest version (2.4.4-2ubuntu17.6).
+screen is already the newest version (4.9.1-1ubuntu1).
+screen set to manually installed.
+The following additional packages will be installed:
+  tcl-expect
+The following NEW packages will be installed:
+  build-essential expect tcl-expect
+0 upgraded, 3 newly installed, 0 to remove and 103 not upgraded.
+Need to get 252 kB of archives.
+After this operation, 555 kB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+Get:2 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 build-essential amd64 12.10ubuntu1 [4928 B]
+Get:3 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 tcl-expect amd64 5.45.4-3 [110 kB]
+Get:4 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 expect amd64 5.45.4-3 [137 kB]
+Fetched 252 kB in 0s (1400 kB/s)
+Selecting previously unselected package build-essential.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 216720 files and directories currently installed.)
+Preparing to unpack .../build-essential_12.10ubuntu1_amd64.deb ...
+Unpacking build-essential (12.10ubuntu1) ...
+Selecting previously unselected package tcl-expect:amd64.
+Preparing to unpack .../tcl-expect_5.45.4-3_amd64.deb ...
+Unpacking tcl-expect:amd64 (5.45.4-3) ...
+Selecting previously unselected package expect.
+Preparing to unpack .../expect_5.45.4-3_amd64.deb ...
+Unpacking expect (5.45.4-3) ...
+Setting up tcl-expect:amd64 (5.45.4-3) ...
+Setting up build-essential (12.10ubuntu1) ...
+Setting up expect (5.45.4-3) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+Processing triggers for libc-bin (2.39-0ubuntu8.12) ...
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+[✓] Recorded: Essential Tools - 0.73MB
+
+==> Measuring APT-based Languages and Tools
+
+[*] Measuring installation: .NET SDK 10.0
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  aspnetcore-runtime-10.0 aspnetcore-targeting-pack-10.0
+  dotnet-apphost-pack-10.0 dotnet-host-10.0 dotnet-hostfxr-10.0
+  dotnet-runtime-10.0 dotnet-sdk-aot-10.0 dotnet-targeting-pack-10.0
+  dotnet-templates-10.0
+Suggested packages:
+  aspnetcore-runtime-dbg-10.0 dotnet-runtime-dbg-10.0 dotnet-sdk-dbg-10.0
+The following NEW packages will be installed:
+  aspnetcore-runtime-10.0 aspnetcore-targeting-pack-10.0
+  dotnet-apphost-pack-10.0 dotnet-host-10.0 dotnet-hostfxr-10.0
+  dotnet-runtime-10.0 dotnet-sdk-10.0 dotnet-sdk-aot-10.0
+  dotnet-targeting-pack-10.0 dotnet-templates-10.0
+0 upgraded, 10 newly installed, 0 to remove and 103 not upgraded.
+Need to get 164 MB of archives.
+After this operation, 624 MB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+Get:2 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 dotnet-host-10.0 amd64 10.0.15-0ubuntu1~24.04.1 [202 kB]
+Get:3 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 dotnet-hostfxr-10.0 amd64 10.0.15-0ubuntu1~24.04.1 [148 kB]
+Get:4 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 dotnet-runtime-10.0 amd64 10.0.15-0ubuntu1~24.04.1 [25.7 MB]
+Get:5 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 aspnetcore-runtime-10.0 amd64 10.0.15-0ubuntu1~24.04.1 [8484 kB]
+Get:6 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 aspnetcore-targeting-pack-10.0 amd64 10.0.15-0ubuntu1~24.04.1 [3525 kB]
+Get:7 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 dotnet-apphost-pack-10.0 amd64 10.0.15-0ubuntu1~24.04.1 [3716 kB]
+Get:8 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 dotnet-targeting-pack-10.0 amd64 10.0.15-0ubuntu1~24.04.1 [3174 kB]
+Get:9 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 dotnet-templates-10.0 amd64 10.0.115-0ubuntu1~24.04.1 [2919 kB]
+Get:10 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 dotnet-sdk-10.0 amd64 10.0.115-0ubuntu1~24.04.1 [100 MB]
+Get:11 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 dotnet-sdk-aot-10.0 amd64 10.0.115-0ubuntu1~24.04.1 [15.8 MB]
+Fetched 164 MB in 3s (49.7 MB/s)
+Selecting previously unselected package dotnet-host-10.0.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 216807 files and directories currently installed.)
+Preparing to unpack .../0-dotnet-host-10.0_10.0.15-0ubuntu1~24.04.1_amd64.deb ...
+Unpacking dotnet-host-10.0 (10.0.15-0ubuntu1~24.04.1) ...
+Selecting previously unselected package dotnet-hostfxr-10.0.
+Preparing to unpack .../1-dotnet-hostfxr-10.0_10.0.15-0ubuntu1~24.04.1_amd64.deb ...
+Unpacking dotnet-hostfxr-10.0 (10.0.15-0ubuntu1~24.04.1) ...
+Selecting previously unselected package dotnet-runtime-10.0.
+Preparing to unpack .../2-dotnet-runtime-10.0_10.0.15-0ubuntu1~24.04.1_amd64.deb ...
+Unpacking dotnet-runtime-10.0 (10.0.15-0ubuntu1~24.04.1) ...
+Selecting previously unselected package aspnetcore-runtime-10.0.
+Preparing to unpack .../3-aspnetcore-runtime-10.0_10.0.15-0ubuntu1~24.04.1_amd64.deb ...
+Unpacking aspnetcore-runtime-10.0 (10.0.15-0ubuntu1~24.04.1) ...
+Selecting previously unselected package aspnetcore-targeting-pack-10.0.
+Preparing to unpack .../4-aspnetcore-targeting-pack-10.0_10.0.15-0ubuntu1~24.04.1_amd64.deb ...
+Unpacking aspnetcore-targeting-pack-10.0 (10.0.15-0ubuntu1~24.04.1) ...
+Selecting previously unselected package dotnet-apphost-pack-10.0.
+Preparing to unpack .../5-dotnet-apphost-pack-10.0_10.0.15-0ubuntu1~24.04.1_amd64.deb ...
+Unpacking dotnet-apphost-pack-10.0 (10.0.15-0ubuntu1~24.04.1) ...
+Selecting previously unselected package dotnet-targeting-pack-10.0.
+Preparing to unpack .../6-dotnet-targeting-pack-10.0_10.0.15-0ubuntu1~24.04.1_amd64.deb ...
+Unpacking dotnet-targeting-pack-10.0 (10.0.15-0ubuntu1~24.04.1) ...
+Selecting previously unselected package dotnet-templates-10.0.
+Preparing to unpack .../7-dotnet-templates-10.0_10.0.115-0ubuntu1~24.04.1_amd64.deb ...
+Unpacking dotnet-templates-10.0 (10.0.115-0ubuntu1~24.04.1) ...
+Selecting previously unselected package dotnet-sdk-10.0.
+Preparing to unpack .../8-dotnet-sdk-10.0_10.0.115-0ubuntu1~24.04.1_amd64.deb ...
+Unpacking dotnet-sdk-10.0 (10.0.115-0ubuntu1~24.04.1) ...
+Selecting previously unselected package dotnet-sdk-aot-10.0.
+Preparing to unpack .../9-dotnet-sdk-aot-10.0_10.0.115-0ubuntu1~24.04.1_amd64.deb ...
+Unpacking dotnet-sdk-aot-10.0 (10.0.115-0ubuntu1~24.04.1) ...
+Setting up dotnet-targeting-pack-10.0 (10.0.15-0ubuntu1~24.04.1) ...
+Setting up aspnetcore-targeting-pack-10.0 (10.0.15-0ubuntu1~24.04.1) ...
+Setting up dotnet-apphost-pack-10.0 (10.0.15-0ubuntu1~24.04.1) ...
+Setting up dotnet-host-10.0 (10.0.15-0ubuntu1~24.04.1) ...
+Setting up dotnet-hostfxr-10.0 (10.0.15-0ubuntu1~24.04.1) ...
+Setting up dotnet-runtime-10.0 (10.0.15-0ubuntu1~24.04.1) ...
+Setting up dotnet-templates-10.0 (10.0.115-0ubuntu1~24.04.1) ...
+Setting up aspnetcore-runtime-10.0 (10.0.15-0ubuntu1~24.04.1) ...
+Setting up dotnet-sdk-10.0 (10.0.115-0ubuntu1~24.04.1) ...
+Setting up dotnet-sdk-aot-10.0 (10.0.115-0ubuntu1~24.04.1) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+[✓] Recorded: .NET SDK 10.0 - 636.72MB
+[*] Measuring installation: C/C++ Tools (CMake, Clang, LLVM, LLD)
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  cmake-data libjsoncpp25 librhash0 llvm-runtime
+Suggested packages:
+  cmake-doc cmake-format elpa-cmake-mode ninja-build
+The following NEW packages will be installed:
+  clang cmake cmake-data libjsoncpp25 librhash0 lld llvm llvm-runtime
+0 upgraded, 8 newly installed, 0 to remove and 103 not upgraded.
+Need to get 13.6 MB of archives.
+After this operation, 49.3 MB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+Get:2 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 clang amd64 1:18.0-59~exp2 [5846 B]
+Get:3 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libjsoncpp25 amd64 1.9.5-6build1 [82.8 kB]
+Get:4 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 librhash0 amd64 1.4.3-3build1 [129 kB]
+Get:5 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 cmake-data all 3.28.3-1build7 [2155 kB]
+Get:6 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 cmake amd64 3.28.3-1build7 [11.2 MB]
+Get:7 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 lld amd64 1:18.0-59~exp2 [5494 B]
+Get:8 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 llvm-runtime amd64 1:18.0-59~exp2 [5496 B]
+Get:9 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 llvm amd64 1:18.0-59~exp2 [4146 B]
+Fetched 13.6 MB in 1s (21.1 MB/s)
+Selecting previously unselected package clang.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 222649 files and directories currently installed.)
+Preparing to unpack .../0-clang_1%3a18.0-59~exp2_amd64.deb ...
+Unpacking clang (1:18.0-59~exp2) ...
+Selecting previously unselected package libjsoncpp25:amd64.
+Preparing to unpack .../1-libjsoncpp25_1.9.5-6build1_amd64.deb ...
+Unpacking libjsoncpp25:amd64 (1.9.5-6build1) ...
+Selecting previously unselected package librhash0:amd64.
+Preparing to unpack .../2-librhash0_1.4.3-3build1_amd64.deb ...
+Unpacking librhash0:amd64 (1.4.3-3build1) ...
+Selecting previously unselected package cmake-data.
+Preparing to unpack .../3-cmake-data_3.28.3-1build7_all.deb ...
+Unpacking cmake-data (3.28.3-1build7) ...
+Selecting previously unselected package cmake.
+Preparing to unpack .../4-cmake_3.28.3-1build7_amd64.deb ...
+Unpacking cmake (3.28.3-1build7) ...
+Selecting previously unselected package lld:amd64.
+Preparing to unpack .../5-lld_1%3a18.0-59~exp2_amd64.deb ...
+Unpacking lld:amd64 (1:18.0-59~exp2) ...
+Selecting previously unselected package llvm-runtime:amd64.
+Preparing to unpack .../6-llvm-runtime_1%3a18.0-59~exp2_amd64.deb ...
+Unpacking llvm-runtime:amd64 (1:18.0-59~exp2) ...
+Selecting previously unselected package llvm.
+Preparing to unpack .../7-llvm_1%3a18.0-59~exp2_amd64.deb ...
+Unpacking llvm (1:18.0-59~exp2) ...
+Setting up lld:amd64 (1:18.0-59~exp2) ...
+Setting up clang (1:18.0-59~exp2) ...
+Setting up llvm-runtime:amd64 (1:18.0-59~exp2) ...
+Setting up libjsoncpp25:amd64 (1.9.5-6build1) ...
+Setting up llvm (1:18.0-59~exp2) ...
+Setting up librhash0:amd64 (1.4.3-3build1) ...
+Setting up cmake-data (3.28.3-1build7) ...
+Setting up cmake (3.28.3-1build7) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+Processing triggers for libc-bin (2.39-0ubuntu8.12) ...
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+[✓] Recorded: C/C++ Tools (CMake, Clang, LLVM, LLD) - 58.84MB
+[*] Measuring installation: Assembly Tools (NASM, FASM)
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following NEW packages will be installed:
+  fasm nasm
+0 upgraded, 2 newly installed, 0 to remove and 103 not upgraded.
+Need to get 625 kB of archives.
+After this operation, 3770 kB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+Get:2 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 fasm amd64 1.73.32-1 [166 kB]
+Get:3 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 nasm amd64 2.16.01-1build1 [459 kB]
+Fetched 625 kB in 0s (3078 kB/s)
+Selecting previously unselected package fasm.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 226175 files and directories currently installed.)
+Preparing to unpack .../fasm_1.73.32-1_amd64.deb ...
+Unpacking fasm (1.73.32-1) ...
+Selecting previously unselected package nasm.
+Preparing to unpack .../nasm_2.16.01-1build1_amd64.deb ...
+Unpacking nasm (2.16.01-1build1) ...
+Setting up fasm (1.73.32-1) ...
+Setting up nasm (2.16.01-1build1) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+[✓] Recorded: Assembly Tools (NASM, FASM) - 3.92MB
+[*] Updating apt sources (attempt 1/5)...
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+Get:6 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ InRelease [3631 B]
+Hit:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease
+Hit:2 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble InRelease
+Hit:3 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates InRelease
+Hit:4 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-backports InRelease
+Hit:5 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-security InRelease
+Get:8 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ Packages [68.8 kB]
+Fetched 72.4 kB in 0s (300 kB/s)
+Reading package lists...
+[✓] Apt sources updated
+[*] Measuring installation: R Language
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  bzip2-doc libblas-dev libblas3 libbz2-dev libdeflate-dev libjpeg-dev
+  libjpeg-turbo8-dev libjpeg8-dev liblapack-dev liblapack3 liblzma-dev
+  libpaper-utils libpaper1 libpng-dev libpng-tools libreadline-dev
+  libtirpc-dev r-base-core r-base-dev r-base-html r-cran-boot r-cran-class
+  r-cran-cluster r-cran-codetools r-cran-foreign r-cran-kernsmooth
+  r-cran-lattice r-cran-mass r-cran-matrix r-cran-mgcv r-cran-nlme r-cran-nnet
+  r-cran-rpart r-cran-spatial r-cran-survival r-doc-html r-recommended
+Suggested packages:
+  liblapack-doc liblzma-doc readline-doc elpa-ess r-doc-info | r-doc-pdf
+  r-mathlib texlive-base texlive-latex-base texlive-plain-generic
+  texlive-fonts-recommended texlive-fonts-extra texlive-extra-utils
+  texlive-latex-recommended texlive-latex-extra
+The following NEW packages will be installed:
+  bzip2-doc libblas-dev libblas3 libbz2-dev libdeflate-dev libjpeg-dev
+  libjpeg-turbo8-dev libjpeg8-dev liblapack-dev liblapack3 liblzma-dev
+  libpaper-utils libpaper1 libpng-dev libpng-tools libreadline-dev
+  libtirpc-dev r-base r-base-core r-base-dev r-base-html r-cran-boot
+  r-cran-class r-cran-cluster r-cran-codetools r-cran-foreign
+  r-cran-kernsmooth r-cran-lattice r-cran-mass r-cran-matrix r-cran-mgcv
+  r-cran-nlme r-cran-nnet r-cran-rpart r-cran-spatial r-cran-survival
+  r-doc-html r-recommended
+0 upgraded, 38 newly installed, 0 to remove and 103 not upgraded.
+Need to get 64.1 MB of archives.
+After this operation, 125 MB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+Get:12 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-base-core 4.6.2-2.2404.0 [30.2 MB]
+Get:2 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 bzip2-doc all 1.0.8-5.1ubuntu0.1 [499 kB]
+Get:3 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libblas3 amd64 3.12.0-3build1.1 [238 kB]
+Get:20 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-cran-boot 1.3-32-1.2404.0 [634 kB]
+Get:21 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-cran-cluster 2.1.8.2-1.2404.0 [567 kB]
+Get:4 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libblas-dev amd64 3.12.0-3build1.1 [170 kB]
+Get:22 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-cran-foreign 0.8.92-1.2404.0 [246 kB]
+Get:5 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libbz2-dev amd64 1.0.8-5.1ubuntu0.1 [33.6 kB]
+Get:23 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-cran-mass 7.3-66-1.2404.0 [1111 kB]
+Get:24 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-cran-kernsmooth 2.23-27-1.2404.0 [93.7 kB]
+Get:25 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-cran-lattice 0.23-1-1.2404.0 [1408 kB]
+Get:6 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libdeflate-dev amd64 1.19-1build1.1 [50.9 kB]
+Get:26 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-cran-nlme 3.1.172-1.2404.0 [2313 kB]
+Get:27 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-cran-matrix 1.7-6-1.2404.0 [4219 kB]
+Get:7 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libjpeg-turbo8-dev amd64 2.1.5-2ubuntu2 [295 kB]
+Get:28 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-cran-mgcv 1.9-5-1.2404.0 [3664 kB]
+Get:29 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-cran-survival 3.8-12-1.2404.0 [7840 kB]
+Get:8 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libjpeg8-dev amd64 8c-2ubuntu11 [1484 B]
+Get:9 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libjpeg-dev amd64 8c-2ubuntu11 [1482 B]
+Get:10 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 liblapack3 amd64 3.12.0-3build1.1 [2646 kB]
+Get:30 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-cran-rpart 4.1.27-1.2404.0 [681 kB]
+Get:31 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-cran-class 7.3-24-1.2404.0 [89.6 kB]
+Get:32 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-cran-nnet 7.3-21-1.2404.0 [113 kB]
+Get:33 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-cran-spatial 7.3-17-1.2404.0 [133 kB]
+Get:11 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 liblapack-dev amd64 3.12.0-3build1.1 [5196 kB]
+Get:34 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-cran-codetools 0.2-20-1.2404.0 [90.8 kB]
+Get:35 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-recommended 4.6.2-2.2404.0 [2594 B]
+Get:36 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-base 4.6.2-2.2404.0 [17.1 kB]
+Get:37 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-base-dev 4.6.2-2.2404.0 [1842 B]
+Get:38 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-base-html 4.6.2-2.2404.0 [66.4 kB]
+Get:39 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ r-doc-html 4.6.2-2.2404.0 [624 kB]
+Get:13 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libpaper1 amd64 1.1.29build1 [13.4 kB]
+Get:14 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libpaper-utils amd64 1.1.29build1 [8650 B]
+Get:15 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libpng-dev amd64 1.6.43-5ubuntu0.7 [265 kB]
+Get:16 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libpng-tools amd64 1.6.43-5ubuntu0.7 [28.5 kB]
+Get:17 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libreadline-dev amd64 8.2-4build1 [167 kB]
+Get:18 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 liblzma-dev amd64 5.6.1+really5.4.5-1ubuntu0.4 [176 kB]
+Get:19 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libtirpc-dev amd64 1.3.4+ds-1.1build1 [193 kB]
+Preconfiguring packages ...
+Fetched 64.1 MB in 1s (71.1 MB/s)
+Selecting previously unselected package bzip2-doc.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 226230 files and directories currently installed.)
+Preparing to unpack .../00-bzip2-doc_1.0.8-5.1ubuntu0.1_all.deb ...
+Unpacking bzip2-doc (1.0.8-5.1ubuntu0.1) ...
+Selecting previously unselected package libblas3:amd64.
+Preparing to unpack .../01-libblas3_3.12.0-3build1.1_amd64.deb ...
+Unpacking libblas3:amd64 (3.12.0-3build1.1) ...
+Selecting previously unselected package libblas-dev:amd64.
+Preparing to unpack .../02-libblas-dev_3.12.0-3build1.1_amd64.deb ...
+Unpacking libblas-dev:amd64 (3.12.0-3build1.1) ...
+Selecting previously unselected package libbz2-dev:amd64.
+Preparing to unpack .../03-libbz2-dev_1.0.8-5.1ubuntu0.1_amd64.deb ...
+Unpacking libbz2-dev:amd64 (1.0.8-5.1ubuntu0.1) ...
+Selecting previously unselected package libdeflate-dev:amd64.
+Preparing to unpack .../04-libdeflate-dev_1.19-1build1.1_amd64.deb ...
+Unpacking libdeflate-dev:amd64 (1.19-1build1.1) ...
+Selecting previously unselected package libjpeg-turbo8-dev:amd64.
+Preparing to unpack .../05-libjpeg-turbo8-dev_2.1.5-2ubuntu2_amd64.deb ...
+Unpacking libjpeg-turbo8-dev:amd64 (2.1.5-2ubuntu2) ...
+Selecting previously unselected package libjpeg8-dev:amd64.
+Preparing to unpack .../06-libjpeg8-dev_8c-2ubuntu11_amd64.deb ...
+Unpacking libjpeg8-dev:amd64 (8c-2ubuntu11) ...
+Selecting previously unselected package libjpeg-dev:amd64.
+Preparing to unpack .../07-libjpeg-dev_8c-2ubuntu11_amd64.deb ...
+Unpacking libjpeg-dev:amd64 (8c-2ubuntu11) ...
+Selecting previously unselected package liblapack3:amd64.
+Preparing to unpack .../08-liblapack3_3.12.0-3build1.1_amd64.deb ...
+Unpacking liblapack3:amd64 (3.12.0-3build1.1) ...
+Selecting previously unselected package liblapack-dev:amd64.
+Preparing to unpack .../09-liblapack-dev_3.12.0-3build1.1_amd64.deb ...
+Unpacking liblapack-dev:amd64 (3.12.0-3build1.1) ...
+Selecting previously unselected package libpaper1:amd64.
+Preparing to unpack .../10-libpaper1_1.1.29build1_amd64.deb ...
+Unpacking libpaper1:amd64 (1.1.29build1) ...
+Selecting previously unselected package libpaper-utils.
+Preparing to unpack .../11-libpaper-utils_1.1.29build1_amd64.deb ...
+Unpacking libpaper-utils (1.1.29build1) ...
+Selecting previously unselected package libpng-dev:amd64.
+Preparing to unpack .../12-libpng-dev_1.6.43-5ubuntu0.7_amd64.deb ...
+Unpacking libpng-dev:amd64 (1.6.43-5ubuntu0.7) ...
+Selecting previously unselected package libpng-tools.
+Preparing to unpack .../13-libpng-tools_1.6.43-5ubuntu0.7_amd64.deb ...
+Unpacking libpng-tools (1.6.43-5ubuntu0.7) ...
+Selecting previously unselected package libreadline-dev:amd64.
+Preparing to unpack .../14-libreadline-dev_8.2-4build1_amd64.deb ...
+Unpacking libreadline-dev:amd64 (8.2-4build1) ...
+Selecting previously unselected package r-base-core.
+Preparing to unpack .../15-r-base-core_4.6.2-2.2404.0_amd64.deb ...
+Unpacking r-base-core (4.6.2-2.2404.0) ...
+Selecting previously unselected package r-cran-boot.
+Preparing to unpack .../16-r-cran-boot_1.3-32-1.2404.0_all.deb ...
+Unpacking r-cran-boot (1.3-32-1.2404.0) ...
+Selecting previously unselected package r-cran-cluster.
+Preparing to unpack .../17-r-cran-cluster_2.1.8.2-1.2404.0_amd64.deb ...
+Unpacking r-cran-cluster (2.1.8.2-1.2404.0) ...
+Selecting previously unselected package r-cran-foreign.
+Preparing to unpack .../18-r-cran-foreign_0.8.92-1.2404.0_amd64.deb ...
+Unpacking r-cran-foreign (0.8.92-1.2404.0) ...
+Selecting previously unselected package r-cran-mass.
+Preparing to unpack .../19-r-cran-mass_7.3-66-1.2404.0_amd64.deb ...
+Unpacking r-cran-mass (7.3-66-1.2404.0) ...
+Selecting previously unselected package r-cran-kernsmooth.
+Preparing to unpack .../20-r-cran-kernsmooth_2.23-27-1.2404.0_amd64.deb ...
+Unpacking r-cran-kernsmooth (2.23-27-1.2404.0) ...
+Selecting previously unselected package r-cran-lattice.
+Preparing to unpack .../21-r-cran-lattice_0.23-1-1.2404.0_amd64.deb ...
+Unpacking r-cran-lattice (0.23-1-1.2404.0) ...
+Selecting previously unselected package r-cran-nlme.
+Preparing to unpack .../22-r-cran-nlme_3.1.172-1.2404.0_amd64.deb ...
+Unpacking r-cran-nlme (3.1.172-1.2404.0) ...
+Selecting previously unselected package r-cran-matrix.
+Preparing to unpack .../23-r-cran-matrix_1.7-6-1.2404.0_amd64.deb ...
+Unpacking r-cran-matrix (1.7-6-1.2404.0) ...
+Selecting previously unselected package r-cran-mgcv.
+Preparing to unpack .../24-r-cran-mgcv_1.9-5-1.2404.0_amd64.deb ...
+Unpacking r-cran-mgcv (1.9-5-1.2404.0) ...
+Selecting previously unselected package r-cran-survival.
+Preparing to unpack .../25-r-cran-survival_3.8-12-1.2404.0_amd64.deb ...
+Unpacking r-cran-survival (3.8-12-1.2404.0) ...
+Selecting previously unselected package r-cran-rpart.
+Preparing to unpack .../26-r-cran-rpart_4.1.27-1.2404.0_amd64.deb ...
+Unpacking r-cran-rpart (4.1.27-1.2404.0) ...
+Selecting previously unselected package r-cran-class.
+Preparing to unpack .../27-r-cran-class_7.3-24-1.2404.0_amd64.deb ...
+Unpacking r-cran-class (7.3-24-1.2404.0) ...
+Selecting previously unselected package r-cran-nnet.
+Preparing to unpack .../28-r-cran-nnet_7.3-21-1.2404.0_amd64.deb ...
+Unpacking r-cran-nnet (7.3-21-1.2404.0) ...
+Selecting previously unselected package r-cran-spatial.
+Preparing to unpack .../29-r-cran-spatial_7.3-17-1.2404.0_amd64.deb ...
+Unpacking r-cran-spatial (7.3-17-1.2404.0) ...
+Selecting previously unselected package r-cran-codetools.
+Preparing to unpack .../30-r-cran-codetools_0.2-20-1.2404.0_all.deb ...
+Unpacking r-cran-codetools (0.2-20-1.2404.0) ...
+Selecting previously unselected package r-recommended.
+Preparing to unpack .../31-r-recommended_4.6.2-2.2404.0_all.deb ...
+Unpacking r-recommended (4.6.2-2.2404.0) ...
+Selecting previously unselected package r-base.
+Preparing to unpack .../32-r-base_4.6.2-2.2404.0_all.deb ...
+Unpacking r-base (4.6.2-2.2404.0) ...
+Selecting previously unselected package liblzma-dev:amd64.
+Preparing to unpack .../33-liblzma-dev_5.6.1+really5.4.5-1ubuntu0.4_amd64.deb ...
+Unpacking liblzma-dev:amd64 (5.6.1+really5.4.5-1ubuntu0.4) ...
+Selecting previously unselected package libtirpc-dev:amd64.
+Preparing to unpack .../34-libtirpc-dev_1.3.4+ds-1.1build1_amd64.deb ...
+Unpacking libtirpc-dev:amd64 (1.3.4+ds-1.1build1) ...
+Selecting previously unselected package r-base-dev.
+Preparing to unpack .../35-r-base-dev_4.6.2-2.2404.0_all.deb ...
+Unpacking r-base-dev (4.6.2-2.2404.0) ...
+Selecting previously unselected package r-base-html.
+Preparing to unpack .../36-r-base-html_4.6.2-2.2404.0_all.deb ...
+Unpacking r-base-html (4.6.2-2.2404.0) ...
+Selecting previously unselected package r-doc-html.
+Preparing to unpack .../37-r-doc-html_4.6.2-2.2404.0_all.deb ...
+Unpacking r-doc-html (4.6.2-2.2404.0) ...
+Setting up bzip2-doc (1.0.8-5.1ubuntu0.1) ...
+Setting up libpaper1:amd64 (1.1.29build1) ...
+
+Creating config file /etc/papersize with new version
+Setting up libjpeg-turbo8-dev:amd64 (2.1.5-2ubuntu2) ...
+Setting up r-doc-html (4.6.2-2.2404.0) ...
+Setting up libpng-tools (1.6.43-5ubuntu0.7) ...
+Setting up libpng-dev:amd64 (1.6.43-5ubuntu0.7) ...
+Setting up libpaper-utils (1.1.29build1) ...
+Setting up libreadline-dev:amd64 (8.2-4build1) ...
+Setting up libblas3:amd64 (3.12.0-3build1.1) ...
+update-alternatives: using /usr/lib/x86_64-linux-gnu/blas/libblas.so.3 to provide /usr/lib/x86_64-linux-gnu/libblas.so.3 (libblas.so.3-x86_64-linux-gnu) in auto mode
+Setting up libtirpc-dev:amd64 (1.3.4+ds-1.1build1) ...
+Setting up liblzma-dev:amd64 (5.6.1+really5.4.5-1ubuntu0.4) ...
+Setting up libjpeg8-dev:amd64 (8c-2ubuntu11) ...
+Setting up libdeflate-dev:amd64 (1.19-1build1.1) ...
+Setting up libblas-dev:amd64 (3.12.0-3build1.1) ...
+update-alternatives: using /usr/lib/x86_64-linux-gnu/blas/libblas.so to provide /usr/lib/x86_64-linux-gnu/libblas.so (libblas.so-x86_64-linux-gnu) in auto mode
+Setting up libbz2-dev:amd64 (1.0.8-5.1ubuntu0.1) ...
+Setting up liblapack3:amd64 (3.12.0-3build1.1) ...
+update-alternatives: using /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3 to provide /usr/lib/x86_64-linux-gnu/liblapack.so.3 (liblapack.so.3-x86_64-linux-gnu) in auto mode
+Setting up libjpeg-dev:amd64 (8c-2ubuntu11) ...
+Setting up r-base-core (4.6.2-2.2404.0) ...
+
+Creating config file /etc/R/Renviron with new version
+Setting up liblapack-dev:amd64 (3.12.0-3build1.1) ...
+update-alternatives: using /usr/lib/x86_64-linux-gnu/lapack/liblapack.so to provide /usr/lib/x86_64-linux-gnu/liblapack.so (liblapack.so-x86_64-linux-gnu) in auto mode
+Setting up r-cran-lattice (0.23-1-1.2404.0) ...
+Setting up r-cran-nlme (3.1.172-1.2404.0) ...
+Setting up r-cran-cluster (2.1.8.2-1.2404.0) ...
+Setting up r-cran-nnet (7.3-21-1.2404.0) ...
+Setting up r-cran-codetools (0.2-20-1.2404.0) ...
+Setting up r-cran-boot (1.3-32-1.2404.0) ...
+Setting up r-base-dev (4.6.2-2.2404.0) ...
+Setting up r-cran-spatial (7.3-17-1.2404.0) ...
+Setting up r-cran-mass (7.3-66-1.2404.0) ...
+Setting up r-cran-foreign (0.8.92-1.2404.0) ...
+Setting up r-base-html (4.6.2-2.2404.0) ...
+Setting up r-cran-matrix (1.7-6-1.2404.0) ...
+Setting up r-cran-kernsmooth (2.23-27-1.2404.0) ...
+Setting up r-cran-mgcv (1.9-5-1.2404.0) ...
+Setting up r-cran-class (7.3-24-1.2404.0) ...
+Setting up r-cran-survival (3.8-12-1.2404.0) ...
+Setting up r-cran-rpart (4.1.27-1.2404.0) ...
+Setting up r-recommended (4.6.2-2.2404.0) ...
+Setting up r-base (4.6.2-2.2404.0) ...
+Processing triggers for hicolor-icon-theme (0.17-2) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.12) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+Processing triggers for tex-common (6.18) ...
+Processing triggers for install-info (7.1-3build2) ...
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+[✓] Recorded: R Language - 131.56MB
+[*] Measuring installation: Bubblewrap
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following NEW packages will be installed:
+  bubblewrap
+0 upgraded, 1 newly installed, 0 to remove and 103 not upgraded.
+Need to get 50.4 kB of archives.
+After this operation, 133 kB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+Get:2 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 bubblewrap amd64 0.9.0-1ubuntu0.3 [50.4 kB]
+Fetched 50.4 kB in 0s (492 kB/s)
+Selecting previously unselected package bubblewrap.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 229057 files and directories currently installed.)
+Preparing to unpack .../bubblewrap_0.9.0-1ubuntu0.3_amd64.deb ...
+Unpacking bubblewrap (0.9.0-1ubuntu0.3) ...
+Setting up bubblewrap (0.9.0-1ubuntu0.3) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+[✓] Recorded: Bubblewrap - 0.18MB
+[*] Measuring installation: Ruby Build Dependencies
+Reading package lists...
+Building dependency tree...
+Reading state information...
+libyaml-dev is already the newest version (0.2.5-1build1).
+0 upgraded, 0 newly installed, 0 to remove and 103 not upgraded.
+[✓] Recorded: Ruby Build Dependencies - 0.00MB
+[*] Measuring installation: Python Build Dependencies
+Reading package lists...
+Building dependency tree...
+Reading state information...
+libssl-dev is already the newest version (3.0.13-0ubuntu3.16).
+zlib1g-dev is already the newest version (1:1.3.dfsg-3.1ubuntu2.3).
+libbz2-dev is already the newest version (1.0.8-5.1ubuntu0.1).
+libbz2-dev set to manually installed.
+libreadline-dev is already the newest version (8.2-4build1).
+libreadline-dev set to manually installed.
+libncurses-dev is already the newest version (6.4+20240113-1ubuntu2.2).
+libncurses-dev set to manually installed.
+xz-utils is already the newest version (5.6.1+really5.4.5-1ubuntu0.4).
+libxml2-dev is already the newest version (2.9.14+dfsg-1.3ubuntu3.10).
+libxml2-dev set to manually installed.
+libffi-dev is already the newest version (3.4.6-1build1).
+libffi-dev set to manually installed.
+liblzma-dev is already the newest version (5.6.1+really5.4.5-1ubuntu0.4).
+liblzma-dev set to manually installed.
+The following additional packages will be installed:
+  libbrotli-dev libevent-2.1-7t64 libfontconfig-dev libfontconfig1-dev
+  libfreetype-dev libgcrypt20-dev libgnutls-dane0t64 libgnutls-openssl27t64
+  libgnutls28-dev libgpg-error-dev libidn2-dev libnspr4-dev libnss3-dev
+  libp11-kit-dev libpthread-stubs0-dev libsqlite3-0 libtasn1-6-dev
+  libtasn1-doc libunbound8 libx11-dev libxau-dev libxcb1-dev libxdmcp-dev
+  libxext-dev libxft-dev libxmlsec1t64-gcrypt libxmlsec1t64-gnutls
+  libxmlsec1t64-nss libxrender-dev libxrender1 libxslt1-dev libxss-dev
+  nettle-dev sqlite3 tcl-dev tcl8.6-dev tk8.6-dev uuid-dev x11proto-core-dev
+  x11proto-dev xorg-sgml-doctools xtrans-dev
+Suggested packages:
+  freetype2-doc libgcrypt20-doc dns-root-data gnutls-bin gnutls-doc
+  p11-kit-doc sqlite3-doc libx11-doc libxcb-doc libxext-doc tcl-doc tcl8.6-doc
+  tk-doc tk8.6-doc
+The following NEW packages will be installed:
+  libbrotli-dev libevent-2.1-7t64 libfontconfig-dev libfontconfig1-dev
+  libfreetype-dev libgcrypt20-dev libgnutls-dane0t64 libgnutls-openssl27t64
+  libgnutls28-dev libgpg-error-dev libidn2-dev libnspr4-dev libnss3-dev
+  libp11-kit-dev libpthread-stubs0-dev libtasn1-6-dev libtasn1-doc libunbound8
+  libx11-dev libxau-dev libxcb1-dev libxdmcp-dev libxext-dev libxft-dev
+  libxmlsec1-dev libxmlsec1t64-gcrypt libxmlsec1t64-gnutls libxmlsec1t64-nss
+  libxrender-dev libxslt1-dev libxss-dev nettle-dev tcl-dev tcl8.6-dev tk-dev
+  tk8.6-dev uuid-dev x11proto-core-dev x11proto-dev xorg-sgml-doctools
+  xtrans-dev
+The following packages will be upgraded:
+  libsqlite3-0 libsqlite3-dev libxrender1 sqlite3
+4 upgraded, 41 newly installed, 0 to remove and 99 not upgraded.
+Need to get 11.7 MB of archives.
+After this operation, 39.4 MB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+Get:2 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libsqlite3-dev amd64 3.45.1-1ubuntu2.11 [911 kB]
+Get:3 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 sqlite3 amd64 3.45.1-1ubuntu2.11 [144 kB]
+Get:4 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libsqlite3-0 amd64 3.45.1-1ubuntu2.11 [702 kB]
+Get:5 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libbrotli-dev amd64 1.1.0-2ubuntu0.1 [353 kB]
+Get:6 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libevent-2.1-7t64 amd64 2.1.12-stable-9ubuntu2.2 [146 kB]
+Get:7 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libfreetype-dev amd64 2.13.2+dfsg-1ubuntu0.2 [574 kB]
+Get:8 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 uuid-dev amd64 2.39.3-9ubuntu6.6 [33.5 kB]
+Get:9 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libfontconfig-dev amd64 2.15.0-1.1ubuntu2 [161 kB]
+Get:10 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libfontconfig1-dev amd64 2.15.0-1.1ubuntu2 [1840 B]
+Get:11 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libgpg-error-dev amd64 1.47-3build2.1 [128 kB]
+Get:12 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libgcrypt20-dev amd64 1.10.3-2ubuntu0.2 [596 kB]
+Get:13 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libunbound8 amd64 1.19.2-1ubuntu3.12 [450 kB]
+Get:14 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libgnutls-dane0t64 amd64 3.8.3-1.1ubuntu3.6 [23.5 kB]
+Get:15 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libgnutls-openssl27t64 amd64 3.8.3-1.1ubuntu3.6 [23.8 kB]
+Get:16 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libidn2-dev amd64 2.3.7-2build1.1 [121 kB]
+Get:17 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libp11-kit-dev amd64 0.25.3-4ubuntu2.2 [22.7 kB]
+Get:18 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libtasn1-6-dev amd64 4.19.0-3ubuntu0.24.04.2 [90.8 kB]
+Get:19 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 nettle-dev amd64 3.9.1-2.2build1.1 [1154 kB]
+Get:20 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libgnutls28-dev amd64 3.8.3-1.1ubuntu3.6 [1058 kB]
+Get:21 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libnspr4-dev amd64 2:4.35-1.1build1 [219 kB]
+Get:22 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libnss3-dev amd64 2:3.98-1ubuntu0.3 [253 kB]
+Get:23 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libpthread-stubs0-dev amd64 0.4-1build3 [4746 B]
+Get:24 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 xorg-sgml-doctools all 1:1.11-1.1 [10.9 kB]
+Get:25 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 x11proto-dev all 2023.2-1 [602 kB]
+Get:26 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libxau-dev amd64 1:1.0.9-1build6 [9570 B]
+Get:27 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 x11proto-core-dev all 2023.2-1 [2444 B]
+Get:28 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libxdmcp-dev amd64 1:1.1.3-0ubuntu6 [26.5 kB]
+Get:29 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 xtrans-dev all 1.4.0-1 [68.9 kB]
+Get:30 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libxcb1-dev amd64 1.15-1ubuntu2 [85.8 kB]
+Get:31 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libx11-dev amd64 2:1.8.7-1ubuntu0.1 [732 kB]
+Get:32 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libxext-dev amd64 2:1.3.4-1build2 [83.5 kB]
+Get:33 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libxrender1 amd64 1:0.9.10-1.1ubuntu0.1 [19.1 kB]
+Get:34 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libxrender-dev amd64 1:0.9.10-1.1ubuntu0.1 [26.3 kB]
+Get:35 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libxft-dev amd64 2.3.6-1build1 [64.3 kB]
+Get:36 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libxmlsec1t64-gcrypt amd64 1.2.39-5build2 [42.8 kB]
+Get:37 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libxmlsec1t64-gnutls amd64 1.2.39-5build2 [35.0 kB]
+Get:38 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libxmlsec1t64-nss amd64 1.2.39-5build2 [63.0 kB]
+Get:39 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libxslt1-dev amd64 1.1.39-0exp1ubuntu0.24.04.3 [91.9 kB]
+Get:40 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libxmlsec1-dev amd64 1.2.39-5build2 [435 kB]
+Get:41 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libxss-dev amd64 1:1.2.3-1build3 [12.1 kB]
+Get:42 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 tcl8.6-dev amd64 8.6.14+dfsg-1build1 [1000 kB]
+Get:43 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 tcl-dev amd64 8.6.14build1 [5782 B]
+Get:44 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 tk8.6-dev amd64 8.6.14-1build1 [788 kB]
+Get:45 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 tk-dev amd64 8.6.14build1 [2914 B]
+Get:46 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libtasn1-doc all 4.19.0-3ubuntu0.24.04.2 [318 kB]
+Fetched 11.7 MB in 2s (4835 kB/s)
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 229073 files and directories currently installed.)
+Preparing to unpack .../00-libsqlite3-dev_3.45.1-1ubuntu2.11_amd64.deb ...
+Unpacking libsqlite3-dev:amd64 (3.45.1-1ubuntu2.11) over (3.45.1-1ubuntu2.9) ...
+Preparing to unpack .../01-sqlite3_3.45.1-1ubuntu2.11_amd64.deb ...
+Unpacking sqlite3 (3.45.1-1ubuntu2.11) over (3.45.1-1ubuntu2.9) ...
+Preparing to unpack .../02-libsqlite3-0_3.45.1-1ubuntu2.11_amd64.deb ...
+Unpacking libsqlite3-0:amd64 (3.45.1-1ubuntu2.11) over (3.45.1-1ubuntu2.9) ...
+Selecting previously unselected package libbrotli-dev:amd64.
+Preparing to unpack .../03-libbrotli-dev_1.1.0-2ubuntu0.1_amd64.deb ...
+Unpacking libbrotli-dev:amd64 (1.1.0-2ubuntu0.1) ...
+Selecting previously unselected package libevent-2.1-7t64:amd64.
+Preparing to unpack .../04-libevent-2.1-7t64_2.1.12-stable-9ubuntu2.2_amd64.deb ...
+Unpacking libevent-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...
+Selecting previously unselected package libfreetype-dev:amd64.
+Preparing to unpack .../05-libfreetype-dev_2.13.2+dfsg-1ubuntu0.2_amd64.deb ...
+Unpacking libfreetype-dev:amd64 (2.13.2+dfsg-1ubuntu0.2) ...
+Selecting previously unselected package uuid-dev:amd64.
+Preparing to unpack .../06-uuid-dev_2.39.3-9ubuntu6.6_amd64.deb ...
+Unpacking uuid-dev:amd64 (2.39.3-9ubuntu6.6) ...
+Selecting previously unselected package libfontconfig-dev:amd64.
+Preparing to unpack .../07-libfontconfig-dev_2.15.0-1.1ubuntu2_amd64.deb ...
+Unpacking libfontconfig-dev:amd64 (2.15.0-1.1ubuntu2) ...
+Selecting previously unselected package libfontconfig1-dev:amd64.
+Preparing to unpack .../08-libfontconfig1-dev_2.15.0-1.1ubuntu2_amd64.deb ...
+Unpacking libfontconfig1-dev:amd64 (2.15.0-1.1ubuntu2) ...
+Selecting previously unselected package libgpg-error-dev.
+Preparing to unpack .../09-libgpg-error-dev_1.47-3build2.1_amd64.deb ...
+Unpacking libgpg-error-dev (1.47-3build2.1) ...
+Selecting previously unselected package libgcrypt20-dev.
+Preparing to unpack .../10-libgcrypt20-dev_1.10.3-2ubuntu0.2_amd64.deb ...
+Unpacking libgcrypt20-dev (1.10.3-2ubuntu0.2) ...
+Selecting previously unselected package libunbound8:amd64.
+Preparing to unpack .../11-libunbound8_1.19.2-1ubuntu3.12_amd64.deb ...
+Unpacking libunbound8:amd64 (1.19.2-1ubuntu3.12) ...
+Selecting previously unselected package libgnutls-dane0t64:amd64.
+Preparing to unpack .../12-libgnutls-dane0t64_3.8.3-1.1ubuntu3.6_amd64.deb ...
+Unpacking libgnutls-dane0t64:amd64 (3.8.3-1.1ubuntu3.6) ...
+Selecting previously unselected package libgnutls-openssl27t64:amd64.
+Preparing to unpack .../13-libgnutls-openssl27t64_3.8.3-1.1ubuntu3.6_amd64.deb ...
+Unpacking libgnutls-openssl27t64:amd64 (3.8.3-1.1ubuntu3.6) ...
+Selecting previously unselected package libidn2-dev:amd64.
+Preparing to unpack .../14-libidn2-dev_2.3.7-2build1.1_amd64.deb ...
+Unpacking libidn2-dev:amd64 (2.3.7-2build1.1) ...
+Selecting previously unselected package libp11-kit-dev:amd64.
+Preparing to unpack .../15-libp11-kit-dev_0.25.3-4ubuntu2.2_amd64.deb ...
+Unpacking libp11-kit-dev:amd64 (0.25.3-4ubuntu2.2) ...
+Selecting previously unselected package libtasn1-6-dev:amd64.
+Preparing to unpack .../16-libtasn1-6-dev_4.19.0-3ubuntu0.24.04.2_amd64.deb ...
+Unpacking libtasn1-6-dev:amd64 (4.19.0-3ubuntu0.24.04.2) ...
+Selecting previously unselected package nettle-dev:amd64.
+Preparing to unpack .../17-nettle-dev_3.9.1-2.2build1.1_amd64.deb ...
+Unpacking nettle-dev:amd64 (3.9.1-2.2build1.1) ...
+Selecting previously unselected package libgnutls28-dev:amd64.
+Preparing to unpack .../18-libgnutls28-dev_3.8.3-1.1ubuntu3.6_amd64.deb ...
+Unpacking libgnutls28-dev:amd64 (3.8.3-1.1ubuntu3.6) ...
+Selecting previously unselected package libnspr4-dev.
+Preparing to unpack .../19-libnspr4-dev_2%3a4.35-1.1build1_amd64.deb ...
+Unpacking libnspr4-dev (2:4.35-1.1build1) ...
+Selecting previously unselected package libnss3-dev:amd64.
+Preparing to unpack .../20-libnss3-dev_2%3a3.98-1ubuntu0.3_amd64.deb ...
+Unpacking libnss3-dev:amd64 (2:3.98-1ubuntu0.3) ...
+Selecting previously unselected package libpthread-stubs0-dev:amd64.
+Preparing to unpack .../21-libpthread-stubs0-dev_0.4-1build3_amd64.deb ...
+Unpacking libpthread-stubs0-dev:amd64 (0.4-1build3) ...
+Selecting previously unselected package xorg-sgml-doctools.
+Preparing to unpack .../22-xorg-sgml-doctools_1%3a1.11-1.1_all.deb ...
+Unpacking xorg-sgml-doctools (1:1.11-1.1) ...
+Selecting previously unselected package x11proto-dev.
+Preparing to unpack .../23-x11proto-dev_2023.2-1_all.deb ...
+Unpacking x11proto-dev (2023.2-1) ...
+Selecting previously unselected package libxau-dev:amd64.
+Preparing to unpack .../24-libxau-dev_1%3a1.0.9-1build6_amd64.deb ...
+Unpacking libxau-dev:amd64 (1:1.0.9-1build6) ...
+Selecting previously unselected package x11proto-core-dev.
+Preparing to unpack .../25-x11proto-core-dev_2023.2-1_all.deb ...
+Unpacking x11proto-core-dev (2023.2-1) ...
+Selecting previously unselected package libxdmcp-dev:amd64.
+Preparing to unpack .../26-libxdmcp-dev_1%3a1.1.3-0ubuntu6_amd64.deb ...
+Unpacking libxdmcp-dev:amd64 (1:1.1.3-0ubuntu6) ...
+Selecting previously unselected package xtrans-dev.
+Preparing to unpack .../27-xtrans-dev_1.4.0-1_all.deb ...
+Unpacking xtrans-dev (1.4.0-1) ...
+Selecting previously unselected package libxcb1-dev:amd64.
+Preparing to unpack .../28-libxcb1-dev_1.15-1ubuntu2_amd64.deb ...
+Unpacking libxcb1-dev:amd64 (1.15-1ubuntu2) ...
+Selecting previously unselected package libx11-dev:amd64.
+Preparing to unpack .../29-libx11-dev_2%3a1.8.7-1ubuntu0.1_amd64.deb ...
+Unpacking libx11-dev:amd64 (2:1.8.7-1ubuntu0.1) ...
+Selecting previously unselected package libxext-dev:amd64.
+Preparing to unpack .../30-libxext-dev_2%3a1.3.4-1build2_amd64.deb ...
+Unpacking libxext-dev:amd64 (2:1.3.4-1build2) ...
+Preparing to unpack .../31-libxrender1_1%3a0.9.10-1.1ubuntu0.1_amd64.deb ...
+Unpacking libxrender1:amd64 (1:0.9.10-1.1ubuntu0.1) over (1:0.9.10-1.1build1) ...
+Selecting previously unselected package libxrender-dev:amd64.
+Preparing to unpack .../32-libxrender-dev_1%3a0.9.10-1.1ubuntu0.1_amd64.deb ...
+Unpacking libxrender-dev:amd64 (1:0.9.10-1.1ubuntu0.1) ...
+Selecting previously unselected package libxft-dev:amd64.
+Preparing to unpack .../33-libxft-dev_2.3.6-1build1_amd64.deb ...
+Unpacking libxft-dev:amd64 (2.3.6-1build1) ...
+Selecting previously unselected package libxmlsec1t64-gcrypt:amd64.
+Preparing to unpack .../34-libxmlsec1t64-gcrypt_1.2.39-5build2_amd64.deb ...
+Unpacking libxmlsec1t64-gcrypt:amd64 (1.2.39-5build2) ...
+Selecting previously unselected package libxmlsec1t64-gnutls:amd64.
+Preparing to unpack .../35-libxmlsec1t64-gnutls_1.2.39-5build2_amd64.deb ...
+Unpacking libxmlsec1t64-gnutls:amd64 (1.2.39-5build2) ...
+Selecting previously unselected package libxmlsec1t64-nss:amd64.
+Preparing to unpack .../36-libxmlsec1t64-nss_1.2.39-5build2_amd64.deb ...
+Unpacking libxmlsec1t64-nss:amd64 (1.2.39-5build2) ...
+Selecting previously unselected package libxslt1-dev:amd64.
+Preparing to unpack .../37-libxslt1-dev_1.1.39-0exp1ubuntu0.24.04.3_amd64.deb ...
+Unpacking libxslt1-dev:amd64 (1.1.39-0exp1ubuntu0.24.04.3) ...
+Selecting previously unselected package libxmlsec1-dev.
+Preparing to unpack .../38-libxmlsec1-dev_1.2.39-5build2_amd64.deb ...
+Unpacking libxmlsec1-dev (1.2.39-5build2) ...
+Selecting previously unselected package libxss-dev:amd64.
+Preparing to unpack .../39-libxss-dev_1%3a1.2.3-1build3_amd64.deb ...
+Unpacking libxss-dev:amd64 (1:1.2.3-1build3) ...
+Selecting previously unselected package tcl8.6-dev:amd64.
+Preparing to unpack .../40-tcl8.6-dev_8.6.14+dfsg-1build1_amd64.deb ...
+Unpacking tcl8.6-dev:amd64 (8.6.14+dfsg-1build1) ...
+Selecting previously unselected package tcl-dev:amd64.
+Preparing to unpack .../41-tcl-dev_8.6.14build1_amd64.deb ...
+Unpacking tcl-dev:amd64 (8.6.14build1) ...
+Selecting previously unselected package tk8.6-dev:amd64.
+Preparing to unpack .../42-tk8.6-dev_8.6.14-1build1_amd64.deb ...
+Unpacking tk8.6-dev:amd64 (8.6.14-1build1) ...
+Selecting previously unselected package tk-dev:amd64.
+Preparing to unpack .../43-tk-dev_8.6.14build1_amd64.deb ...
+Unpacking tk-dev:amd64 (8.6.14build1) ...
+Selecting previously unselected package libtasn1-doc.
+Preparing to unpack .../44-libtasn1-doc_4.19.0-3ubuntu0.24.04.2_all.deb ...
+Unpacking libtasn1-doc (4.19.0-3ubuntu0.24.04.2) ...
+Setting up libnspr4-dev (2:4.35-1.1build1) ...
+Setting up libgnutls-openssl27t64:amd64 (3.8.3-1.1ubuntu3.6) ...
+Setting up libxslt1-dev:amd64 (1.1.39-0exp1ubuntu0.24.04.3) ...
+Setting up nettle-dev:amd64 (3.9.1-2.2build1.1) ...
+Setting up libxrender1:amd64 (1:0.9.10-1.1ubuntu0.1) ...
+Setting up tcl8.6-dev:amd64 (8.6.14+dfsg-1build1) ...
+Setting up libtasn1-doc (4.19.0-3ubuntu0.24.04.2) ...
+Setting up libsqlite3-0:amd64 (3.45.1-1ubuntu2.11) ...
+Setting up libevent-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...
+Setting up libpthread-stubs0-dev:amd64 (0.4-1build3) ...
+Setting up libxmlsec1t64-nss:amd64 (1.2.39-5build2) ...
+Setting up xtrans-dev (1.4.0-1) ...
+Setting up libunbound8:amd64 (1.19.2-1ubuntu3.12) ...
+Setting up libgnutls-dane0t64:amd64 (3.8.3-1.1ubuntu3.6) ...
+Setting up libsqlite3-dev:amd64 (3.45.1-1ubuntu2.11) ...
+Setting up libgpg-error-dev (1.47-3build2.1) ...
+Setting up uuid-dev:amd64 (2.39.3-9ubuntu6.6) ...
+Setting up libidn2-dev:amd64 (2.3.7-2build1.1) ...
+Setting up tcl-dev:amd64 (8.6.14build1) ...
+Setting up libnss3-dev:amd64 (2:3.98-1ubuntu0.3) ...
+Setting up xorg-sgml-doctools (1:1.11-1.1) ...
+Setting up libxmlsec1t64-gcrypt:amd64 (1.2.39-5build2) ...
+Setting up libtasn1-6-dev:amd64 (4.19.0-3ubuntu0.24.04.2) ...
+Setting up sqlite3 (3.45.1-1ubuntu2.11) ...
+Setting up libbrotli-dev:amd64 (1.1.0-2ubuntu0.1) ...
+Setting up libp11-kit-dev:amd64 (0.25.3-4ubuntu2.2) ...
+Setting up libgnutls28-dev:amd64 (3.8.3-1.1ubuntu3.6) ...
+Setting up libxmlsec1t64-gnutls:amd64 (1.2.39-5build2) ...
+Setting up libfreetype-dev:amd64 (2.13.2+dfsg-1ubuntu0.2) ...
+Setting up libgcrypt20-dev (1.10.3-2ubuntu0.2) ...
+Setting up libxmlsec1-dev (1.2.39-5build2) ...
+Setting up libfontconfig-dev:amd64 (2.15.0-1.1ubuntu2) ...
+Setting up libfontconfig1-dev:amd64 (2.15.0-1.1ubuntu2) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.12) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+Processing triggers for sgml-base (1.31) ...
+Processing triggers for install-info (7.1-3build2) ...
+Setting up x11proto-dev (2023.2-1) ...
+Setting up libxau-dev:amd64 (1:1.0.9-1build6) ...
+Setting up libxdmcp-dev:amd64 (1:1.1.3-0ubuntu6) ...
+Setting up x11proto-core-dev (2023.2-1) ...
+Setting up libxcb1-dev:amd64 (1.15-1ubuntu2) ...
+Setting up libx11-dev:amd64 (2:1.8.7-1ubuntu0.1) ...
+Setting up libxext-dev:amd64 (2:1.3.4-1build2) ...
+Setting up libxrender-dev:amd64 (1:0.9.10-1.1ubuntu0.1) ...
+Setting up libxft-dev:amd64 (2.3.6-1build1) ...
+Setting up libxss-dev:amd64 (1:1.2.3-1build3) ...
+Setting up tk8.6-dev:amd64 (8.6.14-1build1) ...
+Setting up tk-dev:amd64 (8.6.14build1) ...
+
+Running kernel seems to be up-to-date.
+
+Restarting services...
+ systemctl restart packagekit.service php8.3-fpm.service
+[✓] Recorded: Python Build Dependencies - 41.84MB
+
+==> Measuring GitHub CLI
+
+[*] Measuring installation: GitHub CLI
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+[*] Updating apt sources (attempt 1/5)...
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+Hit:6 https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/ InRelease
+Get:7 https://cli.github.com/packages stable InRelease [3917 B]
+Hit:8 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease
+Hit:2 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble InRelease
+Hit:3 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates InRelease
+Hit:4 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-backports InRelease
+Hit:5 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-security InRelease
+Get:9 https://cli.github.com/packages stable/main amd64 Packages [355 B]
+Fetched 4272 B in 0s (15.6 kB/s)
+Reading package lists...2026-11-27 07:51:10 URL:https://cli.github.com/packages/githubcli-archive-keyring.gpg [4528/4528] -> "/tmp/tmp.GIky8I7Vw2" [1]
+
+[✓] Apt sources updated
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following packages will be upgraded:
+  gh
+1 upgraded, 0 newly installed, 0 to remove and 99 not upgraded.
+Need to get 15.2 MB of archives.
+After this operation, 306 kB of additional disk space will be used.
+Get:1 https://cli.github.com/packages stable/main amd64 gh amd64 2.106.0 [15.2 MB]
+Fetched 15.2 MB in 0s (148 MB/s)
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 230618 files and directories currently installed.)
+Preparing to unpack .../archives/gh_2.106.0_amd64.deb ...
+Unpacking gh (2.106.0) over (2.104.0) ...
+Setting up gh (2.106.0) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+[✓] Recorded: GitHub CLI - 0.36MB
+
+==> Measuring GitLab CLI
+
+[*] Measuring installation: GitLab CLI
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following NEW packages will be installed:
+  glab
+0 upgraded, 1 newly installed, 0 to remove and 99 not upgraded.
+Need to get 7729 kB of archives.
+After this operation, 28.8 MB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+Get:2 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/universe amd64 glab amd64 1.36.0-1ubuntu0.3 [7729 kB]
+Fetched 7729 kB in 0s (28.2 MB/s)
+Selecting previously unselected package glab.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 230625 files and directories currently installed.)
+Preparing to unpack .../glab_1.36.0-1ubuntu0.3_amd64.deb ...
+Unpacking glab (1.36.0-1ubuntu0.3) ...
+Setting up glab (1.36.0-1ubuntu0.3) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+[✓] Recorded: GitLab CLI - 29.20MB
+
+==> Preparing Homebrew Directory
+
+
+==> Measuring Box User Installations
+
+[0;34m[*][0m Measuring: Bun
+##################################                                        47.4%######################################################################    98.3%######################################################################## 100.0%
+bun was installed successfully to ~/.bun/bin/bun 
+
+Added "~/.bun/bin" to $PATH in "~/.bash_profile" 
+
+To get started, run: 
+
+  source /home/box/.bash_profile 
+  bun --help 
+[0;32m[✓][0m Recorded: Bun - 107.41MB
+[0;34m[*][0m Measuring: gh-setup-git-identity
+bun add v1.4.5 (a7733435c)
+
+installed gh-setup-git-identity@0.8.2 with binaries:
+ - gh-setup-git-identity
+
+22 packages installed [554.00ms]
+[0;32m[✓][0m Recorded: gh-setup-git-identity - 4.63MB
+[0;34m[*][0m Measuring: glab-setup-git-identity
+bun add v1.4.5 (a7733435c)
+Resolving dependencies
+Resolved, downloaded and extracted [88]
+Saved lockfile
+Resolving dependencies
+
+installed glab-setup-git-identity@0.6.2 with binaries:
+ - glab-setup-git-identity
+
+2 packages installed [261.00ms]
+[0;32m[✓][0m Recorded: glab-setup-git-identity - 4.42MB
+[0;34m[*][0m Measuring: Deno
+Archive:  /home/box/.deno/bin/deno.zip
+  inflating: /home/box/.deno/bin/deno  Resolved, downloaded and extracted [8]
+Saved lockfile
+###################################                                       49.0%####################################################################      95.7%######################################################################## 100.0%
+
+Deno was installed successfully to /home/box/.deno/bin/deno
+
+Deno was added to the PATH.
+You may need to restart your shell for it to become available.
+
+Run '/home/box/.deno/bin/deno --help' to get started
+
+Stuck? Join our Discord https://discord.gg/deno
+[0;32m[✓][0m Recorded: Deno - 97.21MB
+[0;34m[*][0m Measuring: NVM + Node.js 26
+[0m[32mDownload[0m https://jsr.io/@deno/installer-shell-setup/meta.json
+[0m[32mDownload[0m https://jsr.io/@deno/installer-shell-setup/0.3.4_meta.json
+[0m[32mDownload[0m https://jsr.io/@deno/installer-shell-setup/0.3.4/bundled.esm.js
+info: backing '/home/box/.profile' up to '/home/box/.deno/.shellRcBackups/.profile.bak'
+info: backing '/home/box/.bash_profile' up to '/home/box/.deno/.shellRcBackups/.bash_profile.bak'
+info: backing '/home/box/.bashrc' up to '/home/box/.deno/.shellRcBackups/.bashrc.bak'
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 20055  100 20055    0     0   706k      0 --:--:-- --:--:-- --:--:--  725k
+You have $NVM_DIR set to "/home/runner/.nvm", but that directory does not exist. Check your profile files and environment.
+Downloading and installing node v26.13.1...
+Downloading https://nodejs.org/dist/v26.13.1/node-v26.13.1-linux-x64.tar.xz...
+################################################################          89.7%######################################################################## 100.0%
+Computing checksum with sha256sum
+Checksums matched!
+Now using node v26.13.1 (npm v11.20.0)
+default -> 26 (-> v26.13.1 *)
+tput: unknown terminal "unknown"
+[0;32m[✓][0m Recorded: NVM + Node.js 26 - 309.65MB
+[0;34m[*][0m Measuring: Pyenv + Python (latest)
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100   270  100   270    0     0   2223      0 --:--:-- --:--:-- --:--:--  2231
+Cloning into '/home/box/.pyenv'...
+Cloning into '/home/box/.pyenv/plugins/pyenv-doctor'...
+Cloning into '/home/box/.pyenv/plugins/pyenv-update'...
+Cloning into '/home/box/.pyenv/plugins/pyenv-virtualenv'...
+Downloading Python-3.15.2.tar.xz...
+-> https://www.python.org/ftp/python/3.15.2/Python-3.15.2.tar.xz
+Installing Python-3.15.2...
+=> ./configure --prefix=/home/box/.pyenv/versions/3.15.2 --enable-shared --libdir=/home/box/.pyenv/versions/3.15.2/lib
+=> make -j 4
+=> make install
+Installed Python-3.15.2 to /home/box/.pyenv/versions/3.15.2
+[0;32m[✓][0m Recorded: Pyenv + Python (latest) - 433.98MB
+[0;34m[*][0m Measuring: Go (latest)
+[0;32m[✓][0m Recorded: Go (latest) - 295.98MB
+
+  stable-x86_64-unknown-linux-gnu unchanged - rustc 1.100.0 (0ef1bc386 2026-11-09)
+
+
+Rust is installed now. Great!
+
+To get started you may need to restart your current shell.
+This would reload your PATH environment variable to include
+Cargo's bin directory ($HOME/.cargo/bin).
+
+To configure your current shell, you need to source the
+corresponding env file under $HOME/.cargo.
+
+Consider running the right command for your shell (note the leading DOT):
+. "$HOME/.cargo/env"     # For sh/ash/dash/pdksh/bash
+. "$HOME/.cargo/env.ps1" # For pwsh
+cargo:rerun-if-env-changed=CC_x86_64-unknown-linux-gnu
+CC_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=CC_x86_64_unknown_linux_gnu
+CC_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_CC
+HOST_CC = None
+cargo:rerun-if-env-changed=CC
+CC = None
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CPATH
+cargo:rerun-if-env-changed=C_INCLUDE_PATH
+cargo:rerun-if-env-changed=CPLUS_INCLUDE_PATH
+cargo:rerun-if-env-changed=OBJC_INCLUDE_PATH
+cargo:rerun-if-env-changed=OBJCPLUS_INCLUDE_PATH
+cargo:rerun-if-env-changed=COMPILER_PATH
+cargo:rerun-if-env-changed=SOURCE_DATE_EPOCH
+cargo:rerun-if-env-changed=GCC_EXEC_PREFIX
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+cargo:rerun-if-env-changed=CFLAGS
+CFLAGS = None
+cargo:rerun-if-env-changed=HOST_CFLAGS
+HOST_CFLAGS = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu
+CFLAGS_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu
+CFLAGS_x86_64-unknown-linux-gnu = None
+[0;32m[✓][0m Recorded: Rust (via rustup) - 674.28MB
+[0;34m[*][0m Measuring: SDKMAN + Java 25
+
+                                -+syyyyyyys:
+                            `/yho:`       -yd.
+                         `/yh/`             +m.
+                       .oho.                 hy                          .`
+                     .sh/`                   :N`                `-/o`  `+dyyo:.
+                   .yh:`                     `M-          `-/osysoym  :hs` `-+sys:      hhyssssssssy+
+                 .sh:`                       `N:          ms/-``  yy.yh-      -hy.    `.N-````````+N.
+               `od/`                         `N-       -/oM-      ddd+`     `sd:     hNNm        -N:
+              :do`                           .M.       dMMM-     `ms.      /d+`     `NMMs       `do
+            .yy-                             :N`    ```mMMM.      -      -hy.       /MMM:       yh
+          `+d+`           `:/oo/`       `-/osyh/ossssssdNMM`           .sh:         yMMN`      /m.
+         -dh-           :ymNMMMMy  `-/shmNm-`:N/-.``   `.sN            /N-         `NMMy      .m/
+       `oNs`          -hysosmMMMMydmNmds+-.:ohm           :             sd`        :MMM/      yy
+      .hN+           /d:    -MMMmhs/-.`   .MMMh   .ss+-                 `yy`       sMMN`     :N.
+     :mN/           `N/     `o/-`         :MMMo   +MMMN-         .`      `ds       mMMh      do
+    /NN/            `N+....--:/+oooosooo+:sMMM:   hMMMM:        `my       .m+     -MMM+     :N.
+   /NMo              -+ooooo+/:-....`...:+hNMN.  `NMMMd`        .MM/       -m:    oMMN.     hs
+  -NMd`                                    :mm   -MMMm- .s/     -MMm.       /m-   mMMd     -N.
+ `mMM/                                      .-   /MMh. -dMo     -MMMy        od. .MMMs..---yh
+ +MMM.                                           sNo`.sNMM+     :MMMM/        sh`+MMMNmNm+++-
+ mMMM-                                           /--ohmMMM+     :MMMMm.       `hyymmmdddo
+ MMMMh.                  ````                  `-+yy/`yMMM/     :MMMMMy       -sm:.``..-:-.`
+ dMMMMmo-.``````..-:/osyhddddho.           `+shdh+.   hMMM:     :MmMMMM/   ./yy/` `:sys+/+sh/
+ .dMMMMMMmdddddmmNMMMNNNNNMMMMMs           sNdo-      dMMM-  `-/yd/MMMMm-:sy+.   :hs-      /N`
+  `/ymNNNNNNNmmdys+/::----/dMMm:          +m-         mMMM+ohmo/.` sMMMMdo-    .om:       `sh
+     `.-----+/.`       `.-+hh/`         `od.          NMMNmds/     `mmy:`     +mMy      `:yy.
+           /moyso+//+ossso:.           .yy`          `dy+:`         ..       :MMMN+---/oys:
+         /+m:  `.-:::-`               /d+                                    +MMMMMMMNh:`
+        +MN/                        -yh.                                     `+hddhy+.
+       /MM+                       .sh:
+      :NMo                      -sh/
+     -NMs                    `/yy:
+    .NMy                  `:sh+.
+   `mMm`               ./yds-
+  `dMMMmyo:-.````.-:oymNy:`
+  +NMMMMMMMMMMMMMMMMms:`
+    -+shmNMMMNmdy+:`
+
+
+                                                                 Now attempting installation...
+
+
+Looking for a previous installation of SDKMAN...
+Checking Bash version...
+Looking for unzip...
+Looking for zip...
+Looking for tar...
+Looking for find...
+Looking for curl...
+Looking for sed...
+Installing SDKMAN scripts...
+Create distribution directories...
+Getting available candidates...
+Prime platform file...
+Prime the config file...
+Installing script cli archive...
+* Downloading...
+info: downloading installer
+warn: it looks like you have an existing rustup settings file at:
+warn: /home/box/.rustup/settings.toml
+info: profile set to default
+info: default host tuple is x86_64-unknown-linux-gnu
+warn: Updating existing toolchain, profile choice will be ignored
+info: syncing channel updates for stable-x86_64-unknown-linux-gnu
+info: default toolchain set to stable-x86_64-unknown-linux-gnu
+* Checking archive integrity...
+* Extracting archive...
+* Copying archive contents...
+* Cleaning up...
+
+Installing script cli archive...
+* Downloading...
+* Checking archive integrity...
+* Extracting archive...
+* Copying archive contents...
+* Cleaning up...
+
+Set version to 5.24.0 ...
+Set native version to 0.8.0 ...
+
+
+
+All done!
+
+
+You are subscribed to the STABLE channel.
+
+Please open a new terminal, or run the following in the existing one:
+
+    source "/home/box/.sdkman/bin/sdkman-init.sh"
+
+Then issue the following command:
+
+    sdk help
+
+Enjoy!!!
+
+Downloading: java 25-tem
+
+In progress...
+
+######################################################################## 100.0%
+######################################################################## 100.0%
+#=#=#                                                                          ##O#-#                                                                         ####################                                                      28.7%############################################                              62.1%#####################################################################     96.0%######################################################################## 100.0%
+
+Repackaging Java 25-tem...
+
+Done repackaging...
+
+Installing: java 25-tem
+Done installing!
+
+
+Setting java 25-tem as default.
+[0;32m[✓][0m Recorded: SDKMAN + Java 25 - 465.42MB
+[0;34m[*][0m Measuring: Kotlin (via SDKMAN)
+
+Downloading: kotlin 2.4.21
+
+In progress...
+
+#=#=#                                                                          ########################                                                  34.7%############################################################              84.3%######################################################################## 100.0%
+
+Installing: kotlin 2.4.21
+Done installing!
+
+
+Setting kotlin 2.4.21 as default.
+[0;32m[✓][0m Recorded: Kotlin (via SDKMAN) - 187.47MB
+[0;34m[*][0m Measuring: Lean (via elan)
+info: downloading installer
+info: default toolchain set to 'stable'
+info: downloading https://releases.lean-lang.org/lean4/v4.36.0/lean-4.36.0-linux.tar.zst
+info: installing /home/box/.elan/toolchains/leanprover--lean4---v4.36.0
+
+leanprover/lean4:v4.36.0 installed - Lean (version 4.36.0, x86_64-unknown-linux-gnu, commit 611c117bfaf7b7ae1cfcf246ce6fba31e8f509e9, Release)
+
+Lean (version 4.36.0, x86_64-unknown-linux-gnu, commit 611c117bfaf7b7ae1cfcf246ce6fba31e8f509e9, Release)
+[0;32m[✓][0m Recorded: Lean (via elan) - 3278.16MB
+[0;34m[*][0m Measuring: Opam + Rocq/Coq
+Reading package lists...
+Building dependency tree...
+Reading state information...
+bubblewrap is already the newest version (0.9.0-1ubuntu0.3).
+0 upgraded, 0 newly installed, 0 to remove and 99 not upgraded.
+## Downloading opam 2.6.1 for linux on x86_64...
+## Downloaded.
+## Where should it be installed ? [/usr/local/bin] ## opam 2.6.1 installed to /usr/local/bin
+Write access to '/etc/apparmor.d' required, using 'sudo'.
+Command: install -m 644 /tmp/opam-local.aa.tmp /etc/apparmor.d/opam-local
+Write access to '/etc/apparmor.d' required, using 'sudo'.
+Command: apparmor_parser -a /etc/apparmor.d/opam-local
+AppArmor profile successfully added.
+No configuration file found, using built-in defaults.
+Checking for available remotes: rsync and local, git, mercurial.
+  - you won't be able to use darcs repositories unless you install the darcs command on your system.
+
+
+<><> Fetching repository information ><><><><><><><><><><><><><><><><><><><><><>
+[default] Initialised
+
+User configuration:
+  Updating ~/.bashrc.
+  Added 9 lines after line 120 in ~/.bashrc.
+
+<><> Creating initial switch 'default' (invariant ["ocaml" {>= "4.05.0"}] - initially with ocaml-base-compiler)
+
+<><> Installing new switch packages <><><><><><><><><><><><><><><><><><><><><><>
+Switch invariant: ["ocaml" {>= "4.05.0"}]
+[NOTE] Make sure that ~/.bashrc is well sourced in your ~/.bash_profile.
+
+
+<><> Processing actions <><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+∗ installed base-bigarray.base
+∗ installed base-threads.base
+∗ installed base-unix.base
+∗ installed compiler-cloning.enabled
+∗ installed ocaml-options-vanilla.1
+⬇ retrieved ocaml.5.5.2  (https://opam.ocaml.org/cache)
+⬇ retrieved ocaml-compiler.5.5.2  (https://opam.ocaml.org/cache)
+∗ installed ocaml-compiler.5.5.2
+∗ installed ocaml-base-compiler.5.5.2
+∗ installed ocaml.5.5.2
+∗ installed base-domains.base
+∗ installed base-effects.base
+∗ installed base-nnp.base
+Done.
+
+<><> ocaml-compiler.5.5.2 installed successfully ><><><><><><><><><><><><><><><>
+=> This switch had to be compiled from sources, but future switches with the 🐌
+   same compiler version and configuration should assemble instantly.
+# To update the current shell environment, run: eval $(opam env --switch=default)
+[rocq-released] Initialised
+
+<><> Updating package repositories ><><><><><><><><><><><><><><><><><><><><><><>
+[rocq-released] no changes from https://rocq-prover.org/opam/released
+[default] no changes from https://opam.ocaml.org
+The following actions will be performed:
+=== recompile 3 packages
+  ↻ base-domains        base           [uses ocaml]
+  ↻ base-effects        base           [uses ocaml]
+  ↻ base-nnp            base           [uses base-domains]
+=== install 11 packages
+  ∗ conf-gmp            5              [required by zarith]
+  ∗ conf-linux-libc-dev 0              [required by rocq-runtime]
+  ∗ conf-pkg-config     5              [required by zarith]
+  ∗ dune                3.25.0         [required by rocq-core]
+  ∗ ocaml-config        3              [required by ocaml]
+  ∗ ocamlfind           1.9.8          [required by rocq-runtime]
+  ∗ rocq-core           9.3.0          [required by rocq-prover]
+  ∗ rocq-prover         meta.1
+  ∗ rocq-runtime        9.3.0          [required by rocq-core, rocq-stdlib]
+  ∗ rocq-stdlib         9.2.0          [required by rocq-prover]
+  ∗ zarith              1.14           [required by rocq-runtime]
+=== downgrade 3 packages
+  ↘ ocaml               5.5.2 to 5.4.1 [required by dune, rocq-runtime]
+  ↘ ocaml-base-compiler 5.5.2 to 5.4.1 [required by ocaml]
+  ↘ ocaml-compiler      5.5.2 to 5.4.1 [required by ocaml-base-compiler]
+
+<><> Processing actions <><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+⬇ retrieved conf-gmp.5  (https://opam.ocaml.org/cache)
+∗ installed conf-gmp.5
+∗ installed conf-linux-libc-dev.0
+⬇ retrieved conf-pkg-config.5  (2 extra sources)
+⬇ retrieved conf-pkg-config.5  (2 extra sources)
+∗ installed conf-pkg-config.5
+⬇ retrieved ocaml-config.3  (2 extra sources)
+⬇ retrieved ocaml-config.3  (2 extra sources)
+⬇ retrieved dune.3.25.0  (https://opam.ocaml.org/cache)
+⬇ retrieved ocamlfind.1.9.8  (https://opam.ocaml.org/cache)
+⬇ retrieved rocq-stdlib.9.2.0  (https://github.com/coq/stdlib/releases/download/V9.2.0/stdlib-9.2.0.tar.gz)
+⬇ retrieved ocaml-compiler.5.4.1  (https://opam.ocaml.org/cache)
+⬇ retrieved zarith.1.14  (https://opam.ocaml.org/cache)
+⬇ retrieved rocq-core.9.3.0, rocq-runtime.9.3.0  (https://opam.ocaml.org/cache)
+⊘ removed   base-effects.base
+⊘ removed   base-nnp.base
+⊘ removed   base-domains.base
+⊘ removed   ocaml.5.5.2
+⊘ removed   ocaml-base-compiler.5.5.2
+⊘ removed   ocaml-compiler.5.5.2
+∗ installed ocaml-compiler.5.4.1
+∗ installed ocaml-base-compiler.5.4.1
+∗ installed ocaml-config.3
+∗ installed ocaml.5.4.1
+∗ installed base-domains.base
+∗ installed base-effects.base
+∗ installed base-nnp.base
+∗ installed ocamlfind.1.9.8
+∗ installed zarith.1.14
+∗ installed dune.3.25.0
+∗ installed rocq-runtime.9.3.0
+∗ installed rocq-core.9.3.0
+∗ installed rocq-stdlib.9.2.0
+∗ installed rocq-prover.meta.1
+Done.
+# To update the current shell environment, run: eval $(opam env)
+The Rocq Prover, version 9.3.0
+compiled with OCaml 5.4.1
+[0;32m[✓][0m Recorded: Opam + Rocq/Coq - 1030.32MB
+==> Running in non-interactive mode because `$NONINTERACTIVE` is set.
+==> This script will install:
+/home/linuxbrew/.linuxbrew/bin/brew
+/home/linuxbrew/.linuxbrew/share/doc/homebrew
+/home/linuxbrew/.linuxbrew/share/man/man1/brew.1
+/home/linuxbrew/.linuxbrew/share/zsh/site-functions/_brew
+/home/linuxbrew/.linuxbrew/etc/bash_completion.d/brew
+/home/linuxbrew/.linuxbrew/Homebrew
+==> The following new directories will be created:
+/home/linuxbrew/.linuxbrew/bin
+/home/linuxbrew/.linuxbrew/etc
+/home/linuxbrew/.linuxbrew/include
+/home/linuxbrew/.linuxbrew/lib
+/home/linuxbrew/.linuxbrew/libexec
+/home/linuxbrew/.linuxbrew/sbin
+/home/linuxbrew/.linuxbrew/share
+/home/linuxbrew/.linuxbrew/var
+/home/linuxbrew/.linuxbrew/opt
+/home/linuxbrew/.linuxbrew/share/zsh
+/home/linuxbrew/.linuxbrew/share/zsh/site-functions
+/home/linuxbrew/.linuxbrew/var/homebrew
+/home/linuxbrew/.linuxbrew/var/homebrew/linked
+/home/linuxbrew/.linuxbrew/Cellar
+/home/linuxbrew/.linuxbrew/Caskroom
+/home/linuxbrew/.linuxbrew/Frameworks
+==> Downloading and installing Homebrew...
+/usr/bin/ldd: line 41: printf: write error: Broken pipe
+/usr/bin/ldd: line 43: printf: write error: Broken pipe
+HOMEBREW_BREW_GIT_REMOTE set: using https://github.com/Homebrew/brew as the Homebrew/brew Git remote.
+From https://github.com/Homebrew/brew
+ * [new branch]            master     -> origin/master
+==> Updating Homebrew...
+==> Downloading https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:de39ccc6459a91489fbf5e34d4b556e6bfd20a53a0c8104d17ee84e7ab34334f
+#######################                                                   32.4%######################################################################## 100.0%
+==> Pouring portable-ruby-4.0.10.x86_64_linux.bottle.tar.gz
+==> Installation successful!
+
+==> Homebrew has enabled anonymous aggregate formulae and cask analytics.
+Read the analytics documentation (and how to opt-out) here:
+  https://docs.brew.sh/Analytics
+No analytics data has been sent yet (nor will any be during this install run).
+
+==> Homebrew is run entirely by unpaid volunteers. Please consider donating:
+  https://github.com/Homebrew/brew#donations
+
+==> Next steps:
+- Run these commands in your terminal to add Homebrew to your PATH:
+    echo >> /home/box/.bashrc
+    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"' >> /home/box/.bashrc
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
+- Install Homebrew's dependencies if you have sudo access:
+    sudo apt-get install build-essential
+  For more information, see:
+    https://docs.brew.sh/Homebrew-on-Linux
+- Run brew help to get started
+- Further documentation:
+    https://docs.brew.sh
+
+Homebrew 7.0.16
+[0;32m[✓][0m Recorded: Homebrew - 217.48MB
+[0;34m[*][0m Measuring: PHP (via Homebrew)
+==> Would install 1 formula:
+php 8.6.0 (37.8MB)
+==> Would install 63 dependencies for php:
+ncurses          6.6
+readline         8.3.6
+zlib-ng-compat   2.3.3_1
+libxcrypt        4.5.2
+sqlite           3.54.1
+util-linux       2.42.4
+apr              1.7.6
+ca-certificates  2026-11-05
+openssl@4        4.1.0
+m4               1.4.21
+libtool          2.6.2
+unixodbc         2.3.14
+expat            2.11.0
+apr-util         1.6.6
+argon2           20190702_1
+gdbm             1.26
+perl             5.44.0
+autoconf         2.73
+brotli           1.2.1
+libnghttp2       1.71.0
+libnghttp3       1.19.0
+libngtcp2        1.26.0
+libunistring     1.5
+libidn2          2.3.8
+libpsl           0.23.3
+libssh2          1.11.1_7
+lz4              1.11.1
+xz               5.8.4
+zstd             1.6.0
+keyutils         1.6.3
+krb5             1.22.3
+cyrus-sasl       2.1.28_4
+openldap         2.7.2
+curl             8.23.0
+freetds          1.5.22
+libpng           1.6.59
+bzip2            1.0.8
+freetype         2.15.0
+fontconfig       2.18.4
+jpeg-turbo       3.2.1
+libvmaf          3.2.1
+aom              3.15.3
+dav1d            1.5.5
+libavif          1.4.2
+giflib           6.1.3
+webp             1.6.0
+libtiff          4.7.2
+gd               2.3.3_6
+gmp              6.3.0
+icu4c@79         79.1
+libpq            19.0
+libsodium        1.0.22
+libzip           1.12.1
+net-snmp         5.9.5.2_2
+oniguruma        6.9.10
+pcre2            10.49
+tidy-html5       5.8.0
+libedit          20260512-3.1
+libffi           3.8.2
+libxml2          2.15.4
+libgpg-error     1.61
+libgcrypt        1.12.4
+libxslt          1.1.45
+==> Downloading bottle manifests
+✔︎ Bottle Manifest php (8.6.0)
+Warning: Landlock ABI 10 or later is required to deny all network access; found ABI 8. Applying the network restrictions supported by this kernel.
+==> Fetching downloads for: php
+✔︎ Bottle Manifest ncurses (6.6)
+✔︎ Bottle ncurses (6.6)
+✔︎ Bottle Manifest readline (8.3.6)
+✔︎ Bottle readline (8.3.6)
+✔︎ Bottle Manifest zlib-ng-compat (2.3.3_1)
+✔︎ Bottle zlib-ng-compat (2.3.3_1)
+✔︎ Bottle Manifest libxcrypt (4.5.2)
+✔︎ Bottle Manifest sqlite (3.54.1)
+✔︎ Bottle Manifest util-linux (2.42.4)
+✔︎ Bottle Manifest apr (1.7.6)
+✔︎ Bottle Manifest ca-certificates (2026-11-05)
+✔︎ Bottle Manifest openssl@4 (4.1.0)
+✔︎ Bottle Manifest m4 (1.4.21)
+✔︎ Bottle libxcrypt (4.5.2)
+✔︎ Bottle Manifest libtool (2.6.2)
+✔︎ Bottle Manifest unixodbc (2.3.14)
+✔︎ Bottle sqlite (3.54.1)
+✔︎ Bottle Manifest expat (2.11.0)
+✔︎ Bottle ca-certificates (2026-11-05)
+✔︎ Bottle Manifest apr-util (1.6.6)
+✔︎ Bottle apr (1.7.6)
+✔︎ Bottle Manifest argon2 (20190702_1)
+✔︎ Bottle util-linux (2.42.4)
+✔︎ Bottle Manifest gdbm (1.26)
+✔︎ Bottle m4 (1.4.21)
+✔︎ Bottle unixodbc (2.3.14)
+✔︎ Bottle libtool (2.6.2)
+✔︎ Bottle Manifest perl (5.44.0)
+✔︎ Bottle apr-util (1.6.6)
+✔︎ Bottle Manifest autoconf (2.73)
+✔︎ Bottle Manifest brotli (1.2.1)
+✔︎ Bottle expat (2.11.0)
+✔︎ Bottle Manifest libnghttp2 (1.71.0)
+✔︎ Bottle openssl@4 (4.1.0)
+✔︎ Bottle Manifest libnghttp3 (1.19.0)
+✔︎ Bottle Manifest libngtcp2 (1.26.0)
+✔︎ Bottle argon2 (20190702_1)
+✔︎ Bottle gdbm (1.26)
+✔︎ Bottle php (8.6.0)
+✔︎ Bottle autoconf (2.73)
+✔︎ Bottle Manifest libunistring (1.5)
+✔︎ Bottle Manifest libidn2 (2.3.8)
+✔︎ Bottle brotli (1.2.1)
+✔︎ Bottle libnghttp2 (1.71.0)
+✔︎ Bottle libnghttp3 (1.19.0)
+✔︎ Bottle perl (5.44.0)
+✔︎ Bottle Manifest libpsl (0.23.3)
+✔︎ Bottle Manifest libssh2 (1.11.1_7)
+✔︎ Bottle Manifest lz4 (1.11.1)
+✔︎ Bottle Manifest xz (5.8.4)
+✔︎ Bottle Manifest zstd (1.6.0)
+✔︎ Bottle libngtcp2 (1.26.0)
+✔︎ Bottle Manifest keyutils (1.6.3)
+✔︎ Bottle Manifest krb5 (1.22.3)
+✔︎ Bottle libidn2 (2.3.8)
+✔︎ Bottle libunistring (1.5)
+✔︎ Bottle Manifest cyrus-sasl (2.1.28_4)
+✔︎ Bottle lz4 (1.11.1)
+✔︎ Bottle Manifest openldap (2.7.2)
+✔︎ Bottle libssh2 (1.11.1_7)
+✔︎ Bottle Manifest curl (8.23.0)
+✔︎ Bottle libpsl (0.23.3)
+✔︎ Bottle Manifest freetds (1.5.22)
+✔︎ Bottle xz (5.8.4)
+✔︎ Bottle Manifest libpng (1.6.59)
+✔︎ Bottle keyutils (1.6.3)
+✔︎ Bottle Manifest bzip2 (1.0.8)
+✔︎ Bottle Manifest freetype (2.15.0)
+✔︎ Bottle zstd (1.6.0)
+✔︎ Bottle krb5 (1.22.3)
+✔︎ Bottle Manifest fontconfig (2.18.4)
+✔︎ Bottle curl (8.23.0)
+✔︎ Bottle Manifest jpeg-turbo (3.2.1)
+✔︎ Bottle cyrus-sasl (2.1.28_4)
+✔︎ Bottle Manifest libvmaf (3.2.1)
+✔︎ Bottle Manifest aom (3.15.3)
+✔︎ Bottle openldap (2.7.2)
+✔︎ Bottle Manifest dav1d (1.5.5)
+✔︎ Bottle bzip2 (1.0.8)
+✔︎ Bottle Manifest libavif (1.4.2)
+✔︎ Bottle libpng (1.6.59)
+✔︎ Bottle freetype (2.15.0)
+✔︎ Bottle Manifest giflib (6.1.3)
+✔︎ Bottle freetds (1.5.22)
+✔︎ Bottle Manifest webp (1.6.0)
+✔︎ Bottle fontconfig (2.18.4)
+✔︎ Bottle Manifest libtiff (4.7.2)
+✔︎ Bottle giflib (6.1.3)
+✔︎ Bottle Manifest gd (2.3.3_6)
+✔︎ Bottle dav1d (1.5.5)
+✔︎ Bottle Manifest gmp (6.3.0)
+✔︎ Bottle jpeg-turbo (3.2.1)
+✔︎ Bottle Manifest icu4c@79 (79.1)
+✔︎ Bottle Manifest libpq (19.0)
+✔︎ Bottle Manifest libsodium (1.0.22)
+✔︎ Bottle libvmaf (3.2.1)
+✔︎ Bottle Manifest libzip (1.12.1)
+✔︎ Bottle libavif (1.4.2)
+✔︎ Bottle aom (3.15.3)
+✔︎ Bottle Manifest net-snmp (5.9.5.2_2)
+✔︎ Bottle webp (1.6.0)
+✔︎ Bottle Manifest oniguruma (6.9.10)
+✔︎ Bottle Manifest pcre2 (10.49)
+✔︎ Bottle gmp (6.3.0)
+✔︎ Bottle libtiff (4.7.2)
+✔︎ Bottle Manifest tidy-html5 (5.8.0)
+✔︎ Bottle libzip (1.12.1)
+✔︎ Bottle Manifest libedit (20260512-3.1)
+✔︎ Bottle Manifest libffi (3.8.2)
+✔︎ Bottle gd (2.3.3_6)
+✔︎ Bottle libsodium (1.0.22)
+✔︎ Bottle Manifest libxml2 (2.15.4)
+✔︎ Bottle Manifest libgpg-error (1.61)
+✔︎ Bottle libpq (19.0)
+✔︎ Bottle net-snmp (5.9.5.2_2)
+✔︎ Bottle icu4c@79 (79.1)
+✔︎ Bottle Manifest libgcrypt (1.12.4)
+✔︎ Bottle Manifest libxslt (1.1.45)
+✔︎ Bottle pcre2 (10.49)
+✔︎ Bottle oniguruma (6.9.10)
+✔︎ Bottle tidy-html5 (5.8.0)
+✔︎ Bottle libffi (3.8.2)
+✔︎ Bottle libedit (20260512-3.1)
+✔︎ Bottle libxml2 (2.15.4)
+✔︎ Bottle libgpg-error (1.61)
+✔︎ Bottle libgcrypt (1.12.4)
+✔︎ Bottle libxslt (1.1.45)
+==> Installing dependencies for php: ncurses, readline, zlib-ng-compat, libxcrypt, sqlite, util-linux, apr, ca-certificates, openssl@4, m4, libtool, unixodbc, expat, apr-util, argon2, gdbm, perl, autoconf, brotli, libnghttp2, libnghttp3, libngtcp2, libunistring, libidn2, libpsl, libssh2, lz4, xz, zstd, keyutils, krb5, cyrus-sasl, openldap, curl, freetds, libpng, bzip2, freetype, fontconfig, jpeg-turbo, libvmaf, aom, dav1d, libavif, giflib, webp, libtiff, gd, gmp, icu4c@79, libpq, libsodium, libzip, net-snmp, oniguruma, pcre2, tidy-html5, libedit, libffi, libxml2, libgpg-error, libgcrypt and libxslt
+==> Installing php dependency: ncurses (6.6)
+==> Pouring ncurses--6.6.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/ncurses/6.6: 4,071 files, 11.7MB
+==> Installing php dependency: readline (8.3.6)
+==> Pouring readline--8.3.6.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/readline/8.3.6: 56 files, 3.1MB
+==> Installing php dependency: zlib-ng-compat (2.3.3_1)
+==> Pouring zlib-ng-compat--2.3.3_1.x86_64_linux.bottle.1.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/zlib-ng-compat/2.3.3_1: 17 files, 628.7KB
+==> Installing php dependency: libxcrypt (4.5.2)
+==> Pouring libxcrypt--4.5.2.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libxcrypt/4.5.2: 25 files, 404.9KB
+==> Installing php dependency: sqlite (3.54.1)
+==> Pouring sqlite--3.54.1.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/sqlite/3.54.1: 13 files, 7MB
+==> Installing php dependency: util-linux (2.42.4)
+==> Pouring util-linux--2.42.4.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/util-linux/2.42.4: 461 files, 31MB
+==> Installing php dependency: apr (1.7.6)
+==> Pouring apr--1.7.6.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/apr/1.7.6: 59 files, 1.8MB
+==> Installing php dependency: ca-certificates (2026-11-05)
+==> Pouring ca-certificates--2026-11-05.all.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/ca-certificates/2026-11-05: 5 files, 216KB
+==> Installing php dependency: openssl@4 (4.1.0)
+==> Pouring openssl@4--4.1.0.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/openssl@4/4.1.0: 6,878 files, 31.4MB
+==> Installing php dependency: m4 (1.4.21)
+==> Pouring m4--1.4.21.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/m4/1.4.21: 41 files, 1.5MB
+==> Installing php dependency: libtool (2.6.2)
+==> Pouring libtool--2.6.2.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libtool/2.6.2: 77 files, 4.3MB
+==> Installing php dependency: unixodbc (2.3.14)
+==> Pouring unixodbc--2.3.14.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/unixodbc/2.3.14: 51 files, 2.9MB
+==> Installing php dependency: expat (2.11.0)
+==> Pouring expat--2.11.0.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/expat/2.11.0: 23 files, 1MB
+==> Installing php dependency: apr-util (1.6.6)
+==> Pouring apr-util--1.6.6.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/apr-util/1.6.6: 60 files, 1.1MB
+==> Installing php dependency: argon2 (20190702_1)
+==> Pouring argon2--20190702_1.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/argon2/20190702_1: 12 files, 667.5KB
+==> Installing php dependency: gdbm (1.26)
+==> Pouring gdbm--1.26.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/gdbm/1.26: 43 files, 1.6MB
+==> Installing php dependency: perl (5.44.0)
+==> Pouring perl--5.44.0.x86_64_linux.bottle.1.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/perl/5.44.0: 2,887 files, 80.9MB
+==> Installing php dependency: autoconf (2.73)
+==> Pouring autoconf--2.73.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/autoconf/2.73: 73 files, 3.9MB
+==> Installing php dependency: brotli (1.2.1)
+==> Pouring brotli--1.2.1.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/brotli/1.2.1: 33 files, 2.1MB
+==> Installing php dependency: libnghttp2 (1.71.0)
+==> Pouring libnghttp2--1.71.0.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libnghttp2/1.71.0: 15 files, 922.6KB
+==> Installing php dependency: libnghttp3 (1.19.0)
+==> Pouring libnghttp3--1.19.0.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libnghttp3/1.19.0: 20 files, 748.4KB
+==> Installing php dependency: libngtcp2 (1.26.0)
+==> Pouring libngtcp2--1.26.0.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libngtcp2/1.26.0: 23 files, 1.8MB
+==> Installing php dependency: libunistring (1.5)
+==> Pouring libunistring--1.5.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libunistring/1.5: 60 files, 6.5MB
+==> Installing php dependency: libidn2 (2.3.8)
+==> Pouring libidn2--2.3.8.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libidn2/2.3.8: 81 files, 1.2MB
+==> Installing php dependency: libpsl (0.23.3)
+==> Pouring libpsl--0.23.3.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libpsl/0.23.3: 19 files, 298.4KB
+==> Installing php dependency: libssh2 (1.11.1_7)
+==> Pouring libssh2--1.11.1_7.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libssh2/1.11.1_7: 202 files, 1.5MB
+==> Installing php dependency: lz4 (1.11.1)
+==> Pouring lz4--1.11.1.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/lz4/1.11.1: 28 files, 962.2KB
+==> Installing php dependency: xz (5.8.4)
+==> Pouring xz--5.8.4.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/xz/5.8.4: 97 files, 2.9MB
+==> Installing php dependency: zstd (1.6.0)
+==> Pouring zstd--1.6.0.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/zstd/1.6.0: 35 files, 3.6MB
+==> Installing php dependency: keyutils (1.6.3)
+==> Pouring keyutils--1.6.3.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/keyutils/1.6.3: 66 files, 557.1KB
+==> Installing php dependency: krb5 (1.22.3)
+==> Pouring krb5--1.22.3.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/krb5/1.22.3: 164 files, 5.6MB
+==> Installing php dependency: cyrus-sasl (2.1.28_4)
+==> Pouring cyrus-sasl--2.1.28_4.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/cyrus-sasl/2.1.28_4: 90 files, 1.2MB
+==> Installing php dependency: openldap (2.7.2)
+==> Pouring openldap--2.7.2.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/openldap/2.7.2: 341 files, 10.6MB
+==> Installing php dependency: curl (8.23.0)
+==> Pouring curl--8.23.0.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/curl/8.23.0: 559 files, 6.3MB
+==> Installing php dependency: freetds (1.5.22)
+==> Pouring freetds--1.5.22.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/freetds/1.5.22: 2,704 files, 27MB
+==> Installing php dependency: libpng (1.6.59)
+==> Pouring libpng--1.6.59.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libpng/1.6.59: 29 files, 1.5MB
+==> Installing php dependency: bzip2 (1.0.8)
+==> Pouring bzip2--1.0.8.x86_64_linux.bottle.2.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/bzip2/1.0.8: 31 files, 619.5KB
+==> Installing php dependency: freetype (2.15.0)
+==> Pouring freetype--2.15.0.x86_64_linux.bottle.1.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/freetype/2.15.0: 69 files, 3.4MB
+==> Installing php dependency: fontconfig (2.18.4)
+==> Pouring fontconfig--2.18.4.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/fontconfig/2.18.4: 101 files, 2.1MB
+==> Installing php dependency: jpeg-turbo (3.2.1)
+==> Pouring jpeg-turbo--3.2.1.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/jpeg-turbo/3.2.1: 47 files, 6MB
+==> Installing php dependency: libvmaf (3.2.1)
+==> Pouring libvmaf--3.2.1.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libvmaf/3.2.1: 244 files, 9.4MB
+==> Installing php dependency: aom (3.15.3)
+==> Pouring aom--3.15.3.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/aom/3.15.3: 30 files, 15.9MB
+==> Installing php dependency: dav1d (1.5.5)
+==> Pouring dav1d--1.5.5.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/dav1d/1.5.5: 17 files, 2.7MB
+==> Installing php dependency: libavif (1.4.2)
+==> Pouring libavif--1.4.2.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libavif/1.4.2: 22 files, 1.3MB
+==> Installing php dependency: giflib (6.1.3)
+==> Pouring giflib--6.1.3.x86_64_linux.bottle.1.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/giflib/6.1.3: 44 files, 655.8KB
+==> Installing php dependency: webp (1.6.0)
+==> Pouring webp--1.6.0.x86_64_linux.bottle.1.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/webp/1.6.0: 63 files, 3.3MB
+==> Installing php dependency: libtiff (4.7.2)
+==> Pouring libtiff--4.7.2.x86_64_linux.bottle.2.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libtiff/4.7.2: 495 files, 9.1MB
+==> Installing php dependency: gd (2.3.3_6)
+==> Pouring gd--2.3.3_6.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/gd/2.3.3_6: 34 files, 1.5MB
+==> Installing php dependency: gmp (6.3.0)
+==> Pouring gmp--6.3.0.x86_64_linux.bottle.1.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/gmp/6.3.0: 24 files, 4.1MB
+==> Installing php dependency: icu4c@79 (79.1)
+==> Pouring icu4c@79--79.1.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/icu4c@79/79.1: 279 files, 95.7MB
+==> Installing php dependency: libpq (19.0)
+==> Pouring libpq--19.0.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libpq/19.0: 2,467 files, 37.9MB
+==> Installing php dependency: libsodium (1.0.22)
+==> Pouring libsodium--1.0.22.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libsodium/1.0.22: 89 files, 1.7MB
+==> Installing php dependency: libzip (1.12.1)
+==> Pouring libzip--1.12.1.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libzip/1.12.1: 162 files, 1.4MB
+==> Installing php dependency: net-snmp (5.9.5.2_2)
+==> Pouring net-snmp--5.9.5.2_2.x86_64_linux.bottle.1.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/net-snmp/5.9.5.2_2: 559 files, 17MB
+==> Installing php dependency: oniguruma (6.9.10)
+==> Pouring oniguruma--6.9.10.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/oniguruma/6.9.10: 16 files, 1.8MB
+==> Installing php dependency: pcre2 (10.49)
+==> Pouring pcre2--10.49.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/pcre2/10.49: 249 files, 8.4MB
+==> Installing php dependency: tidy-html5 (5.8.0)
+==> Pouring tidy-html5--5.8.0.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/tidy-html5/5.8.0: 13 files, 3.5MB
+==> Installing php dependency: libedit (20260512-3.1)
+==> Pouring libedit--20260512-3.1.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libedit/20260512-3.1: 61 files, 1.8MB
+==> Installing php dependency: libffi (3.8.2)
+==> Pouring libffi--3.8.2.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libffi/3.8.2: 19 files, 1.1MB
+==> Installing php dependency: libxml2 (2.15.4)
+==> Pouring libxml2--2.15.4.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libxml2/2.15.4: 60 files, 2.3MB
+==> Installing php dependency: libgpg-error (1.61)
+==> Pouring libgpg-error--1.61.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libgpg-error/1.61: 51 files, 2.2MB
+==> Installing php dependency: libgcrypt (1.12.4)
+==> Pouring libgcrypt--1.12.4.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libgcrypt/1.12.4: 25 files, 4.9MB
+==> Installing php dependency: libxslt (1.1.45)
+==> Pouring libxslt--1.1.45.x86_64_linux.bottle.1.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/libxslt/1.1.45: 102 files, 1.4MB
+==> Installing php
+==> Pouring php--8.6.0.x86_64_linux.bottle.tar.gz
+config-set succeeded
+config-set succeeded
+config-set succeeded
+config-set succeeded
+config-set succeeded
+config-set succeeded
+config-set succeeded
+config-set succeeded
+config-set succeeded
+config-set succeeded
+config-set succeeded
+Updating channel "doc.php.net"
+Update of Channel "doc.php.net" succeeded
+Updating channel "pear.php.net"
+Update of Channel "pear.php.net" succeeded
+Updating channel "pecl.php.net"
+Update of Channel "pecl.php.net" succeeded
+🍺  /home/linuxbrew/.linuxbrew/Cellar/php/8.6.0: 549 files, 170.4MB
+==> Caveats
+==> php
+To enable PHP in Apache add the following to httpd.conf and restart Apache:
+    LoadModule php_module /home/linuxbrew/.linuxbrew/opt/php/lib/httpd/modules/libphp.so
+
+    <FilesMatch \.php$>
+        SetHandler application/x-httpd-php
+    </FilesMatch>
+
+Finally, check DirectoryIndex includes index.php
+    DirectoryIndex index.php index.html
+
+The php.ini and php-fpm.ini file can be found in:
+    /home/linuxbrew/.linuxbrew/etc/php/8.6/
+
+To start php now and restart at login:
+  brew services start php
+Or, if you don't want/need a background service you can just run:
+  /home/linuxbrew/.linuxbrew/opt/php/sbin/php-fpm --nodaemonize
+To relink, run:
+  brew unlink php && brew link php
+PHP 8.6.0 (cli) (built: Nov 17 2026 14:21:54) (NTS)
+Copyright © The PHP Group and Contributors
+Built by Homebrew
+Zend Engine v4.6.0, Copyright © Zend by Perforce
+    with Zend OPcache v8.6.0, Copyright ©, by Zend by Perforce
+[0;32m[✓][0m Recorded: PHP (via Homebrew) - 965.40MB
+[0;34m[*][0m Measuring: Perlbrew + Perl (latest)
+
+## Download the latest perlbrew
+
+## Installing perlbrew
+Using Perl </usr/bin/perl>
+perlbrew is installed: ~/.perl5/bin/perlbrew
+
+perlbrew root (~/.perl5) is initialized.
+
+Append the following piece of code to the end of your ~/.bash_profile and start a
+new shell, perlbrew should be up and fully functional from there:
+
+    source ~/.perl5/etc/bashrc
+
+Simply run `perlbrew` for usage details.
+
+Happy brewing!
+
+## Installing patchperl
+
+## Done.
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0100    170 100    170   0      0    541      0                              0100    170 100    170   0      0    541      0                              0
+  0      0   0      0   0      0      0      0                              0100   1689 100   1689   0      0   4703      0                              0100   1689 100   1689   0      0   4702      0                              0100   1689 100   1689   0      0   4702      0                              0
+Fetching perl 5.44.0 as /home/box/.perl5/dists/perl-5.44.0.tar.gz
+Download https://cpan.metacpan.org/src/5.0/perl-5.44.0.tar.gz to /home/box/.perl5/dists/perl-5.44.0.tar.gz
+Installing /home/box/.perl5/build/perl-5.44.0/perl-5.44.0 into ~/.perl5/perls/perl-5.44.0
+
+This could take a while. You can run the following command on another shell to track the status:
+
+  tail -f ~/.perl5/build.perl-5.44.0.log
+
+perl-5.44.0 is successfully installed.
+[0;32m[✓][0m Recorded: Perlbrew + Perl (latest) - 372.03MB
+[0;34m[*][0m Measuring: rbenv + Ruby (latest)
+==> Downloading ruby-4.0.10.tar.gz...
+-> aria2c --allow-overwrite=true --no-conf=true --console-log-level=warn --stderr -o ruby-4.0.10.tar.gz https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.10.tar.gz
+Cloning into '/home/box/.rbenv'...
+Cloning into '/home/box/.rbenv/plugins/ruby-build'...
+
+Download Results:
+gid   |stat|avg speed  |path/URI
+======+====+===========+=======================================================
+0722c6|OK  |   313MiB/s|/tmp/ruby-build.20261127080902.103468.lm0HWd/ruby-4.0.10.tar.gz
+
+Status Legend:
+(OK):download completed.
+==> Installing ruby-4.0.10...
+ruby-build: using gmp from homebrew
+-> ./configure "--prefix=$HOME/.rbenv/versions/4.0.10" --enable-shared --with-gmp-dir=/home/linuxbrew/.linuxbrew/opt/gmp --with-ext=openssl,psych,+
+-> make -j 4
+-> make install
+==> Installed ruby-4.0.10 to /home/box/.rbenv/versions/4.0.10
+
+NOTE: to activate this Ruby version as the new default, run: rbenv global 4.0.10
+[0;32m[✓][0m Recorded: rbenv + Ruby (latest) - 175.35MB
+[0;34m[*][0m Measuring: Swift 6.x
+Swift version 6.4.3 (swift-6.4.3-RELEASE)
+Target: x86_64-unknown-linux-gnu
+[0;32m[✓][0m Recorded: Swift 6.x - 3716.76MB
+[0;34m[*][0m Box user measurement attempts complete
+
+==> Finalizing Measurements
+
+[✓] Finalized JSON output with total: 12869.00MB
+
+==> Measurement Complete!
+
+[✓] Total installation size: 12869.00MB
+[✓] Results saved to: measurement.json
+
+=== DISK SPACE SUMMARY ===
+Generated: 2026-11-27T08:12:03Z
+Total Size: 12869.0MB
+
+Components by Category:
+  Build Tools:
+    C/C++ Tools (CMake, Clang, LLVM, LLD): 58.84MB
+    Assembly Tools (NASM, FASM): 3.92MB
+  Dependencies:
+    Python Build Dependencies: 41.84MB
+    Bubblewrap: 0.18MB
+    Ruby Build Dependencies: 0.0MB
+  Development Tools:
+    GitLab CLI: 29.2MB
+    gh-setup-git-identity: 4.63MB
+    glab-setup-git-identity: 4.42MB
+    GitHub CLI: 0.36MB
+  Package Manager:
+    Homebrew: 217.48MB
+  Runtime:
+    Swift 6.x: 3716.76MB
+    Lean (via elan): 3278.16MB
+    Opam + Rocq/Coq: 1030.32MB
+    PHP (via Homebrew): 965.4MB
+    Rust (via rustup): 674.28MB
+    .NET SDK 10.0: 636.72MB
+    SDKMAN + Java 25: 465.42MB
+    Pyenv + Python (latest): 433.98MB
+    Perlbrew + Perl (latest): 372.03MB
+    NVM + Node.js 26: 309.65MB
+    Go (latest): 295.98MB
+    Kotlin (via SDKMAN): 187.47MB
+    rbenv + Ruby (latest): 175.35MB
+    R Language: 131.56MB
+    Bun: 107.41MB
+    Deno: 97.21MB
+  System:
+    Essential Tools: 0.73MB
+disk space measurement finished in 1317s of its 2400s budget (exit 0).

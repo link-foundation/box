@@ -1,0 +1,67 @@
+run	archive member	line	message
+34455018634	34455018634.log.gz	2454	Measure Component Disk Space\tUNKNOWN STEP\t2026-09-10T08:42:00.4885403Z ##[error]Process completed with exit code 1.
+34455018634	34455018634.log.gz	2696	pipeline-status\tUNKNOWN STEP\t2026-09-10T08:42:10.1859522Z ##[error]Failing jobs: measure-disk-space
+34455018634	34455018634.log.gz	2697	pipeline-status\tUNKNOWN STEP\t2026-09-10T08:42:10.1871082Z ##[error]Process completed with exit code 1.
+35719326243	35719326243.log.gz	299	links / lychee\tUNKNOWN STEP\t2026-09-22T11:03:49.9982310Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/35719326243#summary-106718247559
+36566801031	36566801031.log.gz	299	links / lychee\tUNKNOWN STEP\t2026-09-29T12:14:50.0796235Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/36566801031#summary-109400605848
+37466341052	37466341052.log.gz	307	links / lychee\tUNKNOWN STEP\t2026-10-06T12:51:59.3450307Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/37466341052#summary-112278207862
+37466341052	37466341052.log.gz	363	links / lychee\tUNKNOWN STEP\t2026-10-06T12:52:05.7911447Z ##[notice]Broken link detected: https://github.com/orgs/community/discussions/45969
+37466341052	37466341052.log.gz	395	links / lychee\tUNKNOWN STEP\t2026-10-06T12:52:05.8163318Z ##[error]lychee found broken links.
+37466341052	37466341052.log.gz	412	links / lychee\tUNKNOWN STEP\t2026-10-06T12:52:05.8174374Z ##[error]Process completed with exit code 1.
+37466341052	37466341052.log.gz	629	pipeline-status\tUNKNOWN STEP\t2026-10-06T12:52:21.5812454Z ##[error]Failing jobs: link-checker
+37466341052	37466341052.log.gz	630	pipeline-status\tUNKNOWN STEP\t2026-10-06T12:52:21.5823954Z ##[error]Process completed with exit code 1.
+37747039934	37747039934.log.gz	300	links / lychee\tUNKNOWN STEP\t2026-10-08T08:01:16.4149661Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/37747039934#summary-113210863743
+38157957089	38157957089.log.gz	300	links / lychee\tUNKNOWN STEP\t2026-10-11T17:03:57.5277047Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/38157957089#summary-114524726834
+38157957100	38157957100.log.gz	1102	scripts / regression suites\tUNKNOWN STEP\t2026-10-11T17:04:32.3287956Z ##[error]Suite failed with exit status 1
+38157957100	38157957100.log.gz	1183	scripts / regression suites\tUNKNOWN STEP\t2026-10-11T17:09:45.4216409Z ##[error]Process completed with exit code 1.
+38157957100	38157957100.log.gz	2084	pipeline-status\tUNKNOWN STEP\t2026-10-11T17:09:57.5824131Z ##[error]Failing jobs: experiments
+38157957100	38157957100.log.gz	2085	pipeline-status\tUNKNOWN STEP\t2026-10-11T17:09:57.5831913Z ##[error]Process completed with exit code 1.
+38406835991	38406835991.log.gz	307	links / lychee\tUNKNOWN STEP\t2026-10-13T13:41:19.6361199Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/38406835991#summary-115328544323
+38406835991	38406835991.log.gz	363	links / lychee\tUNKNOWN STEP\t2026-10-13T13:43:54.6345293Z ##[error]Broken link detected: https://packages.ubuntu.com/noble/fasm
+38406835991	38406835991.log.gz	373	links / lychee\tUNKNOWN STEP\t2026-10-13T13:43:54.6401920Z ##[error]Process completed with exit code 1.
+38406835991	38406835991.log.gz	399	links / lychee\tUNKNOWN STEP\t2026-10-13T13:43:54.6560227Z ##[error]lychee found broken links.
+38406835991	38406835991.log.gz	416	links / lychee\tUNKNOWN STEP\t2026-10-13T13:43:54.6567346Z ##[error]Process completed with exit code 1.
+38406835991	38406835991.log.gz	634	pipeline-status\tUNKNOWN STEP\t2026-10-13T13:44:07.2920416Z ##[error]Failing jobs: link-checker
+38406835991	38406835991.log.gz	635	pipeline-status\tUNKNOWN STEP\t2026-10-13T13:44:07.2932301Z ##[error]Process completed with exit code 1.
+38633908399	38633908399.log.gz	300	links / lychee\tUNKNOWN STEP\t2026-10-14T20:39:49.9991288Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/38633908399#summary-116092113459
+39411790593	39411790593.log.gz	300	links / lychee\tUNKNOWN STEP\t2026-10-20T10:59:56.8228536Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/39411790593#summary-118591091894
+40497985564	40497985564.log.gz	300	links / lychee\tUNKNOWN STEP\t2026-10-27T11:41:38.3461144Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/40497985564#summary-122168202603
+41646781886	41646781886.log.gz	300	links / lychee\tUNKNOWN STEP\t2026-11-03T13:43:14.1022437Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/41646781886#summary-125954093894
+42833999978	42833999978.log.gz	300	links / lychee\tUNKNOWN STEP\t2026-11-10T14:26:17.3640520Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/42833999978#summary-129891204287
+44115877567	44115877567.log.gz	307	links / lychee\tUNKNOWN STEP\t2026-11-17T15:35:20.9588052Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/44115877567#summary-134153646610
+44115877567	44115877567.log.gz	363	links / lychee\tUNKNOWN STEP\t2026-11-17T15:35:27.2735983Z ##[notice]Broken link detected: https://github.com/qdm12/docker-proxy-acl-alpine
+44115877567	44115877567.log.gz	395	links / lychee\tUNKNOWN STEP\t2026-11-17T15:35:27.2889256Z ##[error]lychee found broken links.
+44115877567	44115877567.log.gz	412	links / lychee\tUNKNOWN STEP\t2026-11-17T15:35:27.2898467Z ##[error]Process completed with exit code 1.
+44115877567	44115877567.log.gz	630	pipeline-status\tUNKNOWN STEP\t2026-11-17T15:35:40.6200485Z ##[error]Failing jobs: link-checker
+44115877567	44115877567.log.gz	631	pipeline-status\tUNKNOWN STEP\t2026-11-17T15:35:40.6213306Z ##[error]Process completed with exit code 1.
+45443984715	45443984715.log.gz	307	links / lychee\tUNKNOWN STEP\t2026-11-24T17:02:32.3250887Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/45443984715#summary-138622554211
+45443984715	45443984715.log.gz	363	links / lychee\tUNKNOWN STEP\t2026-11-24T17:02:33.9976069Z ##[notice]Broken link detected: https://github.com/qdm12/docker-proxy-acl-alpine
+45443984715	45443984715.log.gz	395	links / lychee\tUNKNOWN STEP\t2026-11-24T17:02:34.0160484Z ##[error]lychee found broken links.
+45443984715	45443984715.log.gz	412	links / lychee\tUNKNOWN STEP\t2026-11-24T17:02:34.0172392Z ##[error]Process completed with exit code 1.
+45443984715	45443984715.log.gz	630	pipeline-status\tUNKNOWN STEP\t2026-11-24T17:02:51.2482224Z ##[error]Failing jobs: link-checker
+45443984715	45443984715.log.gz	631	pipeline-status\tUNKNOWN STEP\t2026-11-24T17:02:51.2491077Z ##[error]Process completed with exit code 1.
+45954592803	45954592803.log.gz	397	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:24.0007708Z ##[notice]Summary report available at: https://github.com/link-foundation/box/actions/runs/45954592803#summary-140358026607
+45954592803	45954592803.log.gz	429	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0028271Z ##[notice]https://github.com/nestybox/sysbox/blob/master/docs/user-guide/dind.md failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+45954592803	45954592803.log.gz	430	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0031239Z ##[notice]https://github.com/link-assistant/hive-mind/blob/main/scripts/preload-dind-isolation-image.mjs failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+45954592803	45954592803.log.gz	431	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0033268Z ##[notice]https://github.com/link-foundation/js-ai-driven-development-pipeline-template/blob/main/docs/CI-TIMEOUT-BUDGETS.md failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+45954592803	45954592803.log.gz	432	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0035341Z ##[notice]https://github.com/link-assistant/hive-mind/blob/issue-2187-6617b8797683/experiments/issue-2187-box-base-availability.sh failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+45954592803	45954592803.log.gz	433	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0037730Z ##[notice]https://github.com/link-assistant/hive-mind/blob/main/docs/CI-CD-BEST-PRACTICES.md failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+45954592803	45954592803.log.gz	434	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0040136Z ##[notice]https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+45954592803	45954592803.log.gz	435	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0043395Z ##[notice]https://github.com/Homebrew/install/blob/main/install.sh failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+45954592803	45954592803.log.gz	436	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0047385Z ##[notice]https://github.com/nvm-sh/nvm/blob/master/README.md failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+45954592803	45954592803.log.gz	437	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0049827Z ##[notice]https://github.com/link-assistant/hive-mind/blob/ed3225f24ecd0a1614c1c6433f2ab548e4443eab/scripts/ubuntu-24-server-install.sh failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+45954592803	45954592803.log.gz	438	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0064655Z ##[notice]https://github.com/link-assistant/hive-mind/blob/main/docs/UBUNTU-SERVER.md failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+45954592803	45954592803.log.gz	439	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0067739Z ##[notice]https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/registry/nativeDeps.ts failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+45954592803	45954592803.log.gz	440	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0070182Z ##[notice]https://github.com/nestybox/sysbox/blob/master/docs/user-guide/install-package.md failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+45954592803	45954592803.log.gz	441	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0071966Z ##[notice]https://github.com/containers/podman/blob/main/docs/tutorials/rootless_tutorial.md failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+45954592803	45954592803.log.gz	442	links / lychee\tUNKNOWN STEP\t2026-11-27T06:52:51.0073732Z ##[notice]https://github.com/docker-library/docker/blob/master/Dockerfile-dind-rootless.template failed temporarily in lychee but answers 100..=103,200..=299 now - not a broken link
+45961808401	45961808401.log.gz	1218	scripts / regression suites\tUNKNOWN STEP\t2026-11-27T07:56:58.7000772Z ##[error]Suite failed with exit status 1
+45961808401	45961808401.log.gz	1287	scripts / regression suites\tUNKNOWN STEP\t2026-11-27T08:01:29.6476737Z ##[error]Process completed with exit code 1.
+45961808401	45961808401.log.gz	2369	pipeline-status\tCheck pipeline status\t2026-11-27T08:01:41.1428993Z ##[error]Failing jobs: experiments
+45961808401	45961808401.log.gz	2370	pipeline-status\tCheck pipeline status\t2026-11-27T08:01:41.1438078Z ##[error]Process completed with exit code 1.
+45961808705	22_pr-tests _ pr-test _ dind-php.txt	5228	2026-11-27T08:29:47.1173838Z ##[warning]dind-php base chain build has run for 945s of its 1350s budget.
+45961808705	23_pr-tests _ pr-test _ dind-essentials.txt	5258	2026-11-27T08:30:19.1328707Z ##[warning]dind-essentials base chain build has run for 945s of its 1350s budget.
+45961808705	27_pr-tests _ pr-test _ swift.txt	4152	2026-11-27T08:29:28.1946028Z ##[warning]swift chain build has run for 1050s of its 1500s budget.
+45961808705	2_pr-tests _ pr-test _ full.txt	7943	2026-11-27T09:10:16.1723244Z ##[warning]full chain build has run for 2100s of its 3000s budget.
+45961808705	30_pr-tests _ pr-test _ java.txt	3792	2026-11-27T08:29:40.2117196Z ##[warning]java chain build has run for 1050s of its 1500s budget.
+45961808705	4_pr-tests _ pr-test _ dind-rocq.txt	5536	2026-11-27T08:41:07.6790053Z ##[warning]dind-rocq base chain build has run for 945s of its 1350s budget.

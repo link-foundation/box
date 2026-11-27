@@ -1,0 +1,38 @@
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: scr…sts
+PASS: eve…ree
+PASS: scr…ule
+PASS: lyc…un)
+PASS: [REDACTED]
+PASS: the…ary
+PASS: the…ere
+PASS: anc…nto
+PASS: the…lag
+PASS: the…epo
+PASS: the…out
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: the…nk)
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: the…nce
+PASS: [REDACTED] "Errors per input" heading is still parsed in full
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+PASS: [REDACTED]
+--- the --include-fragments mutation fixture ---
+PASS: wit…ve)
+PASS: wit…ken
+PASS: wit…ken
+PASS: wit…hem
+note: set LINKS_LIVE=1 to run lychee for real (needs docker + network)
+
+34 passed, 0 failed

@@ -1,0 +1,2 @@
+  Failed to check Wayback Machine for https://example.com/deleted: mock Wayback outage
+ArchiveResult(available=False, archive_url=None, timestamp=None) ArchiveResult(available=False, archive_url=None, timestamp=None)

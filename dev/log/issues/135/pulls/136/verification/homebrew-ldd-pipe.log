@@ -1,0 +1,6 @@
+head diagnostics: 4
+sed diagnostics: 0
+/usr/bin/ldd: line 43: printf: write error: Broken pipe
+/usr/bin/ldd: line 43: printf: write error: Broken pipe
+/usr/bin/ldd: line 43: printf: write error: Broken pipe
+/usr/bin/ldd: line 43: printf: write error: Broken pipe

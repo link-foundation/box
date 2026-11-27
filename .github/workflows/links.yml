@@ -32,6 +32,8 @@ on:
       - '.github/workflows/links.yml'
       - 'scripts/ci/check-web-archive.mjs'
       - 'scripts/ci/recheck-broken-links.mjs'
+      - 'experiments/test-issue115-links-gate.sh'
+      - 'experiments/test-issue135-link-verdicts.sh'
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
@@ -40,11 +42,18 @@ on:
       - '.github/workflows/links.yml'
       - 'scripts/ci/check-web-archive.mjs'
       - 'scripts/ci/recheck-broken-links.mjs'
+      - 'experiments/test-issue115-links-gate.sh'
+      - 'experiments/test-issue135-link-verdicts.sh'
   # Weekly: a link rots without anyone touching this repository. The three dead
   # upstream URLs this port found had all been correct when they were written.
   schedule:
     - cron: '0 6 * * 2'
   workflow_dispatch:
+    inputs:
+      verbose:
+        description: 'Show Lychee redirects and per-request recovery results'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -116,6 +125,7 @@ jobs:
         with:
           args: >-
             --no-progress
+            ${{ inputs.verbose && '--verbose' || '' }}
             --cache
             --max-cache-age 1d
             --include-fragments
@@ -127,13 +137,14 @@ jobs:
           # archived gets a concrete replacement suggested below, which is more
           # use to the author than a bare red X.
           fail: false
+          lycheeVersion: v0.24.2
           output: lychee/out.md
           jobSummary: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Node
-        if: steps.lychee.outputs.exit_code != 0
+        if: steps.lychee.outputs.exit_code == '2'
         uses: actions/setup-node@v6
         with:
           node-version: '24'
@@ -148,29 +159,43 @@ jobs:
       # PR #132 failed on two healthy GitHub docs links answering 503. Retry
       # those within the same wall-clock budget; only an accepted status can
       # recover them. Permanent failures such as 404 remain final. URLs with
-      # fragments stay final because the recovery's HEAD cannot check anchors.
+      # fragments stay final because an HTTP status cannot check anchors.
       - name: Re-check unanswered links and temporary HTTP errors
-        if: steps.lychee.outputs.exit_code != 0
+        if: steps.lychee.outputs.exit_code == '2'
         id: recheck
         run: node scripts/ci/recheck-broken-links.mjs
         env:
           LYCHEE_OUTPUT: lychee/out.md
           RECOVERED_OUTPUT: lychee/recovered.txt
+          LYCHEE_EXIT_CODE: ${{ steps.lychee.outputs.exit_code }}
+          BOX_VERBOSE: ${{ inputs.verbose && '1' || '0' }}
 
       # `!= 'true'`, never `== 'false'`: a skipped or crashed re-check leaves
       # the output empty, and only the `!=` form reads that as "still failing".
       - name: Look for Web Archive replacements
+        continue-on-error: true
         if: >-
-          steps.lychee.outputs.exit_code != 0 &&
+          steps.lychee.outputs.exit_code == '2' &&
           steps.recheck.outputs.all_recovered != 'true'
         run: node scripts/ci/check-web-archive.mjs
         env:
           LYCHEE_OUTPUT: lychee/out.md
           RECOVERED_URLS: lychee/recovered.txt
+          LYCHEE_EXIT_CODE: ${{ steps.lychee.outputs.exit_code }}
+
+      - name: Report a link checker execution failure
+        if: >-
+          ${{ !cancelled() && steps.lychee.outcome != '' && steps.lychee.outcome != 'skipped' &&
+          steps.lychee.outputs.exit_code != '0' && steps.lychee.outputs.exit_code != '2' }}
+        env:
+          LYCHEE_EXIT_CODE: ${{ steps.lychee.outputs.exit_code }}
+        run: |
+          echo "::error title=links::Lychee did not complete a link scan (exit: ${LYCHEE_EXIT_CODE:-unavailable})."
+          exit 1
 
       - name: Fail if broken links were found
         if: >-
-          ${{ !cancelled() && steps.lychee.outputs.exit_code != 0 &&
+          ${{ !cancelled() && steps.lychee.outputs.exit_code == '2' &&
           steps.recheck.outputs.all_recovered != 'true' }}
         run: |
           echo "::error title=links::lychee found broken links."
@@ -194,7 +219,9 @@ jobs:
 
       - name: The gate's own fixtures still hold
         if: ${{ !cancelled() }}
-        run: bash experiments/test-issue115-links-gate.sh
+        run: |
+          bash experiments/test-issue115-links-gate.sh
+          bash experiments/test-issue135-link-verdicts.sh
 
   # === TERMINAL STATUS GATE ===
   #
