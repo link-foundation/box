@@ -377,7 +377,7 @@ for rel in scripts/measure-disk-space.sh scripts/ubuntu-24-server-install.sh; do
     continue
   }
 
-  for var in NODE_MAJOR NVM_INSTALL_VERSION JAVA_MAJOR; do
+  for var in NODE_MAJOR NVM_INSTALL_VERSION JAVA_MAJOR SWIFT_CANDIDATES; do
     if grep -qE "^[[:space:]]*: \"\\\$\{$var:\?" "$f"; then
       ok "$rel asserts $var inside the generated script"
     else
@@ -393,12 +393,12 @@ for rel in scripts/measure-disk-space.sh scripts/ubuntu-24-server-install.sh; do
   else
     missing=""
     while IFS= read -r line; do
-      for var in NODE_MAJOR NVM_INSTALL_VERSION JAVA_MAJOR; do
+      for var in NODE_MAJOR NVM_INSTALL_VERSION JAVA_MAJOR SWIFT_CANDIDATES; do
         grep -q "$var=" <<<"$line" || missing="$missing $var@line${line%%:*}"
       done
     done <<<"$invocations"
     if [ -z "$missing" ]; then
-      ok "$rel passes all three versions at every invocation of the generated script"
+      ok "$rel passes the resolved versions at every invocation of the generated script"
     else
       bad "$rel does not pass:$missing"
     fi
